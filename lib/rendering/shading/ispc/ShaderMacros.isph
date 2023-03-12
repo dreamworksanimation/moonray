@@ -1,0 +1,161 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file ShaderMacros.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/BsdfBuilder.isph>
+
+#include <moonray/rendering/bvh/shading/ispc/State.isph>
+#include <moonray/rendering/bvh/shading/ispc/ThreadLocalObjectState.isph>
+#include <moonray/rendering/shading/BsdfUtil.hh>
+#include <scene_rdl2/common/math/ispc/autodiff.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+struct Displacement;
+struct Map;
+struct Material;
+
+// Enable / disable shader call & timing statistics tracking
+#define SHADING_BRACKET_TIMING_ENABLED
+//#undef SHADING_BRACKET_TIMING_ENABLED
+
+#ifdef SHADING_BRACKET_TIMING_ENABLED
+#define SHADING_START_CLOCK() const uniform int64 start = clock();
+#define SHADING_END_CLOCK(OBJ, TLS, NUM_ITEMS)  \
+    const uniform int64 end = clock();          \
+    addTimeInShader(OBJ, TLS, start, end, NUM_ITEMS);
+#else
+#define SHADING_START_CLOCK()
+#define SHADING_END_CLOCK(OBJ, TLS)
+#endif
+
+#ifdef SHADING_PRINT_DEBUG_BSDF_INFO_ENABLED
+#define SHADING_PRINT_BSDF_INFO BsdfBuilder_show(builder[i], material);
+#else
+#define SHADING_PRINT_BSDF_INFO
+#endif
+
+/// @brief Define a material shade function within a shader
+#define DEFINE_MATERIAL_SHADER(shaderName, shadeFnName)                                     \
+    void                                                                                    \
+    shaderName##_shade(const uniform Material *          uniform material,                  \
+                             uniform ShadingTLState *    uniform tls,                       \
+                             uniform int                         n,                         \
+                       const varying State * const       uniform state,                     \
+                             varying BsdfBuilder *       uniform builder)                   \
+    {                                                                                       \
+        SHADING_START_CLOCK();                                                              \
+                                                                                            \
+        for (uniform int i = 0; i < n; ++i) {                                               \
+            shadeFnName(material, tls, state[i], builder[i]);                               \
+            SHADING_PRINT_BSDF_INFO                                                         \
+        }                                                                                   \
+                                                                                            \
+        SHADING_END_CLOCK(material, tls, n * programCount);                                 \
+    }                                                                                       \
+    export void *uniform shaderName##_getShadeFunc() { return shaderName##_shade; }
+
+
+/// @brief Define a map sample function within a shader
+/// Use this to define a map shader that has only a non-derivative
+/// producing sample function.  Derivatives, if requested, will
+/// return 0.
+#define DEFINE_MAP_SHADER(shaderName, sampleFnName)                         \
+    void                                                                    \
+    shaderName##_sample(const uniform Map   *          uniform map,         \
+                              uniform ShadingTLState * uniform tls,         \
+                        const varying State * const    uniform state,       \
+                              varying Color *          uniform color)       \
+    {                                                                       \
+        SHADING_START_CLOCK();                                              \
+        *color = sampleFnName(map, tls, *state);                            \
+        SHADING_END_CLOCK(map, tls, popcnt(lanemask()));                    \
+    }                                                                       \
+    export void *uniform shaderName##_getSampleFunc() { return shaderName##_sample; }   \
+                                                                            \
+    void                                                                    \
+    shaderName##_sampleFast(const uniform Map   *          uniform map,     \
+                                  uniform ShadingTLState * uniform tls,     \
+                            const varying State * const    uniform state,   \
+                                  varying Color *          uniform color)   \
+    {                                                                       \
+        *color = sampleFnName(map, tls, *state);                            \
+    }                                                                       \
+    export void *uniform shaderName##_getSampleFastFunc() { return shaderName##_sampleFast; }
+
+/// @brief Define a normal map sample function within a shader
+/// Use this to define a normal map shader that has only a non-derivative
+/// producing sample function.  Derivatives, if requested, will
+/// return 0.
+#define DEFINE_NORMALMAP_SHADER(shaderName, sampleFnName)                   \
+    void                                                                    \
+    shaderName##_sample(const uniform NormalMap   *    uniform map,         \
+                              uniform ShadingTLState * uniform tls,         \
+                        const varying State * const    uniform state,       \
+                              varying Vec3f *          uniform normal)      \
+    {                                                                       \
+        SHADING_START_CLOCK();                                              \
+        *normal = sampleFnName(map, tls, *state);                           \
+        SHADING_END_CLOCK(map, tls, popcnt(lanemask()));                    \
+    }                                                                       \
+    export void *uniform shaderName##_getSampleFunc() { return shaderName##_sample; }   \
+                                                                            \
+    void                                                                    \
+    shaderName##_sampleFast(const uniform NormalMap   *    uniform map,     \
+                                  uniform ShadingTLState * uniform tls,     \
+                            const varying State * const    uniform state,   \
+                                  varying Vec3f *          uniform normal)  \
+    {                                                                       \
+        *normal = sampleFnName(map, tls, *state);                           \
+    }                                                                       \
+    export void *uniform shaderName##_getSampleFastFunc() { return shaderName##_sampleFast; }
+
+/// @brief Define a displacement displace function within a shader
+#define DEFINE_DISPLACEMENT_SHADER(shaderName, displaceFnName)                      \
+    void                                                                            \
+    shaderName##_displace(const uniform Displacement *       uniform displacement,  \
+                                uniform ShadingTLState *     uniform tls,           \
+                                uniform int                          numState,      \
+                          const varying State        * const uniform state,         \
+                                varying Vec3f        *       uniform out)           \
+    {                                                                               \
+        SHADING_START_CLOCK();                                                      \
+                                                                                    \
+        for (uniform int i = 0; i < numState; ++i) {                                \
+            out[i] = displaceFnName(displacement, tls, state[i]);                   \
+        }                                                                           \
+                                                                                    \
+        SHADING_END_CLOCK(displacement, tls, numState * programCount);              \
+    }                                                                               \
+    export void *uniform shaderName##_getDisplaceFunc() { return shaderName##_displace; }
+
+/// @brief get the address of the first sub-class member of a Displacement.
+/// By convention this is the shared ispc member struct.
+#define DISPLACEMENT_GET_ISPC_PTR(TYPE, DISPLACEMENT) \
+    (uniform TYPE * uniform) ((uniform intptr_t) DISPLACEMENT + DISPLACEMENT_SIZEOF)
+#define DISPLACEMENT_GET_ISPC_CPTR(TYPE, DISPLACEMENT) \
+    (const uniform TYPE * uniform) ((uniform intptr_t) DISPLACEMENT + DISPLACEMENT_SIZEOF)
+
+/// @brief get the address of the first sub-class member of a Map.  By
+/// convention this is the shared ispc member struct.
+#define MAP_GET_ISPC_PTR(TYPE, MAP) \
+    (uniform TYPE * uniform) ((uniform intptr_t) MAP + MAP_SIZEOF)
+#define MAP_GET_ISPC_CPTR(TYPE, MAP) \
+    (const uniform TYPE * uniform) ((uniform intptr_t) MAP + MAP_SIZEOF)
+
+/// @brief get the address of the first sub-class member of a NormalMap.  By
+/// convention this is the shared ispc member struct.
+#define NORMALMAP_GET_ISPC_PTR(TYPE, NORMALMAP) \
+    (uniform TYPE * uniform) ((uniform intptr_t) NORMALMAP + NORMALMAP_SIZEOF)
+#define NORMALMAP_GET_ISPC_CPTR(TYPE, NORMALMAP) \
+    (const uniform TYPE * uniform) ((uniform intptr_t) NORMALMAP + NORMALMAP_SIZEOF)
+
+/// @brief get the address of the first sub-class member of a Material.  By
+/// convention this is the shared ispc member struct.
+#define MATERIAL_GET_ISPC_PTR(TYPE, MATERIAL) \
+    (uniform TYPE * uniform) ((uniform intptr_t) MATERIAL + MATERIAL_SIZEOF)
+#define MATERIAL_GET_ISPC_CPTR(TYPE, MATERIAL) \
+    (const uniform TYPE * uniform) ((uniform intptr_t) MATERIAL + MATERIAL_SIZEOF)
+

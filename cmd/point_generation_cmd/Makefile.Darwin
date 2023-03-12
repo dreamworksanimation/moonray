@@ -1,0 +1,3 @@
+CXXFLAGS = -Wall -Wextra -std=c++11 -O2 -g -I${TBB_HOME}/tbb43/include -DNDEBUG
+LDFLAGS = -L${TBB_HOME}/tbb43/lib/ -ltbb
+

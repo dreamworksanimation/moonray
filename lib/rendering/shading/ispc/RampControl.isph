@@ -1,0 +1,119 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file RampControl.isph
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/render/util/Arena.isph>
+
+enum RampConstants {
+    RAMP_MAX_POINTS = 10,
+};
+
+enum RampInterpolatorMode {
+    RAMP_INTERPOLATOR_MODE_NONE = 0,
+    RAMP_INTERPOLATOR_MODE_LINEAR,
+    RAMP_INTERPOLATOR_MODE_EXPONENTIAL_UP,
+    RAMP_INTERPOLATOR_MODE_EXPONENTIAL_DOWN,
+    RAMP_INTERPOLATOR_MODE_SMOOTH,
+    RAMP_INTERPOLATOR_MODE_CATMULLROM,
+    RAMP_INTERPOLATOR_MODE_MONOTONECUBIC,
+    RAMP_INTERPOLATOR_MODE_TOTAL
+};
+
+enum RampInterpolator2DType {
+    RAMP_INTERPOLATOR_2D_TYPE_V_RAMP = 0,
+    RAMP_INTERPOLATOR_2D_TYPE_U_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_DIAGONAL_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_RADIAL_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_CIRCULAR_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_BOX_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_UxV_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_FOUR_CORNER_RAMP,
+    RAMP_INTERPOLATOR_2D_TYPE_INPUT,
+    RAMP_INTERPOLATOR_2D_TYPE_TOTAL,
+};
+
+enum ColorRampControlSpace {
+    COLOR_RAMP_CONTROL_SPACE_RGB,
+    COLOR_RAMP_CONTROL_SPACE_HSV,
+    COLOR_RAMP_CONTROL_SPACE_HSL,
+    COLOR_RAMP_CONTROL_SPACE_TOTAL
+};
+
+struct FloatRampControl {
+    float                mInputs[RAMP_MAX_POINTS];
+    RampInterpolatorMode mInterpolators[RAMP_MAX_POINTS];
+    float                mOutputs[RAMP_MAX_POINTS];
+    float                mSlopes[RAMP_MAX_POINTS];
+    int                  mNumEntries;
+};
+
+struct ColorRampControl {
+    float                 mInputs[RAMP_MAX_POINTS];
+    RampInterpolatorMode  mInterpolators[RAMP_MAX_POINTS];
+    Color                 mOutputs[RAMP_MAX_POINTS];
+    Color                 mSlopes[RAMP_MAX_POINTS];
+    int                   mNumEntries;
+    ColorRampControlSpace mColorSpace;
+    bool                  mApplyHueBlendAdjustment;
+};
+
+void FloatRampControl_init(varying FloatRampControl* uniform rampControl,
+                           varying int numEntries,
+                           const varying float* uniform inputs,
+                           const varying float* uniform outputs,
+                           const varying RampInterpolatorMode* uniform  interpolators);
+
+void ColorRampControl_init(varying ColorRampControl* uniform rampControl,
+                           varying int numEntries,
+                           const varying float* uniform inputs,
+                           const varying Color* uniform outputs,
+                           const varying RampInterpolatorMode* uniform interpolators,
+                           const varying ColorRampControlSpace rampInterpolationMode,
+                           const varying bool applyHueBlendAdjustment = true);
+
+varying float
+FloatRampControl_eval1D(varying float t,
+                        const uniform FloatRampControl * uniform rampControl);
+
+varying float
+FloatRampControl_eval1D(varying float t,
+                        const varying FloatRampControl * uniform rampControl);
+
+varying float
+FloatRampControl_eval2D(const varying Vec2f& uv,
+                        const uniform RampInterpolator2DType rampType2D,
+                        const uniform float inputRamp,
+                        const uniform FloatRampControl * uniform rampControl);
+
+varying float
+FloatRampControl_eval2D(const varying Vec2f& uv,
+                        const varying RampInterpolator2DType rampType2D,
+                        const varying float inputRamp,
+                        const varying FloatRampControl * uniform rampControl);
+
+varying Color
+ColorRampControl_eval1D(varying float t,
+                        const uniform ColorRampControl * uniform rampControl);
+
+varying Color
+ColorRampControl_eval1D(varying float t,
+                        const varying ColorRampControl * uniform rampControl);
+
+varying Color
+ColorRampControl_eval2D(varying Vec2f uv,
+                        const uniform RampInterpolator2DType rampType2D,
+                        const varying float inputRamp,
+                        const uniform ColorRampControl * uniform rampControl);
+
+varying Color
+ColorRampControl_eval2D(varying Vec2f uv,
+                        const varying RampInterpolator2DType rampType2D,
+                        const varying float inputRamp,
+                        const varying ColorRampControl * uniform rampControl);
+
+

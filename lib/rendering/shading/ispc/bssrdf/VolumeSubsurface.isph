@@ -1,0 +1,144 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Fresnel.isph>
+#include "Bssrdf.isph"
+
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+//----------------------------------------------------------------------------
+
+///
+/// @class VolumeSubsurface
+struct VolumeSubsurface
+{
+    // user specified albedo color
+    // (the multiple scattering integration result on semi-infinite slab case)
+    varying Color mScatteringColor;
+    // user specified volume mean free path
+    varying Color mScatteringRadius;
+    // volume extinction coefficient (sigmaT = sigmaA + sigmaS)
+    varying Color mSigmaT;
+    // extinction coeff for exiting the surface without scattering inside
+    varying Color mZeroScatterSigmaT;
+    // volume scattering coefficient albedo (albedo = sigmaS / sigmaT)
+    varying Color mAlbedo;
+    // a scaling factor similar to what bsdf/vs have
+    varying Color mScale;
+    // intersection entry shading normal vector
+    varying Vec3f mN;
+    // toggle to control ignoring self intersecting geometry
+    uniform bool mResolveSelfIntersections;
+
+    // MOONRAY-3105 - optimized dwivedi sampling
+    // References:
+    // (1) https://cgg.mff.cuni.cz/~jaroslav/papers/2014-zerovar/2014-zerovar-abstract.pdf
+    // (2) https://jo.dreggn.org/home/2016_dwivedi.pdf
+    // (3) https://jo.dreggn.org/home/2016_dwivedi_additional.pdf
+    // Desmos Graph : https://www.desmos.com/calculator/fjaxaxu9sp
+    // Dwivedi Sampling Related Params
+    varying Color mDwivediV0;
+    varying Color mDwivediNormPDF;
+
+    uniform int mType;
+    uniform int mFresnelMask;
+    uniform int mMask;
+    uniform int mLabel;
+    uniform int mPropertyFlags;
+    varying Fresnel * uniform mFresnel;
+    // Traceset this volume subsurface is grouped to
+    const uniform TraceSet * uniform mTraceSet;
+    const uniform Material * uniform mMaterial;
+    uniform intptr_t mEvalNormalFn;
+};
+
+void
+VolumeSubsurface_init(varying VolumeSubsurface * uniform vS,
+                      const varying Vec3f &N,
+                      const varying Color &albedo,
+                      const varying Color &radius,
+                      uniform bool resolveSelfIntersections,
+                      const uniform Material *uniform  material,
+                      const uniform intptr_t evalNormalFn);
+
+void
+VolumeSubsurface_init(varying VolumeSubsurface * uniform vS,
+                      const varying Vec3f &N,
+                      const varying Color &albedo,
+                      const varying Color &radius,
+                      uniform bool resolveSelfIntersections,
+                      const uniform Material *uniform  material,
+                      const uniform intptr_t evalNormalFn,
+                      const varying Color &scale,
+                      varying Fresnel * uniform fresnel,
+                      const uniform TraceSet * uniform traceSet);
+
+//----------------------------------------------------------------------------
+uniform bool VolumeSubsurface_getProperty(const varying VolumeSubsurface * uniform vs,
+                                          uniform SubsurfaceProperty property,
+                                          varying float * uniform dest);
+
+/// @brief is the vs active for the current lane?
+inline varying bool
+isActive(const varying VolumeSubsurface * uniform vs)
+{
+    return (vs != nullptr) && (bool)((1 << programIndex) & vs->mMask);
+}
+
+/// @brief is the fresnel object active on the current lane?
+/// true if the fresnel itself is active (based on its mask), and
+/// the bssrdf's fresnelMask is active.  This basically boils down to
+/// was the fresnel created (Fresnel::mMask) and set (VolumeSubsurface::mFresnelMask)
+/// on the current lane
+inline varying bool
+isFresnelActive(const varying VolumeSubsurface * uniform vs)
+{
+    return (vs->mFresnel != nullptr) && (isActive(vs->mFresnel)) &&
+        (bool)((1 << programIndex) & vs->mFresnelMask);
+}
+
+inline const varying Fresnel * uniform
+VolumeSubsurface_getTransmissionFresnel(const varying VolumeSubsurface * uniform vs)
+{
+    return vs->mFresnel;
+}
+
+inline const varying Vec3f
+VolumeSubsurface_getNormal(const varying VolumeSubsurface * uniform vs)
+{
+    return vs->mN;
+}
+
+/// A label can be set on a vs
+inline void
+VolumeSubsurface_setLabel(varying VolumeSubsurface * uniform vs, uniform int label)
+{
+    // Check for a valid AOV
+    if (label != -1)
+        vs->mLabel = label;
+}
+
+inline uniform int
+VolumeSubsurface_getLabel(const varying VolumeSubsurface * uniform vs)
+{
+    return vs->mLabel;
+}
+
+inline uniform bool
+VolumeSubsurface_hasProperty(const varying VolumeSubsurface * uniform vs,
+                             uniform SubsurfaceProperty property)
+{
+    return (uniform bool) vs->mPropertyFlags & property;
+}
+
+inline uniform int
+VolumeSubsurface_getPropertyFlags(const varying VolumeSubsurface * uniform vs)
+{
+    return vs->mPropertyFlags;
+}
+//----------------------------------------------------------------------------
+

@@ -1,0 +1,121 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfStochasticFlakes.isph
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfSlice.isph"
+#include "BsdfUtil.isph"
+
+enum STOCHASTICFLAKES_Constants {
+    StochasticFlakes_sMaxFlakes = 2000,
+};
+
+///
+/// @class StochasticFlakesBsdfLobe BsdfFlakes.h <pbr/BsdfFlakes.h>
+/// @brief Bsdf lobe for discrete flake surfaces
+///
+// This bsdf implementation is based on a Siggraph talk:
+// ATANASOV, A., AND KOYLAZOV, V. 2016. A practical stochastic
+// algorithm for rendering mirror-like flakes. In ACM SIGGRAPH
+// 2016 Talks, ACM, New York, NY, USA, SIGGRAPH ’16, 67:1–
+// 67:2.
+// Referring to this talk as [2016] in the rest of the code
+
+struct StochasticFlakesBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    ReferenceFrame mFrame;
+    float mFlakeRandomness;
+    float mCosGamma;
+    size_t mFlakeCount;
+    intptr_t mFlakeNormals;
+    intptr_t mFlakeColors;
+};
+
+/// @brief evaluate a stochastic flakes lobe
+varying Color
+StochasticFlakesBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                              const varying BsdfSlice &slice,
+                              const Vec3f &wi,
+                              varying float * uniform pdf);
+
+/// @brief sample a stochastic flakes lobe
+varying Color
+StochasticFlakesBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice,
+                                varying float r1, varying float r2,
+                                varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+StochasticFlakesBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+StochasticFlakesBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                       const varying Vec3f &wo,
+                                       const varying Vec3f &wi,
+                                       varying float r1, varying float r2,
+                                       const varying Vec3f &dNdx,
+                                       const varying Vec3f &dNdy,
+                                       varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+StochasticFlakesBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                     uniform BsdfLobeProperty property,
+                                     varying float * uniform dest);
+
+inline void
+StochasticFlakesBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                              const uniform uint8_t ntab)
+{
+    const varying StochasticFlakesBsdfLobe * uniform me =
+        (const varying StochasticFlakesBsdfLobe * uniform) lobe;
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[StochasticFlakesBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                BSDF_UTIL_EXTRACT(me->mScale.b));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a stochastic flakes lobe
+inline void
+StochasticFlakesBsdfLobe_init(varying StochasticFlakesBsdfLobe * uniform lobe,
+                              const varying Vec3f& N,
+                              const varying Vec3f * varying flakeNormals,
+                              const varying Color * varying flakeColors,
+                              const varying size_t flakeCount,
+                              const varying float roughness,
+                              const varying float inputFlakeRandomness)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_STOCHASTIC_FLAKES,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ StochasticFlakesBsdfLobe_eval,
+                  /* sampleFn = */ StochasticFlakesBsdfLobe_sample,
+                  /* albedoFn = */ StochasticFlakesBsdfLobe_albedo,
+                  /* differentialsFn = */ StochasticFlakesBsdfLobe_differentials,
+                  /* getPropertyFn = */ StochasticFlakesBsdfLobe_getProperty,
+                  /* showFn = */ StochasticFlakesBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, N);
+    lobe->mFlakeRandomness = max(0.001f, inputFlakeRandomness * inputFlakeRandomness);
+    lobe->mCosGamma = min(0.999f, 1.0f - roughness*roughness);
+    lobe->mFlakeNormals = (intptr_t)flakeNormals;
+    lobe->mFlakeColors = (intptr_t)flakeColors;
+    lobe->mFlakeCount = min(flakeCount, StochasticFlakes_sMaxFlakes);
+}
+

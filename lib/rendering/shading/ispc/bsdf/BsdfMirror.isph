@@ -1,0 +1,284 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfMirror.isph
+
+#pragma once
+#include <moonray/rendering/shading/ispc/Util.isph>
+#include "Bsdf.isph"
+#include "BsdfUtil.isph"
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+//-----------------------------------------------------------------------------
+
+/// @class MirrorReflectionBsdfLobe BsdfMirror.isph <rendering/shading/bsdf/BsdfMirror.isph>
+/// @brief mirror reflection bsdf lobe
+struct MirrorReflectionBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    Vec3f mN;
+};
+
+varying Color
+MirrorReflectionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                              const varying BsdfSlice &slice,
+                              const Vec3f &wi,
+                              varying float * uniform pdf);
+
+varying Color
+MirrorReflectionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice,
+                                varying float r1, varying float r2,
+                                varying Vec3f &wi, varying float &pdf);
+
+varying Color
+MirrorReflectionBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice);
+
+void
+MirrorReflectionBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                       const varying Vec3f &wo,
+                                       const varying Vec3f &wi,
+                                       varying float r1, varying float r2,
+                                       const varying Vec3f &dNdx,
+                                       const varying Vec3f &dNdy,
+                                       varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+MirrorReflectionBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                     uniform BsdfLobeProperty property,
+                                     varying float * uniform dest);
+
+inline void
+MirrorReflectionBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                              const uniform uint8_t ntab)
+{
+    const varying MirrorReflectionBsdfLobe * uniform me =
+        (const varying MirrorReflectionBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[MirrorReflectionBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(me->mN.x),
+                                                 BSDF_UTIL_EXTRACT(me->mN.y),
+                                                 BSDF_UTIL_EXTRACT(me->mN.z));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a mirror reflection lobe
+inline void
+MirrorReflectionBsdfLobe_init(varying MirrorReflectionBsdfLobe * uniform lobe,
+                              const varying Vec3f &normal)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_MIRROR_REFLECTION,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_MIRROR,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ MirrorReflectionBsdfLobe_eval,
+                  /* sampleFn = */ MirrorReflectionBsdfLobe_sample,
+                  /* albedoFn = */ MirrorReflectionBsdfLobe_albedo,
+                  /* differentialsFn = */ MirrorReflectionBsdfLobe_differentials,
+                  /* getPropertyFn = */ MirrorReflectionBsdfLobe_getProperty,
+                  /* showFn = */ MirrorReflectionBsdfLobe_show);
+
+    lobe->mN = normal;
+}
+
+//-----------------------------------------------------------------------------
+
+/// @class MirrorTransmissionBsdfLobe BsdfMirror.isph <rendering/shading/bsdf/BsdfMirror.isph>
+/// @brief mirror transmission bsdf lobe
+struct MirrorTransmissionBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    Vec3f mN;
+    float mEtaI;
+    float mEtaT;
+    float mEtaR, mEtaG, mEtaB;
+    Color mTint;
+    bool  mAllowDispersion;
+};
+
+varying Color
+MirrorTransmissionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice,
+                                const Vec3f &wi,
+                                varying float * uniform pdf);
+
+varying Color
+MirrorTransmissionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                  const varying BsdfSlice &slice,
+                                  varying float r1, varying float r2,
+                                  varying Vec3f &wi, varying float &pdf);
+
+varying Color
+MirrorTransmissionBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                                  const varying BsdfSlice &slice);
+
+void
+MirrorTransmissionBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                         const varying Vec3f &wo,
+                                         const varying Vec3f &wi,
+                                         varying float r1, varying float r2,
+                                         const varying Vec3f &dNdx,
+                                         const varying Vec3f &dNdy,
+                                         varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+MirrorTransmissionBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                       uniform BsdfLobeProperty property,
+                                       varying float * uniform dest);
+
+inline void
+MirrorTransmissionBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                                const uniform uint8_t ntab)
+{
+    const varying MirrorTransmissionBsdfLobe * uniform me =
+        (const varying MirrorTransmissionBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[MirrorTransmissionBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(me->mN.x),
+                                                 BSDF_UTIL_EXTRACT(me->mN.y),
+                                                 BSDF_UTIL_EXTRACT(me->mN.z));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add a mirror transmission lobe to a bsdf
+inline void
+MirrorTransmissionBsdfLobe_init(varying MirrorTransmissionBsdfLobe * uniform lobe,
+                                const varying Vec3f &normal,
+                                const float etaI,
+                                const float etaT,
+                                const varying Color& tint,
+                                const float abbeNumber = 0.0f)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_MIRROR_TRANSMISSION,
+                  /* type = */ BSDF_LOBE_TYPE_TRANSMISSION | BSDF_LOBE_TYPE_MIRROR,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ MirrorTransmissionBsdfLobe_eval,
+                  /* sampleFn = */ MirrorTransmissionBsdfLobe_sample,
+                  /* albedoFn = */ MirrorTransmissionBsdfLobe_albedo,
+                  /* differentialsFn = */ MirrorTransmissionBsdfLobe_differentials,
+                  /* getPropertyFn = */ MirrorTransmissionBsdfLobe_getProperty,
+                  /* showFn = */ MirrorTransmissionBsdfLobe_show);
+
+    lobe->mN = normal;
+    lobe->mEtaI = etaI;
+    lobe->mEtaT = etaT;
+    lobe->mTint = tint;
+    lobe->mAllowDispersion = (isZero(abbeNumber) ? false : true);
+    if (lobe->mAllowDispersion) {
+        computeSpectralIOR(etaT,
+                           abbeNumber,
+                           lobe->mEtaR,
+                           lobe->mEtaG,
+                           lobe->mEtaB);
+    }
+}
+
+//-----------------------------------------------------------------------------
+
+/// @class MirrorRetroreflectionBsdfLobe BsdfMirror.isph <rendering/shading/bsdf/BsdfMirror.isph>
+/// @brief mirror retroreflection bsdf lobe
+struct MirrorRetroreflectionBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    Vec3f mN;
+};
+
+varying Color
+MirrorRetroreflectionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                                   const varying BsdfSlice &slice,
+                                   const Vec3f &wi,
+                                   varying float * uniform pdf);
+
+varying Color
+MirrorRetroreflectionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                     const varying BsdfSlice &slice,
+                                     varying float r1, varying float r2,
+                                     varying Vec3f &wi, varying float &pdf);
+
+varying Color
+MirrorRetroreflectionBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                                     const varying BsdfSlice &slice);
+
+void
+MirrorRetroreflectionBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                            const varying Vec3f &wo,
+                                            const varying Vec3f &wi,
+                                            varying float r1, varying float r2,
+                                            const varying Vec3f &dNdx,
+                                            const varying Vec3f &dNdy,
+                                            varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+MirrorRetroreflectionBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                          uniform BsdfLobeProperty property,
+                                          varying float * uniform dest);
+
+inline void
+MirrorRetroreflectionBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                                   const uniform uint8_t ntab)
+{
+    const varying MirrorRetroreflectionBsdfLobe * uniform me =
+        (const varying MirrorRetroreflectionBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[MirrorRetroreflectionBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(me->mN.x),
+                                                 BSDF_UTIL_EXTRACT(me->mN.y),
+                                                 BSDF_UTIL_EXTRACT(me->mN.z));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a mirror reflection lobe
+inline void
+MirrorRetroreflectionBsdfLobe_init(varying MirrorRetroreflectionBsdfLobe * uniform lobe,
+                                   const varying Vec3f &normal)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_MIRROR_RETRO_REFLECTION,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_MIRROR,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags) 0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ MirrorRetroreflectionBsdfLobe_eval,
+                  /* sampleFn = */ MirrorRetroreflectionBsdfLobe_sample,
+                  /* albedoFn = */ MirrorRetroreflectionBsdfLobe_albedo,
+                  /* differentialsFn = */ MirrorRetroreflectionBsdfLobe_differentials,
+                  /* getPropertyFn = */ MirrorRetroreflectionBsdfLobe_getProperty,
+                  /* showFn = */ MirrorRetroreflectionBsdfLobe_show);
+
+    lobe->mN = normal;
+}
+
+//-----------------------------------------------------------------------------
+

@@ -1,0 +1,21 @@
+import os
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_imagedisplayfilter'
+target = 'ImageDisplayFilter.so'
+cc_source = ['ImageDisplayFilter.cc']
+ispc_source = ['ImageDisplayFilter.ispc']
+json_source = ['ImageDisplayFilter.json']
+components = [
+    'rendering_displayfilter',
+    'OpenImageIO',
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)

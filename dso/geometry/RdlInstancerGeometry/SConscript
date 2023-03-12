@@ -1,0 +1,21 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_rdlinstancergeometry'
+target = 'RdlInstancerGeometry.so'
+sources = ['RdlInstancerGeometry.cc']
+components = [
+    'render_util',
+    'rendering_geom',
+    'rendering_shading',
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+env.DWAForceWarningAsError()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), sources)
+env.DWAInstallRdl2Dso(dso)
+

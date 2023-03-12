@@ -1,0 +1,79 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Primvar.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+#include <moonray/rendering/bvh/shading/ispc/Xform.isph>
+
+enum PrimvarMapType {
+    PRIMVAR_MAP_TYPE_PRIMITIVE_ATTRIBUTE,
+    PRIMVAR_MAP_TYPE_P,
+    PRIMVAR_MAP_TYPE_ST,
+    PRIMVAR_MAP_TYPE_N,
+    PRIMVAR_MAP_TYPE_NG,
+    PRIMVAR_MAP_TYPE_DPDS,
+    PRIMVAR_MAP_TYPE_DPDT,
+    PRIMVAR_MAP_TYPE_DNDS,
+    PRIMVAR_MAP_TYPE_DNDT,
+    PRIMVAR_MAP_TYPE_MAP_COLOR,
+    PRIMVAR_MAP_TYPE_SURFACE_P,
+    PRIMVAR_MAP_TYPE_SURFACE_N,
+    PRIMVAR_MAP_TYPE_SURFACE_ST,
+    PRIMVAR_MAP_TYPE_CLOSEST_SURFACE_ST,
+    PRIMVAR_MAP_TYPE_ID,
+    PRIMVAR_MAP_TYPE_VELOCITY,
+    PRIMVAR_MAP_TYPE_ACCELERATION,
+    PRIMVAR_MAP_TYPE_MOTIONVEC
+};
+
+enum PrimvarAttributeType {
+    TYPE_FLOAT,
+    TYPE_VEC2F,
+    TYPE_VEC3F,
+    TYPE_RGB,
+    TYPE_INT
+};
+
+struct UsdPrimvarReader
+{
+    uniform int mPrimitiveAttributeIndex;
+    uniform int mPrimitiveAttributeType;
+    uniform int mAttributeMapType;
+    uniform int mMissingAttributeEvent;
+    const uniform Xform * uniform mXform;
+};
+
+enum PRIMVAR_Input_Source_Mode {
+    INPUT_SOURCE_MODE_P_N,
+    INPUT_SOURCE_MODE_REF_P_REF_N,
+    INPUT_SOURCE_MODE_ATTR
+};
+
+bool
+PRIMVAR_getPosition(uniform ShadingTLState* uniform tls,
+                    const varying State& state,
+                    const uniform int inputSourceMode,
+                    const varying Vec3f& inputPosition,
+                    const uniform Xform * uniform xform,
+                    const uniform SHADING_Space returnSpace,
+                    const uniform int refPKey,
+                    Vec3f& outputPosition,
+                    Vec3f& outputPositionDdx,
+                    Vec3f& outputPositionDdy,
+                    Vec3f& outputPositionDdz);
+
+bool
+PRIMVAR_getNormal(uniform ShadingTLState* uniform tls,
+                  const varying State& state,
+                  const uniform int inputSourceMode,
+                  const varying Vec3f& inputNormal,
+                  const uniform Xform * uniform xform,
+                  const uniform SHADING_Space returnSpace,
+                  const uniform int refPKey,
+                  const uniform int refNKey,
+                  Vec3f& outputNormal);
+

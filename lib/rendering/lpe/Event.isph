@@ -1,0 +1,19 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Event.isph
+
+#pragma once
+
+#include "Event.hh"
+
+enum LpeEventType {
+    LPE_EVENT_TYPE_ENUMS(LPE_)
+};
+
+enum LpeEventScatteringType {
+    LPE_EVENT_SCATTERING_TYPE_ENUMS(LPE_)
+};
+
+static const uniform int LPE_noLabel = LPE_NO_LABEL;
+

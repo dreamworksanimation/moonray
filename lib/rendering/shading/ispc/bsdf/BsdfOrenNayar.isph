@@ -1,0 +1,72 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfOrenNayar.isph
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfUtil.isph"
+
+/// @class OrenNayarBsdfLobe BsdfOrenNayar.isph <rendering/shading/Bsdf/BsdfOrenNayar.isph>
+/// @brief orennayar bsdf lobe
+/// https://www1.cs.columbia.edu/CAVE/publications/pdfs/Oren_SIGGRAPH94.pdf
+//  This implements the Oren Nayar fast approximation
+struct OrenNayarBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    ReferenceFrame mFrame;
+    Color mAlbedo;
+    float mRoughness;
+    float mA;
+    float mB;
+};
+
+varying float
+getOrenNayarIntensity(const varying Vec3f& n,
+                      const varying Vec3f& v,
+                      const varying Vec3f& l,
+                      const varying float a,
+                      const varying float b);
+
+varying Color
+OrenNayarBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                       const varying BsdfSlice &slice,
+                       const Vec3f &wi,
+                       varying float * uniform pdf);
+
+varying Color
+OrenNayarBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                         const varying BsdfSlice &slice,
+                         varying float r1, varying float r2,
+                         varying Vec3f &wi, varying float &pdf);
+
+varying Color
+OrenNayarBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                         const varying BsdfSlice &slice);
+
+void
+OrenNayarBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                const varying Vec3f &wo,
+                                const varying Vec3f &wi,
+                                varying float r1, varying float r2,
+                                const varying Vec3f &dNdx,
+                                const varying Vec3f &dNdy,
+                                varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+OrenNayarBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                              uniform BsdfLobeProperty property,
+                              varying float * uniform dest);
+
+void
+OrenNayarBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                       const uniform uint8_t ntab);
+
+/// @brief intialize a oren nayar lobe
+void
+OrenNayarBsdfLobe_init(varying OrenNayarBsdfLobe * uniform lobe,
+                       const varying Vec3f &normal,
+                       const varying Color &albedo,
+                       const varying float roughness,
+                       const uniform bool reflection);
+

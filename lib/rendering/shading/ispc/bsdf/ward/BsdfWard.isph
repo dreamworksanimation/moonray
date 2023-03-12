@@ -1,0 +1,146 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfWard.isph
+#pragma once
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float Ward_sdDFactorMin = 1.0f;
+static const float Ward_sdDFactorMax = 8.0f;
+static const float Ward_sdDFactorSlope = (Ward_sdDFactorMax - Ward_sdDFactorMin);
+
+// These are for numerical stability
+//static float Ward_sCosGrazingAngleSample = cos((90.0 - 0.11) / 180.0 * sPi);
+//static float Ward_sCosGrazingAngle = cos((90.0 - 0.1) / 180.0 * sPi);
+//
+//static const float Ward_sMinTheta = 0.1 / 180.0 * sPi;
+//static const float Ward_sMinSinTheta = sin(Ward_sMinTheta);
+//static const float Ward_sMaxCosTheta = cos(Ward_sMinTheta);
+
+/// Ward bsdf lobe members
+#define WARD_BSDF_LOBE          \
+    BSDF_LOBE_BASE;             \
+    ReferenceFrame mFrame;      \
+    float mInputRoughnessU;     \
+    float mInputRoughnessV;     \
+    float mRoughnessU;          \
+    float mRoughnessV;          \
+    float mInvRoughUSqrd;       \
+    float mInvRoughVSqrd;       \
+    float mScaleFactor;         \
+    float mdDFactor
+
+/// @class WardBsdfLobe BsdfWard.isph <rendering/shading/bsdf/BsdfWard.isph>
+/// @brief WardBsdfLobe base class
+struct WardBsdfLobe
+{
+    WARD_BSDF_LOBE;
+};
+    
+inline void
+WardBsdfLobe_setRoughness(varying WardBsdfLobe * uniform lobe,
+                          const varying float roughnessU, 
+                          const varying float roughnessV,
+                          const uniform bool squareRoughness)
+{
+    lobe->mInputRoughnessU = roughnessU;
+    lobe->mInputRoughnessV = roughnessV;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    if (squareRoughness) {
+        lobe->mRoughnessU = roughnessU * roughnessU;
+        lobe->mRoughnessV = roughnessV * roughnessV;
+    } else {
+        lobe->mRoughnessU = roughnessU;
+        lobe->mRoughnessV = roughnessV;
+    }
+
+    lobe->mRoughnessU = max(sEpsilon, lobe->mRoughnessU);
+    lobe->mRoughnessV = max(sEpsilon, lobe->mRoughnessV);
+
+    lobe->mInvRoughUSqrd = 1.0f / (lobe->mRoughnessU * lobe->mRoughnessU);
+    lobe->mInvRoughVSqrd = 1.0f / (lobe->mRoughnessV * lobe->mRoughnessV);
+    lobe->mScaleFactor = sOneOverFourPi / (lobe->mRoughnessU * lobe->mRoughnessV);
+
+    // Use the sharper of the two roughnesses to derive a directional differential
+    // scale that varies with roughness
+    float minRoughness = min(lobe->mRoughnessU, lobe->mRoughnessV);
+    lobe->mdDFactor = Ward_sdDFactorMin + minRoughness * Ward_sdDFactorSlope;
+
+    // TODO: Set lobe category based on roughness
+}
+
+void
+WardBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                           const varying Vec3f &wo,
+                           const varying Vec3f &wi,
+                           varying float r1, varying float r2,
+                           const varying Vec3f &dNdx,
+                           const varying Vec3f &dNdy,
+                           varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+varying Color
+WardBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                    const varying BsdfSlice &slice);
+
+uniform bool
+WardBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                         uniform BsdfLobeProperty property,
+                         varying float * uniform dest);
+
+inline void
+WardBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                  const uniform uint8_t ntab)
+{
+    const varying WardBsdfLobe * uniform me =
+        (const varying WardBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[WardBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief intialize a ward base class lobe
+inline void
+WardBsdfLobe_init(varying WardBsdfLobe * uniform lobe, uniform BsdfLobeName name,
+                  const varying Vec3f &normal,
+                  const varying Vec3f &anisoDirection,
+                  const varying float roughnessU,
+                  const varying float roughnessV,
+                  const uniform bool squareRoughness,
+                  BsdfLobeEvalFn evalFn,
+                  BsdfLobeSampleFn sampleFn,
+                  BsdfLobeAlbedoFn albedoFn,
+                  BsdfLobeDifferentialsFn differentialsFn)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ name,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ evalFn,
+                  /* sampleFn = */ sampleFn,
+                  /* albedoFn = */ albedoFn,
+                  /* differentialsFn = */ differentialsFn,
+                  /* getPropertyFn = */ WardBsdfLobe_getProperty,
+                  /* showFn = */ WardBsdfLobe_show);
+    
+    ReferenceFrame_init(lobe->mFrame, normal, anisoDirection);
+    WardBsdfLobe_setRoughness(lobe, roughnessU, roughnessV, squareRoughness);
+}
+

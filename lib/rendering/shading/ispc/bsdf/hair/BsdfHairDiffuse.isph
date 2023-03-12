@@ -1,0 +1,331 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfHairDiffuse.isph
+#pragma once
+
+#include "BsdfHair.isph"
+#include "HairState.isph"
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+
+#include <moonray/rendering/shading/ispc/bsdf/BsdfSlice.isph>
+
+// Uncomment this to use uniform sampling
+// TODO: The importance sampling that came with this lobe is slightly
+// biased compared to uniform sampling the sphere. Also in the case where
+// the mMaxDiffAngle < 90, directions almost parallel to the hair cause
+// a lot of noise (not so small eval() divided by very small pdf() values).
+// Uniform sampling fixes both issues, and finding a better non-biased
+// importance sampling scheme is left for future work.
+// #define PBR_HAIR_DIFFUSE_USE_UNIFORM_SAMPLING
+
+// Uncomment this to use Parashar's version of the diffuse lobe
+// #define USE_PARASHAR_VERSION
+
+struct HairDiffuseBsdfLobe {
+    BSDF_LOBE_BASE;
+    
+    Vec3f mHairDir;
+    // Reflection and Transmission colors
+    Color mDiffuseRefl;
+    Color mDiffuseTrans;
+    float mMaxDiffAngle;
+};
+
+inline Color 
+HairDiffuseBsdfLobe_evalBsdf(const varying HairDiffuseBsdfLobe* uniform lobe,
+                             const varying Vec3f &wo,
+                             const varying Vec3f &wi, 
+                             varying bool includeCosineTerm)
+{
+    const Vec3f &hairDir = lobe->mHairDir;
+
+    const Vec3f hd_cross_i = cross(hairDir, wi);
+    const Vec3f hd_cross_o = cross(hairDir, wo);
+
+    float denominator = length(hd_cross_i) * length(hd_cross_o);
+    if (denominator <= sEpsilon) {
+        return Color_ctor(0,0,0);
+    }
+
+    // Compute the proportion of transmission color vs. reflection color.
+    float kappa = dot(hd_cross_i, hd_cross_o) / denominator;
+    float frontIntensity = (1.0f + kappa) / 2.0f;
+    float backIntensity = 1.0f - frontIntensity;
+
+
+#ifdef USE_PARASHAR_VERSION
+
+    float cosTerm = max(0.0001f, lobe->mParentBsdf->mCosineTerm);
+
+    Color retVal = frontIntensity * lobe->mDiffuseRefl + backIntensity * lobe->mDiffuseTrans;
+    retVal /= cosTerm;
+
+    float min_sin_hd_l = cos(lobe->mMaxDiffAngle);
+    float cos_hd_l = dot(hairDir, wi);
+    float sin_hd_l = max(min_sin_hd_l, sqrt(1 - cos_hd_l * cos_hd_l));
+
+    return lobe->mScale * sin_hd_l * retVal;
+
+#else
+
+    Color result = frontIntensity * lobe->mDiffuseRefl + backIntensity * lobe->mDiffuseTrans;
+
+    // Here we want a lambertian reflectivity and we need to include
+    // the cosine term per the slice. If we don't include the cosine term, then
+    // the mMaxDiffAngle feature is incompatible (a hack anyways) and not
+    // enabled at all.
+    //result /= cosTerm;
+    if (includeCosineTerm) {
+        // Note: cos(thetaI) == sin(sin_hd_i)
+        float min_sin_hd_i = cos(lobe->mMaxDiffAngle);
+        float cos_hd_i = dot(hairDir, wi);
+        float sin_hd_i = max(min_sin_hd_i, sqrt(abs(1 - cos_hd_i * cos_hd_i)));
+        result = result * sin_hd_i * sOneOverPiSqr;
+    } else {
+        result = result * sOneOverPiSqr;
+    }
+
+    return lobe->mScale * result;
+#endif
+}
+
+inline float 
+HairDiffuseBsdfLobe_evalPdf(const varying HairDiffuseBsdfLobe * uniform lobe,
+                            const varying Vec3f &wi)
+{
+#ifdef PBR_HAIR_DIFFUSE_USE_UNIFORM_SAMPLING
+
+    return sInvFourPi;
+
+#else
+    Vec3f hairDir = lobe->mHairDir;
+    // theoretically we shouldn't need to clamp this, as
+    // wi and hairDir are expected to be normalized.  but in
+    // some extreme cases we can go slightly outside the -1 to 1
+    // range which will result in an invalid sqrt().
+    // MOONRAY-1562 for reference.
+    float cosTheta = clamp(dot(wi, hairDir), -1.f, 1.f);
+    float pdf = sqrt( 1.0f - cosTheta*cosTheta );
+
+    return pdf / sPiSqr;
+#endif
+}
+
+inline Color 
+HairDiffuseBsdfLobe_eval(const varying BsdfLobe * uniform hairLobe,
+                         const varying BsdfSlice &slice, 
+                         const varying Vec3f &wi, 
+                         varying float * uniform pdf)
+{
+    const varying HairDiffuseBsdfLobe * uniform lobe =
+        (const varying HairDiffuseBsdfLobe * uniform) hairLobe;
+
+    if (pdf != NULL) {
+        *pdf = HairDiffuseBsdfLobe_evalPdf(lobe, wi);
+    }
+    return HairDiffuseBsdfLobe_evalBsdf(lobe,
+                                        slice.mWo,
+                                        wi,
+                                        slice.mIncludeCosineTerm);
+}
+
+inline varying Color 
+HairDiffuseBsdfLobe_sample(const varying BsdfLobe * uniform hairLobe,
+                           const varying BsdfSlice &slice, 
+                           varying float r1, 
+                           varying float r2, 
+                           varying Vec3f &wi, 
+                           varying float &pdf)
+{
+    const varying HairDiffuseBsdfLobe * uniform lobe =
+        (const varying HairDiffuseBsdfLobe * uniform) hairLobe;
+
+    HairState hairState;
+    HairState_init(&hairState,
+                   slice.mWo,
+                   lobe->mHairDir);
+
+#ifdef PBR_HAIR_DIFFUSE_USE_UNIFORM_SAMPLING
+
+    Vec3f uvw = sampleSphereUniform(r1, r2);
+    wi = (uvw[0] * lobe->mHairDir) +
+         (uvw[1] * hairState.mHairNorm) +
+         (uvw[2] * hairState.mHairBiNorm);
+
+    // We shouldn't need to normalize!
+    MNRY_ASSERT(isNormalized(wi));
+
+    pdf = sInvFourPi;
+
+#else
+
+    float sinPhi, cosPhi;
+
+    // Basically, we're sampling a Lambertian in the longitudinal
+    // plane and uniform circular in the azimuthal plane.
+    float u = 2.0f * (r1 - 0.5f);
+    float v = r2;
+
+    float sinTheta = u;
+    float cosTheta = sqrt(1.0f - u*u);
+    float phi = v * sTwoPi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Compute the light direction vector for shading.
+    float uWgt = sinTheta;
+    float vWgt = cosTheta * sinPhi;
+    float wWgt = cosTheta * cosPhi;
+    wi = (uWgt * lobe->mHairDir) +
+         (vWgt * hairState.mHairNorm) +
+         (wWgt * hairState.mHairBiNorm);
+    wi = normalize(wi);
+
+    pdf = cosTheta / sPiSqr;
+
+#endif
+
+    return HairDiffuseBsdfLobe_evalBsdf(lobe,
+                                        slice.mWo,
+                                        wi,
+                                        slice.mIncludeCosineTerm);
+}
+
+inline varying Color 
+HairDiffuseBsdfLobe_albedo(const varying BsdfLobe * uniform hairLobe, 
+                           const varying BsdfSlice &slice)
+{
+    const varying HairDiffuseBsdfLobe * uniform lobe =
+        (const varying HairDiffuseBsdfLobe * uniform) hairLobe;
+    Vec3f I = slice.mWo;
+    Vec3f hairDir = lobe->mHairDir;
+#ifdef USE_PARASHAR_VERSION
+    return lobe->mScale * (1.0f - (float)abs(dot(I, hairDir)));
+#else
+    float cosTheta = dot(I, hairDir);
+    return lobe->mScale * sqrt(abs(1.0f - cosTheta * cosTheta)) * sOneOverPiSqr;
+#endif
+}
+
+/// @brief differentials function
+inline void
+HairDiffuseBsdfLobe_differentials(const varying BsdfLobe * uniform hairLobe,
+                                  const varying Vec3f &wo,
+                                  const varying Vec3f &wi,
+                                  varying float r1,
+                                  varying float r2,
+                                  const varying Vec3f &dNdx,
+                                  const varying Vec3f &dNdy,
+                                  varying Vec3f &dDdx, varying Vec3f &dDdy)
+{
+    const varying HairDiffuseBsdfLobe * uniform lobe =
+        (const varying HairDiffuseBsdfLobe * uniform) hairLobe;
+
+    Vec3f H;
+    if (!computeNormalizedHalfVector(wo, wi, H)) {
+//        H = lobe->mHair->mHairNorm;
+    }
+    HairBsdfLobe_computeReflectionDirectionDifferentialNoCurvature(wo, wi, H, dDdx, dDdy);
+    // TODO: This needs to be tested
+    dDdx = dDdx * 100.0f;
+    dDdy = dDdy * 100.0f;
+}
+
+inline uniform bool
+HairDiffuseBsdfLobe_getProperty(const varying BsdfLobe * uniform hairLobe,
+                                uniform BsdfLobeProperty property,
+                                varying float * uniform dest)
+{
+    const varying HairDiffuseBsdfLobe * uniform lobe =
+        (const varying HairDiffuseBsdfLobe * uniform) hairLobe;
+    
+    uniform bool handled = true;
+
+    switch (property)
+    {
+    case BSDF_LOBE_PROPERTY_COLOR:
+        *dest       = lobe->mDiffuseRefl.r;
+        *(dest + 1) = lobe->mDiffuseRefl.g;
+        *(dest + 2) = lobe->mDiffuseRefl.b;
+        break;
+    case BSDF_LOBE_PROPERTY_ROUGHNESS:
+        *dest       = 1.0f;
+        *(dest + 1) = 1.0f;
+        break;
+    case BSDF_LOBE_PROPERTY_NORMAL:
+        *dest       = lobe->mHairDir.x;
+        *(dest + 1) = lobe->mHairDir.y;
+        *(dest + 2) = lobe->mHairDir.z;
+        break;
+    case BSDF_LOBE_PROPERTY_PBR_VALIDITY:
+        // TODO: decide if refl/trans colors are valid
+        *dest       = 0.0f;
+        *(dest + 1) = 1.0f;
+        *(dest + 2) = 0.0f;
+        break;
+    default:
+        handled = false;
+        break;
+    }
+
+    return handled;
+}
+
+inline void
+HairDiffuseBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                         const uniform uint8_t ntab)
+{
+    const varying HairDiffuseBsdfLobe * uniform me =
+        (const varying HairDiffuseBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[HairDiffuseLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("refl color: % % %\n", BSDF_UTIL_EXTRACT(me->mDiffuseRefl.r),
+                                                          BSDF_UTIL_EXTRACT(me->mDiffuseRefl.g),
+                                                          BSDF_UTIL_EXTRACT(me->mDiffuseRefl.b));
+    BsdfUtil_indent(ntab+1); print("refl color: % % %\n", BSDF_UTIL_EXTRACT(me->mDiffuseTrans.r),
+                                                          BSDF_UTIL_EXTRACT(me->mDiffuseTrans.g),
+                                                          BSDF_UTIL_EXTRACT(me->mDiffuseTrans.b));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a HairDiffuseBsdfLobe
+inline void
+HairDiffuseBsdfLobe_init(varying HairDiffuseBsdfLobe * uniform lobe,
+                         const varying Vec3f& hairDir,
+                         const varying Color& diffuseRefl,
+                         const varying Color& diffuseTrans)
+{
+    // Init BsdfLobe (base class) components
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_DIFFUSE,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_DIFFUSE,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags) 0,
+                  /* isSpherical = */ true,
+                  /* propertyFlags = */
+                  BSDF_LOBE_PROPERTY_ROUGHNESS | BSDF_LOBE_PROPERTY_NORMAL |
+                  BSDF_LOBE_PROPERTY_COLOR | BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ HairDiffuseBsdfLobe_eval,
+                  /* sampleFn = */ HairDiffuseBsdfLobe_sample,
+                  /* albedoFn = */ HairDiffuseBsdfLobe_albedo,
+                  /* differentialsFn = */ HairDiffuseBsdfLobe_differentials,
+                  /* getPropertyFn = */ HairDiffuseBsdfLobe_getProperty,
+                  /* showFn = */ HairDiffuseBsdfLobe_show);
+    
+    BsdfLobe_setIsHair((varying BsdfLobe * uniform) lobe, true);
+
+    // Init HairDiffuseBsdfLobe components
+    lobe->mHairDir = hairDir;
+    lobe->mDiffuseRefl = diffuseRefl;
+    lobe->mDiffuseTrans = diffuseTrans;
+    lobe->mMaxDiffAngle = 90.0f / 180.0f * sPi;
+}
+
+

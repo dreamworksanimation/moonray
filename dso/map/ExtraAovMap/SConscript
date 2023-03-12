@@ -1,0 +1,21 @@
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['../../../bart_tools'])
+# ---------------------------------------------------------------
+
+target = 'ExtraAovMap.so'
+cc_source = ['ExtraAovMap.cc']
+ispc_source = ['ExtraAovMap.ispc']
+json_source = ['ExtraAovMap.json']
+components = [
+    'rendering_shading',
+    'shading_ispc',
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)

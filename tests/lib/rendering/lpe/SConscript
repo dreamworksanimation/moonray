@@ -1,0 +1,22 @@
+Import('env')
+
+# -----------------------------------------------------------------------------
+# Test configuration.
+
+name = 'rendering_lpe'
+
+sources = [
+    'main.cc',
+    'TestStateMachine.cc'
+    ]
+
+components = [
+    'rendering_lpe',
+    ]
+
+env.DWAForceWarningAsError()
+env.DWAUseComponents(components)
+
+# -----------------------------------------------------------------------------
+
+test = env.DWAPdevUnitTest(name, sources, "", COMPONENTS=components)

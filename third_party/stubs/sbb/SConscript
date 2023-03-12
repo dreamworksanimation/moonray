@@ -1,0 +1,20 @@
+Import('env')
+import catalog
+from os.path import join
+
+versionless_name = 'sbb'
+version = '0.5'
+name = '%s%s' % (versionless_name, version)
+SBB_INCLUDE_DIR = '/rel/third_party/intelsbb/%s' % version
+
+cppdefines = []
+
+env.DWAComponent(
+    name,
+    CPPDEFINES = cppdefines,
+    CPPPATH_THIRDPARTY = [join(SBB_INCLUDE_DIR , 'include')],
+)
+
+if not catalog.catalog.has_key(versionless_name) or \
+        catalog.catalog[versionless_name] is None:
+    env.DWAComponent(versionless_name, COMPONENTS=[name])

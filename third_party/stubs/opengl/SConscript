@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'opengl',
+  LIBS = [
+        'GL'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

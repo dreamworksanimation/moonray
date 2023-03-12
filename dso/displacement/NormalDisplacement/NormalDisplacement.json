@@ -1,0 +1,27 @@
+{
+    "name": "NormalDisplacement",
+    "type": "Displacement",
+    "attributes": {
+        "attrHeight": {
+            "name": "height",
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "interface": "INTERFACE_MAP"
+        },
+        "attrZeroValue": {
+            "name": "zero_value",
+            "label": "zero value",
+            "aliases": ["zero value"],
+            "type": "Float"
+        },
+        "attrHeightMultiplier": {
+            "name": "height_multiplier",
+            "label": "height multiplier",
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "Multiply the computed (post zero-value) height with this factor."
+        }
+    }
+}

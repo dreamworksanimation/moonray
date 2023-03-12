@@ -1,0 +1,53 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+name    = modName + '_' + libName
+# --------------------------------------------------------------------------
+components = [  
+                'common_grid_util',
+                'common_mcrt_macros',
+                'rendering_mcrt_common',
+                'oiio', 
+                'openvdb',
+                'render_util',
+                'scene_rdl2',
+                'statistics'
+             ]
+env.DWAUseComponents(components)
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+# ISPC source files.
+sourceFiles, headers = env.IspcShared([
+    'TextureTLState.ispc',
+])
+
+# C++ source files.
+sourceFiles += env.DWAGlob('*.cc')
+
+incdir     = [
+    env.Dir('../../..').srcnode(),
+    env.Dir('../../../../').srcnode(),
+    env.Dir('.')
+]
+
+public_headers = [
+    'TextureTLState.hh'
+]
+# --------------------------------------------------------------------------
+env.DWAInstallInclude(public_headers, 'moonray/rendering/texturing/sampler')
+env.Prepend (CPPPATH=incdir)
+lib = env.DWASharedLibrary(name, sourceFiles)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name,
+                 LIBS=target,
+                 CPPPATH=incdir,
+                 COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

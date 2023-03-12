@@ -1,0 +1,297 @@
+Import('env')
+from os import path
+
+
+# This SConscript defines 2 components
+# shading_ispc: component that shaders depend on to define shaders
+# shading_eval_ispc: component that the render (lib/pbr) depends on to initiate shading
+
+
+# -----------------------------------------------------------------------
+# shading_eval_ispc
+# -----------------------------------------------------------------------
+evalEnv = env.Clone()
+
+name = 'shading_eval_ispc'
+libname = 'shading_eval_ispc'
+
+# shading_eval_ispc directly depends on
+components = [
+    'rendering_mcrt_common',
+    'scene_rdl2',
+    'bvh_shading_ispc',
+    'texturing_sampler',
+    ]
+evalEnv.DWAUseComponents(components)
+
+# add these include paths when building targets
+# that depend on this component
+includePaths = [
+    evalEnv.Dir('../../..').srcnode(),
+    evalEnv.Dir('../../..'),
+    evalEnv.Dir('.')
+    ]
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+evalEnv.AppendUnique(
+    ISPCFLAGS = ['--opt=force-aligned-memory'],
+    CPPPATH = includePaths)
+
+sources = ['Shadingv.cc']
+ispc_output, publicHeaders = evalEnv.IspcShared([
+        'BasicTexture.ispc',
+        'EvalAttribute.ispc',
+        'OpenVdbUtil.ispc',
+        'Shading.ispc',
+        'UdimTexture.ispc',
+        ])
+sources += ispc_output
+
+# build the library
+lib = evalEnv.DWASharedLibrary(name, sources)
+# install the library
+target = evalEnv.DWAInstallLib(lib)
+
+# define the component
+evalEnv.DWAComponent(name,
+                     LIBS = target,
+                     CPPPATH = includePaths,
+                     COMPONENTS = components)
+evalEnv.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include')],
+                             COMPONENTS=components)
+
+
+# additionally, this component defines "public headers", these
+# are headers that we want exposed in the include/ directory of
+# our installed folio
+publicHeaders.append('Shadingv.h')
+evalEnv.DWAInstallInclude(publicHeaders, 'moonray/rendering/shading/ispc')
+
+
+
+
+
+# -----------------------------------------------------------------------
+# shading_ispc
+# -----------------------------------------------------------------------
+name = 'shading_ispc'
+libname = 'shading_ispc'
+
+# shading_ispc directly depends on
+components = [
+    'oiio', 
+    'scene_rdl2',
+    'rendering_mcrt_common',
+    'bvh_shading_ispc',
+    'shading_eval_ispc'
+    ]
+env.DWAUseComponents(components)
+
+# add these include paths when building targets
+# that depend on this component
+includePaths = [
+    env.Dir('../../..').srcnode(),
+    env.Dir('.'),
+    env.Dir('$BUILD_DIR/include'),
+    env.Dir('$BUILD_DIR/lib'),
+    ]
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'],
+                 CPPPATH = [env.Dir('.'), env.Dir('$BUILD_DIR/include'),
+                            env.Dir('$BUILD_DIR/lib')])
+
+sources, headers = env.IspcShared([
+        'bsdf/ashikhmin_shirley/BsdfAshikhminShirley.ispc',
+        'bsdf/Bsdf.ispc',
+        'bsdf/BsdfLambert.ispc',
+        'bsdf/BsdfOrenNayar.ispc',
+        'bsdf/npr/BsdfFlatDiffuse.ispc',
+        'bsdf/npr/BsdfToon.ispc',
+        'bsdf/BsdfMirror.ispc',
+        'bsdf/BsdfRetroreflection.ispc',
+        'bsdf/BsdfSlice.ispc',
+        'bsdf/Bsdfv.ispc',
+        'bsdf/BsdfEyeCaustic.ispc',
+        'bsdf/BsdfIridescence.ispc',
+        'bsdf/under/BsdfUnder.ispc',
+        'bsdf/under/BsdfUnderClearcoat.ispc',
+        'bsdf/under/BsdfUnderClearcoatTransmission.ispc',
+        'bsdf/fabric/BsdfFabric.ispc',
+        'bsdf/fabric/BsdfFabricVelvet.ispc',
+        'bsdf/fabric/VelvetAlbedo.ispc',
+        'bsdf/cook_torrance/BsdfCookTorrance.ispc',
+        'bsdf/cook_torrance/BsdfTransmissionCookTorrance.ispc',
+        'bsdf/cook_torrance/energy_conservation/CookTorranceEnergyCompensation.ispc',
+        'bsdf/cook_torrance/energy_conservation/TransmissionCookTorranceEnergyCompensation.ispc',
+        'bsdf/hair/HairState.ispc',
+        'bsdf/hair/BsdfHair.ispc',
+        'bsdf/hair/BsdfHairOneSampler.ispc',
+        'bsdf/hair/BsdfHairLobes.ispc',
+        'bsdf/hair/BsdfHairDiffuse.ispc',
+        'bsdf/Fresnel.ispc',
+        'bsdf/ward/BsdfWard.ispc',
+        'bsdf/BsdfStochasticFlakes.ispc',
+        'bsdf/BsdfUtil.ispc',
+        'bssrdf/Bssrdf.ispc',
+        'bssrdf/Dipole.ispc',
+        'bssrdf/NormalizedDiffusion.ispc',
+        'bssrdf/VolumeSubsurface.ispc',
+        'BsdfBuilder.ispc',
+        'BsdfComponent.ispc',
+        'Closure.ispc',
+        'EvalShader.ispc',
+        'LobeAttenuator.ispc',
+        'PbrValidity.ispc',
+        'RampControl.ispc',
+        'ShaderDataAux.ispc',
+        'Util.ispc'
+        ])
+sources += [
+    'BsdfLabels.cc',
+    'bsdf/BsdfUtil.cc',
+    ]
+
+# There is a bug in the optimization pass with ISPC 1.9.2 which causes certain
+# generated code to crash in opt builds. The workaround is to move the offending
+# code out into a separate file and build it in debug.
+sources.append(env.SharedIspc('EvalAttributeDebugHack.ispc',
+                              ISPCOPTFLAGS='$_ISPCOPTFLAGS_DEBUG')[0])
+
+env.DWAInstallInclude(headers, 'moonray/rendering/shading/ispc')
+
+# build the library
+lib = env.DWASharedLibrary(name, sources)
+# install the library
+target = env.DWAInstallLib(lib)
+
+# define the component
+env.DWAComponent(name,
+                 LIBS = target,
+                 CPPPATH = includePaths,
+                 COMPONENTS = components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include')],
+                             COMPONENTS=components)
+
+# additionally, this component defines "public headers", these
+# are headers that we want exposed in the include/ directory of
+# our installed folio.
+publicHeaders_isph = [
+    'AovLabels.isph',
+    'BasicTexture.isph',
+    'BsdfBuilder.isph',
+    'BsdfComponent.isph',
+    'Closure.isph',
+    'EvalAttribute.isph',
+    'EvalShader.isph',
+    'MapApi.isph',
+    'MaterialApi.isph',
+    'RampControl.isph',
+    'ShaderMacros.isph',
+    'Shading.isph',
+    'ShaderDataAux.isph',
+    'Ior.isph',
+    'ColorCorrect.isph',
+    'UdimTexture.isph',
+    'Util.isph'
+    ]
+env.DWAInstallInclude(publicHeaders_isph, 'moonray/rendering/shading/ispc')
+
+# install some more public headers that really should not be public
+# at all.  Fixing this will require reworking/completing the vector
+# material shading API
+env.DWAInstallInclude(['PbrValidity.isph'], 'moonray/rendering/shading/ispc/')
+env.DWAInstallInclude(['bsdf/Fresnel.isph', 'bsdf/Fresnel.hh'], 'moonray/rendering/shading/ispc/bsdf')
+env.DWAInstallInclude(['bsdf/fabric/VelvetAlbedo.isph'], 'moonray/rendering/shading/ispc/bsdf/fabric')
+
+stubHeaders = [
+    'BasicTexture_ispc_stubs.h',
+    'BsdfBuilder_ispc_stubs.h',
+    'BsdfComponent_ispc_stubs.h',
+    'Closure_ispc_stubs.h',
+    'EvalAttributeDebugHack_ispc_stubs.h',
+    'EvalAttribute_ispc_stubs.h',
+    'EvalShader_ispc_stubs.h',
+    'LobeAttenuator_ispc_stubs.h',
+    'OpenVdbUtil_ispc_stubs.h',
+    'PbrValidity_ispc_stubs.h',
+    'RampControl_ispc_stubs.h',
+    'ShaderDataAux_ispc_stubs.h',
+    'Shading_ispc_stubs.h',
+    'UdimTexture_ispc_stubs.h',
+    'Util_ispc_stubs.h'
+]
+
+bsdfStubHeaders = [
+    'bsdf/BsdfEyeCaustic_ispc_stubs.h',
+    'bsdf/BsdfIridescence_ispc_stubs.h',
+    'bsdf/BsdfLambert_ispc_stubs.h',
+    'bsdf/BsdfMirror_ispc_stubs.h',
+    'bsdf/BsdfOrenNayar_ispc_stubs.h',
+    'bsdf/BsdfRetroreflection_ispc_stubs.h',
+    'bsdf/BsdfSlice_ispc_stubs.h',
+    'bsdf/BsdfStochasticFlakes_ispc_stubs.h',
+    'bsdf/BsdfUtil_ispc_stubs.h',
+    'bsdf/Bsdf_ispc_stubs.h',
+    'bsdf/Bsdfv_ispc_stubs.h',
+    'bsdf/Fresnel_ispc_stubs.h',
+]
+
+bsdfAshikhimStubHeaders = [
+    'bsdf/ashikhmin_shirley/BsdfAshikhminShirley_ispc_stubs.h',
+]
+
+bsdfCookTorranceStubHeaders = [
+    'bsdf/cook_torrance/BsdfCookTorrance_ispc_stubs.h',
+    'bsdf/cook_torrance/BsdfTransmissionCookTorrance_ispc_stubs.h',
+    'bsdf/cook_torrance/energy_conservation/CookTorranceEnergyCompensation_ispc_stubs.h',
+    'bsdf/cook_torrance/energy_conservation/TransmissionCookTorranceEnergyCompensation_ispc_stubs.h',
+]
+
+bsdfFabricStubHeaders = [
+    'bsdf/fabric/BsdfFabricVelvet_ispc_stubs.h',
+    'bsdf/fabric/BsdfFabric_ispc_stubs.h',
+    'bsdf/fabric/VelvetAlbedo_ispc_stubs.h',
+]
+
+bsdfHairStubHeaders = [
+    'bsdf/hair/BsdfHairDiffuse_ispc_stubs.h',
+    'bsdf/hair/BsdfHairLobes_ispc_stubs.h',
+    'bsdf/hair/BsdfHairOneSampler_ispc_stubs.h',
+    'bsdf/hair/BsdfHair_ispc_stubs.h',
+    'bsdf/hair/HairState_ispc_stubs.h',
+]
+
+bsdfNprStubHeaders = [
+    'bsdf/npr/BsdfFlatDiffuse_ispc_stubs.h',
+    'bsdf/npr/BsdfToon_ispc_stubs.h',
+]
+
+bsdfUnderStubHeaders = [
+    'bsdf/under/BsdfUnderClearcoatTransmission_ispc_stubs.h',
+    'bsdf/under/BsdfUnderClearcoat_ispc_stubs.h',
+    'bsdf/under/BsdfUnder_ispc_stubs.h',
+]
+
+bsdfWardStubHeaders = [
+    'bsdf/ward/BsdfWard_ispc_stubs.h'
+]
+
+bssrdStubHeaders = [
+    'bssrdf/Bssrdf_ispc_stubs.h',
+    'bssrdf/Dipole_ispc_stubs.h',
+    'bssrdf/NormalizedDiffusion_ispc_stubs.h',
+    'bssrdf/VolumeSubsurface_ispc_stubs.h'
+]
+#env.DWAInstallInclude(stubHeaders, 'moonray/rendering/shading/ispc')
+env.DWAInstallInclude(bsdfStubHeaders, 'moonray/rendering/shading/ispc/bsdf')
+env.DWAInstallInclude(bsdfAshikhimStubHeaders, 'moonray/rendering/shading/ispc/bsdf/ashikhmin_shirley')
+env.DWAInstallInclude(bsdfCookTorranceStubHeaders, 'moonray/rendering/shading/ispc/bsdf/cook_torrance')
+env.DWAInstallInclude(bsdfFabricStubHeaders, 'moonray/rendering/shading/ispc/bsdf/fabric')
+env.DWAInstallInclude(bsdfHairStubHeaders, 'moonray/rendering/shading/ispc/bsdf/hair')
+env.DWAInstallInclude(bsdfNprStubHeaders, 'moonray/rendering/shading/ispc/bsdf/npr')
+env.DWAInstallInclude(bsdfUnderStubHeaders, 'moonray/rendering/shading/ispc/bsdf/under')
+env.DWAInstallInclude(bsdfWardStubHeaders, 'moonray/rendering/shading/ispc/bsdf/ward')
+env.DWAInstallInclude(bssrdStubHeaders, 'moonray/rendering/shading/ispc/bssrdf')

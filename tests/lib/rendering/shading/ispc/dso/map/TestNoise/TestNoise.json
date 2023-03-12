@@ -1,0 +1,25 @@
+{
+    "name": "TestNoise",
+    "type": "Map",
+    "attributes": {
+        "attrSeed": {
+            "name": "seed",
+            "type": "Int",
+            "default": "0"
+        },
+        "attrMaxLevel": {
+            "name": "max_level",
+            "aliases": [ "max level", "maxLevel" ],
+            "type": "Float",
+            "default": "1.f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrFrequencyMultiplier": {
+            "name": "frequency_multiplier",
+            "aliases": [ "frequency multiplier", "frequencyMultiplier" ],
+            "type": "Float",
+            "default": "1.f",
+            "flags": "FLAGS_BINDABLE"
+        }
+    }
+}

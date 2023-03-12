@@ -1,0 +1,17 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "ThreadLocalState.hh"
+#include <scene_rdl2/common/platform/Platform.isph>
+
+struct Arena;
+
+struct BaseTLState
+{
+    BASE_TL_STATE_MEMBERS;
+};
+
+

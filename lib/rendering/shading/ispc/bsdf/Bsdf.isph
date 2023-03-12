@@ -1,0 +1,745 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Bsdf.isph
+#pragma once
+
+
+#include "BsdfUtil.isph"
+#include "Fresnel.isph"
+
+#include <moonray/rendering/shading/ispc/bssrdf/Bssrdf.isph>
+#include <moonray/rendering/shading/ispc/bssrdf/VolumeSubsurface.isph>
+#include <moonray/rendering/shading/ispc/Shading.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+//----------------------------------------------------------------------------
+
+/// lobe names
+enum BsdfLobeName {
+    BSDF_LOBE_NONE = 0,
+    BSDF_LOBE_ASHIKHMIN_SHIRLEY,
+    BSDF_LOBE_ANISO_COOK_TORRANCE,
+    BSDF_LOBE_BERRY_COOK_TORRANCE,
+    BSDF_LOBE_COOK_TORRANCE,
+    BSDF_LOBE_GGX_COOK_TORRANCE,
+    BSDF_LOBE_GLITTER_GGX_COOK_TORRANCE,
+    BSDF_LOBE_TRANSMISSION_COOK_TORRANCE,
+    BSDF_LOBE_LAMBERT,
+    BSDF_LOBE_FLAT_DIFFUSE,
+    BSDF_LOBE_OREN_NAYAR,
+    BSDF_LOBE_RETRO_REFLECTIVE,
+    BSDF_LOBE_EYE_CAUSTIC,
+    BSDF_LOBE_MIRROR_REFLECTION,
+    BSDF_LOBE_MIRROR_TRANSMISSION,
+    BSDF_LOBE_MIRROR_RETRO_REFLECTION,
+    BSDF_LOBE_IRIDESCENCE,
+    BSDF_LOBE_UNDER,
+    BSDF_LOBE_UNDER_CLEARCOAT,
+    BSDF_LOBE_FABRIC_DIFFUSE,
+    BSDF_LOBE_FABRIC,
+    BSDF_LOBE_FABRIC_VELVET,
+    BSDF_LOBE_WARD_CORRECTED,
+    BSDF_LOBE_WARD_DUER,
+    BSDF_LOBE_WARD_ORIGINAL,
+    BSDF_LOBE_HAIR_DIFFUSE,
+    BSDF_LOBE_HAIR_R,
+    BSDF_LOBE_HAIR_TT,
+    BSDF_LOBE_HAIR_TRT,
+    BSDF_LOBE_HAIR_TRRT,
+    BSDF_LOBE_HAIR_ONE_SAMPLER,
+    BSDF_LOBE_STOCHASTIC_FLAKES,
+    BSDF_LOBE_TOON,
+    BSDF_LOBE_HAIR_TOON
+};
+
+/// Various lobe types. These flags allow us to take different actions 
+/// based on certain characteristics of a lobe.
+typedef uint32_t BsdfLobeType;
+#define BSDF_LOBE_TYPE_NONE (0u)
+
+// Surface side categories. Most lobes belong to only one category, but
+// there are some exceptions.
+#define BSDF_LOBE_TYPE_REFLECTION (1u << 0)
+#define BSDF_LOBE_TYPE_TRANSMISSION (1u << 1)
+
+// Lobe categories. These ARE mutually exclusive. A lobe can only
+// belong to one of the categories below.
+// The bit shift assignments are for easy determination of ray masking based on
+// lobe type.
+#define BSDF_LOBE_TYPE_DIFFUSE (1u << 2)
+#define BSDF_LOBE_TYPE_GLOSSY (1u << 4)
+#define BSDF_LOBE_TYPE_MIRROR (1u << 6)
+
+// Mixed bags
+#define BSDF_LOBE_TYPE_ALL_SURFACE_SIDES (BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_TRANSMISSION)
+#define BSDF_LOBE_TYPE_ALL_LOBES (BSDF_LOBE_TYPE_DIFFUSE | BSDF_LOBE_TYPE_GLOSSY | BSDF_LOBE_TYPE_MIRROR)
+#define BSDF_LOBE_TYPE_ALL_REFLECTION (BSDF_LOBE_TYPE_ALL_LOBES | BSDF_LOBE_TYPE_REFLECTION)
+#define BSDF_LOBE_TYPE_ALL_TRANSMISSION (BSDF_LOBE_TYPE_ALL_LOBES | BSDF_LOBE_TYPE_TRANSMISSION)
+#define BSDF_LOBE_TYPE_ALL_DIFFUSE (BSDF_LOBE_TYPE_ALL_SURFACE_SIDES | BSDF_LOBE_TYPE_DIFFUSE)
+#define BSDF_LOBE_TYPE_ALL_GLOSSY (BSDF_LOBE_TYPE_ALL_SURFACE_SIDES | BSDF_LOBE_TYPE_GLOSSY)
+#define BSDF_LOBE_TYPE_ALL_MIRROR (BSDF_LOBE_TYPE_ALL_SURFACE_SIDES | BSDF_LOBE_TYPE_MIRROR)
+#define BSDF_LOBE_TYPE_ALL (BSDF_LOBE_TYPE_ALL_REFLECTION | BSDF_LOBE_TYPE_ALL_TRANSMISSION)
+
+
+enum BsdfLobeDifferentialFlags {
+    // Set this flag if the differentials function doesn't take the incoming
+    // differentials into account. There is already some footprint scaling
+    // information built into the differentials, so if this function ignores
+    // them, we need to re-apply those scales again.
+    BSDF_LOBE_IGNORES_INCOMING_DIFFERENTIALS = 1 << 1, 
+};
+
+enum BsdfLobeProperty {
+    BSDF_LOBE_PROPERTY_NONE         = 0,
+    BSDF_LOBE_PROPERTY_NORMAL       = 1 << 0,
+    BSDF_LOBE_PROPERTY_ROUGHNESS    = 1 << 1,
+    BSDF_LOBE_PROPERTY_COLOR        = 1 << 2,
+    BSDF_LOBE_PROPERTY_PBR_VALIDITY = 1 << 3
+};
+
+struct BsdfLobe;
+struct BsdfSlice;
+
+/// Evaluation Function
+typedef varying Color (* uniform BsdfLobeEvalFn)(const varying BsdfLobe * uniform lobe,
+                                                 const varying BsdfSlice &slice,
+                                                 const varying Vec3f &wi,
+                                                 varying float *uniform pdf);
+/// Sample Function
+typedef varying Color (* uniform BsdfLobeSampleFn)(const varying BsdfLobe * uniform lobe,
+                                                   const varying BsdfSlice &slice,
+                                                   varying float r1,
+                                                   varying float r2,
+                                                   varying Vec3f &wi,
+                                                   varying float &pdf);
+/// Albedo Function
+typedef varying Color (* uniform BsdfLobeAlbedoFn)(const varying BsdfLobe * uniform lobe,
+                                                   const varying BsdfSlice &slice);
+
+/// Differentials Function
+typedef void (* uniform BsdfLobeDifferentialsFn)(const varying BsdfLobe * uniform lobe,
+                                                 const varying Vec3f &wo,
+                                                 const varying Vec3f &wi,
+                                                 varying float r1, varying float r2,
+                                                 const varying Vec3f &dNdx,
+                                                 const varying Vec3f &dNdy,
+                                                 varying Vec3f &dDdx,       // output
+                                                 varying Vec3f &dDdy);      // output
+
+/// GetProperty Function
+typedef uniform bool (* uniform BsdfLobeGetPropertyFn)(const varying BsdfLobe * uniform lobe,
+                                                       uniform BsdfLobeProperty property,
+                                                       varying float * uniform dest);
+
+/// show function (print misc lobe info)
+typedef void (* uniform BsdfLobeShowFn)(const varying BsdfLobe * const uniform lobe,
+                                        const uniform uint8_t ntab);
+
+/// Members of the BsdfLobe base class
+#define BSDF_LOBE_BASE                           \
+    const varying Fresnel * uniform mFresnel;    \
+    uniform intptr_t mEvalFn;                    \
+    uniform intptr_t mSampleFn;                  \
+    uniform intptr_t mAlbedoFn;                  \
+    uniform intptr_t mDifferentialsFn;           \
+    uniform intptr_t mGetPropertyFn;             \
+    uniform intptr_t mShowFn;                    \
+    uniform int mName;                           \
+    uniform int mMask;                           \
+    uniform int mType;                           \
+    uniform int mDifferentialFlags;              \
+    uniform int mIsSpherical;                    \
+    uniform bool mIsHair;                        \
+    uniform int mLabel;                          \
+    uniform int mPropertyFlags;                  \
+    varying Color mScale
+
+/// @class BsdfLobe Bsdf.isph <rendering/shading/bsdf/Bsdf.isph>
+/// @brief BsdfLobe base class
+struct BsdfLobe
+{
+    BSDF_LOBE_BASE;
+};
+
+inline void
+BsdfLobe_init(varying BsdfLobe * uniform lobe,
+              uniform BsdfLobeName name,
+              uniform BsdfLobeType type,
+              uniform BsdfLobeDifferentialFlags differentialFlags,
+              uniform bool isSpherical,
+              uniform int propertyFlags,
+              uniform BsdfLobeEvalFn evalFn,
+              uniform BsdfLobeSampleFn sampleFn,
+              uniform BsdfLobeAlbedoFn albedoFn,
+              uniform BsdfLobeDifferentialsFn differentialsFn,
+              uniform BsdfLobeGetPropertyFn getPropertyFn,
+              uniform BsdfLobeShowFn showFn)
+{
+    lobe->mFresnel = NULL;
+    lobe->mName = name;
+    lobe->mMask = lanemask();
+    lobe->mType = type;
+    lobe->mDifferentialFlags = differentialFlags;
+    lobe->mIsSpherical = isSpherical;
+    lobe->mIsHair = false;
+    lobe->mLabel = 0;
+    lobe->mPropertyFlags = propertyFlags | BSDF_LOBE_PROPERTY_COLOR;
+    lobe->mEvalFn = (uniform intptr_t) evalFn;
+    lobe->mSampleFn = (uniform intptr_t) sampleFn;
+    lobe->mAlbedoFn = (uniform intptr_t) albedoFn;
+    lobe->mDifferentialsFn = (uniform intptr_t) differentialsFn;
+    lobe->mGetPropertyFn = (uniform intptr_t) getPropertyFn;
+    lobe->mShowFn = (uniform intptr_t) showFn;
+    lobe->mScale = Color_ctor(1.f);
+}
+
+
+/// @brief evaluate the lobe
+inline varying Color
+BsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+              const varying BsdfSlice &slice,
+              const varying Vec3f &wi,
+              varying float *uniform pdf)
+{
+    uniform BsdfLobeEvalFn evalFn = (uniform BsdfLobeEvalFn) lobe->mEvalFn;
+    return evalFn(lobe, slice, wi, pdf);
+}
+
+/// @brief sample the lobe
+inline varying Color
+BsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                const varying BsdfSlice &slice,
+                varying float r1, varying float r2,
+                varying Vec3f &wi, varying float &pdf)
+{
+    uniform BsdfLobeSampleFn sampleFn = (uniform BsdfLobeSampleFn) lobe->mSampleFn;
+    return sampleFn(lobe, slice, r1, r2, wi, pdf);
+}
+
+/// @brief call lobe albedo function
+inline varying Color
+BsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                const varying BsdfSlice &slice)
+{
+    uniform BsdfLobeAlbedoFn albedoFn = (uniform BsdfLobeAlbedoFn) lobe->mAlbedoFn;
+    return albedoFn(lobe, slice);
+}
+
+/// @brief call lobe differentials function
+inline void
+BsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                       const varying Vec3f &wo,
+                       const varying Vec3f &wi,
+                       varying float r1,
+                       varying float r2,
+                       const varying Vec3f &dNdx,
+                       const varying Vec3f &dNdy,
+                       varying Vec3f &dDdx,     // output
+                       varying Vec3f &dDdy)     // output
+{
+    uniform BsdfLobeDifferentialsFn diffFn =
+            (uniform BsdfLobeDifferentialsFn)lobe->mDifferentialsFn;
+    diffFn(lobe, wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
+}
+
+/// @brief call lobe getProperty function
+/// @return true if handled, false otherwise
+uniform bool BsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                  uniform BsdfLobeProperty property,
+                                  varying float * uniform dest);
+
+/// @brief call lobe show function which prints out misc
+/// info specific to each lobe type
+inline void
+BsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+              const uniform uint8_t ntab)
+{
+    uniform BsdfLobeShowFn show = (uniform BsdfLobeShowFn) lobe->mShowFn;
+    if (show != NULL) show(lobe, ntab);
+}
+
+/// @brief is this lobe active for the current lane?
+inline varying bool
+isActive(const varying BsdfLobe * uniform lobe)
+{
+    return (lobe != NULL) && (bool)((1 << programIndex) & lobe->mMask);
+}
+
+inline varying bool
+isActive(const varying BsdfLobe * varying lobe)
+{
+    return (lobe != nullptr) && (bool)((1 << programIndex) & lobe->mMask);
+}
+
+/// @brief get the lobe type
+inline uniform BsdfLobeType
+BsdfLobe_getType(const varying BsdfLobe * uniform lobe)
+{
+    return (BsdfLobeType) lobe->mType;
+}
+
+inline varying BsdfLobeType
+BsdfLobe_getType(const varying BsdfLobe * varying lobe)
+{
+    return (BsdfLobeType) lobe->mType;
+}
+
+/// @brief set the lobe type
+inline void
+BsdfLobe_setType(varying BsdfLobe * uniform lobe,
+                 uniform BsdfLobeType type)
+{
+    lobe->mType = type;
+}
+
+
+/// @brief get the lobe differential flags
+inline uniform BsdfLobeDifferentialFlags
+BsdfLobe_getDifferentialFlags(const varying BsdfLobe * uniform lobe)
+{
+    return (BsdfLobeDifferentialFlags) lobe->mDifferentialFlags;
+}
+
+inline varying BsdfLobeDifferentialFlags
+BsdfLobe_getDifferentialFlags(const varying BsdfLobe * varying lobe)
+{
+    return (BsdfLobeDifferentialFlags) lobe->mDifferentialFlags;
+}
+
+/// @brief is the lobe spherical?
+inline uniform bool
+BsdfLobe_getIsSpherical(const varying BsdfLobe * uniform lobe)
+{
+    return (bool) lobe->mIsSpherical;
+}
+
+/// @brief set the lobe to be spherical to disable light culling
+inline void
+BsdfLobe_setIsSpherical(varying BsdfLobe * uniform lobe,
+                        uniform bool isSpherical)
+{
+    lobe->mIsSpherical = isSpherical;
+}
+
+/// @brief does this lobe belong to hair material?
+inline void
+BsdfLobe_setIsHair(varying BsdfLobe * uniform lobe, const uniform bool isHair)
+{
+    lobe->mIsHair = isHair;
+}
+
+inline uniform bool
+BsdfLobe_getIsHair(const varying BsdfLobe * uniform lobe)
+{
+    return lobe->mIsHair;
+}
+
+inline varying bool
+BsdfLobe_getIsHair(const varying BsdfLobe * varying lobe)
+{
+    return lobe->mIsHair;
+}
+
+/// Does this bsdf type match the given set of flags ? Returns true if at
+/// least one of the "surface side" bits matches the flags and at least one
+/// of the "lobe" bits matches the flags.
+inline varying bool
+BsdfLobeType_matchesFlags(varying BsdfLobeType lobeType,
+                          varying BsdfLobeType flags)
+{
+    return ((lobeType & BSDF_LOBE_TYPE_ALL_SURFACE_SIDES & flags) &&
+            (lobeType & BSDF_LOBE_TYPE_ALL_LOBES & flags));
+}
+
+inline varying bool
+BsdfLobe_matchesFlags(const varying BsdfLobe * uniform lobe,
+                      varying BsdfLobeType flags)
+{
+    return BsdfLobeType_matchesFlags(lobe->mType, flags);
+}
+
+inline varying bool
+BsdfLobe_matchesFlags(const varying BsdfLobe * varying lobe,
+                      varying BsdfLobeType flags)
+{
+    return BsdfLobeType_matchesFlags(lobe->mType, flags);
+}
+
+/// Does this bsdf type match the given flag ? This is useful for testing
+/// flags other than boolean unions (i.e. flags other than ALL_*)
+inline varying bool
+BsdfLobe_matchesFlag(const varying BsdfLobe * uniform lobe,
+                     varying BsdfLobeType flag)
+{
+    return (lobe->mType & flag);
+}
+
+/// @brief set a fresnel on a lobe
+inline void
+BsdfLobe_setFresnel(varying BsdfLobe * uniform lobe,
+                    const varying Fresnel * uniform fresnel)
+{
+    lobe->mFresnel = fresnel;
+}
+
+/// @brief get the fresnel on a lobe
+inline const varying Fresnel * uniform
+BsdfLobe_getFresnel(const varying BsdfLobe * uniform lobe)
+{
+    return lobe->mFresnel;
+}
+
+/// @brief set a scale on a lobe
+inline void
+BsdfLobe_setScale(varying BsdfLobe * uniform lobe,
+                  const varying Color &scale)
+{
+    lobe->mScale = scale;
+}
+
+/// @brief return the scale of a lobe
+inline Color
+BsdfLobe_getScale(const varying BsdfLobe * uniform lobe)
+{
+    return lobe->mScale;
+}
+
+/// A label can be set on a lobe
+inline void
+BsdfLobe_setLabel(varying BsdfLobe * uniform lobe,
+                  uniform int label)
+{
+    // check for a valid label
+    if (label != -1)
+        lobe->mLabel = label;
+}
+
+inline uniform int
+BsdfLobe_getLabel(const varying BsdfLobe * uniform lobe)
+{
+    return lobe->mLabel;
+}
+
+inline uniform bool
+BsdfLobe_hasProperty(const varying BsdfLobe * uniform lobe,
+                     uniform BsdfLobeProperty property)
+{
+    return lobe->mPropertyFlags & property;
+}
+
+inline uniform int
+BsdfLobe_getPropertyFlags(const varying BsdfLobe * uniform lobe)
+{
+    return lobe->mPropertyFlags;
+}
+
+/// Convenience method for derived classes to include color and fresnel
+/// scaling contributions
+inline varying Color
+BsdfLobe_computeScaleAndFresnel(const varying BsdfLobe * uniform lobe,
+                                varying float cosWi)
+{
+    varying Color result;
+    if (isActive(lobe->mFresnel)) {
+        result = lobe->mScale * Fresnel_eval(lobe->mFresnel, cosWi);
+    } else {
+        result = lobe->mScale;
+    }
+    return result;
+}
+
+
+/// Utility functions to compute the minimum roughness to be used during
+/// roughness clamping
+inline varying Vec2f
+computeMinRoughness(const varying BsdfLobe * uniform lobe,
+                    uniform float roughnessClampingFactor,
+                    const varying Vec2f &previousMinRoughness)
+{
+    Vec2f minRoughness = Vec2f_ctor(0.0f);
+
+    if (roughnessClampingFactor > 0.0f) {
+        Vec2f roughness;
+        if (BsdfLobe_getProperty(lobe, BSDF_LOBE_PROPERTY_ROUGHNESS,
+                (varying float * uniform)&roughness)) {
+            minRoughness = roughness * roughnessClampingFactor;
+        }
+
+        // Keep smaller of the two min roughnesses in x
+        if (minRoughness.x > minRoughness.y) {
+            const float tmp = minRoughness.x;
+            minRoughness.x = minRoughness.y;
+            minRoughness.y = tmp;
+        }
+    }
+
+    // TODO: Add a Vec2 clamp() method
+    minRoughness.x = clamp(minRoughness.x, previousMinRoughness.x, 1.0f);
+    minRoughness.y = clamp(minRoughness.y, previousMinRoughness.y, 1.0f);
+    return minRoughness;
+}
+
+inline varying Vec2f
+computeMinRoughness(uniform float lobeRoughness, uniform float roughnessClampingFactor,
+                    const varying Vec2f &previousMinRoughness)
+{
+    Vec2f minRoughness = Vec2f_ctor(0.0f);
+
+    if (roughnessClampingFactor > 0.0f) {
+        minRoughness = Vec2f_ctor(lobeRoughness * roughnessClampingFactor);
+    }
+
+    // TODO: Add a Vec2 clamp() method
+    minRoughness.x = clamp(minRoughness.x, previousMinRoughness.x, 1.0f);
+    minRoughness.y = clamp(minRoughness.y, previousMinRoughness.y, 1.0f);
+    return minRoughness;
+}
+
+
+//----------------------------------------------------------------------------
+
+/// maximum number of lobes per Bsdf
+// Note: This value must be no greater than the maximum number of
+// items allocatable via TLState::allocList
+#define BSDF_MAX_LOBE 16
+
+// See Bsdf_setLabelIds() for an explanation of the label members
+
+// storage for extra aov evaluations that are accumulated
+// after ray scattering.
+struct BsdfExtraAovs
+{
+    uniform int mNum;
+    const uniform int * uniform mLabelIds;
+    const varying Color * uniform mColors;
+};
+
+#define BSDF_BASE                                         \
+    varying Bssrdf * uniform mBssrdf;                     \
+    varying VolumeSubsurface * uniform mVolumeSubsurface; \
+    uniform int mEarlyTerminationMask;                    \
+    varying BsdfLobe * uniform mLobes[BSDF_MAX_LOBE];     \
+    uniform int mMaterialLabelId;                         \
+    uniform int mLpeMaterialLabelId;                      \
+    uniform int mNumLobes;                                \
+    varying int mGeomLabelId;                             \
+    varying BsdfLobeType mType;                           \
+    varying bool mIsSpherical;                            \
+    varying Color mSelfEmission;                          \
+    uniform BsdfExtraAovs mPostScatterExtraAovs
+
+    
+
+/// @class Bsdf Bsdf.isph <rendering/shading/bsdf/Bsdf.isph>
+/// @brief Define the Bsdf object, used to represent multi-lobe bsdfs
+struct Bsdf
+{
+    BSDF_BASE;
+};
+
+
+/// @brief initialize a bsdf object
+inline void
+Bsdf_init(varying Bsdf * uniform bsdf)
+{
+    bsdf->mBssrdf = NULL;
+    bsdf->mVolumeSubsurface = NULL;
+    bsdf->mEarlyTerminationMask = 0;
+    bsdf->mMaterialLabelId = -1;
+    bsdf->mLpeMaterialLabelId = -1;
+    bsdf->mNumLobes = 0;
+    bsdf->mGeomLabelId = -1;
+    bsdf->mType = BSDF_LOBE_TYPE_NONE;
+    bsdf->mIsSpherical = false;
+    bsdf->mSelfEmission = Color_ctor(0.0f);
+    bsdf->mPostScatterExtraAovs.mNum = 0;
+    bsdf->mPostScatterExtraAovs.mLabelIds = NULL;
+    bsdf->mPostScatterExtraAovs.mColors = NULL;
+}
+
+/// @brief get the bsdf type
+inline varying BsdfLobeType
+Bsdf_getType(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mType;
+}
+
+/// @brief is the bsdf spherical?
+inline varying bool
+Bsdf_getIsSpherical(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mIsSpherical;
+}
+
+/// @brief add a lobe to a bsdf
+inline void
+Bsdf_addLobe(varying Bsdf * uniform bsdf,
+             varying BsdfLobe * uniform lobe)
+{
+    MNRY_ASSERT(bsdf->mNumLobes < BSDF_MAX_LOBE);
+    bsdf->mLobes[bsdf->mNumLobes++] = lobe;
+    bsdf->mType |= lobe->mType;
+    bsdf->mIsSpherical |= lobe->mIsSpherical;
+}
+
+/// @brief gets the number of lobes
+inline uniform int
+Bsdf_getLobeCount(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mNumLobes;
+}
+
+/// @brief gets the const lobe with given index
+inline const varying BsdfLobe * uniform
+Bsdf_getLobe(const varying Bsdf * uniform bsdf, uniform int lobeIndex)
+{
+    MNRY_ASSERT(lobeIndex < bsdf->mNumLobes);
+    return bsdf->mLobes[lobeIndex];
+}
+
+inline const varying BsdfLobe * varying
+Bsdf_getLobe(const varying Bsdf * uniform bsdf, varying int lobeIndex)
+{
+    MNRY_ASSERT(lobeIndex < bsdf->mNumLobes);
+    // FIXME: ISPC doesn't allow this simple bracket operation:
+    //     return bsdf->mLobes[lobeIndex];
+    // So we'll use a more verbose way to accomplish the same thing.
+    const varying BsdfLobe * varying lobe = *(bsdf->mLobes + lobeIndex);
+    return lobe;
+}
+
+/// @brief set the bssrdf for a bsdf
+inline void
+Bsdf_setBssrdf(varying Bsdf * uniform bsdf,
+               varying Bssrdf * uniform bssrdf)
+{
+    bsdf->mBssrdf = bssrdf;
+}
+
+/// @brief get the bssrdf for a bsdf
+inline const varying Bssrdf * uniform
+Bsdf_getBssrdf(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mBssrdf;
+}
+
+/// @brief set the volume subsurface for a bsdf
+inline void
+Bsdf_setVolumeSubsurface(varying Bsdf * uniform bsdf,
+                         varying VolumeSubsurface * uniform volumeSubsurface)
+{
+    bsdf->mVolumeSubsurface = volumeSubsurface;
+}
+
+/// @brief get the volume subsurface for a bsdf
+inline const varying VolumeSubsurface * uniform
+Bsdf_getVolumeSubsurface(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mVolumeSubsurface;
+}
+
+/// @brief check if we have any subsurface
+inline const varying bool
+Bsdf_hasSubsurface(const varying Bsdf * uniform bsdf)
+{
+    return (bsdf->mBssrdf != nullptr ||
+            bsdf->mVolumeSubsurface != nullptr);
+}
+
+/// @brief set the self emission for a bsdf
+inline void
+Bsdf_setSelfEmission(varying Bsdf  * uniform bsdf,
+                     const varying Color &color)
+{
+    bsdf->mSelfEmission = color;
+}
+
+/// @brief get the self emission from a bsdf
+inline varying Color
+Bsdf_getSelfEmission(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mSelfEmission;
+}
+
+/// @brief set the early termination for a bsdf
+inline void
+Bsdf_setEarlyTermination(varying Bsdf * uniform bsdf,
+                         uniform int earlyTerminationMask)
+{
+    bsdf->mEarlyTerminationMask = earlyTerminationMask;
+}
+
+/// The renderer must call this function after shading and before
+/// integration.
+/// @param materialLabelId a single value that maps the label attribute value
+///                        of the material that produced this Bsdf to the
+///                        label id used in material aov expressions.
+///
+/// @param lpeMaterialLabelId a single value that maps the label attribute value
+///                           of the material that produced this Bsdf to the
+///                           label id used in light path aov expressions.
+///
+/// @param geomLabelId a single value that maps the label attribute value
+///                    of the geom that produced this Bsdf to the
+///                    label id used in material aov expressions
+inline void
+Bsdf_setLabelIds(varying Bsdf * uniform bsdf,
+                 uniform int materialLabelId,
+                 uniform int lpeMaterialLabelId,
+                 varying int geomLabelId)
+{
+    bsdf->mMaterialLabelId    = materialLabelId;
+    bsdf->mLpeMaterialLabelId = lpeMaterialLabelId;
+    bsdf->mGeomLabelId        = geomLabelId;
+}
+
+/// @return id of material label used in material aov expressions
+inline uniform int
+Bsdf_getMaterialLabelId(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mMaterialLabelId;
+}
+
+/// @return id of material label used in light path aov expressions
+inline uniform int
+Bsdf_getLpeMaterialLabelId(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mLpeMaterialLabelId;
+}
+
+/// @return id of geom label used in material aov expressions
+inline varying int
+Bsdf_getGeomLabelId(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mGeomLabelId;
+}
+
+/// @brief evaluate a bsdf
+varying Color
+Bsdf_eval(const varying Bsdf * uniform bsdf, const varying BsdfSlice &slice,
+          const varying Vec3f &wi, float &pdf);
+
+/// @brief compute the albedo for a bsdf
+varying Color
+Bsdf_albedo(const varying Bsdf &bsdf, const varying BsdfSlice &slice);
+
+void
+Bsdf_show(const varying Bsdf &bsdf,
+          const uniform Material * const uniform material);
+
+
+// Set post scatter extra aov results
+void Bsdf_setPostScatterExtraAovs(varying Bsdf * uniform bsdf,
+                                  uniform int numExtraAovs,
+                                  const uniform int * uniform labelIds,
+                                  const varying Color * uniform colors);
+
+inline const uniform BsdfExtraAovs &
+Bsdf_getPostScatterExtraAovs(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mPostScatterExtraAovs;
+}
+
+//----------------------------------------------------------------------------
+

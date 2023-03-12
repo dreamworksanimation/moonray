@@ -1,0 +1,31 @@
+Import('env')
+
+env.DWAComponent(
+  'coi_host',
+  LIBS = [
+        'coi_host',
+        ],
+  CPPPATH_THIRDPARTY = [
+        '/opt/intel/mic/coi/include'
+        ],
+  LIBPATH = [ 
+        '/opt/intel/mic/coi/host-linux-debug/lib',
+        ],
+  COMPONENTS = [
+  	]
+  )
+  
+env.DWAComponent(
+  'coi_device',
+  LIBS = [
+        'coi_device',
+        ],
+  CPPPATH_THIRDPARTY = [
+        '/opt/intel/mic/coi/include'
+        ],
+  LIBPATH = [ 
+        '/opt/intel/mic/coi/device-linux-debug/lib'
+        ],
+  COMPONENTS = [
+  	]
+  )  

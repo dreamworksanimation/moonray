@@ -1,0 +1,30 @@
+Import('env')
+
+alembic_dir = '/rel/depot/third_party_build/alembic/1.5.4-10/${DEPOT_TYPE_LABEL}-${OS_RELEASE}-${CPU_ARCH}-${DEPOT_COMPILER_LABEL}/'
+hdf5_dir = '/rel/third_party/hdf5/1.8.10/'
+env.DWAComponent(
+    'alembic-1.5.4',
+    LIBS = [
+        'AlembicAbc',
+        'AlembicAbcCollection',
+        'AlembicAbcCoreAbstract',
+        'AlembicAbcCoreFactory',
+        'AlembicAbcCoreHDF5',
+        'AlembicAbcCoreOgawa',
+        'AlembicAbcGeom',
+        'AlembicAbcMaterial',
+        'AlembicOgawa',
+        'AlembicUtil',
+        'hdf5',
+        'hdf5_hl'
+        ],
+    LIBPATH = [
+        alembic_dir + 'lib',
+        hdf5_dir + 'lib'
+        ],
+    CPPPATH_THIRDPARTY = [
+        alembic_dir + 'include',
+        hdf5_dir + 'include'
+        ],
+    )
+

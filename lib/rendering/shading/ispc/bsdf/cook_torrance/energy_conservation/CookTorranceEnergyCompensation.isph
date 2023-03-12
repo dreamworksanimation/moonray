@@ -1,0 +1,57 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file CookTorranceEnergyCompensation.isph
+/// $Id$
+/*
+ * This file is used to compensate for energy loss from
+ * microfacet reflection lobes as outlined in Walter'07.
+ * We use the Kelemen'01 energy compensation BRDF as described in
+ * Kulla'17 to be added to the regular microfacet BRDF.
+ * This file describes the term to be added in reflection
+ * to be perfectly energy 'preserving'. It also provides
+ * sampling curves, PDF and a one-sample weight to sample
+ * this term efficiently.
+ * Ref:
+ * Revisiting Physically Based Shading, PBS Kulla'17
+ */
+
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+#include <moonray/rendering/shading/ispc/BsdfComponent.isph>
+
+//----------------------------------------------------------------------------
+Color
+CookTorranceEnergyCompensation_eval(
+        MicrofacetDistribution type,
+        const float cosNO,
+        const float cosNI,
+        float inputRoughness,
+        const Color& favg,
+        bool includeCosineTerm);
+void
+CookTorranceEnergyCompensation_sample(
+        MicrofacetDistribution type,
+        const ReferenceFrame& frame,
+        float r1, float r2,
+        float roughness,
+        Vec3f& wi);
+float
+CookTorranceEnergyCompensation_pdf(
+        MicrofacetDistribution type,
+        float cosNI,
+        float roughness);
+
+float
+CookTorranceEnergyCompensation_weight(float roughness);
+
+
+//----------------------------------------------------------------------------
+
+

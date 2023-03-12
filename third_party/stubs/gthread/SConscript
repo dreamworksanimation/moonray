@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'gthread',
+  LIBS = [
+        'gthread'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

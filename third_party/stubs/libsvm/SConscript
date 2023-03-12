@@ -1,0 +1,16 @@
+Import('env')
+
+env.DWAComponent(
+  'libsvm',
+  LIBS = [
+            'svm'
+        ],
+  CPPPATH_THIRDPARTY = [
+            '/rel/third_party/libsvm/libsvm-3.18/include'
+        ],
+  LIBPATH = [
+            '/rel/third_party/libsvm/libsvm-3.18/lib'
+        ],
+  COMPONENTS = [
+      ],
+  )

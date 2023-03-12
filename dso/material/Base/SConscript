@@ -1,0 +1,32 @@
+import os
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['#bart_tools'])
+
+# ---------------------------------------------------------------
+
+name = 'dso_basematerial'
+target = 'BaseMaterial.so'
+cc_source = ['BaseMaterial.cc']
+ispc_source = ['BaseMaterial.ispc']
+json_source = ['BaseMaterial.json']
+components = [
+    'render_util',
+    'rendering_shading',
+    'shading_ispc',
+    'scene_rdl2'
+]
+
+# --------------------------------------------------------------
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+
+env.DWAInstallIspcDso(dso)
+
+baseDso = env.DWAComponent(
+    name, 
+    COMPONENTS=components 
+)
+env.AlwaysBuild(baseDso)
+

@@ -1,0 +1,117 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "BsdfSampler.isph"
+#include "LightSetSampler.isph"
+
+#include <moonray/rendering/pbr/core/RayState.isph>
+
+struct PbrTLState;
+struct ShadingTLState;
+struct RayDifferential;
+struct Intersection;
+struct BsdfLobe;
+
+//----------------------------------------------------------------------------
+
+/// This converts a lobe type to the corresponding embree compatible ray mask.
+/// Compute the proper ray mask value by shift left the lobe category bit by
+/// the surface side category bit - 1 position (0 or 1 left shift). Note that
+/// a lobe can be both transmission and reflection.
+/// Look in scene_rdl2/scene/rdl2/VisibilityFlags.h for the definition of the
+/// mask. Look in rendering/shading/bsdf/Bsdf.isph for the definition of lobe type.
+inline varying int
+lobeTypeToRayMask(const varying int lobeType)
+{
+    int mask = 0;
+    if (lobeType & BSDF_LOBE_TYPE_REFLECTION) {
+        mask |= (lobeType & BSDF_LOBE_TYPE_ALL_LOBES);
+    }
+    if (lobeType & BSDF_LOBE_TYPE_TRANSMISSION) {
+        mask |= (lobeType & BSDF_LOBE_TYPE_ALL_LOBES) << 1;
+    }
+    return mask;
+}
+
+/* TODOV:
+finline bool
+checkForNanSimple(const Color &radiance,
+        const char *contributionName, const Subpixel &sp)
+{
+    if (!isfinite(radiance)) {
+        logging::Logger::error("[MCRT-RENDER] " , contributionName ,
+                " produced NaN values at pixel (",
+                uint32ToPixelX(sp.mPixel) , ", " , uint32ToPixelY(sp.mPixel),
+                "), subpixel index (", sp.mSubpixelIndex, ")");
+        return true;
+    }
+    return false;
+}
+
+
+finline bool
+checkForNan(Color &radiance, const char *contributionName,
+        const Subpixel &sp, const PathVertex &pv, const RayDifferential &ray,
+        const Intersection &isect)
+{
+    if (!isfinite(radiance)) {
+        logging::Logger::error("[MCRT-RENDER] ", contributionName,
+                " produced NaN values");
+        // TODO: print more info from sp and pv
+        Scene::print(std::cerr, ray, isect, pv.diffuseDepth, pv.glossyDepth);
+        std::cerr.flush();
+        radiance = sBlack;
+        return true;
+    }
+    return false;
+}
+*/
+
+
+//----------------------------------------------------------------------------
+
+void drawBsdfSamples(
+        uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
+        const varying BsdfSampler &bSampler, const varying LightSetSampler &lSampler,
+        const varying Subpixel &sp, const varying PathVertex &pv,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
+        varying uint32_t sequenceID, varying BsdfSample * uniform bsmp, uniform int clampingDepth,
+        varying float clampingValue, varying Flags indirectFlags, varying float rayDirFootprint);
+
+void drawLightSetSamples(
+        uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
+        const varying LightSetSampler &lSampler, const varying BsdfSampler &bSampler,
+        const varying Subpixel &sp, const varying PathVertex &pv,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
+        varying uint32_t sequenceID, varying LightSample * uniform lsmp,
+        uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint);
+
+void applyRussianRoulette(
+        uniform PbrTLState * uniform pbrTls,
+        const varying BsdfSampler &bSampler, varying BsdfSample * uniform bsmp,
+        const varying Subpixel &sp, const varying PathVertex &pv,
+        varying uint32_t sequenceID, uniform float threshold, uniform float invThreshold);
+
+void applyRussianRoulette(
+        uniform PbrTLState * uniform pbrTls,
+        const varying LightSetSampler &lSampler, varying LightSample * uniform lsmp,
+        const varying Subpixel &sp, const varying PathVertex &pv,
+        varying uint32_t sequenceID, uniform float threshold, uniform float invThreshold);
+
+
+//----------------------------------------------------------------------------
+
+void
+scatterAndScale(
+        const varying Intersection &    isect,
+        const varying BsdfLobe &        lobe,
+        const varying Vec3f &           wo,
+        const varying Vec3f &           wi,
+        const varying float             scale,
+        const varying float             r1,
+        const varying float             r2,
+        varying RayDifferential &       rd);
+

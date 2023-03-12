@@ -1,0 +1,26 @@
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['../../../bart_tools'])
+# ---------------------------------------------------------------
+
+name = 'dso_imagemap'
+target = 'ImageMap.so'
+cc_source = ['ImageMap.cc']
+ispc_source = ['ImageMap.ispc']
+json_source = ['ImageMap.json']
+components = [
+    'rendering_shading',
+    'rendering_pbr',
+    'shading_ispc',
+    'shading_eval_ispc',
+    'scene_rdl2',
+    'texturing_sampler',
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)
+env.DWAComponent(name, COMPONENTS=components)

@@ -1,0 +1,70 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+
+#pragma once
+
+#include "InputBuffer.hh"
+#include <scene_rdl2/common/fb_util/ispc/VariablePixelBuffer.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+// InputBuffer is a wrapper around VariablePixelBuffer. It is used as the 
+// input pixel buffers for DisplayFilter_filter functions.
+struct InputBuffer
+{
+    DISPLAYFILTER_INPUTBUFFER_MEMBERS;
+};
+
+void InputBuffer_init(uniform InputBuffer * uniform buffer, 
+                                   uniform Format format, 
+                                   uniform unsigned int width, 
+                                   uniform unsigned int height);
+void InputBuffer_setData(uniform InputBuffer * uniform buffer, 
+                                      uniform unsigned int offset, 
+                                      uniform unsigned int len, 
+                                      const uniform uint8_t * uniform data);
+// The start pixel is the coordinate of the first pixel (lower left corner) of 
+// the input buffer relative to the full image frame buffer. 
+// If set to (0,0), then start pixel of InputBuffer is the same as the 
+// start pixel of the full image frame.
+void InputBuffer_setStartPixel(uniform InputBuffer * uniform buffer, 
+                                            uniform unsigned int x, 
+                                            uniform unsigned int y);
+
+// Pixel getters. The (x,y) coordinate is relative to the full image frame.
+
+// Return Color pixel regardless of underlying pixel buffer format
+varying Color InputBuffer_getPixel(const uniform InputBuffer * uniform buffer, 
+                                                varying unsigned int x, 
+                                                varying unsigned int y);
+// Return Rgb888 pixel. Pixel buffer format must be RGB888.
+varying ByteColor InputBuffer_getRgb888Pixel(const uniform InputBuffer * uniform buffer, 
+                                                          varying unsigned int x, 
+                                                          varying unsigned int y);
+// Return Rgba8888 pixel. Pixel buffer format must be RGBA8888.
+varying ByteColor4 InputBuffer_getRgba8888Pixel(const uniform InputBuffer * uniform buffer, 
+                                                             varying unsigned int x, 
+                                                             varying unsigned int y);
+// Return float pixel. Pixel buffer format must be FLOAT.
+varying float InputBuffer_getFloatPixel(const uniform InputBuffer * uniform buffer, 
+                                                     varying unsigned int x, 
+                                                     varying unsigned int y);
+// Return Vec2f pixel. Pixel buffer format must be FLOAT2.
+varying Vec2f InputBuffer_getFloat2Pixel(const uniform InputBuffer * uniform buffer, 
+                                                      varying unsigned int x, 
+                                                      varying unsigned int y);
+// Return Vec3f pixel. Pixel buffer format must be FLOAT3.
+varying Vec3f InputBuffer_getFloat3Pixel(const uniform InputBuffer * uniform buffer, 
+                                                      varying unsigned int x, 
+                                                      varying unsigned int y);
+// Return Vec4f pixel. Pixel buffer format must be FLOAT4.
+varying Vec4f InputBuffer_getFloat4Pixel(const uniform InputBuffer * uniform buffer, 
+                                                      varying unsigned int x, 
+                                                      varying unsigned int y);
+
+uniform unsigned int InputBuffer_getWidth(const uniform InputBuffer * uniform buffer);
+uniform unsigned int InputBuffer_getHeight(const uniform InputBuffer * uniform buffer);
+uniform Format InputBuffer_getFormat(const uniform InputBuffer * uniform buffer);
+

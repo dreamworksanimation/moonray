@@ -1,0 +1,575 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/ColorSpace.isph>
+#include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Mat4.isph>
+
+// Returns angle in range in [-pi,pi]
+inline varying float rangeAngle(varying float angle)
+{
+    while (angle > sPi) angle -= sTwoPi;
+    while (angle < -sPi) angle += sTwoPi;
+    return angle;
+}
+
+//----------------------------------------------------------------------------
+
+// Convenience conversion function used internally to convert from
+// roughness to exponent
+inline varying float
+roughness2Exponent(const varying float roughness)
+{
+    return 2.0f * rcp(roughness * roughness);
+}
+
+inline varying Vec2f
+roughness2Exponent(const varying Vec2f &roughness)
+{
+    return 2.0f * rcp(roughness * roughness);
+}
+
+
+inline varying float
+exponent2Roughness(const varying float exponent)
+{
+    return sSqrtTwo * rsqrt(exponent);
+}
+
+inline varying Vec2f
+exponent2Roughness(const varying Vec2f &exponent)
+{
+    // TODO: Add Vec2 rsqrt method
+    return Vec2f_ctor(sSqrtTwo * rsqrt(exponent.x),
+                      sSqrtTwo * rsqrt(exponent.y));
+}
+
+
+// Conversion from roughness to width (in radians)
+inline varying float
+roughness2Width(const varying float roughness)
+{
+    // See rats test rats/material/base/roughness_comparison
+    static const float factor = 55.0f * sPi / 180.0f;
+
+    const float exponent = roughness2Exponent(roughness);
+    const float width = factor * pow(exponent, -0.8f);
+
+    return width;
+}
+
+inline varying Vec2f
+roughness2Width(const varying Vec2f &roughness)
+{
+    // See rats test rats/material/base/roughness_comparison
+    static const float factor = 55.0f * sPi / 180.0f;
+
+    const Vec2f exponent = roughness2Exponent(roughness);
+    Vec2f width;
+    width.x = factor * pow(exponent.x, -0.8f);
+    width.y = factor * pow(exponent.y, -0.8f);
+
+    return width;
+}
+
+
+inline varying float
+width2Roughness(const varying float width)
+{
+    // See inverse conversion above
+    static const float factor = 180.0f / (sPi * 55.0f);
+    static const float e = 1.0f / (2.0f * 0.8f);
+
+    const float roughness = sSqrtTwo * pow(factor * width, e);
+
+    return roughness;
+}
+
+inline varying Vec2f
+width2Roughness(const varying Vec2f &width)
+{
+    // See inverse conversion above
+    static const float factor = 180.0f / (sPi * 55.0f);
+    static const float e = 1.0f / (2.0f * 0.8f);
+
+    Vec2f roughness;
+    roughness.x = sSqrtTwo * pow(factor * width.x, e);
+    roughness.y = sSqrtTwo * pow(factor * width.y, e);
+
+    return roughness;
+}
+
+// Dispersion Support Via Abbe Numbers
+
+// The following function computes three different IORs for R, G and B wavelengths based on a concept called
+// the "abbe number" as defined in https://en.wikipedia.org/wiki/Abbe_number.
+// abbeNumber = (etaGreen - 1) / (etaBlue - etaRed) (1)
+// Assuming etaGreen as the average eta specified by the user and also
+// avgEta = (etaR + etaG + etaB) / 3.0f             (2)
+// we can solve for all IORs like below.
+inline void
+computeSpectralIOR(varying float eta,
+                   varying float abbeNumber,
+                   varying float& etaR,
+                   varying float& etaG,
+                   varying float& etaB)
+{
+    etaG = eta;
+    etaB = (etaG - 1.0f) / (2 * abbeNumber) + etaG;
+    etaR = 2 * etaG - etaB;
+}
+
+// Sampling R, G and B wavelengths with the weights (0.35f, 0.35f, 0.30f)
+// that all sum to 1.0f. Returning the appropritate dispersionColor and pdf.
+inline void
+sampleSpectralIOR(varying float& r,
+                  varying float etaR,
+                  varying float etaG,
+                  varying float etaB,
+                  varying float& sampleEta,
+                  varying float& pdf,
+                  varying Color& dispersionColor)
+{
+    if (r < 0.35f) {
+        r /= 0.35f;
+        // Red
+        dispersionColor = Color_ctor(1.0f, 0.0f, 0.0f);
+        sampleEta = etaR;
+        pdf = 0.35f;
+    } else if (r < 0.7f) {
+        r = (r - 0.35f) / 0.35f;
+        // Green
+        dispersionColor = Color_ctor(0.0f, 1.0f, 0.0f);
+        sampleEta = etaG;
+        pdf = 0.35f;
+    } else {
+        r = (r - 0.7f) / 0.3f;
+        // Blue
+        dispersionColor = Color_ctor(0.0f, 0.0f, 1.0f);
+        sampleEta = etaB;
+        pdf = 0.3f;
+    }
+}
+
+//----------------------------------------------------------------------------
+
+inline void
+squarifyRectangle(varying Vec3f &edge1, varying Vec3f &edge2)
+{
+    float length1 = length(edge1);
+    float length2 = length(edge2);
+    float newLength = sqrt(length1 * length2);
+
+    edge1 = edge1 * (newLength * rcp(length1));
+    edge2 = edge2 * (newLength * rcp(length2));
+}
+
+
+inline Vec3f
+computeLocalSphericalDirection(const varying float cosTheta,
+                               const varying float sinTheta,
+                               const varying float phi)
+{
+    Vec3f result;
+
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+    MNRY_ASSERT(isNormalized(result));
+
+    return result;
+}
+
+
+inline Vec3f
+computeLocalSphericalDirection(const varying float cosTheta,
+                               const varying float sinTheta,
+                               const varying float cosPhi,
+                               const varying float sinPhi)
+{
+    Vec3f result;
+
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+    MNRY_ASSERT(isNormalized(result));
+
+    return result;
+}
+
+
+/// Assumes all vectors are normalized, and N points on the side of Ng, not Ngf
+/// Returns N.dot(wo) (which is also N.dot(wi))
+inline float
+computeReflectionDirection(const varying Vec3f &N,
+                           const varying Vec3f &wo,
+                           varying Vec3f &wi)
+{
+    float NDotWo = dot(N, wo);
+
+    wi = -1.0f * wo + 2.0f * NDotWo * N;
+
+    // There is no need to normalize R here
+    MNRY_ASSERT(isNormalized(wi));
+
+    return NDotWo;
+}
+
+
+/// For details see:
+///     "Tracing ray differentials - Homan Igehy,
+///      Computer Graphics #33 (Annual Conference Series 1999)"
+inline void
+computeReflectionDirectionDifferential(const varying Vec3f &wo,
+                                       const varying Vec3f &wi,
+                                       const varying Vec3f &H,
+                                       const varying Vec3f &dNdx,
+                                       const varying Vec3f &dNdy,
+                                       varying Vec3f &dDdx,
+                                       varying Vec3f &dDdy)
+{
+    // Note: This is slightly incorrect, since we use the shading normal
+    // derivatives, not the H vector derivatives. But it is only important
+    // for this to be correct for mirror reflections (when H == N).
+    float Cx = dot(dDdx, H) - dot(wo, dNdx);
+    float Cy = dot(dDdy, H) - dot(wo, dNdy);
+
+    float dDotN = -dot(wo, H);
+    dDdx = dDdx - (2.0f * (dDotN * dNdx + Cx * H));
+    dDdy = dDdy - (2.0f * (dDotN * dNdy + Cy * H));
+}
+
+
+/// Same as computeReflectionDirectionDifferential(), but ignoring the effect
+/// of surface curvature
+inline void
+computeReflectionDirectionDifferentialNoCurvature(const varying Vec3f &wo,
+                                                  const varying Vec3f &wi,
+                                                  const varying Vec3f &H,
+                                                  varying Vec3f &dDdx,
+                                                  varying Vec3f &dDdy)
+{
+    dDdx = dDdx - 2.0f * (dot(dDdx, H) * H);
+    dDdy = dDdy - 2.0f * (dot(dDdy, H) * H);
+}
+
+
+/// Assumes all vectors are normalized, and N points on the side of Ng (it has
+/// not been flipped towards wo).
+/// Returns false in case of total internal reflection, and true otherwise.
+/// In the latter case, it also returns abs(N.dot(wo)) and abs(N.dot(wi)).
+inline bool
+computeRefractionDirection(const varying Vec3f &N,
+                           const varying Vec3f &wo,
+                           const varying float neta,
+                           varying Vec3f &wi,
+                           varying float &NdotWo,
+                           varying float &NdotWi)
+{
+    // Compute refraction vector
+    NdotWo = dot(N, wo);
+    Vec3f Nf;
+    if (NdotWo > 0.0f) {
+        Nf = N;
+    } else {
+        Nf = neg(N);
+    }
+    NdotWo = abs(NdotWo);
+
+    NdotWi = 1.0f - neta * neta * (1.0f - (NdotWo * NdotWo));
+    if (NdotWi < 0.0f) {
+        // Total internal reflection
+        return false;
+    }
+    NdotWi = sqrt(NdotWi);
+
+    float negMu = neta * NdotWo - NdotWi;
+    wi = negMu * Nf - neta * wo;
+
+    // There is no need to normalize R here
+    MNRY_ASSERT(isNormalized(wi));
+
+    return true;
+}
+
+
+/// For details see:
+///     "Tracing ray differentials - Homan Igehy,
+///      Computer Graphics #33 (Annual Conference Series 1999)"
+inline void
+computeRefractionDirectionDifferential(const varying float neta,
+        const varying Vec3f &wo, const varying Vec3f &wi, const varying Vec3f &H,
+        const varying Vec3f &dNdx, const varying Vec3f &dNdy,
+        varying Vec3f &dDdx, varying Vec3f &dDdy)
+{
+    // Note: This is slightly incorrect, since we use the shading normal
+    // derivatives, not the H vector derivatives. But it is only important
+    // for this to be correct for mirror reflections (when H == N).
+    float HdotWo = dot(H, wo);
+
+    // TODO: Check if this test is necessary
+    Vec3f Hf = H;
+    Hf = (HdotWo > 0.0f  ?  Hf  :  (neg(Hf)));
+    HdotWo = abs(HdotWo);
+
+    float Cx = dot(dDdx, Hf) - dot(wo, dNdx);
+    float Cy = dot(dDdy, Hf) - dot(wo, dNdy);
+
+    float HdotWi = dot(Hf, wi);
+    HdotWi = min(HdotWi, -sEpsilon);
+
+    float dmu = (neta + (neta * neta * HdotWo / HdotWi));
+    float dmudx = dmu * Cx;
+    float dmudy = dmu * Cy;
+
+    float mu = - neta * HdotWo - HdotWi;
+    dDdx = neta * dDdx - (mu * dNdx + dmudx * Hf);
+    dDdy = neta * dDdy - (mu * dNdy + dmudy * Hf);
+}
+
+
+/// H can be very small if wo and wi are almost the opposite vectors. This
+/// happens in the unfortunate event when the sampled H vector was almost
+/// at 90 degrees from wo. In that case we can't re-construct H
+/// and return false. We return a normalized H and true otherwise.
+inline varying bool
+computeNormalizedHalfVector(const varying Vec3f &wo, const varying Vec3f &wi, varying Vec3f &H)
+{
+    const uniform float halfVectorLengthMin = 0.001f;
+
+    H = wo + wi;
+
+    float lengthH = length(H);
+    if (lengthH > halfVectorLengthMin) {
+        H = H * rcp(lengthH);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+/// H is always pointing towards medium with lowest IOR, but only if wo and wi
+/// are pointing on opposite side of the surface (wrt. N).
+inline bool
+computeNormalizedRefractionHalfVector(const varying float iorWo, const varying Vec3f &wo,
+        const varying float iorWi, const varying Vec3f &wi, varying Vec3f &H)
+{
+    static const float halfVectorLengthMinSqr = 0.001f * 0.001f;
+
+    H = neg(iorWo * wo + iorWi * wi);
+
+    float lengthHSqr = lengthSqr(H);
+    if (lengthHSqr > halfVectorLengthMinSqr) {
+        H = H * rsqrt(lengthHSqr);
+        return true;
+    } else {
+        return false;
+    }
+}
+
+//----------------------------------------------------------------------------
+
+/// pdf = cos(theta) / PI
+inline Vec3f
+sampleLocalHemisphereCosine(const varying float r1, const varying float r2)
+{
+    // Sample polar coordinates
+    float cosTheta = (r1 > 1.0f  ?  1.0f  :  sqrt(r1));
+    float sinTheta = sqrt(1.0f - r1);
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+inline void
+localHemisphereCosineDifferentials(varying float r1,
+                                   const varying float r2,
+                                   varying Vec3f &dDdr1,
+                                   varying Vec3f &dDdr2)
+{
+    // See lib/rendering/pbr/doc/diffuse_scatter_derivatives.mw for Maple
+    // source code on how we got to this result
+
+    // The derivative gets very big close to the equator and the pole
+    // (because of the division by cosTheta and sinTheta below)
+    // Cap r1 to make sure we stay an epsilon away from both
+    const float minR1 = pow(cos(deg2rad(85.0f)), 2.0f);
+    const float maxR1 = 1.0f - minR1;
+    r1 = clamp(r1, minR1, maxR1);
+
+    float cosTheta = (r1 > 1.0f  ?  1.0f  :  sqrt(r1));
+    float sinTheta = sqrt(1.0f - r1);
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // We scale our derivatives down to account for multiple samples taken over
+    // the hemisphere
+    static const uniform float scale = 1.0f / 8.0f;
+    static const uniform float halfScale = 0.5f * scale;
+    static const uniform float twoPiScale = sTwoPi * scale;
+
+    dDdr1 = Vec3f_ctor(-halfScale * cosPhi / sinTheta,
+                       -halfScale * sinPhi / sinTheta,
+                        halfScale / cosTheta);
+    dDdr2 = Vec3f_ctor(-twoPiScale * sinPhi * sinTheta,
+                        twoPiScale * cosPhi * sinTheta,
+                        0.0f);
+}
+
+
+inline varying Vec3f
+sampleLocalHemisphereUniform(varying float r1, varying float r2)
+{
+    // Sample polar coordinates
+    float cosTheta = (r1 > 1.0f  ?  1.0f  :  r1);
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+
+/// pdf = 1.0f / (2.0f * PI * (1.0f - cosThetaMax))
+/// See next function for a more accurate version.
+inline varying Vec3f
+sampleLocalSphericalCapUniform(varying float r1, varying float r2, varying float cosThetaMax)
+{
+    float cosTheta = (1.0f - r1 * (1.0f - cosThetaMax));
+    cosTheta = (cosTheta > 1.0f  ?  1.0f  :  cosTheta);
+    float sinTheta = sqrt(1.0f - cosTheta * cosTheta);
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+
+/// A second version of the function above. This version produces much more accurate results when the cap
+/// becomes very small and cosThetaMax approaches 1.
+inline varying Vec3f
+sampleLocalSphericalCapUniform2(varying float r1, varying float r2, varying float versineThetaMax)
+{
+    float versineTheta = max(r1 * versineThetaMax, 0.0f);
+    float cosTheta = 1.0f - versineTheta;
+    float sineSquaredTheta = versineTheta * (2.0f - versineTheta);  // more accurate way to compute 1-cosTheta^2
+    float sinTheta = sqrt(sineSquaredTheta);
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+
+/// pdf = 1.0 / (4.0 * PI)
+inline varying Vec3f
+sampleSphereUniform(varying float r1, varying float r2)
+{
+    MNRY_ASSERT(r1 >= 0.0f && r1 < 1.0f);
+    MNRY_ASSERT(r2 >= 0.0f && r2 < 1.0f);
+    // Sample polar coordinates
+    float cosTheta = 1.0f - 2.0f * r1;
+    MNRY_ASSERT(cosTheta >= -1.0f  &&  cosTheta <= 1.0f);
+    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+
+    float phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+
+/// pdf = 1.0 / (4.0 * PI)
+inline varying Vec3f
+sampleSphereUniform(varying float r1, varying float r2, float &theta, float &phi)
+{
+    MNRY_ASSERT(r1 >= 0.0f && r1 < 1.0f);
+    MNRY_ASSERT(r2 >= 0.0f && r2 < 1.0f);
+    // Sample polar coordinates
+    float cosTheta = 1.0f - 2.0f * r1;
+    MNRY_ASSERT(cosTheta >= -1.0f  &&  cosTheta <= 1.0f);
+    theta = acos(cosTheta);
+    float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
+
+    phi = r2 * sTwoPi;
+    float cosPhi;
+    float sinPhi;
+    sincos(phi, &sinPhi, &cosPhi);
+
+    // Convert to direction in the reference frame
+    Vec3f result;
+    result.x = sinTheta * cosPhi;
+    result.y = sinTheta * sinPhi;
+    result.z = cosTheta;
+
+    return result;
+}
+
+enum TEXTURE_GammaMode
+{
+    TEXTURE_GAMMA_OFF  = 0,  // Don't apply gamma correction
+    TEXTURE_GAMMA_ON   = 1,  // Always apply gamma correction
+    TEXTURE_GAMMA_AUTO = 2,  // Apply gamma to 8-bit textures
+    TEXTURE_GAMMA_USD  = 3   // Apply gamma to 8-bit textures unless they are single channel
+};
+
+

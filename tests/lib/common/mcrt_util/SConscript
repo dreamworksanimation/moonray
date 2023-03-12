@@ -1,0 +1,23 @@
+Import('env')
+from os import path
+# --------------------------------------------------------------------
+
+# extract library name from current/parent path
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = env.DWAGlob('*.cc')
+ref        = []
+components = [
+   'atomic',
+   'common_mcrt_util'
+]
+
+if "icc" in env['CC']:
+   env['CXXFLAGS'].append('-wd177')  # declared but never referenced function
+   env['CXXFLAGS'].append('-wd1711') # assignment to statically allocated variable
+   env['CXXFLAGS'].append('-wd444')  # warning: destructor for base class is not virtual
+# --------------------------------------------------------------------
+
+ut = env.DWAPdevUnitTest(name, sources, ref, COMPONENTS=components)

@@ -1,0 +1,10 @@
+Import('env')
+
+components = [
+                'statistics',
+                'cppunit',
+                'pdevunit'
+             ]
+
+env.Unittest(components=components)
+

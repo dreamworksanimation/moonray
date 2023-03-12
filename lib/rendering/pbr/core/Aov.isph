@@ -1,0 +1,104 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Aov.isph
+#pragma once
+
+#include "Aov.hh"
+
+#include <moonray/rendering/pbr/integrator/BsdfSampler.isph>
+#include <moonray/rendering/pbr/light/Light.isph>
+#include "PbrTLState.isph"
+#include "RayState.isph"
+
+#include <moonray/rendering/mcrt_common/Ray.isph>
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+struct AovSchema
+{
+    AOV_SCHEMA_MEMBERS;
+};
+
+struct MaterialAovs
+{
+    MATERIAL_AOVS_MEMBERS;
+};
+
+struct LightAovs
+{
+    LIGHT_AOVS_MEMBERS;
+};
+
+inline unsigned uniform int
+AovSchema_numFloats(const uniform AovSchema &aovSchema) { return aovSchema.mNumChannels; }
+
+inline uniform bool
+AovSchema_empty(const uniform AovSchema &aovSchema) { return aovSchema.mNumChannels == 0; }
+
+
+void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
+                          const uniform AovSchema &aovSchema,
+                          const varying uint32_t cameraId,
+                          const uniform LightAovs &lightAovs,
+                          const uniform MaterialAovs &materialAovs,
+                          const varying Intersection &isect,
+                          const varying RayDifferential &ray,
+                          uniform intptr_t scene,
+                          const varying Bsdf &bsdf,
+                          const varying Color &ssAov,
+                          const varying BsdfSampler * uniform bSampler,
+                          const varying BsdfSample * uniform bsmps,
+                          varying float pixelWeight,
+                          varying uint32_t pixel,
+                          varying uint32_t deepDataHandle,
+                          varying uint32_t filmIdx,
+                          varying int lpeStateId);
+
+void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
+                          const uniform AovSchema &aovSchema,
+                          const varying uint32_t cameraId,
+                          const uniform LightAovs &lightAovs,
+                          const uniform MaterialAovs &materialAovs,
+                          const varying Intersection &isect,
+                          const varying RayDifferential &ray,
+                          uniform intptr_t scene,
+                          const varying Bsdf &bsdf,
+                          const varying Color &ssAov,
+                          const varying BsdfSlice &bsdfSlice,
+                          varying float pixelWeight,
+                          varying uint32_t pixel,
+                          varying uint32_t deepDataHandle,
+                          varying uint32_t filmIdx,
+                          varying int lpeStateId);
+
+void aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
+                       const uniform AovSchema &aovSchema,
+                       const varying uint32_t cameraId,
+                       const uniform LightAovs &lightAovs,
+                       const varying Color &value,
+                       varying int lpeStateId,
+                       varying uint32_t pixel,
+                       varying uint32_t deepDataHandle,
+                       varying uint32_t filmIdx);
+                          
+void aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
+                                  const uniform FrameState &fs,
+                                  const varying RayState * uniform rayState,
+                                  const varying Bsdf &bsdf);
+
+uniform bool LightAovs_hasEntries(const uniform LightAovs * uniform lightAovs);
+
+varying int LightAovs_scatterEventTransition(const uniform LightAovs * uniform lightAovs,
+                                             varying int lpeStateId,
+                                             const varying Bsdf &bsdf,
+                                             const varying BsdfLobe &lobe);
+
+varying int LightAovs_lightEventTransition(const uniform LightAovs * uniform lightAovs,
+                                           varying int lpeStateId,
+                                           const uniform Light * varying light);
+
+varying int LightAovs_emissionEventTransition(const uniform LightAovs * uniform lightAovs,
+                                              varying int lpeStateId,
+                                              const varying Bsdf &bsdf);
+

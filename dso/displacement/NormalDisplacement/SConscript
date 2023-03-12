@@ -1,0 +1,24 @@
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['../../../bart_tools'])
+# ---------------------------------------------------------------
+
+name = 'dso_normaldisplacement'
+target = 'NormalDisplacement.so'
+cc_source = ['NormalDisplacement.cc']
+ispc_source = ['NormalDisplacement.ispc']
+json_source = ['NormalDisplacement.json']
+components = [
+    'rendering_shading',
+    'scene_rdl2',
+    'shading_ispc',
+    'texturing_sampler'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)
+env.DWAComponent(name, COMPONENTS=components)

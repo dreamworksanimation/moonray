@@ -1,0 +1,434 @@
+{
+    "name": "BaseMaterial",
+    "type": "Material",
+    "attributes": {
+        "attrDiffuse": {
+            "name": "diffuse",
+            "type": "Bool",
+            "default": "true",
+            "group": "Diffuse"
+        },
+        "attrDiffuseColor": {
+            "name": "diffuse_color",
+            "label": "diffuse color",
+            "aliases": [ "diffuse color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Diffuse",
+            "metadata": {
+                "recolorable": "true",
+                "recolorSample": "true"
+            }
+        },
+        "attrDiffuseFactor": {
+            "name": "diffuse_factor",
+            "label": "diffuse factor",
+            "aliases": [ "diffuse factor" ],
+            "type": "Float",
+            "default": "1.0f",
+            "group": "Diffuse"
+        },
+        "attrSpecular": {
+            "name": "specular",
+            "type": "Bool",
+            "default": "true",
+            "group": "Specular"
+        },
+        "attrSpecularColor": {
+            "name": "specular_color",
+            "label": "specular color",
+            "aliases": [ "specular color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Specular",
+            "metadata": {
+                "recolorable": "true"
+            }
+        },
+        "attrSpecularFactor": {
+            "name": "specular_factor",
+            "label": "specular factor",
+            "aliases": [ "specular factor" ],
+            "type": "Float",
+            "default": "0.1f",
+            "group": "Specular"
+        },
+        "attrRetroreflectivity": {
+            "name": "retroreflectivity",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Specular"
+        },
+        "attrSpecularRoughness": {
+            "name": "specular_roughness",
+            "label": "specular roughness",
+            "aliases": [ "specular roughness" ],
+            "type": "Float",
+            "default": "0.3f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Specular"
+        },
+        "attrDirectionalDiffuse": {
+            "name": "directional_diffuse",
+            "label": "directional diffuse",
+            "aliases": [ "directional diffuse" ],
+            "type": "Bool",
+            "default": "true",
+            "group": "Directional Diffuse"
+        },
+        "attrDirectionalDiffuseColor": {
+            "name": "directional_diffuse_color",
+            "label": "directional diffuse color",
+            "aliases": [ "directional diffuse color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Directional Diffuse"
+        },
+        "attrDirectionalDiffuseFactor": {
+            "name": "directional_diffuse_factor",
+            "label": "directional diffuse factor",
+            "aliases": [ "directional diffuse factor" ],
+            "type": "Float",
+            "default": "0.0f",
+            "group": "Directional Diffuse"
+        },
+        "attrDirectionalDiffuseRoughness": {
+            "name": "directional_diffuse_roughness",
+            "label": "directional diffuse roughness",
+            "aliases": [ "directional diffuse roughness" ],
+            "type": "Float",
+            "default": "0.5f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Directional Diffuse"
+        },
+        "attrTranslucency": {
+            "name": "translucency",
+            "type": "Bool",
+            "default": "true",
+            "group": "Translucency"
+        },
+        "attrTranslucencyColor": {
+            "name": "translucency_color",
+            "label": "translucency color",
+            "aliases": [ "translucency color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Translucency"
+        },
+        "attrTranslucencyFactor": {
+            "name": "translucency_factor",
+            "label": "translucency factor",
+            "aliases": [ "translucency factor" ],
+            "type": "Float",
+            "default": "0.0f",
+            "group": "Translucency"
+        },
+        "attrTranslucencyFalloff": {
+            "name": "translucency_falloff",
+            "label": "translucency falloff",
+            "aliases": [ "translucency falloff" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Translucency"
+        },
+        "attrTranslucencyRadius": {
+            "name": "translucency_radius",
+            "label": "translucency radius",
+            "aliases": [ "translucency radius" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Translucency"
+        },
+        "attrTransmission": {
+            "name": "transmission",
+            "type": "Bool",
+            "default": "true",
+            "group": "Transmission"
+        },
+        "attrTransmissionColor": {
+            "name": "transmission_color",
+            "label": "transmission color",
+            "aliases": [ "transmission color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Transmission"
+        },
+        "attrTransmissionFactor": {
+            "name": "transmission_factor",
+            "label": "transmission factor",
+            "aliases": [ "transmission factor" ],
+            "type": "Float",
+            "default": "0.0f",
+            "group": "Transmission"
+        },
+        "attrTranslucentDiffuse": {
+            "name": "translucent_diffuse",
+            "label": "translucent diffuse",
+            "aliases": [ "translucent diffuse" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Translucent Diffuse"
+        },
+        "attrTranslucentDiffuseColor": {
+            "name": "translucent_diffuse_color",
+            "label": "translucent diffuse color",
+            "aliases": [ "translucent diffuse color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Translucent Diffuse"
+        },
+        "attrTranslucentDiffuseFactor": {
+            "name": "translucent_diffuse_factor",
+            "label": "translucent diffuse factor",
+            "aliases": [ "translucent diffuse factor" ],
+            "type": "Float",
+            "default": "1.0f",
+            "group": "Translucent Diffuse"
+        },
+        "attrOpacity": {
+            "name": "opacity",
+            "type": "Bool",
+            "default": "true",
+            "group": "Opacity"
+        },
+        "attrOpacityFactor": {
+            "name": "opacity_factor",
+            "label": "opacity factor",
+            "aliases": [ "opacity factor" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Opacity"
+        },
+        "attrEmission": {
+            "name": "emission",
+            "type": "Bool",
+            "default": "true",
+            "group": "Emission"
+        },
+        "attrEmissionColor": {
+            "name": "emission_color",
+            "label": "emission color",
+            "aliases": [ "emission color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Emission"
+        },
+        "attrEmissionFactor": {
+            "name": "emission_factor",
+            "label": "emission factor",
+            "aliases": [ "emission factor" ],
+            "type": "Float",
+            "default": "0.0f",
+            "group": "Emission"
+        },
+        "attrInputNormal": {
+            "name": "input_normal",
+            "label": "input normal",
+            "aliases": [ "input normal" ],
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrInputNormalSpace": {
+            "name": "input_normal_space",
+            "label": "input normal space",
+            "aliases": [ "input normal space" ],
+            "comment": "Specifies what space the input normal is in.  Usually this is tangent space for texture maps and render space for projections",
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "group": "Normal",
+            "enum": {
+                "tangent": "0",
+                "render": "1"
+            },
+            "default": "0"
+        },
+        "attrInputNormalDial": {
+            "name": "input_normal_dial",
+            "label": "input normal dial",
+            "aliases": [ "input normal dial" ],
+            "type": "Float",
+            "default": "1.0f"
+        },
+        "attrUseFresnel": {
+            "name": "use_fresnel",
+            "label": "use fresnel",
+            "aliases": [ "use fresnel" ],
+            "type": "Bool",
+            "default": "true"
+        },
+        "attrFresnelFactor": {
+            "name": "fresnel_factor",
+            "label": "fresnel factor",
+            "aliases": [ "fresnel factor" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrAnisotropy": {
+            "name": "anisotropy",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrAnisotropicDirection": {
+            "name": "anisotropic_direction",
+            "label": "anisotropic direction",
+            "aliases": [ "anisotropic direction" ],
+            "type": "Vec2f",
+            "default": "Vec2f(1.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrIndexOfRefraction": {
+            "name": "index_of_refraction",
+            "label": "index of refraction",
+            "aliases": [ "index of refraction" ],
+            "type": "Float",
+            "default": "1.0f",
+            "comment": "affects transmission and translucency"
+        },
+        "attrCastsCaustics": {
+            "name": "casts_caustics",
+            "label": "casts caustics",
+            "aliases": [ "casts caustics" ],
+            "type": "Bool",
+            "default": "false"
+        },
+        "attrIridescence": {
+            "name": "iridescence",
+            "type": "Bool",
+            "default": "false",
+            "group": "Iridescence"
+        },
+        "attrIridescenceFactor": {
+            "name": "iridescence_factor",
+            "label": "iridescence factor",
+            "aliases": [ "iridescence factor" ],
+            "type": "Float",
+            "default": "1.0f",
+            "group": "Iridescence",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "overall multiplier on effect of iridescence"
+        },
+        "attrIridescencePrimaryColor": {
+            "name": "iridescence_primary_color",
+            "label": "iridescence primary color",
+            "aliases": [ "iridescence primary color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 0.0f, 0.0f)",
+            "group": "Iridescence",
+            "comment": "First color to interpolate from around the hue wheel"
+        },
+        "attrIridescenceSecondaryColor": {
+            "name": "iridescence_secondary_color",
+            "label": "iridescence secondary color",
+            "aliases": [ "iridescence secondary color" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 0.0f, 0.0f)",
+            "group": "Iridescence",
+            "comment": "Second color to interpolate to around the hue wheel"
+        },
+        "attrIridescenceFlipHueDirection": {
+            "name": "iridescence_flip_hue_direction",
+            "label": "iridescence flip hue direction",
+            "aliases": [ "iridescence flip hue direction" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Iridescence"
+        },
+        "attrIridescenceThickness": {
+            "name": "iridescence_thickness",
+            "label": "iridescence thickness",
+            "aliases": [ "iridescence thickness" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Iridescence",
+            "comment": "Controls how much the color spectrum is repeated"
+        },
+        "attrIridescenceExponent": {
+            "name": "iridescence_exponent",
+            "label": "iridescence exponent",
+            "aliases": [ "iridescence exponent" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Iridescence",
+            "comment": "Tightens or broadens the distribution of colors"
+        },
+        "attrIridescenceAt0": {
+            "name": "iridescence_at_0_incidence",
+            "label": "iridescence at 0 incidence",
+            "aliases": [ "iridescence at 0 incidence" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Iridescence",
+            "comment": "Iridescence effect at 0 degree viewing angle"
+        }
+    },
+    "components": {
+        "Diffuse": {
+            "color": "attrDiffuseColor",
+            "factor": "attrDiffuseFactor",
+            "show": "attrDiffuse"
+        },
+        "Specular": {
+            "color": "attrSpecularColor",
+            "factor": "attrSpecularFactor",
+            "show": "attrSpecular"
+        },
+        "DirectionalDiffuse": {
+            "color": "attrDirectionalDiffuseColor",
+            "factor": "attrDirectionalDiffuseFactor",
+            "show": "attrDirectionalDiffuse"
+        },
+        "Translucency": {
+            "color": "attrTranslucencyColor",
+            "factor": "attrTranslucencyFactor",
+            "show": "attrTranslucency"
+        },
+        "Transmission": {
+            "color": "attrTransmissionColor",
+            "factor": "attrTransmissionFactor",
+            "show": "attrTransmission"
+        },
+        "TranslucentDiffuse": {
+            "color": "attrTranslucentDiffuseColor",
+            "factor": "attrTranslucentDiffuseFactor",
+            "show": "attrTranslucentDiffuse"
+        },
+        "Emission": {
+            "color": "attrEmissionColor",
+            "factor": "attrEmissionFactor",
+            "show": "attrEmission"
+        }
+    },
+
+    "labels": {
+        "aovDiffuse": "diffuse",
+        "aovSpecular": "specular",
+        "aovDirectionalDiffuse": "directional diffuse",
+        "aovTranslucency": "translucency",
+        "aovTransmission": "transmission"
+    },
+    
+    "normals": {
+        "Input": {
+            "value": "attrInputNormal",
+            "dial": "attrInputNormalDial",
+            "space": "attrInputNormalSpace"
+        }
+    }
+}

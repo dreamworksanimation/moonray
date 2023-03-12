@@ -1,0 +1,307 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Bssrdf.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Fresnel.isph>
+
+#include <moonray/rendering/shading/ispc/BsdfComponent.isph>      // Needed for SubsurfaceType definition.
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+//----------------------------------------------------------------------------
+
+struct TraceSet;
+
+///
+/// @struct Bssrdf Bssrdf.isph <rendering/shading/ispc/bssrdf/Bssrdf.isph>
+/// @brief Base class to implement a Bssrdf with importance sampling.
+///
+/// The integrator uses a local multiple scattering sampling as the
+/// method described in:
+/// [2] "Efficient Rendering of Local Subsurface Scattering", Mertens et al.,
+///     Pacific Conference on Computer Graphics and Applications, 2003
+/// The integrator uses a global multiple scattering sampling as the
+/// approximation described in:
+/// [4] "Efficient rendering of human skin", D'Eon et al., EGSR 2007
+///
+
+enum SubsurfaceProperty {
+    SUBSURFACE_PROPERTY_NONE         = 0,
+    SUBSURFACE_PROPERTY_COLOR        = 1 << 0,
+    SUBSURFACE_PROPERTY_RADIUS       = 1 << 1,
+    SUBSURFACE_PROPERTY_PBR_VALIDITY = 1 << 2
+};
+
+#define BSSRDF_BASE                             \
+    uniform intptr_t mEvalFn;                   \
+    uniform intptr_t mSampleLocalFn;            \
+    uniform intptr_t mPdfLocalFn;               \
+    uniform intptr_t mGetPropertyFn;            \
+    uniform intptr_t mShowFn;                   \
+    uniform int mType;                          \
+    uniform int mFresnelMask;                   \
+    uniform int mMask;                          \
+    uniform int mLabel;                         \
+    uniform int mPropertyFlags;                 \
+    varying Fresnel * uniform mFresnel;         \
+    varying ReferenceFrame mFrame;              \
+    varying Color mScale;                       \
+    varying float mMaxRadius;                   \
+    const uniform TraceSet * uniform mBssrdfTraceSet;   \
+    const uniform Material * uniform mMaterial; \
+    uniform intptr_t mEvalNormalFn
+
+struct Bssrdf
+{
+    BSSRDF_BASE;
+};
+
+/// show function (print misc info)
+typedef void (* uniform BssrdfShowFn)(const varying Bssrdf * const uniform sss,
+                                      const uniform uint8_t ntab);
+
+
+/// @{
+/// Derived types implement evaluation and local sampling interface via
+/// these function pointers
+typedef varying Color (* uniform BssrdfEvalFn)(
+        const varying Bssrdf * uniform bssrdf,
+        varying float r, uniform bool global);
+
+typedef varying float (* uniform BssrdfSampleLocalFn)(
+        const varying Bssrdf * uniform bssrdf,
+        varying float r1, varying float r2, varying Vec3f &dPi, varying float &r);
+
+typedef varying float (* uniform BssrdfPdfLocalFn)(
+        const varying Bssrdf * uniform bssrdf,
+        varying float r);
+
+typedef uniform bool (* uniform BssrdfGetPropertyFn)(
+        const varying Bssrdf * uniform bssrdf,
+        uniform SubsurfaceProperty property,
+        varying float * uniform dest);
+/// @}
+
+/// @brief base-class constructor
+inline void
+Bssrdf_init(varying Bssrdf * uniform bssrdf,
+        BssrdfEvalFn evalFn,
+        BssrdfSampleLocalFn sampleLocalFn,
+        BssrdfPdfLocalFn pdfLocalFn,
+        BssrdfGetPropertyFn getPropertyFn,
+        BssrdfShowFn showFn,
+        const uniform SubsurfaceType type,
+        const varying Vec3f &N,
+        const uniform int propertyFlags,
+        const uniform Material * uniform material,
+        const uniform intptr_t evalNormalFn)
+{
+    bssrdf->mEvalFn = (intptr_t)evalFn;
+    bssrdf->mSampleLocalFn = (intptr_t)sampleLocalFn;
+    bssrdf->mPdfLocalFn = (intptr_t)pdfLocalFn;
+    bssrdf->mGetPropertyFn = (intptr_t)getPropertyFn;
+    bssrdf->mShowFn = (intptr_t)showFn;
+
+    bssrdf->mType = type;
+    bssrdf->mFresnelMask = 0;
+    bssrdf->mMask = lanemask();
+    bssrdf->mLabel = 0;
+    bssrdf->mPropertyFlags = propertyFlags;
+
+    bssrdf->mFresnel = nullptr;
+    ReferenceFrame_init(bssrdf->mFrame, N);
+    bssrdf->mScale = sWhite;
+    bssrdf->mMaxRadius = 0.0f;
+
+    bssrdf->mBssrdfTraceSet = 0;
+    bssrdf->mMaterial = material;
+    bssrdf->mEvalNormalFn = evalNormalFn;
+}
+
+/// @brief call lobe show function which prints out misc
+/// info specific to each lobe type
+inline void
+Bssrdf_show(const varying Bssrdf * const uniform sss,
+              const uniform uint8_t ntab)
+{
+    uniform BssrdfShowFn show = (uniform BssrdfShowFn) sss->mShowFn;
+    if (show != NULL) show(sss, ntab);
+}
+
+/// @brief is the bssrdf active for the current lane?
+inline varying bool
+isActive(const varying Bssrdf * uniform bssrdf)
+{
+    return (bssrdf != nullptr) && (bool)((1 << programIndex) & bssrdf->mMask);
+}
+
+/// @brief is the fresnel object active on the current lane?
+/// true if the fresnel itself is active (based on its mask), and
+/// the bssrdf's fresnelMask is active.  This basically boils down to
+/// was the fresnel created (Fresnel::mMask) and set (Bssrdf::mFresnelMask)
+/// on the current lane
+inline varying bool
+isFresnelActive(const varying Bssrdf * uniform bssrdf)
+{
+    return (bssrdf->mFresnel != nullptr) && (isActive(bssrdf->mFresnel)) &&
+        (bool)((1 << programIndex) & bssrdf->mFresnelMask);
+}
+
+
+/// A bssrdf can be scaled by a color.
+inline void
+Bssrdf_setScale(varying Bssrdf * uniform bssrdf,
+                const varying Color &scale)
+{
+    bssrdf->mScale = scale;
+}
+
+inline varying Color
+Bssrdf_getScale(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mScale;
+}
+
+
+/// The bssrdf takes ownership of the Fresnel object.
+/// This fresnel object is a transmission fresnel, so make sure to wrap your
+/// actual fresnel closure in a OneMinus*Fresnel adapter.
+inline void
+Bssrdf_setTransmissionFresnel(varying Bssrdf * uniform bssrdf,
+                              varying Fresnel * uniform fresnel)
+{
+    bssrdf->mFresnel = fresnel;
+    bssrdf->mFresnelMask = lanemask();
+}
+
+inline const varying Fresnel * uniform
+Bssrdf_getTransmissionFresnel(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mFresnel;
+}
+
+
+/// The bssrdf can have a trace set
+inline void
+Bssrdf_setTraceSet(varying Bssrdf * uniform bssrdf,
+                   const uniform TraceSet * uniform traceSet)
+{
+    bssrdf->mBssrdfTraceSet = traceSet;
+}
+
+inline const uniform TraceSet * uniform
+Bssrdf_getTraceSet(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mBssrdfTraceSet;
+}
+
+/// Sampling API:
+
+/// This function returns Rd(r), the diffuse reflectance
+/// The radius r should be in render space
+/// The global flag tells the bssrdf whether this is for local scattering
+/// or global scattering.
+/// Important note: it is the responsibility of the integrator to query
+/// getTransmissionFresnel() and to apply it accordingly. Unlike for Bsdf,
+/// the result of eval() does NOT contain any fresnel term.
+inline varying Color
+Bssrdf_eval(const varying Bssrdf * uniform bssrdf, varying float r,
+        uniform bool global = false)
+{
+    MNRY_ASSERT(bssrdf->mEvalFn != 0);
+    BssrdfEvalFn evalFn = (BssrdfEvalFn)bssrdf->mEvalFn;
+    return evalFn(bssrdf, r, global);
+}
+
+/// Sample a position around the origin, in the tangent plane as defined by N.
+/// We also return the distance r from the origin for the sampled position.
+/// It's up to the integrator to re-project the sampled points onto the surface.
+/// We return the pdf of sampling dPi with respect to surface area
+/// measure (this is sTwoPi * r away from the radial pdf of sampling r).
+inline varying float
+Bssrdf_sampleLocal(const varying Bssrdf * uniform bssrdf,
+                   varying float r1, varying float r2, varying Vec3f &dPi,
+                   varying float &r)
+{
+    MNRY_ASSERT(bssrdf->mSampleLocalFn != 0);
+    BssrdfSampleLocalFn sampleLocalFn = (BssrdfSampleLocalFn)bssrdf->mSampleLocalFn;
+    return sampleLocalFn(bssrdf, r1, r2, dPi, r);
+}
+
+/// This is only needed for unit-testing and verify that the pdf integrates to 1.
+inline varying float
+Bssrdf_pdfLocal(const varying Bssrdf * uniform bssrdf, varying float r)
+{
+    MNRY_ASSERT(bssrdf->mPdfLocalFn != 0);
+    BssrdfPdfLocalFn pdfLocalFn = (BssrdfPdfLocalFn)bssrdf->mPdfLocalFn;
+    return pdfLocalFn(bssrdf, r);
+}
+
+inline varying Color
+Bssrdf_diffuseReflectance(const varying Bssrdf * uniform bssrdf)
+{
+    return sWhite;
+}
+
+/// Sample a direction going into the sub-surface, to go search for global
+/// scattering, through a thin layer. It's up to the caller to trace through
+/// the volume to find the back-side of the thin layer (Pi, r) and apply the
+/// Bssrdf accordingly.
+/// We return the pdf of sampling the direction ws with respect to the
+/// solid angle measure.
+// TODO: Move cosThetaMax to ctor ?
+varying float Bssrdf_sampleGlobal(const varying Bssrdf * uniform bssrdf,
+                                  varying float r1, varying float r2,
+                                  varying float cosThetaMax, varying Vec3f &ws);
+
+
+/// This is the maximum radius the integrator should use to integrate
+/// subsurface scattering. Beyond this radius, the function Rd(d) is
+/// negligibly small.
+inline varying float
+Bssrdf_getMaxRadius(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mMaxRadius;
+}
+
+inline const varying ReferenceFrame * uniform
+Bssrdf_getFrame(const varying Bssrdf * uniform bssrdf)
+{
+    return &bssrdf->mFrame;
+}
+
+/// A label can be set on a bssrdf
+inline void
+Bssrdf_setLabel(varying Bssrdf * uniform bssrdf, uniform int label)
+{
+    // Check for a valid AOV
+    if (label != -1)
+        bssrdf->mLabel = label;
+}
+
+inline uniform int
+Bssrdf_getLabel(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mLabel;
+}
+
+inline uniform bool
+Bssrdf_hasProperty(const varying Bssrdf * uniform bssrdf,
+                   uniform SubsurfaceProperty property)
+{
+    return (uniform bool) bssrdf->mPropertyFlags & property;
+}
+
+inline uniform int
+Bssrdf_getPropertyFlags(const varying Bssrdf * uniform bssrdf)
+{
+    return bssrdf->mPropertyFlags;
+}
+
+uniform bool Bssrdf_getProperty(const varying Bssrdf * uniform bssrdf,
+                                uniform SubsurfaceProperty property,
+                                varying float * uniform dest);
+
+//----------------------------------------------------------------------------
+

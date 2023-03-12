@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'glib-2.0',
+  LIBS = [
+        'glib-2.0'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

@@ -1,0 +1,307 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file HairUtil.h
+/// $Id$
+///
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+
+static const uniform float sSqrtPiOver8 = 0.626657069f;
+
+// Utility Functions For Converting std::pow() into a set of multiplications
+// From PBRTv3: pow() is usually implemented as : exp(log(a)*power)
+// These transcendental functions -exp and log - are, usually, much slower than multiplications.
+// This provides the motivation to convert r^k where k is known at compile time into a set of multiplications.
+// In the hair code, we calculate r^20 and r^22 to convert roughness into variance for linear perception.
+// NOTE: This is implemented using templates in the scalar code, but we can't do that here.
+inline varying float
+HairUtil_Pow2(const varying float v)
+{
+    return v*v;
+}
+
+inline varying float
+HairUtil_Pow3(const varying float v)
+{
+    return v*v*v;
+}
+
+inline varying float
+HairUtil_Pow4(const varying float v)
+{
+    const float p2 = HairUtil_Pow2(v);
+    return p2 * p2;
+}
+
+inline varying float
+HairUtil_Pow20(const varying float v)
+{
+    const float p4 = HairUtil_Pow4(v);
+    const float p8 =  p4 * p4;
+    const float p16 = p8 * p8;
+    return p16 * p4;
+}
+
+inline varying float
+HairUtil_Pow22(const varying float v)
+{
+    return HairUtil_Pow20(v) * HairUtil_Pow2(v);
+}
+
+/// -----------------------------------------------------------------------------------------
+/// Implementing Common Functions from:
+/// [1] An Energy-conserving Hair Reflectance Model - Sig'11
+/// [2] A Practical and Controllable Hair and Fur Model for Production Path Tracing - EGSR'16
+/// -----------------------------------------------------------------------------------------
+
+inline varying float
+HairUtil_safeSqrt(const varying float x)
+{
+    return (x > 0) ? sqrt(x) : 0.0f;
+}
+
+inline varying float
+HairUtil_sqr(const varying float x)
+{
+    return x * x;
+}
+
+// Hyperbolic function sinh, none provided in ispc
+inline varying float
+HairUtil_sinh(const varying float x)
+{
+    return (exp(x) - exp(-x)) / 2;
+}
+
+// From [2] Section 4.1
+// Converts roughness (0,1) into longitudinal variance to linearize
+// the visual response for the *Energy Conserving Longitudinal*.
+inline varying float
+HairUtil_longitudinalVar(const varying float r)
+{
+    MNRY_ASSERT(r > 0.0f && r < 1.0f);
+    const float v = HairUtil_sqr(0.726f * r + 0.812f * r * r +
+                                 3.7f * HairUtil_Pow20(r));
+    return v;
+}
+
+// From [2] Section 4.1
+// Convert roughness (0,1) into azimuthal variance to linearize
+// the visual response for the *Trimmed Logistic Function*.
+inline varying float
+HairUtil_azimuthalVar(const varying float r)
+{
+    MNRY_ASSERT(r > 0.0f && r < 1.0f);
+    const float v = sSqrtPiOver8 * (0.265f * r + 1.194f * r * r +
+                                    5.372f * HairUtil_Pow22(r));
+    return max(v, 0.05f);
+}
+
+// From [2], Section 4.2
+// Convert HairColor to Absorption Coeffs
+inline varying Color
+HairUtil_computeAbsorptionCoefficients(const varying Color &hairColor,
+                                       const varying float aziRoughness)
+{
+    Color sigmaA = sBlack;
+    const float aziRoughnessP3 = HairUtil_Pow3(aziRoughness);
+    const float aziRoughnessP4 = aziRoughnessP3 * aziRoughness;
+    const float aziRoughnessP5 = aziRoughnessP4 * aziRoughness;
+    const float denom = 5.969f - 0.215f * aziRoughness + 2.532f * HairUtil_sqr(aziRoughness) -
+                        10.73f * aziRoughnessP3 + 5.574f * aziRoughnessP4 +
+                        0.245f * aziRoughnessP5;
+    if (!isZero(denom)) {
+        const varying float * uniform hairColorPtr = asArray(hairColor);
+        varying float * uniform sigmaAPtr = asArray(sigmaA);
+        for (uniform int i = 0; i < 3; ++i) {
+            sigmaAPtr[i] = HairUtil_sqr(log(max(hairColorPtr[i], sEpsilon)) / denom);
+        }
+    }
+    return sigmaA;
+}
+
+// From [1], Section 6
+inline varying float
+HairUtil_besselIO(const varying float x)
+{
+    float sum = 0.0f;
+    float x2i = 1.0f;
+    uniform int ifact = 1;
+    uniform int i4 = 1;
+    for (uniform int i = 0; i < 10; ++i) {
+        if (i > 1) ifact *= i;
+        sum += x2i / i4 / ifact / ifact;
+        x2i *= x * x;
+        i4 *= 4;
+    }
+    return sum;
+}
+
+// From [1], Section 6
+inline varying float
+HairUtil_logBesselIO(const varying float x)
+{
+    if (x > 12.0f) {
+        const float oneOverX = rcp(x);
+        return x + 0.5f * (-log(sTwoPi) + log(oneOverX + 0.125f*oneOverX));
+    }
+    else {
+        return log(HairUtil_besselIO(x));
+    }
+}
+
+// From [1], Section 4.2
+// Graph Comparison of Gaussian Vs This Function:
+// https://www.desmos.com/calculator/xuok8nijyn
+// Proof that this integrates to one:
+// WolframAlpha Link - https://tinyurl.com/m7bceaj
+inline varying float
+HairUtil_deonLongitudinalM(const varying float variance,
+                           const varying float sinThetaI, const varying float cosThetaI,
+                           const varying float sinThetaO, const varying float cosThetaO)
+{
+    if (variance < sEpsilon)
+        return 0.0f;
+
+    const float oneOverV = rcp(variance);
+    const float b = sinThetaI*sinThetaO*oneOverV;
+    const float x = cosThetaI*cosThetaO*oneOverV;
+
+    float result = 1.0f;
+    if (variance <= 0.1f) {
+        result = exp(HairUtil_logBesselIO(x) - b - oneOverV + 0.6931f + log(0.5f*oneOverV));
+    } else {
+        result = 0.5f*oneOverV*exp(-b)*HairUtil_besselIO(x) / HairUtil_sinh(oneOverV);
+    }
+    return result;
+}
+
+// From [2], Appendix A
+// https://en.wikipedia.org/wiki/Logistic_distribution
+inline varying float
+HairUtil_logisticFunction(varying float x,
+                          const varying float s)
+{
+    x = abs(x);
+    const float r = -x/s;
+    return exp(r) / (s * HairUtil_sqr(1 + exp(r)));
+}
+
+// From [2], Appendix A
+// https://en.wikipedia.org/wiki/Logistic_distribution
+inline varying float
+HairUtil_logisticCDF(const varying float x,
+                     const varying float s)
+{
+    return 1.0f / (1.0f + exp(-x/s));
+}
+
+// From [2], Appendix A
+// Note - Appendix A has a mistake in the normalization factor
+// which we've corrected here
+inline varying float
+HairUtil_trimmedLogisticFunction(const varying float x,
+                                 const varying float s,
+                                 const varying float a,
+                                 const varying float b)
+{
+    return HairUtil_logisticFunction(x, s) / (HairUtil_logisticCDF(b,s) - HairUtil_logisticCDF(a,s));
+}
+
+// This follows from the CDF derivation, not explained in Appendix A
+// Comments for the Derivation Inline
+inline varying float
+HairUtil_sampleTrimmedLogistic(const varying float r,
+                               const varying float s,
+                               const varying float a,
+                               const varying float b)
+{
+    // Normalization Factor
+    const float k = HairUtil_logisticCDF(b, s) - HairUtil_logisticCDF(a, s);
+    // logisticCdf(x, s, a, b) = epsilon
+    // Therefore, 1/k * (logisticCdf(x, s) - logisticCdf(a,s)) = epsilon
+    // Therefore, logisticCdf(x,s) = epsilon * k + logisticCdf(a,s)
+    const float logisticCdfX = (r * k + HairUtil_logisticCDF(a,s));
+    float x = 0.0f;
+    if (!isZero(logisticCdfX)) {
+        // Therefore, 1/(1+exp(-x/s)) = epsilon * k + logisticCdf(a,s) = logisticCdfX
+        // Therefore, exp(-x/s) = 1/logisticCdfX - 1
+        // Therefore, x = -s * log(1/logisticCdfX - 1)
+        x = -s * log(1.0f/logisticCdfX - 1.0f);
+    }
+    return clamp(x, a, b);
+}
+
+inline varying float
+HairUtil_unitGaussianForShade(const varying float stddev, const varying float x)
+{
+    if (stddev < sEpsilon)
+        return 0.0f;
+
+    // Normalized Gaussian lobe used at shade time
+    // The denominator normalizes the lobe (otherwise would give a peak value
+    // of 1.0)
+    return exp(-(x * x) / (2.0f * stddev * stddev)) / (stddev * sSqrtTwoPi);
+}
+
+// NOTE : added for future use in case we ever use Cauchy lobe shading.
+inline varying float
+HairUtil_unitCauchyForShade(const varying float stddev, const varying float x)
+{
+    if (stddev < sEpsilon)
+        return 0.0f;
+
+    // An unnormalized Cauchy lobe with sigma^2 in the
+    // numerator gives you always a peak value of 1.0
+    const float retval = stddev * stddev;
+    return retval / (x*x + retval);
+}
+
+inline varying float
+HairUtil_unitCauchyForSample(float varying stddev, float varying x)
+{
+    if (stddev < sEpsilon)
+        return 0.0f;
+
+    // A normalized Cauchy used for samples with sigma in
+    // the numerator gives a total integral of 1.0.
+    const float retval = stddev * stddev;
+    return stddev / (x*x + retval);
+}
+
+// Code for creating two new random numbers using one
+// From PBRT Section 4.3.3
+// https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+inline varying uint32_t
+HairUtil_compact1By1(varying uint32_t x) {
+    // TODO: as of Haswell, the PEXT instruction could do all this in a
+    // single instruction.
+    // x = -f-e -d-c -b-a -9-8 -7-6 -5-4 -3-2 -1-0
+    x &= 0x55555555;
+    // x = --fe --dc --ba --98 --76 --54 --32 --10
+    x = (x ^ (x >> 1)) & 0x33333333;
+    // x = ---- fedc ---- ba98 ---- 7654 ---- 3210
+    x = (x ^ (x >> 2)) & 0x0f0f0f0f;
+    // x = ---- ---- fedc ba98 ---- ---- 7654 3210
+    x = (x ^ (x >> 4)) & 0x00ff00ff;
+    // x = ---- ---- ---- ---- fedc ba98 7654 3210
+    x = (x ^ (x >> 8)) & 0x0000ffff;
+    return x;
+}
+
+// Create Two Unique Random Numbers using a Morton Curve
+// https://fgiesen.wordpress.com/2009/12/13/decoding-morton-codes/
+inline varying Vec2f
+HairUtil_demuxFloat(varying float f) {
+    assert(f >= 0 && f < 1);
+    // explicitly cast to double here to prevent compiler from converting
+    // the ull to a float
+    uint64_t v = (double)f * (1ull << 32);
+    uint32_t bits[2] = {HairUtil_compact1By1(v), HairUtil_compact1By1(v >> 1)};
+    return Vec2f_ctor(bits[0] / (float)(1 << 16), bits[1] / (float)(1 << 16));
+}
+

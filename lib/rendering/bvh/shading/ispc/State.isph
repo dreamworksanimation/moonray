@@ -1,0 +1,123 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file State.isph
+
+#pragma once
+
+#include <moonray/rendering/bvh/shading/ispc/Intersection.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/common/math/ispc/autodiff.isph>
+
+struct Arena;
+struct TextureSystem;
+struct TextureHandle;
+
+
+// "typedef Intersection State;" doesn't work so we declare the State
+// structure as its own identical copy and asAState convenience functions
+// for the renderer to use
+
+/// @class State Shading.isph <shading/Shading.isph>
+/// @brief Shading state P, N, etc... needed by shaders
+/// TODO: move to "internal" directory and provide getter functions
+///       for everything?
+struct State
+{
+    INTERSECTION_MEMBERS;
+};
+
+DEFINE_BASIC_INTERSECTION_STATE_INTERFACE(State)
+
+inline const varying State &
+asAState(const varying Intersection &isect)
+{
+    return *((const varying State * uniform)&isect);
+}
+
+inline varying State &
+asAState(varying Intersection &isect)
+{
+    return *((varying State * uniform)&isect);
+}
+
+inline const varying Intersection &
+asAnIntersection(const varying State &state)
+{
+    return *((const varying Intersection * uniform)&state);
+}
+
+inline varying Intersection &
+asAnIntersection(varying State &state)
+{
+    return *((varying Intersection * uniform)&state);
+}
+
+//---------------------------------------------------------------------------
+
+inline varying bool
+blendMips(const varying State &me)
+{
+    PathType pathType = getPathType(me);
+    return pathType != PATH_TYPE_INDIRECT_DIFFUSE;
+}
+
+inline varying bool
+isHifi(const varying State &me)
+{
+    return isHifi(asAnIntersection(me));
+}
+
+inline varying float getMediumIor(const varying State &me)
+{
+    // TODO - revist once overlapping dielectrics is in vector mode
+    // MOONRAY-3083 Medium IOR is not Implementented in Vector Mode Yet
+    return 1.f;
+}
+
+/// Normal derivatives
+inline varying Vec3f
+getdNdx(const varying State &me)
+{
+    return getdNdx(asAnIntersection(me));
+}
+
+inline varying Vec3f
+getdNdy(const varying State &me)
+{
+    return getdNdy(asAnIntersection(me));
+}
+
+/// Whether the primitive attribute with specified key is provided in this State
+varying bool isProvided(const varying State &me, const varying int key);
+
+/// Whether the primitive attribute ds derivative with specified key
+/// is provided in this State
+varying bool isdsProvided(const varying State &me, const varying int key);
+
+/// Whether the primitive attribute dt derivative with specified key
+/// is provided in this State
+varying bool isdtProvided(const varying State &me, const varying int key);
+
+///
+/// Other convenience derivatives
+///
+
+inline varying Vec3f
+getdPdx(const varying State &me)
+{
+    return me.mdPds * me.mdSdx + me.mdPdt * me.mdTdx;
+}
+
+inline varying Vec3f
+getdPdy(const varying State &me)
+{
+    return me.mdPds * me.mdSdy + me.mdPdt * me.mdTdy;
+}
+
+inline varying Vec3f
+getdPdz(const varying State &me)
+{
+    return Vec3f_ctor(0.f);
+}
+

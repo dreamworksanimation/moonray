@@ -1,0 +1,71 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = env.DWAGlob('*.cc')
+sources   += env.DWAGlobRecursive('*.cc', "bsdf")
+sources   += env.DWAGlobRecursive('*.cc', "bssrdf")
+components = [
+                'common_file_resource',
+                'common_mcrt_util',
+                'texturing_sampler',
+                'rendering_mcrt_common',
+                'bvh_shading_ispc',
+                'rendering_bvh_shading',
+                'shading_ispc',
+                'shading_eval_ispc',
+                'tbb',
+                'texturing_sampler',
+                'render_logging',
+                'oiio'
+             ]
+env.DWAUseComponents(components)
+
+public_headers = [
+    'BasicTexture.h',
+    'BsdfBuilder.h',
+    'BsdfComponent.h',
+    'BsdfUtil.hh',
+    'Displacement.h',
+    'EvalAttribute.h',
+    'EvalShader.h',
+    'MaterialApi.h',
+    'MapApi.h',
+    'OpenVdbSampler.h',
+    'RampControl.h',
+    'Shading.h',
+    'ShadingUtil.h',
+    'ColorCorrect.h',
+    'Iridescence.h',
+    'UdimTexture.h',
+    'Util.h'
+]
+# --------------------------------------------------------------------------
+env.DWAInstallInclude(public_headers, 'moonray/rendering/shading')
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'],
+                 CPPPATH = [env.Dir('.'),
+                            env.Dir('$BUILD_DIR/lib')])
+
+env.AppendUnique(CPPPATH = [
+        env.Dir('.'),
+        env.Dir('#/lib')])
+
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+incdir = [
+    str(env.Dir('../../..').srcnode()),
+    env.Dir('.'),
+    env.Dir('./ispc')
+]
+env.DWAComponent(name, LIBS=target, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)
+

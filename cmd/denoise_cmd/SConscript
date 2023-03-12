@@ -1,0 +1,16 @@
+Import('env')
+# ------------------------------------------
+name       = 'denoise'
+sources    = env.DWAGlob('*.cc')
+components = [
+    'denoiser',
+    'oiio',
+    'render_logging',
+    'rendering_rndr',
+    'render_util',
+]
+# ------------------------------------------
+()
+env.DWAUseComponents(components)
+prog = env.DWAProgram(name, sources)
+env.DWAInstallBin(prog)

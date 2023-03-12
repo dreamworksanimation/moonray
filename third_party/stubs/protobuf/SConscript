@@ -1,0 +1,12 @@
+Import('env')
+
+env.DWAComponent(
+    'protobuf',
+    LIBS = ['protobuf'],
+    CPPPATH_THIRDPARTY = ['/rel/third_party/google/protobuf/2.4.1/include'],
+    LIBPATH = ['/rel/third_party/google/protobuf/2.4.1/lib'],
+    # When http://jira.anim.dreamworks.com/browse/SW-7472 has been completed, use the new third-party location
+    #CPPPATH_THIRDPARTY = ['/work/rd/raas/third_party/google/protobuf/3.0.0b1/include'],
+    #LIBPATH = ['/work/rd/raas/third_party/google/protobuf/3.0.0b1/lib'],
+    COMPONENTS = []
+)

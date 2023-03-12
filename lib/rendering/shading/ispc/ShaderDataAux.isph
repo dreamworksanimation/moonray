@@ -1,0 +1,28 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+
+#include <moonray/rendering/bvh/shading/ispc/Xform.isph>
+#include <scene_rdl2/common/math/ispc/Mat4.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+// Returns untransformed "ref_P" primitive attribute data
+bool
+SHADER_DATA_getRefP(const uniform int refPKey,
+                    uniform ShadingTLState* uniform tls,
+                    const varying State& state,
+                    varying Vec3f * uniform refP);
+
+// Returns untransformed "ref_N" primitive attribute data
+bool
+SHADER_DATA_getRefN(const uniform int refPKey,
+                    const uniform int refNKey,
+                    uniform ShadingTLState* uniform tls,
+                    const varying State& state,
+                    varying Vec3f * uniform refN);
+

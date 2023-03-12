@@ -1,0 +1,23 @@
+Import('env')
+# --------------------------------------------------------------------
+name       = 'geom_api'
+sources    = env.DWAGlob('*.cc')
+ref        = []
+components = [
+              'opensubdiv',
+              'pdevunit',
+              'render_util',
+              'rendering_geom',
+              'rendering_shading',
+              'scene_rdl2'
+              ]
+
+ccflags = ['-DOPENSUBDIV_HAS_TBB', '-DHBR_ADAPTIVE']
+env.Prepend (CCFLAGS=ccflags)
+if 'icc' in env['CC']:
+    env['CXXFLAGS'].append('-wd2157,1572,1599,522,47')
+    env['CXXFLAGS'].append('-wd2203') # warning: cast discards qualifiers from target type
+    env['CXXFLAGS'].append('-wd1711') # warning: assignment to statically allocated variable
+
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref, COMPONENTS=components)

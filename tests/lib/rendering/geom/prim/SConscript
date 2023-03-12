@@ -1,0 +1,37 @@
+Import('env')
+# --------------------------------------------------------------------
+name       = 'primitive'
+#sources    = env.DWAGlob('*.cc')
+sources    = [
+              'TestInterpolator.cc',
+              'TestPrimAttr.cc',
+              'TestPrimUtils.cc',
+              'main.cc']
+ref        = []
+components = [
+              'opensubdiv',
+              'pdevunit',
+              'render_util',
+              'rendering_geom',
+              'scene_rdl2'
+              ]
+ccflags = []
+env.Prepend (CCFLAGS=ccflags)
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref, COMPONENTS=components)
+
+# -----------------------------------------------------------------------------
+# Test Dsos
+
+import os.path
+
+def addTestDso(test, dsoPath):
+    dsoName = os.path.basename(dsoPath)
+    dso = env.DWARdl2Dso(env.File(dsoPath + '/' + dsoName + '.so'),
+                         [dsoPath + '/' + dsoName + '.cc'],
+                         RDL2_ATTRIBUTES_SOURCE = dsoPath + '/attributes.cc')
+    env.Depends(test, dso['source'])
+
+
+addTestDso(ut, 'dso/geometry/TestGeometry')
+addTestDso(ut, 'dso/material/TestMaterial')

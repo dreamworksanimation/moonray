@@ -1,0 +1,16 @@
+Import('env')
+# --------------------------------------------------------------------
+name       = 'common_time'
+sources    = env.DWAGlob('*.cc')
+ref        = []
+components = [
+              'common_time',
+              'tbb'
+              ]
+
+if "icc" in env['CC']:
+   env['CXXFLAGS'].append('-wd177')  # declared but never referenced function
+   env['CXXFLAGS'].append('-wd1711') # assignment to statically allocated variable
+# --------------------------------------------------------------------
+
+ut = env.DWAPdevUnitTest(name, sources, ref, COMPONENTS=components)

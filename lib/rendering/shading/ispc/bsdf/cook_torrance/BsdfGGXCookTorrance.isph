@@ -1,0 +1,114 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfGGXCookTorrance.isph
+#pragma once
+#include "BsdfCookTorrance.isph"
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+/// @class GGXCookTorranceBsdfLobe BsdfCookTorrance.isph <rendering/shading/bsdf/BsdfCookTorrance.isph>
+/// @brief The Cook-Torrance bsdf using GGX Distribution.
+struct GGXCookTorranceBsdfLobe
+{
+    COOK_TORRANCE_LOBE_BASE;
+};
+
+/// @brief evaluate a ggx cook torrance lobe
+varying Color
+GGXCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                             const varying BsdfSlice &slice,
+                             const Vec3f &wi,
+                             varying float * uniform pdf);
+
+/// @brief sample a ggx cook torrance lobe
+varying Color
+GGXCookTorranceBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                               const varying BsdfSlice &slice,
+                               varying float r1, varying float r2,
+                               varying Vec3f &wi, varying float &pdf);
+
+inline void
+GGXCookTorranceBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                             const uniform uint8_t ntab)
+{
+    const varying GGXCookTorranceBsdfLobe * uniform me =
+        (const varying GGXCookTorranceBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[GGXCookTorranceBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("roughness^2: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize an ggx cook torrance lobe
+inline void
+GGXCookTorranceBsdfLobe_init(varying GGXCookTorranceBsdfLobe * uniform lobe,
+                             const varying Vec3f &normal,
+                             const varying float roughness,
+                             const Color& favg,
+                             const Color& favgInv,
+                             float etaI = 1.0f,
+                             float etaT = 1.5f,
+                             bool coupledWithTransmission = false)
+{
+    // TODO: Should use CookTorranceBsdfLobe_init() ?
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_GGX_COOK_TORRANCE,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ GGXCookTorranceBsdfLobe_eval,
+                  /* sampleFn = */ GGXCookTorranceBsdfLobe_sample,
+                  /* albedoFn = */ CookTorranceBsdfLobe_albedo,                 // Fallback to CookTorranceBsdfLobe.
+                  /* differentialsFn = */ CookTorranceBsdfLobe_differentials,   // Fallback to CookTorranceBsdfLobe. 
+                  /* getPropertyFn = */ CookTorranceBsdfLobe_getProperty,       // Fallback to CookTorranceBsdfLobe. 
+                  /* showFn = */ GGXCookTorranceBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+
+    lobe->mInputRoughness = roughness;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    lobe->mRoughness = lobe->mInputRoughness * lobe->mInputRoughness;
+
+    // TODO: Smaller thresholds trigger nans
+    lobe->mRoughness = max(0.001f, lobe->mRoughness);
+
+    // Use a directional differential scale that varies with roughness
+    lobe->mdDFactor = CookTorrance_sdDFactorMin + lobe->mRoughness * CookTorrance_sdDFactorSlope;
+
+    lobe->mFavg = favg;
+    lobe->mFavgInv = favgInv;
+    lobe->mEtaI = etaI;
+    lobe->mEtaT = etaT;
+    lobe->mCoupledWithTransmission = coupledWithTransmission;
+}
+
+/// @brief allocate and add a Cook-Torrance lobe to a bsdf
+inline void
+GGXCookTorranceBsdfLobe_init(varying GGXCookTorranceBsdfLobe * uniform lobe,
+                             const varying Vec3f &normal,
+                             const varying float roughness)
+{
+    Color favg = sBlack;
+    Color favgInv = sBlack;
+    GGXCookTorranceBsdfLobe_init(lobe, normal, roughness,
+                                 favg, favgInv);
+}
+

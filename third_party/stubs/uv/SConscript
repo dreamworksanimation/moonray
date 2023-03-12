@@ -1,0 +1,16 @@
+Import('env')
+
+env.DWAComponent(
+  'uv',
+  LIBS = [
+  env.File('/rel/third_party/libuv/libuv-v0.10.29/libuv.so.0.10')
+        ],
+  CPPPATH_THIRDPARTY = [
+  '/rel/third_party/libuv/libuv-v0.10.29/include'
+        ],
+  LIBPATH = [
+        
+        ],
+  COMPONENTS = [
+  	]
+  )

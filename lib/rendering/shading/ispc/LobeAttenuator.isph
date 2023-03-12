@@ -1,0 +1,130 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+/// @file LobeAttenuator.isph
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+struct Arena;
+struct BsdfLobe;
+struct Bssrdf;
+struct Fresnel;
+struct LobeAttenuator;
+struct VelvetBRDF;
+struct VolumeSubsurface;
+
+/// -----------------------------------------------------------------------
+
+// Attenuation function types
+typedef varying BsdfLobe * uniform
+(*AttenuateLobeFnType) (const varying LobeAttenuator * uniform,
+                        uniform Arena * uniform,
+                        varying BsdfLobe * uniform);
+
+typedef void
+(*AttenuateBssrdfFunType) (const varying LobeAttenuator * uniform,
+                           uniform Arena * uniform,
+                           varying Bssrdf * uniform);
+
+typedef void
+(*AttenuateVolumeFnType) (const varying LobeAttenuator * uniform,
+                          uniform Arena * uniform,
+                          varying VolumeSubsurface * uniform);
+
+/// -----------------------------------------------------------------------
+
+#define LOBE_ATTENUATOR_MEMBERS                                         \
+    varying Vec3f                       mNormal;                        \
+    const varying Fresnel * uniform     mOneMinusFresnel;               \
+    uniform intptr_t                    mAttenuateLobeFn;               \
+    uniform intptr_t                    mAttenuateBssrdfFn;             \
+    uniform intptr_t                    mAttenuateVolumeFn;             \
+    uniform int                         mMask;
+
+// "Base" struct for all *Attenuator types
+struct LobeAttenuator { LOBE_ATTENUATOR_MEMBERS };
+
+// For lobes following mirror/microfacet BRDFs that have dielectric Fresnel behavior
+typedef LobeAttenuator SimpleAttenuator;
+void SimpleAttenuator_init(
+        varying SimpleAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        const varying Vec3f& N,
+        const varying float roughness,
+        const varying Fresnel * uniform fresnel);
+
+// For lobes following hair lobes that have Fresnel behavior
+typedef LobeAttenuator HairAttenuator;
+void HairAttenuator_init(
+        varying HairAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        const varying Fresnel * uniform fresnel);
+
+// For lobes following velvet lobes
+typedef LobeAttenuator VelvetAttenuator;
+void VelvetAttenuator_init(
+        varying VelvetAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        const varying VelvetBRDF& velvet,
+        varying float weight);
+
+// For lobes following clearcoat lobes
+struct ClearcoatAttenuator
+{
+    LOBE_ATTENUATOR_MEMBERS
+    varying float               mEtaI;
+    varying float               mEtaT;
+    uniform bool                mRefracts;
+    varying float               mThickness;
+    varying Color               mAttenuationColor;
+    varying float               mAttenuationWeight;
+    varying Fresnel * uniform   mExitingFresnel;
+};
+
+void ClearcoatAttenuator_init(
+        varying ClearcoatAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        const varying Vec3f& N,
+        varying float roughness,
+        varying float etaI,
+        varying float etaT,
+        uniform bool refracts,
+        varying float thickness,
+        const varying Color& attenuationColor,
+        varying float attenuationWeight,
+        varying Fresnel * uniform fresnel);
+
+// --------------------------------------------
+
+// These generic attenuation functions are called by BsdfBuilder and
+// forward the call to the appropriate specialized attenuation functions
+varying BsdfLobe * uniform
+LobeAttenuator_attenuate(
+        const varying LobeAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        varying BsdfLobe * const uniform lobe);
+
+void
+LobeAttenuator_attenuate(
+        const varying LobeAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        varying Bssrdf * const uniform bssrdf);
+
+void
+LobeAttenuator_attenuate(
+        const varying LobeAttenuator * uniform attenuator,
+        uniform Arena * uniform arena,
+        varying VolumeSubsurface * const uniform vs);
+
+/// @brief is this lobe active for the current lane?
+inline varying bool
+isActive(const varying LobeAttenuator* uniform lobe)
+{
+    return (lobe != NULL) && (bool)((1 << programIndex) & lobe->mMask);
+}
+
+

@@ -1,0 +1,397 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfBuilder.isph
+#pragma once
+#ifndef BSDFBUILDER_ISPH
+#define BSDFBUILDER_ISPH
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+// These flags are used to specify the desired effect on energy
+// distribution as BsdfComponents are sequentially added to the
+// BsdfBuilder via addComponent(). The methods behave as follows:
+//
+// -------------------------------------------------------------
+// BSDFBUILDER_ADDITIVE:
+// The component is simply added without any attenuation from
+// previously added components, nor will the component have
+// any effect in attenuating any subsequently added lobes.
+//
+// BSDFBUILDER_UNDER_PREVIOUS:
+// The component should be attenuated automatically by all
+// previously added lobes that were flagged as BSDFBUILDER_OVER_SUBSEQUENT.
+//
+// BSDFBUILDER_OVER_SUBSEQUENT:
+// The component should automatically attenuate all subsequently
+// added lobes that are flagged with BSDFBUILDER_UNDER_PREVIOUS
+//
+// BSDFBUILDER_PHYSICAL:
+// The component should both receive attenuation from previously
+// added components that are flagged as BSDFBUILDER_OVER_SUBSEQUENT,
+// as well as participate in attenuating any subsequently added components
+// flagged as BSDFBUILDER_UNDER_PREVIOUS
+// -------------------------------------------------------------
+//
+// For a typical energy-conserving material components should be
+// added using the BSDFBUILDER_PHYSICAL BsdfBuilderBehavior. Any components that
+// are added without both BSDFBUILDER_UNDER_PREVIOUS and BSDFBUILDER_OVER_SUBSEQUENT
+// will likely not conserve energy.
+enum BsdfBuilderBehavior
+{
+    BSDFBUILDER_ADDITIVE            = 0,
+    BSDFBUILDER_UNDER_PREVIOUS      = 1 << 0,
+    BSDFBUILDER_OVER_SUBSEQUENT     = 1 << 1,
+    BSDFBUILDER_PHYSICAL            = 1 << 0 | 1 << 1, // BSDFBUILDER_UNDER_PREVIOUS | BSDFBUILDER_OVER_SUBSEQUENT
+};
+
+// ---------------------------------------------------------------------------
+// Misc forward declarations
+struct Bsdf;
+struct Closure;
+struct Fresnel;
+struct LobeAttenuator;
+struct Material;
+struct State;
+struct ShadingTLState;
+struct BsdfBuilderImpl;
+struct BsdfBuilder
+{
+    varying BsdfBuilderImpl * uniform mImpl;
+};
+
+// ---------------------------------------------------------------------------
+// Available Bsdf components, see BsdfComponents.isph
+struct MicrofacetAnisotropicClearcoat;
+struct MicrofacetIsotropicClearcoat;
+struct MirrorClearcoat;
+struct MirrorBRDF;
+struct MirrorBTDF;
+struct MirrorBSDF;
+struct MicrofacetAnisotropicBRDF;
+struct MicrofacetIsotropicBRDF;
+struct MicrofacetAnisotropicBTDF;
+struct MicrofacetIsotropicBTDF;
+struct MicrofacetAnisotropicBSDF;
+struct MicrofacetIsotropicBSDF;
+struct LambertianBRDF;
+struct LambertianBTDF;
+struct FlatDiffuseBRDF;
+struct OrenNayarBRDF;
+struct DipoleDiffusion;
+struct NormalizedDiffusion;
+struct RandomWalkSubsurface;
+struct FabricBRDF;
+struct VelvetBRDF;
+struct EyeCausticBRDF;
+struct HairDiffuseBSDF;
+struct HairBSDF;
+struct HairRBRDF;
+struct HairTRTBRDF;
+struct HairTTBTDF;
+struct HairTRRTBRDF;
+struct GlitterFlakeBRDF;
+struct StochasticFlakesBRDF;
+struct ToonBRDF;
+struct ToonSpecularBRDF;
+struct HairToonSpecularBRDF;
+
+// ---------------------------------------------------------------------------
+// Functions for adding components (ie. "lobes") to the Bsdf
+void BsdfBuilder_addMicrofacetAnisotropicClearcoat(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetAnisotropicClearcoat& clearcoat,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMicrofacetIsotropicClearcoat(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetIsotropicClearcoat& clearcoat,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMirrorClearcoat(
+        varying BsdfBuilder& builder,
+        const varying MirrorClearcoat& clearcoat,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMirrorBRDF(
+        varying BsdfBuilder& builder,
+        const varying MirrorBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMirrorBTDF(
+        varying BsdfBuilder& builder,
+        const varying MirrorBTDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMirrorBSDF(
+        varying BsdfBuilder& builder,
+        const varying MirrorBSDF& bsdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int reflectionLabel,
+        const uniform int transmissionLabel);
+
+void BsdfBuilder_addMicrofacetAnisotropicBRDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetAnisotropicBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMicrofacetIsotropicBRDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetIsotropicBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMicrofacetAnisotropicBTDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetAnisotropicBTDF& btdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMicrofacetIsotropicBTDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetIsotropicBTDF& btdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addMicrofacetAnisotropicBSDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetAnisotropicBSDF& bsdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int reflectionLabel,
+        const uniform int transmissionLabel);
+
+void BsdfBuilder_addMicrofacetIsotropicBSDF(
+        varying BsdfBuilder& builder,
+        const varying MicrofacetIsotropicBSDF& bsdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int reflectionLabel,
+        const uniform int transmissionLabel);
+
+void BsdfBuilder_addToonBRDF(
+        varying BsdfBuilder& builder,
+        const varying ToonBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairToonSpecularBRDF(
+        varying BsdfBuilder& builder,
+        const varying HairToonSpecularBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addToonSpecularBRDF(
+        varying BsdfBuilder& builder,
+        const varying ToonSpecularBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addLambertianBRDF(
+        varying BsdfBuilder& builder,
+        const varying LambertianBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addLambertianBTDF(
+        varying BsdfBuilder& builder,
+        const varying LambertianBTDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addFlatDiffuseBRDF(
+        varying BsdfBuilder& builder,
+        const varying FlatDiffuseBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addOrenNayarBRDF(
+        varying BsdfBuilder& builder,
+        const varying OrenNayarBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addDipoleDiffusion(
+        varying BsdfBuilder& builder,
+        const varying DipoleDiffusion& bssrdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addNormalizedDiffusion(
+        varying BsdfBuilder& builder,
+        const varying NormalizedDiffusion& bssrdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addRandomWalkSubsurface(
+        varying BsdfBuilder& builder,
+        const varying RandomWalkSubsurface& sss,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addFabricBRDF(
+        varying BsdfBuilder& builder,
+        const varying FabricBRDF& bssrdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addVelvetBRDF(
+        varying BsdfBuilder& builder,
+        const varying VelvetBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addEyeCausticBRDF(
+        varying BsdfBuilder& builder,
+        const varying EyeCausticBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairDiffuseBSDF(
+        varying BsdfBuilder& builder,
+        const varying HairDiffuseBSDF& bsdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairBSDF(
+        varying BsdfBuilder& builder,
+        const varying HairBSDF& bsdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairRBRDF(
+        varying BsdfBuilder& builder,
+        const varying HairRBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairTRTBRDF(
+        varying BsdfBuilder& builder,
+        const varying HairTRTBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairTTBTDF(
+        varying BsdfBuilder& builder,
+        const varying HairTTBTDF& btdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addHairTRRTBRDF(
+        varying BsdfBuilder& builder,
+        const varying HairTRRTBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addGlitterFlakeBRDF(
+        varying BsdfBuilder& builder,
+        const varying GlitterFlakeBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+void BsdfBuilder_addStochasticFlakesBRDF(
+        varying BsdfBuilder& builder,
+        const varying StochasticFlakesBRDF& brdf,
+        const varying float weight,
+        const varying BsdfBuilderBehavior combineBehavior,
+        const uniform int label);
+
+// Specifies a radiance value to be emitted from the surface.
+// This effectively turns the object into a light source.
+void BsdfBuilder_addEmission(
+        varying BsdfBuilder& builder,
+        const varying Color& emission);
+
+// Set early termination - any primary ray paths are immediately
+// terminated on intersection.
+// This is used in the "CutoutMaterial", for example.
+void BsdfBuilder_setEarlyTermination(varying BsdfBuilder& builder);
+
+// Mark this Bsdf as belonging to "thin" geometry. In Moonray, "thin"
+// geometry (sometimes called "thin-walled") is any geometry that has
+// no interior/volume. Examples include:
+// * a sheet of paper modeled without thickness (single-sided)
+// * a leaf modeled without thickness (single-sided)
+// * a piece of cloth/sail modeled without thickness (single-sided)
+// * a window glass modeled without thickness (single-sided)
+// * a soap bubble, where the sphere is not solid but instead has "thin" walls
+//
+// Marking such geometry as "thin" is important as it informs the renderer
+// and materials so they can behave properly with respect to reflections
+// and refractions .
+void BsdfBuilder_setThinGeo(varying BsdfBuilder& builder);
+
+// Signal to the integrator that no light culling should be performed on
+// any of the diffuse lobes.  This allows a material to use completely arbitrary
+// shading normals that may diverge significantly from the geometric normal.
+// This is useful for certain NPR effects
+void BsdfBuilder_setPreventLightCulling(varying BsdfBuilder& builder,
+                                        uniform bool isPrevented);
+
+// Tells the BsdfBuilder than the next few lobes to be added should be
+// considered "adjacent" to eachother in terms of energy distribution.
+// In other words, any lobes that are added while the BsdfBuilder is
+// in "adjacent mode" will not affect eachother.  They will however
+// still be attenuated by any previously added  lobes and they will
+// attenuate any lobes that are added after endAdjacentComponents()
+// is called.
+void BsdfBuilder_startAdjacentComponents(varying BsdfBuilder& builder);
+void BsdfBuilder_endAdjacentComponents(varying BsdfBuilder& builder);
+
+// --------------------------------------------------------------
+// For internal use
+// --------------------------------------------------------------
+void BsdfBuilder_show(
+        varying BsdfBuilder& builder,
+        const uniform Material * const uniform material);
+
+void BsdfBuilder_init(
+        varying BsdfBuilder& builder,
+        varying Bsdf& bsdf,
+        uniform ShadingTLState& tls,
+        const varying State &state);
+
+// Temporary function to allow certain legacy materials direct
+// access to the Closire. This is required for now because we
+// do not support Schlick Fresnel through our shading API. This function
+// should be considered deprecated and removed as part of MOONSHINE-999.
+varying Closure * uniform
+BsdfBuilder_getClosure(const varying BsdfBuilder& builder);
+
+#endif // BSDFBUILDER_ISPH

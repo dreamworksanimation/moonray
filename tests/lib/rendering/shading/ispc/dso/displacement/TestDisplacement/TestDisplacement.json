@@ -1,0 +1,13 @@
+{
+    "name": "TestDisplacement",
+    "type": "Displacement",
+    "attributes": {
+        "attrHeight": {
+            "name": "height",
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "interface": "INTERFACE_MAP"
+        }
+    }
+}

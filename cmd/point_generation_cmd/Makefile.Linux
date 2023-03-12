@@ -1,0 +1,4 @@
+#CXXFLAGS = -Wall -Wextra -std=gnu++14 -O2 -g -I/rel/third_party/intelcompiler64/13.0.047_baseline/composer_xe_2013.0.047/tbb/include -DNDEBUG
+CXXFLAGS = -Wall -Wextra -std=gnu++14 -g -I/rel/third_party/intelcompiler64/13.0.047_baseline/composer_xe_2013.0.047/tbb/include -DNDEBUG
+LDFLAGS = -pthread -L/rel/third_party/intelcompiler64/13.0.047_baseline/composer_xe_2013.0.047/tbb/lib/intel64 -ltbb
+

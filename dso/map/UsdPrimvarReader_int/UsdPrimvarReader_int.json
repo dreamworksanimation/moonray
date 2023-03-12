@@ -1,0 +1,16 @@
+{
+    "name": "UsdPrimvarReader_int",
+    "type": "Map",
+    "directives": {
+        "include": ["lib/map/primvar/json/primvar.json"]
+    },
+    "attributes": {
+        "attrFallback": {
+            "name": "fallback",
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "fallback value to be returned if geometry fetch failed."
+        }
+    }
+}

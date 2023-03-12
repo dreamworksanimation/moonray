@@ -1,0 +1,151 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfUnder.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+/// Members of the BsdfLobe base class
+#define BSDF_UNDER_LOBE_BASE                               \
+    BSDF_LOBE_BASE;                                        \
+    Vec3f mN;                                              \
+    float mThickness;                                      \
+    Color mAttenuationColor;                               \
+    float mAttenuationWeight;                              \
+    int   mUnderLobeMask;                                  \
+    const varying BsdfLobe * uniform mUnder
+
+/// @class UnderBsdfLobe BsdfUnder.isph <rendering/shading/bsdf/BsdfUnder.isph>
+/// @brief under bsdf lobe
+struct UnderBsdfLobe
+{
+    BSDF_UNDER_LOBE_BASE;
+};
+
+/// @brief is this programindex active for the given lanemask
+inline varying bool
+isLaneActive(int mask)
+{
+    return (bool)((1 << programIndex) & mask);
+}
+
+/// @brief computes transmission color using distance traveled in the layer
+inline varying Color
+computeTransmission(const varying float thickness,
+                    const varying Color& attenuationColor,
+                    const varying float attenuationWeight,
+                    const varying float cosThetaR1,
+                    const varying float cosThetaR2)
+{
+    if (isZero(thickness)) return sWhite;
+
+    float rcp1 = 0.0f, rcp2 = 0.0f;
+    if (!isZero(cosThetaR1)) rcp1 = rcp(abs(cosThetaR1));
+    if (!isZero(cosThetaR2)) rcp2 = rcp(abs(cosThetaR2));
+
+    // length of light path within clearcoat
+    const float distanceTraveled = thickness * (rcp1 + rcp2);
+
+    /// The physical formula for attenuation is:
+    /// T = exp(absorptionCoeff * distanceTraveled)
+    /// For user convenience we allow specifying attenuationColor at unit distance which can be converted
+    /// into absorptionCoeff = log(attenuationColor)/1
+    /// Using the fact that exp(log(a)) = a,
+    /// T = pow(attenuationColor, distanceTraveled)
+
+    const Color T = Color_ctor(pow(attenuationColor.r, distanceTraveled),
+                               pow(attenuationColor.g, distanceTraveled),
+                               pow(attenuationColor.b, distanceTraveled));
+    return lerp(sWhite, T, attenuationWeight);
+}
+
+varying Color
+UnderBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                   const varying BsdfSlice &slice,
+                   const Vec3f &wi,
+                   varying float * uniform pdf);
+
+varying Color
+UnderBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                     const varying BsdfSlice &slice,
+                     varying float r1, varying float r2,
+                     varying Vec3f &wi, varying float &pdf);
+
+varying Color
+UnderBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                     const varying BsdfSlice &slice);
+
+void
+UnderBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                            const varying Vec3f &wo,
+                            const varying Vec3f &wi,
+                            varying float r1, varying float r2,
+                            const varying Vec3f &dNdx,
+                            const varying Vec3f &dNdy,
+                            varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+UnderBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                          uniform BsdfLobeProperty property,
+                          varying float * uniform dest);
+
+inline void
+UnderBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                   const uniform uint8_t ntab)
+{
+    const varying UnderBsdfLobe * uniform me =
+        (const varying UnderBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[UnderBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfLobe_show(me->mUnder, ntab+1);
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add an under lobe to a bsdf
+inline varying BsdfLobe * uniform
+UnderBsdfLobe_init(varying UnderBsdfLobe * uniform lobe,
+                   varying BsdfLobe * uniform under,
+                   const varying Vec3f &normal,
+                   const varying float thickness,
+                   const varying Color attenuationColor,
+                   const varying float attenuationWeight)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_UNDER,
+                  /* type = */ BsdfLobe_getType(under),
+                  /* differentialFlags = */ BsdfLobe_getDifferentialFlags(under),
+                  /* isSpherical = */ BsdfLobe_getIsSpherical(under),
+                  /* propertyFlags = */ BsdfLobe_getPropertyFlags(under),
+                  /* evalFn = */ UnderBsdfLobe_eval,
+                  /* evalFn = */ UnderBsdfLobe_sample,
+                  /* evalFn = */ UnderBsdfLobe_albedo,
+                  /* evalFn = */ UnderBsdfLobe_differentials,
+                  /* getPropertyFn = */ UnderBsdfLobe_getProperty,
+                  /* showFn = */ UnderBsdfLobe_show);
+
+    lobe->mN = normal;
+    lobe->mThickness = thickness;
+    lobe->mAttenuationColor = attenuationColor;
+    lobe->mAttenuationWeight = attenuationWeight;
+    lobe->mUnder = under;
+    // This lobe needs to have the same mask as the under lobe
+    // but keep track on whether this UnderLobe is active for
+    // whether to evaluate it or not
+    lobe->mUnderLobeMask = lobe->mMask;
+    lobe->mMask = under->mMask;
+}
+

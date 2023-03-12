@@ -1,0 +1,27 @@
+{
+    "name": "TestDebugMap",
+    "type": "Map",
+    "attributes": {
+        "attrMapType": {
+            "name": "map_type",
+            "label": "map type",
+            "aliases": [ "map type" ],
+            "type": "Int",
+            "default": "2",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "position": "0",
+                "texture st": "1",
+                "shading normal": "2",
+                "geometric normal": "3",
+                "dpds": "4",
+                "dpdt": "5",
+                "hair surface st": "6",
+                "dsdx": "7",
+                "dsdy": "8",
+                "dtdx": "9",
+                "dtdy": "10"
+            }
+        }
+    }
+}

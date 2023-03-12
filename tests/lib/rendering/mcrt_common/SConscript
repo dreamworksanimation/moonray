@@ -1,0 +1,26 @@
+Import('env')
+
+# --------------------------------------------------------------------
+
+name       = 'mcrt_common'
+sources    = []
+
+sources   += [
+              'AVXTest.cc',
+              'TestAosSoa.cc',
+              'main.cc',
+              ]
+
+ref        = []
+components = [
+              'common_math',
+              'common_time',
+              'common_except',
+              'pdevunit',
+              'render_util',
+              'scene_rdl2',
+              ]
+
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref,
+                         COMPONENTS=components, TIMEOUT=900)

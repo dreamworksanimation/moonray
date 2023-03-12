@@ -1,0 +1,126 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfAshikhminShirleyGlossy.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/Util.isph>
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float AshikhminShirley_sdDFactorMin = 1.0f;
+static const float AshikhminShirley_sdDFactorMax = 8.0f;
+static const float AshikhminShirley_sdDFactorSlope = (AshikhminShirley_sdDFactorMax - AshikhminShirley_sdDFactorMin);
+
+//----------------------------------------------------------------------------
+
+///
+/// @class AshikhminShirleyGlossyBsdfLobe BsdfAshikhminShirleyGlossy.isph <pbr/BsdfAshikhminShirleyGlossy.isph>
+/// @brief The Ashikhmin Shirley Glossy Anisotropic Brdf
+/// See the paper "An Anisotropic Phong BRDF ModelAn Anisotropic Phong BRDF Model",
+///               By Michael Ashikhmin and Peter Shirley
+///               Journal of Graphics Tools, 2000, vol. 5, p25-32.
+/// This corresponds to equation (4) of the paper, except for the Fresnel
+/// term. It's up to the material to set a SchlickFresnel via setFresnel()
+/// The importance sampling uses equation (9) and (10), and the pdf is equation (8).
+///
+struct AshikhminShirleyGlossyBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    
+    ReferenceFrame mFrame;
+    float mInputRoughnessU;
+    float mInputRoughnessV;
+    float mExponentU;
+    float mExponentV;
+    float mScaleFactor;
+    float mSampleFactor;
+    float mdDFactor;
+};
+
+
+/// @brief evaluate an Ashikhmin-Shirley lobe
+varying Color
+AshikhminShirleyGlossyBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          const Vec3f &wi,
+                          varying float * uniform pdf);
+
+/// @brief sample an Ashikhmin-Shirley lobe
+varying Color
+AshikhminShirleyGlossyBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+AshikhminShirleyGlossyBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+AshikhminShirleyGlossyBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getAttribute runctions
+uniform bool
+AshikhminShirleyGlossyBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                           uniform BsdfLobeProperty property,
+                                           varying float * uniform dest);
+
+/// @brief allocate and add an Ashikhmin-Shirley lobe to a bsdf
+inline void
+AshikhminShirleyGlossyBsdfLobe_init(varying AshikhminShirleyGlossyBsdfLobe * uniform lobe,
+                                    const varying Vec3f &N, 
+                                    const varying Vec3f &anisoDirection,
+                                    varying float roughnessU, 
+                                    varying float roughnessV)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_ASHIKHMIN_SHIRLEY,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ AshikhminShirleyGlossyBsdfLobe_eval,
+                  /* sampleFn = */ AshikhminShirleyGlossyBsdfLobe_sample,
+                  /* albedoFn = */ AshikhminShirleyGlossyBsdfLobe_albedo,
+                  /* differentialsFn = */ AshikhminShirleyGlossyBsdfLobe_differentials,
+                  /* getPropertyFn = */ AshikhminShirleyGlossyBsdfLobe_getProperty,
+                  /* showFn = */ NULL);
+
+    ReferenceFrame_init(lobe->mFrame, N, anisoDirection);
+
+
+    lobe->mInputRoughnessU = roughnessU;
+    lobe->mInputRoughnessV = roughnessV;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    roughnessU *= roughnessU;
+    roughnessV *= roughnessV;
+
+    // Convert roughness to exponent
+    lobe->mExponentU = roughness2Exponent(roughnessU);
+    lobe->mExponentV = roughness2Exponent(roughnessV);
+
+    lobe->mScaleFactor = sqrt((lobe->mExponentU + 1.0f) * (lobe->mExponentV + 1.0f)) / (8.0f * sPi);
+
+    lobe->mSampleFactor = sqrt((lobe->mExponentU + 1.0f) / (lobe->mExponentV + 1.0f));
+
+    // Use the sharper of the two roughnesses to derive a directional differential
+    // scale that varies with roughness
+    float minRoughness = min(roughnessU, roughnessV);
+    lobe->mdDFactor = AshikhminShirley_sdDFactorMin + minRoughness * AshikhminShirley_sdDFactorSlope;
+
+    // TODO: Set lobe category based on roughness
+}
+

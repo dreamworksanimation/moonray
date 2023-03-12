@@ -1,0 +1,87 @@
+Import('env')
+
+name       = 'pbr'
+# --------------------------------------------------------------------
+
+components = [
+    'atomic',
+    'common_except',
+    'common_math',
+    'math_ispc',
+    'render_util',
+    'rendering_mcrt_common',
+    'rendering_pbr',
+    'rendering_rndr',
+    'rendering_shading',
+    'pdevunit',
+    'scene_rdl2',
+    'tbb',
+    'oiio',
+]
+env.DWAUseComponents(components)
+
+# silence ISPC gather warnings
+env.AppendUnique(ISPCFLAGS = ['--wno-perf'])
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+# ISPC source files.
+sources, headers = env.IspcShared([
+    'BsdfFactory.ispc',
+    'TestBsdfOneSampler.ispc',
+    'TestBsdf.ispc',
+    'TestBssrdf.ispc',
+    'TestDistribution.ispc',
+    'TestLights.ispc',
+    'TestLightSetSampler.ispc',
+    'TestLightUtil.ispc',
+    'TestSampler.ispc',
+    'TestUtil.ispc',
+])
+
+# C++ source files.
+sources   += [
+    'TestBsdfCommon.cc',
+    'TestBsdfCommonTaskOneSampler.cc',
+    'TestBsdfCommonTaskSampler.cc',
+    'TestBsdfOneSampler.cc',
+    'TestBsdfOneSamplerv.cc',
+    'TestBsdfSampler.cc',
+    'TestBsdfv.cc',
+    'TestBsdfvTask.cc',
+    'TestBssrdf.cc',
+    'TestDebugRays.cc',
+    'TestDistribution.cc',
+    'TestLights.cc',
+    'TestLightSetSampler.cc',
+    'TestLightUtil.cc',
+    'TestSampler.cc',
+    'TestSceneContext.cc',
+    'main.cc',
+]
+
+# append cpppath for auto-generated ISPC headers
+env.AppendUnique(CPPPATH=env.Dir('.'))
+
+ref        = []
+dsodeps    = [
+    'RectLight.so',
+    'CylinderLight.so',
+    'DiskLight.so',
+    'SphereLight.so',
+    'SpotLight.so',
+    'DistantLight.so',
+    'EnvLight.so',
+    'MeshLight.so',
+    'ImageMap.so',
+]
+env.AppendUnique(CPPDEFINES=[('RDL2DSO_PATH', '\\"$INSTALL_DIR/rdl2dso\\"')])
+
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref,
+                         COMPONENTS=components, TIMEOUT=2400)
+for dep in dsodeps: env.Depends(ut, '$INSTALL_DIR/rdl2dso/' + dep)

@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'rt',
+  LIBS = [
+        'rt'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

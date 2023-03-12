@@ -1,0 +1,126 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file TransmissionAlbedo.isph
+/// $Id$
+///
+
+/*
+ * This file encodes the average directional albedo and
+ * the normalization factor required for the Cook-Torrance Microfacet BSDF(BRDF+BTDF).
+ * This class provides accessors to encapsulate the
+ * indexing into the albedo table. Values can be looked up as:
+ * E(etaT/etaI, cosThetaO, roughness)
+ * oneMinusEavg(etaT/etaI, roughness)
+ * These tables have been calculated using moonshine_devtools/compute_albedo
+ * Ref:
+ * A Microfacet Based Coupled Specular-Matte BRDF Model, Kelemen'01
+ *
+ * We also provide a separate (only (Fresnel*BRDF) table which is used to sample
+ * the reflection component which results in far less fireflies overall for
+ * transmissive surfaces).
+ */
+
+#pragma once
+
+// Albedo Tables
+#include "TransmissionAlbedo.inl"
+
+float 
+TransmissionAlbedo_netaRange(float eta)
+{
+    // IOR has been calculated for the range [1.05, 3.0]
+    return (eta-1.05f)/(3.05f-1.05f);
+}
+
+unsigned int
+TransmissionAlbedo_nIndex(float eta)
+{
+    float nZeroToOne = TransmissionAlbedo_netaRange(eta);
+    nZeroToOne = clamp(nZeroToOne, 0.0f, 1.0f);
+    const unsigned int i = (unsigned int)((nZeroToOne*(COMP-1)));
+    return i;
+}
+
+unsigned int
+TransmissionAlbedo_rIndex(float eta,
+                          float roughness,
+                          float &weight)
+{
+    const float i = TransmissionAlbedo_nIndex(eta) * COMP +
+                    roughness * (COMP - 1);
+    const float indexI = floor(i);
+    weight = (i-indexI);
+    return (unsigned int)(indexI);
+}
+
+void
+TransmissionAlbedo_index(float eta,
+                         float cosTheta,
+                         float roughness,
+                         float& w,
+                         unsigned int& iLow,
+                         unsigned int& iHigh)
+{
+    const unsigned int lIndex = TransmissionAlbedo_rIndex(eta, roughness, w);
+    const unsigned int hIndex = min(lIndex+1, COMP*COMP-1);
+    const float if1 = lIndex * COMP +
+              cosTheta * (COMP - 1);
+    const float if2 = hIndex * COMP +
+              cosTheta * (COMP - 1);
+    // Take cosTheta's ceiling for the index
+    iLow = (unsigned int)(ceil(if1));
+    iHigh = (unsigned int)(ceil(if2));
+}
+
+float
+TransmissionAlbedo_Eterm(float eta,
+                         float cosTheta,
+                         float roughness)
+{
+    float w;
+    unsigned int iLow, iHigh;
+    float e = 0.0f;
+    if (eta < 1.0f) {
+        TransmissionAlbedo_index(1.0f/eta, cosTheta, roughness,
+                                 w, iLow, iHigh);
+        e = lerp(TransmissionAlbedo_EExit[iLow],
+                 TransmissionAlbedo_EExit[iHigh],
+                 w);
+    } else {
+        TransmissionAlbedo_index(eta, cosTheta, roughness,
+                                 w, iLow, iHigh);
+        e = lerp(TransmissionAlbedo_E[iLow],
+                 TransmissionAlbedo_E[iHigh],
+                 w);
+    }
+    return e;
+}
+
+float
+TransmissionAlbedo_oneMinusAvg(float eta,
+                               float roughness)
+{
+    float w;
+    unsigned int iLow, iHigh;
+    float e = 0.0f;
+    if (eta < 1.0f) {
+        iLow = TransmissionAlbedo_rIndex(1.0f/eta, roughness, w);
+        iHigh = min(iLow+1, COMP*COMP-1);
+        e = lerp(TransmissionAlbedo_OneMinusEavgExit[iLow],
+                 TransmissionAlbedo_OneMinusEavgExit[iHigh],
+                 w);
+    } else {
+        iLow = TransmissionAlbedo_rIndex(eta, roughness, w);
+        iHigh = min(iLow+1, COMP*COMP-1);
+        e = lerp(TransmissionAlbedo_OneMinusEavg[iLow],
+                 TransmissionAlbedo_OneMinusEavg[iHigh],
+                 w);
+    }
+    return e;
+}
+
+
+//----------------------------------------------------------------------------
+

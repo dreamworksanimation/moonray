@@ -1,0 +1,30 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file DisplayFilterMacros.isph
+
+#pragma once
+
+#include "InputBuffer.isph"
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/scene/rdl2/rdl2.isph>
+
+struct DisplayFilter;
+struct DisplayFilterState;
+
+#define DEFINE_DISPLAY_FILTER(filterName, filterFnName)                                                      \
+    void                                                                                                     \
+    filterName##_filter(const uniform DisplayFilter *   uniform displayFilter,                               \
+                        const uniform InputBuffer * const uniform * const uniform inputBuffers,              \
+                        const varying DisplayFilterState * const uniform state,                              \
+                              varying Color *                    uniform color)                              \
+    {                                                                                                        \
+        filterFnName(displayFilter, inputBuffers, state, color);                                             \
+    }                                                                                                        \
+    export void *uniform filterName##_getFilterFunc() { return filterName##_filter; }
+
+#define DISPLAYFILTER_GET_ISPC_PTR(TYPE, DISPLAYFILTER) \
+    (uniform TYPE * uniform) ((uniform intptr_t) DISPLAYFILTER + DISPLAYFILTER_SIZEOF)
+#define DISPLAYFILTER_GET_ISPC_CPTR(TYPE, DISPLAYFILTER) \
+    (const uniform TYPE * uniform) ((uniform intptr_t) DISPLAYFILTER + DISPLAYFILTER_SIZEOF)
+

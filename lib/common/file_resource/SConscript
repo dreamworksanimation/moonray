@@ -1,0 +1,32 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = env.DWAGlob('*.cc')
+incdir     = [str(env.Dir('../..').srcnode())]
+components = [
+    'common_except',
+    'oiio',
+    'render_logging',
+]
+
+# --------------------------------------------------------------------------
+publicHeaders = [
+                 'FileResource.h',
+                 'file_resource.h',
+                ]
+
+env.DWAInstallInclude(publicHeaders, 'moonray/common/file_resource')
+env.DWAUseComponents(components)
+env.Prepend (CPPPATH=incdir)
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=target, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

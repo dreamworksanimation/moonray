@@ -1,0 +1,15 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file AttributeTable.isph
+
+#pragma once
+
+#include "AttributeTable.hh"
+#include <moonray/rendering/mcrt_common/Util.isph>
+
+struct AttributeTable
+{
+    SHADING_ATTRIBUTE_TABLE_MEMBERS;
+};
+

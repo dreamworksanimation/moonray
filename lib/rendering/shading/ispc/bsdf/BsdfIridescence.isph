@@ -1,0 +1,148 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfIridescence.isph
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfUtil.isph"
+#include <moonray/rendering/shading/ispc/RampControl.isph>
+
+/// @class IridescenceBsdfLobe  BsdfIridescence.isph <pbr/bsdf/BsdfIridescence.isph>
+/// @brief Wrapper BSDF that takes a specular bsdf under-lobe
+/// and multiplies it by a non-physical artist friendly iridescence color.
+struct IridescenceBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    Vec3f mN;
+    float mIridescence;
+    SHADING_IridescenceColorMode mColorControl;
+    Color mPrimary;
+    Color mSecondary;
+    bool mFlipHue;
+    ColorRampControl mRampControl;
+    float mThickness;
+    float mExponent;
+    float mIridescenceAt0;
+    float mIridescenceAt90;
+    varying BsdfLobe * uniform mChildLobe;
+};
+
+/// @brief evaluate an iridescence cook torrance lobe
+varying Color
+IridescenceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                         const varying BsdfSlice &slice,
+                         const Vec3f &wi,
+                         varying float * uniform pdf);
+
+/// @brief sample an iridescence cook torrance lobe
+varying Color
+IridescenceBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                           const varying BsdfSlice &slice,
+                           varying float r1, varying float r2,
+                           varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+IridescenceBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                           const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+IridescenceBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                  const varying Vec3f &wo,
+                                  const varying Vec3f &wi,
+                                  varying float r1, varying float r2,
+                                  const varying Vec3f &dNdx,
+                                  const varying Vec3f &dNdy,
+                                  varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+IridescenceBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                uniform BsdfLobeProperty property,
+                                varying float * uniform dest);
+
+inline void
+IridescenceBsdfLobe_setChildLobe(varying IridescenceBsdfLobe * uniform iridescenceLobe,
+                                 varying BsdfLobe * uniform lobe)
+{
+    iridescenceLobe->mChildLobe = lobe;
+    iridescenceLobe->mType |= lobe->mType;
+}
+
+inline void
+IridescenceBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                         const uniform uint8_t ntab)
+{
+    const varying IridescenceBsdfLobe * uniform me =
+        (const varying IridescenceBsdfLobe * uniform) lobe;
+
+    const varying Color scale = me->mScale;
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[BsdfIridescence] active: %\n",
+                                BSDF_UTIL_EXTRACT((uint32_t)isActive(lobe)));
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+
+    BsdfLobe_show(me->mChildLobe, ntab+1);
+}
+
+/// @brief initialize an iridescence lobe
+inline void
+IridescenceBsdfLobe_init(varying IridescenceBsdfLobe * uniform lobe,
+                         uniform Arena * uniform arena,
+                         const varying Vec3f &normal,
+                         const varying float iridescence,
+                         const varying SHADING_IridescenceColorMode colorControl,
+                         const varying Color &primary,
+                         const varying Color &secondary,
+                         const varying bool flipHue,
+                         const varying ColorRampControlSpace rampInterpolationMode,
+                         const varying int numRampPoints,
+                         const varying float* uniform rampPositions,
+                         const varying RampInterpolatorMode* uniform rampInterpolators,
+                         const varying Color* uniform rampColors,
+                         const varying float thickness,
+                         const varying float exponent,
+                         const varying float iridescenceAt0,
+                         const varying float iridescenceAt90)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_IRIDESCENCE,
+                  /* type = */ BSDF_LOBE_TYPE_NONE,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ IridescenceBsdfLobe_eval,
+                  /* sampleFn = */ IridescenceBsdfLobe_sample,
+                  /* albedoFn = */ IridescenceBsdfLobe_albedo,
+                  /* differentialsFn = */ IridescenceBsdfLobe_differentials,
+                  /* getPropertyFn = */ IridescenceBsdfLobe_getProperty,
+                  /* showFn = */ IridescenceBsdfLobe_show);
+
+    lobe->mN = normal;
+    lobe->mIridescence = iridescence;
+    lobe->mColorControl = colorControl;
+    lobe->mPrimary = primary;
+    lobe->mSecondary = secondary;
+    lobe->mFlipHue = flipHue;
+    ColorRampControl_init(&lobe->mRampControl,
+                           numRampPoints,
+                           rampPositions,
+                           rampColors,
+                           rampInterpolators,
+                           rampInterpolationMode);
+    lobe->mThickness = thickness;
+    lobe->mExponent = exponent;
+    lobe->mIridescenceAt0 = iridescenceAt0;
+    lobe->mIridescenceAt90 = iridescenceAt90;
+}
+

@@ -1,0 +1,105 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfAnisoCookTorrance.isph
+#pragma once
+#include "BsdfCookTorrance.isph"
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+/// @class AnisoCookTorranceBsdfLobe BsdfAnisoCookTorrance.isph <rendering/shading/bsdf/BsdfAnisoCookTorrance.isph>
+/// @brief Anisotropic Cook-Torrance bsdf lobe
+struct AnisoCookTorranceBsdfLobe
+{
+    COOK_TORRANCE_LOBE_BASE;
+    float mInputRoughnessV;
+    float mRoughnessV;
+};
+
+/// @brief evaluate an anisotropic cook torrance lobe
+varying Color
+AnisoCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                               const varying BsdfSlice &slice,
+                               const Vec3f &wi,
+                               varying float * uniform pdf);
+
+/// @brief sample an anisotropic cook torrance lobe
+varying Color
+AnisoCookTorranceBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                 const varying BsdfSlice &slice,
+                                 varying float r1, varying float r2,
+                                 varying Vec3f &wi, varying float &pdf);
+
+uniform bool
+AnisoCookTorranceBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                      uniform BsdfLobeProperty property,
+                                      varying float * uniform dest);
+
+inline void
+AnisoCookTorranceBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                               const uniform uint8_t ntab)
+{
+    const varying AnisoCookTorranceBsdfLobe * uniform me =
+        (const varying AnisoCookTorranceBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[AnisoCookTorranceBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("roughness^2 X: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+    BsdfUtil_indent(ntab+1); print("roughness^2 Y: %\n", BSDF_UTIL_EXTRACT(me->mRoughnessV));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize an anisotropic cook torrance lobe
+inline void
+AnisoCookTorranceBsdfLobe_init(varying AnisoCookTorranceBsdfLobe * uniform lobe,
+                               const varying Vec3f &normal,
+                               const varying Vec3f &anisotropicDirection,
+                               const varying float uRoughness,
+                               const varying float vRoughness)
+{
+    // TODO: Should use CookTorranceBsdfLobe_init() ?
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_ANISO_COOK_TORRANCE,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ AnisoCookTorranceBsdfLobe_eval,
+                  /* sampleFn = */ AnisoCookTorranceBsdfLobe_sample,
+                  /* albedoFn = */ CookTorranceBsdfLobe_albedo,                 // Fallback to CookTorranceBsdfLobe.
+                  /* differentialsFn = */ CookTorranceBsdfLobe_differentials,   // Fallback to CookTorranceBsdfLobe.
+                  /* getPropertyFn = */ AnisoCookTorranceBsdfLobe_getProperty,
+                  /* showFn = */ AnisoCookTorranceBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal, anisotropicDirection);
+
+    lobe->mInputRoughness = uRoughness;
+    lobe->mInputRoughnessV = vRoughness;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    lobe->mRoughness = lobe->mInputRoughness * lobe->mInputRoughness;
+    lobe->mRoughnessV = lobe->mInputRoughnessV * lobe->mInputRoughnessV;
+
+    // TODO: Smaller thresholds trigger nans
+    lobe->mRoughness = max(0.001f, lobe->mRoughness);
+    lobe->mRoughnessV = max(0.001f, lobe->mRoughnessV);
+
+    // Use the sharper of the two roughnesses to derive a directional differential
+    // scale that varies with roughness
+    const float minRoughness = min(lobe->mRoughness, lobe->mRoughnessV);
+    lobe->mdDFactor = CookTorrance_sdDFactorMin + minRoughness * CookTorrance_sdDFactorSlope;
+}
+

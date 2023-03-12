@@ -1,0 +1,18 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_rodlightfilter'
+target = 'RodLightFilter.so'
+sources = ['RodLightFilter.cc']
+components = [
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), sources)
+env.DWAInstallRdl2Dso(dso)
+env.DWAComponent(name, COMPONENTS=components)

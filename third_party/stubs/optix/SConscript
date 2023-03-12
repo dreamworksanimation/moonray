@@ -1,0 +1,10 @@
+Import('env')
+
+env.DWAComponent(
+	'optix',
+	LIBS = ['optix', 'optixu'],
+	CPPPATH_THIRDPARTY = ['/rel/third_party/optix/5.1.0/include'],
+	LIBPATH = ['/rel/third_party/optix/5.1.0/lib64'],
+	COMPONENTS = ['cuda']
+)
+

@@ -1,0 +1,25 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+// Include this before any other includes!
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include <moonray/rendering/bvh/shading/ShadingTLState.hh>
+#include <moonray/rendering/mcrt_common/ThreadLocalState.hh>
+#include <moonray/rendering/texturing/sampler/TextureTLState.hh>
+
+struct Arena;
+struct Perthread;
+struct TextureSampler;
+struct TextureSystem;
+
+struct ShadingTLState
+{
+    BASE_TL_STATE_MEMBERS;
+    TEXTURE_TL_STATE_MEMBERS;
+    SHADING_TL_STATE_MEMBERS;
+};
+

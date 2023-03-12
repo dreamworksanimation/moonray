@@ -1,0 +1,127 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "Light.isph"
+#include "LightSet.hh"
+#include "LightAccelerator.isph"
+
+#include <moonray/rendering/pbr/sampler/SequenceID.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+//----------------------------------------------------------------------------
+
+// - pdf is the pdf of this sample for the intersected light
+// - Li is the emitted radiance of the intersected light
+//   in direction wi, and 0 if there is no light in that direction
+//   TODO: or if the intersected light is not in the subset
+struct LightContribution {
+    bool isInvalid;
+    const Light* light;
+    float distance;
+    float pdf;
+    Color Li;
+};
+
+
+///
+/// @struct LightSet LightSet.h <pbr/LightSet.isph>
+/// @brief A light set is a list of lights that should shine! This is distinct
+///        from an rdl2 LightSet in that lights which can't illuminate the point/
+///        normal we are shading won't get added to this set.
+///
+struct LightSet
+{
+    LIGHT_SET_MEMBERS;
+};
+
+
+
+//----------------------------------------------------------------------------
+
+inline void
+LightSet_init(uniform LightSet * uniform lightSet,
+        const uniform Light * const uniform * uniform lights,
+        uniform int lightCount,
+        const uniform LightFilterList * const uniform * uniform lightFilterLists)
+{
+    lightSet->mLights = lights;
+    lightSet->mLightCount = lightCount;
+    lightSet->mLightFilterLists = lightFilterLists;
+}
+
+
+inline uniform int LightSet_getLightCount(const uniform LightSet * uniform lightSet)
+{
+    return lightSet->mLightCount;
+}
+
+
+inline const uniform Light * uniform LightSet_getLight(
+        const uniform LightSet * uniform lightSet, uniform int index)
+{
+    return lightSet->mLights[index];
+}
+
+inline const uniform Light * varying LightSet_getLight(
+        const uniform LightSet * uniform lightSet, varying int index)
+{
+    return lightSet->mLights[index];
+}
+
+inline const uniform LightFilterList * uniform LightSet_getLightFilterList(
+        const uniform LightSet * uniform lightSet, uniform int index)
+{
+    return lightSet->mLightFilterLists[index];
+}
+
+inline const uniform LightFilterList * varying LightSet_getLightFilterList(
+        const uniform LightSet * uniform lightSet, varying int index)
+{
+    return lightSet->mLightFilterLists[index];
+}
+
+// Set the accelerator for this light set. The accelerator may contain more lights than the LightSet itself.
+// This is because the accelerator's light list is generated during render prep, and includes all of the original
+// lights specified in the rdl layer. The LightSet has some lights culled away during mcrt, so contains a subset
+// of those lights. We need to map the index of the lights in the LightAccelerator to the index of the light in
+// the LightSet. The lightIdMap does this. Lights that exist in the LightAccelerator but not in the LightSet are
+// mapped to -1.
+inline void LightSet_setAccelerator(uniform LightSet * uniform lightSet,
+        const uniform LightAccelerator * uniform accelerator,
+        const uniform int * uniform lightIdMap)
+{
+    lightSet->mAccelerator = accelerator;
+    lightSet->mAcceleratorLightIdMap = lightIdMap;
+}
+
+
+
+//----------------------------------------------------------------------------
+
+// Returns a pointer to a light chosen randomly from among those that
+// intersect the ray(P, wi), within maxDistance. It returns nullptr if no light was
+// intersected.
+varying int LightSet_intersect(uniform PbrTLState * uniform pbrTls,
+        const uniform LightSet * uniform lightSet,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying Vec3f &wi,
+        varying float time, varying float maxDistance, uniform bool fromCamera,
+        varying bool includeRayTerminationLights, varying IntegratorSample1D &samples, varying int depth,
+        varying int visibilityMask, varying LightIntersection &chosenIsect, varying int &numHits);
+
+// Intersects the given ray (P, wi), choosing randomly among the lights in the
+// LightSet intersected by the ray. Fills up the LightContribution structure with the
+// results. randVar should be passed a random value in [0,1).
+void LightSet_intersectAndEval(uniform PbrTLState * uniform pbrTls,
+        const uniform LightSet * uniform lightSet,
+        uniform ShadingTLState * uniform tls,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying Vec3f &wi,
+        const varying LightFilterRandomValues &filterR, varying float time, uniform bool fromCamera, 
+        varying bool includeRayTerminationLights, varying IntegratorSample1D &samples, varying int depth,
+        varying int visibilityMask, varying LightContribution &lCo, varying float rayDirFootprint);
+
+//----------------------------------------------------------------------------
+

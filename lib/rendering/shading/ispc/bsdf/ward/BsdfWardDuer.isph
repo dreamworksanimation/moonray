@@ -1,0 +1,48 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfWardDuer.isph
+
+#include "BsdfWard.isph"
+
+/// @class WardDuerBsdfLobe BsdfWardDuer.isph <rendering/shading/Bsdf/BsdfWardDuer.isph>
+/// @brief ward duer bsdf lobe
+struct WardDuerBsdfLobe
+{
+    WARD_BSDF_LOBE;
+};
+
+varying Color
+WardDuerBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                      const varying BsdfSlice &slice,
+                      const Vec3f &wi,
+                      varying float * uniform pdf);
+
+varying Color
+WardDuerBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                        const varying BsdfSlice &slice,
+                        varying float r1, varying float r2,
+                        varying Vec3f &wi, varying float &pdf);
+
+/// @brief intialize a ward duer lobe
+inline void
+WardDuerBsdfLobe_init(varying WardDuerBsdfLobe * uniform lobe,
+                      const varying Vec3f &normal,
+                      const varying Vec3f &anisoDirection,
+                      const varying float roughnessU,
+                      const varying float roughnessV,
+                      const uniform bool squareRoughness)
+{
+    WardBsdfLobe_init((varying WardBsdfLobe * uniform) lobe,
+                      /* name = */ BSDF_LOBE_WARD_DUER,
+                      /* normal = */ normal,
+                      /* anisoDirection = */ anisoDirection,
+                      /* roughnessU = */ roughnessU,
+                      /* roughnessV = */ roughnessV,
+                      /* squareRoughness = */ squareRoughness,
+                      /* evalFn = */ WardDuerBsdfLobe_eval,
+                      /* sampleFn = */ WardDuerBsdfLobe_sample,
+                      /* albedoFn = */ WardBsdfLobe_albedo,                 // Fallback to WardBsdfLobe. 
+                      /* differentialsFn = */ WardBsdfLobe_differentials);  // Fallback to WardBsdfLobe. 
+}
+

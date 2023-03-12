@@ -1,0 +1,22 @@
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['../../../../bart_tools'])
+# ---------------------------------------------------------------
+
+name = 'dso_openvdb_map'
+target = 'OpenVdbMap.so'
+cc_source = ['OpenVdbMap.cc']
+ispc_source = ['OpenVdbMap.ispc']
+json_source = ['OpenVdbMap.json']
+components = [
+    'rendering_shading',
+    'shading_ispc',
+    'scene_rdl2',
+]
+
+# ---------------------------------------------------------------
+
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)
+env.DWAComponent(name, COMPONENTS=components)

@@ -1,0 +1,19 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_basevolume'
+target = 'BaseVolume.so'
+cc_source = ['BaseVolume.cc']
+components = [
+    'rendering_shading',
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+env.DWAForceWarningAsError()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), cc_source)
+env.DWAInstallRdl2Dso(dso)
+env.DWAComponent(name, COMPONENTS=components)

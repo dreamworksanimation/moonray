@@ -1,0 +1,18 @@
+Import('env')
+
+# ------------------------------------------
+name       = 'brdf_cylinder_extract'
+sources    = env.DWAGlob('*.cc')
+components = [
+    'atomic',
+    'oiio',
+    'rendering_rndr',
+    'render_util',
+    'render_logging',
+    'rendering_shading'
+]
+# ------------------------------------------
+()
+env.DWAUseComponents(components)
+prog = env.DWAProgram(name, sources)
+env.DWAInstallBin(prog)

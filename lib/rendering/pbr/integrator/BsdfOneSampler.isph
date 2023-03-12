@@ -1,0 +1,65 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfOneSampler.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfSlice.isph>
+
+struct LobesContribution
+{
+    int mMatchedLobeCount;
+    Color mFs[BSDF_MAX_LOBE];
+    const varying BsdfLobe *mLobes[BSDF_MAX_LOBE];
+};
+
+// A BsdfOneSampler object is used to efficiently sample multi-lobe bsdfs
+struct BsdfOneSampler
+{
+    const varying Bsdf * uniform mBsdf;
+    const varying BsdfSlice * uniform mSlice;
+
+    // The lobes' sampling CDF and index array are ordered with an increasing cdf
+    // Note: Using 8 bit lobe indices supports up to 256 lobes
+    // which should be more than enough!
+    float mLobeCdf[BSDF_MAX_LOBE];
+    uint8_t mLobeIndex[BSDF_MAX_LOBE];
+    int mLobeCount; // number of matching lobes with non-zero cdf
+};
+
+void BsdfOneSampler_init(varying BsdfOneSampler * uniform this,
+                         const varying Bsdf * uniform bsdf,
+                         const varying BsdfSlice * uniform slice);
+
+inline const varying Bsdf &
+BsdfOneSampler_getBsdf(const varying BsdfOneSampler * uniform this)
+{
+    return *this->mBsdf;
+}
+
+inline const varying BsdfSlice &
+BsdfOneSampler_getSlice(const varying BsdfOneSampler * uniform this)
+{
+    return *this->mSlice;
+}
+
+varying Color BsdfOneSampler_eval(const varying BsdfOneSampler * uniform this,
+                                  const varying Vec3f &wi,
+                                  varying float &pdf,
+                                  uniform LobesContribution * varying lobesContribution);
+
+varying Color BsdfOneSampler_sample(const varying BsdfOneSampler * uniform this,
+                                    varying float r0,
+                                    varying float r1,
+                                    varying float r2,
+                                    varying Vec3f &wi,
+                                    varying float &pdf,
+                                    uniform LobesContribution * varying lobesContribution);
+
+// Pick a lobe, sets pdf to the probability of picking this lobe
+const varying BsdfLobe * varying BsdfOneSampler_sampleLobe(const varying BsdfOneSampler * uniform this,
+                                                           varying float r,
+                                                           varying float &pdf);
+

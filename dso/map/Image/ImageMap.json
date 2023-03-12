@@ -1,0 +1,214 @@
+{
+    "name": "ImageMap",
+    "type": "Map",
+    "attributes": {
+        "attrWrapAround": {
+            "name": "wrap_around",
+            "label": "wrap around",
+            "aliases": [ "wrap around" ],
+            "type": "Bool",
+            "default": "true"
+        },
+        "attrTexture": {
+            "name": "texture",
+            "type": "String",
+            "flags": "FLAGS_FILENAME",
+            "comment": "filename that points to a texture .exr or .tx file (must be mip-mapped and tiled with maketx). If filename contains '<UDIM>', udim index substitution is performed on filename.  In the UDIM case, 'scale', 'offset', and 'wrap around' are ignored."
+        },
+        "attrUseDefaultColor": {
+            "name": "use_default_color_when_missing",
+            "label": "use default color when missing",
+            "aliases": [ "use default color when missing" ],
+            "type": "Bool",
+            "default": "false",
+            "comment": "Uses the 'default color' for missing udims and does not report error"
+        },
+        "attrDefaultColor": {
+            "name": "default_color",
+            "label": "default color",
+            "aliases": [ "default color" ],
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 1.0f, 0.0f)",
+            "comment": "default color to be used for missing udims when 'use default color when missing' is enabled"
+        },
+        "attrTextureEnum": {
+            "name": "texture_coordinates",
+            "label": "texture coordinates",
+            "aliases": [ "texture coordinates" ],
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "texture": "0",
+                "input texture coordinates": "2",
+                "hair surface": "1",
+                "hair closest surface": "3"
+            }
+        },
+        "attrAlphaOnly": {
+            "name": "alpha_only",
+            "label": "alpha only",
+            "aliases": [ "alpha only" ],
+            "type": "Bool",
+            "default": "false",
+            "comment" : "If true, the alpha channel of the texture will be placed in the rgb channels.  If the texture has no alpha channel, 1.0 is used, and the resulting texture lookup is then always white."
+        },
+        "attrInputTextureCoordinate": {
+            "name": "input_texture_coordinates",
+            "label": "input texture coordinates",
+            "aliases": [ "input texture coordinates" ],
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrMipBias": {
+            "name": "mip_bias",
+            "label": "mip bias",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE",
+            "group": "Blur",
+            "comment": "Amount to scale derivatives which controls mipmap selection"
+        },
+        "attrGamma": {
+            "name": "gamma",
+            "type": "Int",
+            "default": "2",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "off": "0",
+                "on": "1",
+                "auto": "2"
+            }
+        },
+        "attrOffset": {
+            "name": "offset",
+            "type": "Vec2f",
+            "default": "Vec2f(0.0f, 0.0f)"
+        },
+        "attrScale": {
+            "name": "scale",
+            "type": "Vec2f",
+            "default": "Vec2f(1.0f, 1.0f)"
+        },
+        "attrRotationAngle": {
+            "name": "rotation_angle",
+            "label": "rotation angle",
+            "aliases": [ "rotation angle" ],
+            "type": "Float",
+            "default": "0.0f",
+            "comment": "Rotation in degrees"
+        },
+        "attrRotationCenter": {
+            "name": "rotation_center",
+            "label": "rotation center",
+            "aliases": [ "rotation center" ],
+            "type": "Vec2f",
+            "default": "Vec2f(0.5f, 0.5f)",
+            "comment": "UV coordinate around which to rotate"
+        },
+        "attrUDimValues": {
+            "name": "udim_values",
+            "label": "udim values",
+            "aliases": [ "udim values" ],
+            "type": "IntVector"
+        },
+        "attrUDimFiles": {
+            "name": "udim_files",
+            "label": "udim files",
+            "aliases": [ "udim files" ],
+            "type": "StringVector"
+        },
+        "attrMaxVdim": {
+            "name": "udim_max_v",
+            "label": "udim max v",
+            "aliases": [ "udim max v" ],
+            "type": "Int",
+            "default": "10",
+            "comment": "udim maximum v value"
+        },
+        "attrSaturationEnabled": {
+            "name": "saturation_enabled",
+            "label": "saturation enabled",
+            "aliases": [ "saturation enabled" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Color Correction"
+        },
+        "attrSaturation": {
+            "name": "saturation",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "group": "Color Correction"
+        },
+        "attrContrastEnabled": {
+            "name": "contrast_enabled",
+            "label": "contrast enabled",
+            "aliases": [ "contrast enabled" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Color Correction"
+        },
+        "attrContrast": {
+            "name": "contrast",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "group": "Color Correction"
+        },
+        "attrGammaEnabled": {
+            "name": "gamma_enabled",
+            "label": "gamma enabled",
+            "aliases": [ "gamma enabled" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Color Correction"
+        },
+        "attrGammaAdjust": {
+            "name": "gamma_adjust",
+            "label": "gamma adjust",
+            "aliases": [ "gamma adjust" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "group": "Color Correction"
+        },
+        "attrGainOffsetEnabled": {
+            "name": "gain_offset_enabled",
+            "label": "gain offset enabled",
+            "aliases": [ "gain offset enabled" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Color Correction"
+        },
+        "attrGain": {
+            "name": "gain",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "group": "Color Correction"
+        },
+        "attrOffsetAdjust": {
+            "name": "offset_adjust",
+            "label": "offset adjust",
+            "aliases": [ "offset adjust" ],
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)",
+            "group": "Color Correction"
+        },
+        "attrTMIControlEnabled": {
+            "name": "TMI_control_enabled",
+            "label": "TMI control enabled",
+            "aliases": [ "TME control enabled", "TMI control enabled" ],
+            "type": "Bool",
+            "default": "false",
+            "group": "Color Correction"
+        },
+        "attrTMI": {
+            "name": "TMI",
+            "aliases": [ "TME" ],
+            "type": "Vec3f",
+            "display": "tmi",
+            "comment": "T = Temperature where positive values push towards blue and negative towards red.   M = Magenta where positive values push towards magenta and negative towards green.  I = Intensity where negative values remove and positive values add energy ",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "group": "Color Correction"
+        }
+    }
+}

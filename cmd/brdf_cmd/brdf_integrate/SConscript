@@ -1,0 +1,17 @@
+Import('env')
+# ------------------------------------------
+name       = 'brdf_integrate'
+sources    = env.DWAGlob('*.cc')
+components = [
+    'atomic',
+    'rendering_rndr',
+    'render_util',
+    'rendering_mcrt_common',
+    'rendering_pbr',
+    'rendering_shading',
+]
+# ------------------------------------------
+()
+env.DWAUseComponents(components)
+prog = env.DWAProgram(name, sources)
+env.DWAInstallBin(prog)

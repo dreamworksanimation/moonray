@@ -1,0 +1,66 @@
+Import('env')
+from os import path
+
+# -----------------------------------------------------------------------
+# bvh_shading_ispc
+# -----------------------------------------------------------------------
+name = 'bvh_shading_ispc'
+libname = 'bvh_shading_ispc'
+
+# shading_ispc directly depends on
+components = [
+    'oiio',
+    'scene_rdl2',
+    'rendering_mcrt_common',
+    'common_math',
+    'common_platform'
+    ]
+env.DWAUseComponents(components)
+
+# add these include paths when building targets
+# that depend on this component
+includePaths = [
+    env.Dir('../../..').srcnode(),
+    env.Dir('.'),
+    env.Dir('$BUILD_DIR/lib')
+    ]
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'],
+                 CPPPATH = [env.Dir('.'),
+                            env.Dir('$BUILD_DIR/lib')])
+
+sources, headers = env.IspcShared([
+        'AttributeTable.ispc',
+        'Intersection.ispc',
+        'MipSelector.ispc',
+        'ShadingTLState.ispc',
+        'Xform.ispc'
+        ])
+
+headers += env.IspcShared([
+        'ThreadLocalObjectState.isph',
+        'Intersection.isph',
+        'ShadingTLState.isph',
+        'Xform.isph',
+        'State.isph'
+        ])
+
+headers += ['AttributeTable.hh', 'Intersection.hh']
+
+env.DWAInstallInclude(headers, 'moonray/rendering/bvh/shading/ispc')
+
+# build the library
+lib = env.DWASharedLibrary(name, sources)
+# install the library
+target = env.DWAInstallLib(lib)
+
+# define the component
+env.DWAComponent(name,
+                 LIBS = target,
+                 CPPPATH = includePaths,
+                 COMPONENTS = components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)

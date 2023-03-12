@@ -1,0 +1,89 @@
+{
+    "name": "AttributeMap",
+    "type": "Map",
+    "attributes": {
+        "attrMapType": {
+            "name": "map_type",
+            "label": "map type",
+            "aliases": [ "map type" ],
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "primitive attribute": "0",
+                "position": "1",
+                "texture st": "2",
+                "shading normal": "3",
+                "geometric normal": "4",
+                "dpds": "5",
+                "dpdt": "6",
+                "dnds": "7",
+                "dndt": "8",
+                "map color": "9",
+                "hair surface P": "12",
+                "hair surface N": "13",
+                "hair surface st": "14",
+                "hair closest surface st": "15",
+                "id": "16",
+                "velocity": "17",
+                "acceleration": "18",
+                "motionvec": "19"
+            },
+            "default": "0"
+        },
+
+        "attrDefaultValue" : {
+            "name": "default_value",
+            "label": "default value",
+            "aliases": [ "default value" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment":  "default value to display when the requested attribute is not available"
+        },
+
+        "attrWarnWhenUnavailable": {
+            "name": "warn_when_unavailable",
+            "type": "Bool",
+            "default": "false",
+            "comment": "Whether or not to issue a warning when the requested attribute is unavailable"
+        },
+
+        "attrPrimitiveAttributeName" : {
+            "name": "primitive_attribute_name",
+            "label": "primitive attribute name",
+            "aliases": [ "primitive attribute name" ],
+            "type": "String",
+            "default": "\"Cd\"",
+            "comment": "the name of primitive attribute to display when attribute 'map type' is set to 'primitive attribute'",
+            "group": "Primitive Attribute"
+        },
+
+        "attrPrimitiveAttributeType" : {
+            "name": "primitive_attribute_type",
+            "label": "primitive attribute type",
+            "aliases": [ "primitive attribute type" ],
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "float": "0",
+                "vec2f": "1",
+                "vec3f": "2",
+                "rgb": "3",
+                "int": "4"
+            },
+            "default": "3",
+            "comment": "the type of primitive attribute to display when attribute 'map type' is set to 'primitive attribute'",
+            "group": "Primitive Attribute"
+        },
+
+        "attrColor": {
+            "name": "color",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "input color - preferably a connected map",
+            "disable when": "{ map_type != 'map color' }"
+        }
+
+    }
+}

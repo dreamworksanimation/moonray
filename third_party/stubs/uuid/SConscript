@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'uuid',
+  LIBS = [
+        'uuid'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

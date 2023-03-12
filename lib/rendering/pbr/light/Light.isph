@@ -1,0 +1,530 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "Light.hh"
+#include "LightUtil.isph"
+
+#include <moonray/rendering/pbr/core/Distribution.isph>
+#include <moonray/rendering/pbr/lightfilter/LightFilter.isph>
+#include <moonray/rendering/pbr/lightfilter/EllipticalFalloff.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+
+#include <embree3/rtcore.isph>
+#include <embree3/rtcore_ray.isph>
+
+struct ShadingTLState;
+
+// Infinity, but not quite so we can distinguish from no light hit
+static const float sInfiniteLightDistance = sMaxValue - 1e32f;
+static const float sEnvLightDistance = sInfiniteLightDistance * 0.9f;
+static const float sDistantLightDistance = sInfiniteLightDistance * 0.8f;
+
+// TODO: do this properly!
+struct BBox3f
+{
+    Vec3f lower;
+    Vec3f upper;
+};
+
+//----------------------------------------------------------------------------
+
+///
+/// @struct Light Light.isph <pbr/light/Light.isph>
+/// @brief Base class that defines the light interface. All lights are assumed
+///  to be area lights. All lights operate in render space.
+///
+struct Light
+{
+    LIGHT_MEMBERS;
+};
+
+///
+/// @struct LocalParamLight Light.isph <pbr/light/Light.isph>
+/// @brief Intermediate class that defines a local parameterization and local to
+/// render transformation.
+///
+struct LocalParamLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+};
+
+
+/// Light derived structs
+
+struct CylinderLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    CYLINDER_LIGHT_MEMBERS;
+};
+
+struct DiskLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    DISK_LIGHT_MEMBERS;
+};
+
+struct DistantLight
+{
+    LIGHT_MEMBERS;
+    DISTANT_LIGHT_MEMBERS;
+};
+
+struct EnvLight
+{
+    LIGHT_MEMBERS;
+    ENV_LIGHT_MEMBERS;
+};
+
+struct RectLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    RECT_LIGHT_MEMBERS;
+};
+
+struct SphereLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    SPHERE_LIGHT_MEMBERS;
+};
+
+struct SpotLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    SPOT_LIGHT_MEMBERS;
+};
+
+
+//----------------------------------------------------------------------------
+
+
+/// Derived types implement the intersection, sampling and eval interface via
+/// these function pointers
+
+typedef varying bool (* uniform LightCanIlluminateFn)(
+        const uniform Light * uniform light,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        varying float radius, const uniform LightFilterList * uniform lightFilterList);
+
+typedef varying bool (* uniform LightIntersectFn)(
+        const uniform Light * uniform light,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal,
+        const varying Vec3f &wi, varying float time,
+        varying float maxDistance, varying LightIntersection &isect);
+
+typedef varying bool (* uniform LightSampleFn)(
+        const uniform Light * uniform light,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint);
+
+typedef varying Color (* uniform LightEvalFn)(
+        const uniform Light * uniform light, uniform ShadingTLState * uniform tls,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues &filterR, 
+        varying float time, const varying LightIntersection &isect,
+        uniform bool fromCamera, const uniform LightFilterList * uniform lightFilterList,
+        varying float rayDirFootprint, varying float * uniform pdf);
+
+inline void
+Light_init(uniform Light * uniform light,
+        LightCanIlluminateFn canIlluminateFn,
+        LightIntersectFn intersectFn,
+        LightSampleFn sampleFn,
+        LightEvalFn evalFn)
+{
+    light->mCanIlluminateFn = (intptr_t)canIlluminateFn;
+    light->mIntersectFn = (intptr_t)intersectFn;
+    light->mSampleFn = (intptr_t)sampleFn;
+    light->mEvalFn = (intptr_t)evalFn;
+}
+
+
+/// Is this light visible in camera, and if so is it opaque in the
+/// alpha channel ?
+inline uniform bool
+Light_getIsVisibleInCamera(const uniform Light * uniform light)
+{
+    return light->mIsVisibleInCamera;
+}
+
+inline uniform bool
+Light_getIsOpaqueInAlpha(const uniform Light * uniform light)
+{
+    return light->mIsOpaqueInAlpha;
+}
+
+inline varying bool
+Light_getIsOpaqueInAlpha(const uniform Light * varying light)
+{
+    return light->mIsOpaqueInAlpha;
+}
+
+inline varying int32_t
+Light_getLabelId(const uniform Light * varying light)
+{
+    return light->mLabelId;
+}
+
+inline uniform uint32_t
+Light_getHash(const uniform Light * uniform light)
+{
+    return light->mHash;
+}
+
+inline uniform bool
+Light_getIsRayTerminator(const uniform Light * uniform light)
+{
+    return light->mIsRayTerminator;
+}
+
+inline varying bool
+Light_getIsRayTerminator(const uniform Light * varying light)
+{
+    return light->mIsRayTerminator;
+}
+
+/// See Light.hh for details
+inline uniform bool Light_isMb(const uniform Light * uniform light) { return light->mMb; }
+
+varying Vec3f Light_lerpPosition(const uniform Light * uniform light, varying float time);
+varying Vec3f Light_slerpDirection(const uniform Light * uniform light, varying float time);
+
+inline varying Vec3f
+Light_getPosition(const uniform Light * uniform light, varying float time)
+{
+    if (!Light_isMb(light)) return light->mPosition[0];
+
+    return Light_lerpPosition(light, time);
+}
+
+inline varying Vec3f
+Light_getDirection(const uniform Light * uniform light, varying float time)
+{
+    if (!Light_isMb(light)) return light->mDirection;
+
+    return Light_slerpDirection(light, time);
+}
+
+inline uniform int
+Light_getVisibilityMask(const uniform Light * uniform light)
+{
+    return light->mVisibilityMask;
+}
+
+varying Vec3f LocalParamLight_slerpPointLocal2Render(const uniform LocalParamLight * uniform light,
+                                                     const uniform Vec3f &p, varying float time);
+varying Vec3f LocalParamLight_slerpPointLocal2Render(const uniform LocalParamLight * uniform light,
+                                                     const varying Vec3f &p, varying float time);
+varying Vec3f LocalParamLight_slerpPointRender2Local(const uniform LocalParamLight * uniform light,
+                                                     const varying Vec3f &p, varying float time);
+varying Vec3f LocalParamLight_slerpVectorLocal2Render(const uniform LocalParamLight * uniform light,
+                                                      const varying Vec3f &v, varying float time);
+varying Vec3f LocalParamLight_slerpVectorRender2Local(const uniform LocalParamLight * uniform light,
+                                                      const varying Vec3f &v, varying float time);
+varying Vec3f LocalParamLight_slerpVectorLocal2RenderRot(const uniform LocalParamLight * uniform light,
+                                                         const varying Vec3f &v, varying float time);
+varying Vec3f LocalParamLight_slerpVectorRender2LocalRot(const uniform LocalParamLight * uniform light,
+                                                         const varying Vec3f &v, varying float time);
+varying Vec3f LocalParamLight_slerpNormalLocal2Render(const uniform LocalParamLight * uniform light,
+                                                      const varying Vec3f &n, varying float time);
+varying Vec3f LocalParamLight_slerpNormalLocal2RenderRot(const uniform LocalParamLight * uniform light,
+                                                         const varying Vec3f &n, varying float time);
+varying Vec3f LocalParamLight_slerpNormalRender2LocalRot(const uniform LocalParamLight * uniform light,
+                                                         const varying Vec3f &n, varying float time);
+varying float LocalParamLight_lerpLocal2RenderScale(const uniform LocalParamLight * uniform light,
+                                                     varying float s, varying float time);
+varying float LocalParamLight_lerpRender2LocalScale(const uniform LocalParamLight * uniform light,
+                                                     varying float s, varying float time);
+
+/// point transformations
+/// scale, orientation, and translation
+
+// input parameters contain uniform p
+inline varying Vec3f
+LocalParamLight_xformPointLocal2Render(const uniform LocalParamLight * uniform light,
+                                       const uniform Vec3f &p, varying float time)
+{
+    if (!light->mMb) return transformPoint(light->mLocal2Render[0], p);
+
+    return LocalParamLight_slerpPointLocal2Render(light, p, time);
+}
+
+// input parameters contain varying p
+inline varying Vec3f
+LocalParamLight_xformPointLocal2Render(const uniform LocalParamLight * uniform light,
+                                       const varying Vec3f &p, varying float time)
+{
+    if (!light->mMb) return transformPoint(light->mLocal2Render[0], p);
+
+    return LocalParamLight_slerpPointLocal2Render(light, p, time);
+}
+
+inline varying Vec3f
+LocalParamLight_xformPointRender2Local(const uniform LocalParamLight * uniform light,
+                                       const varying Vec3f &p, varying float time)
+{
+    if (!light->mMb) return transformPoint(light->mRender2Local[0], p);
+
+    return LocalParamLight_slerpPointRender2Local(light, p, time);
+}
+
+inline varying Xform3f
+LocalParamLight_getXformRender2Local(const uniform LocalParamLight * uniform light,
+                                     varying float time, uniform bool needed = true)
+{
+    if (!needed) {
+        Xform3f result;
+        return result;
+    }
+
+    if (!light->mMb) return light->mRender2LocalRot[0];
+
+    const Vec3f trans = (light->mMb & LIGHT_MB_TRANSLATION) ?
+        lerp(light->mRender2LocalRot[0].p, light->mRender2LocalRot[1].p, time) :
+        light->mRender2LocalRot[0].p;
+    const Mat3f rot = (light->mMb & LIGHT_MB_ROTATION) ?
+        transpose(Mat3f_ctor(slerp(light->mOrientation[0], light->mOrientation[1], time))) : // inverse is transpose
+        light->mRender2LocalRot[0].l;  // same as mOrientation[0] in my test
+
+    return Xform3f_ctor(rot, trans);
+}
+
+/// vector transformations
+/// scale and orientation
+inline varying Vec3f
+LocalParamLight_xformVectorLocal2Render(const uniform LocalParamLight * uniform light,
+                                        const varying Vec3f &v, varying float time)
+{
+    if (!light->mMb) return transformVector(light->mLocal2Render[0], v);
+
+    return LocalParamLight_slerpVectorLocal2Render(light, v, time);
+}
+
+inline varying Vec3f
+LocalParamLight_xformVectorRender2Local(const uniform LocalParamLight * uniform light,
+                                        const varying Vec3f &v, varying float time)
+{
+    if (!light->mMb) return transformVector(light->mRender2Local[0], v);
+
+    return LocalParamLight_slerpVectorRender2Local(light, v, time);
+}
+
+/// orientation only
+inline varying Vec3f
+LocalParamLight_xformVectorLocal2RenderRot(const uniform LocalParamLight * uniform light,
+                                           const varying Vec3f &v, varying float time)
+{
+    if (!light->mMb) return transformVector(light->mLocal2RenderRot[0], v);
+
+    return LocalParamLight_slerpVectorLocal2RenderRot(light, v, time);
+}
+
+inline varying Vec3f
+LocalParamLight_xformVectorRender2LocalRot(const uniform LocalParamLight * uniform light,
+                                           const varying Vec3f &v, varying float time)
+{
+    if (!light->mMb) return transformVector(light->mRender2LocalRot[0], v);
+
+    return LocalParamLight_slerpVectorRender2LocalRot(light, v, time);
+}
+
+/// normal transformations
+/// scale and orientation
+inline varying Vec3f
+LocalParamLight_xformNormalLocal2Render(const uniform LocalParamLight * uniform light,
+                                        const varying Vec3f &n, varying float time)
+{
+    if (!light->mMb) return transformNormal(light->mRender2Local[0], n);
+
+    return LocalParamLight_slerpNormalLocal2Render(light, n, time);
+}
+
+/// orientation only
+inline varying Vec3f
+LocalParamLight_xformNormalLocal2RenderRot(const uniform LocalParamLight * uniform light,
+                                           const varying Vec3f &n, varying float time)
+{
+    if (!light->mMb) return transformNormal(light->mRender2LocalRot[0], n);
+
+    return LocalParamLight_slerpNormalLocal2RenderRot(light, n, time);
+}
+
+inline varying Vec3f
+LocalParamLight_xformNormalRender2LocalRot(const uniform LocalParamLight * uniform light,
+                                           const varying Vec3f &n, varying float time)
+{
+    if (!light->mMb) return transformNormal(light->mLocal2RenderRot[0], n);
+
+    return LocalParamLight_slerpNormalRender2LocalRot(light, n, time);
+}
+
+/// uniform scale transformations
+inline varying float
+LocalParamLight_xformLocal2RenderScale(const uniform LocalParamLight * uniform light,
+                                       varying float s, varying float time)
+{
+    if (!light->mMb) return light->mLocal2RenderScale[0] * s;
+
+    return LocalParamLight_lerpLocal2RenderScale(light, s, time);
+}
+
+inline varying float
+LocalParamLight_xformRender2LocalScale(const uniform LocalParamLight * uniform light,
+                                       varying float s, varying float time)
+{
+    if (!light->mMb) return light->mRender2LocalScale[0] * s;
+
+    return LocalParamLight_lerpRender2LocalScale(light, s, time);
+}
+
+/// Intersection and Sampling API
+/// IMPORTANT: The API below operates entirely in render space. All positions
+/// and directions passed in / returned are in render space.
+
+/// Can this light illuminate point p with surface normal n (ignoring
+/// occlusion consideration)?
+/// This function is used to perform early culling checks to avoid
+/// integrating lights when they can't affect the result.
+/// Passing in the the normal is optional. We can do a better job on culling
+/// if n is present for some light types.
+/// The radius defines a spherical region around p in which case
+/// the light should not be culled if any portion of that spherical region
+/// can be illuminated by this light (this is necessary so the culling
+/// calculations are accurate with sub-surface scattering).
+inline varying bool
+Light_canIlluminate(const uniform Light * uniform light,
+       const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+       varying float radius, const uniform LightFilterList * uniform lightFilterList)
+{
+    MNRY_ASSERT(light->mCanIlluminateFn != 0);
+    LightCanIlluminateFn canIlluminateFn = (LightCanIlluminateFn)light->mCanIlluminateFn;
+    return canIlluminateFn(light, p, cullingNormal, time, radius, lightFilterList);
+}
+
+/// Compute whether the ray (p, wi) intersects the light, within the given
+/// maxDistance. If the actual distance is equal to maxDistance, then we
+/// count that as a hit. If the light is hit, the function also returns the
+/// corresponding intersection.
+///
+/// The fromCamera toggle is set to true when visualizing lights visible
+/// in camera. Some lights require a specific implementation in this context.
+/// Most light types are unaffected. SpotLights are the current exception
+/// due to not being able to see any radiance when outside of their outer
+/// field of view.
+///
+/// Intersection tests are performed first against the bounded lights (cylinder,
+/// disk, rect, sphere, spot) using an Embree acceleration structure. If no
+/// such intersections are found, it will proceed to iterate over the unbounded
+/// lights (distant, env) until the first one hit.
+inline varying bool
+Light_intersect(const uniform Light * uniform light,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal,
+        const varying Vec3f &wi, varying float time,
+        varying float maxDistance, varying LightIntersection &isect)
+{
+    MNRY_ASSERT(light->mIntersectFn != 0);
+    LightIntersectFn intersectFn = (LightIntersectFn)light->mIntersectFn;
+    return intersectFn(light, p, cullingNormal, wi, time, maxDistance, isect);
+}
+
+/// Sample a position on the light and return true if the sample can
+/// contribute radiance to the point p, and false otherwise (i.e. if the
+/// light sample is facing away from point p or if the light was unable to
+/// draw a sample).
+///
+/// When it returns true, the method also returns the direction wi from
+/// the point p on the surface, to the sampled position as well as the
+/// resulting light intersection.
+///
+/// The n parameter (also optional as in canIlluminate) defines the
+/// hemisphere of directions that can be seen from point p. If non-null,
+/// Lights can test that the sampled direction is within that hemisphere
+/// and return true / false to respectively accept / cull the sample.
+///
+/// This result assumes visibility: occlusion is only tested later if the
+/// contribution is actually significant.
+/// TODO: later we may need a 3D sample value and a component in the
+/// intersection, when dealing with geometry lights.
+inline varying bool
+Light_sample(const uniform Light * uniform light,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint)
+{
+    MNRY_ASSERT(light->mSampleFn != 0);
+    LightSampleFn sampleFn = (LightSampleFn)light->mSampleFn;
+    return sampleFn(light, p, cullingNormal, time, r, wi, isect, rayDirFootprint);
+}
+
+/// Evaluate the light's emitted radiance from the intersection position
+/// in the direction -wi (make sure to pass-in the same wi that was passed-in
+/// the intersect() call or returned from the sample() call above).
+/// Also compute the probability density of sampling this direction from the
+/// point p (density measured wrt. solid angle).
+/// See intersect() for more info on the fromCamera toggle.
+/// @@@ TODO: Expand interface to take texture differentials.
+inline varying Color
+Light_eval(const uniform Light * uniform light, uniform ShadingTLState * uniform tls,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues &filterR, 
+        varying float time, const varying LightIntersection &isect,
+        uniform bool fromCamera, const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf = nullptr)
+{
+    MNRY_ASSERT(light->mEvalFn != 0);
+    LightEvalFn evalFn = (LightEvalFn)light->mEvalFn;
+    return evalFn(light, tls, wi, p, filterR, time, isect, fromCamera, lightFilterList, rayDirFootprint, pdf);
+}
+
+inline varying Color
+Light_eval(const uniform Light * varying light, uniform ShadingTLState * uniform tls,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues &filterR, 
+        varying float time, const varying LightIntersection &isect,
+        uniform bool fromCamera, const uniform LightFilterList * varying lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf = nullptr)
+{
+    Color result;
+    foreach_unique(l in light) {
+        MNRY_ASSERT(l->mEvalFn != 0);
+        LightEvalFn evalFn = (LightEvalFn)l->mEvalFn;
+
+        // A given light must use the same light filter list across all lanes
+        MNRY_ASSERT(reduce_equal((varying intptr_t) lightFilterList));
+
+        // We are in a foreach_unique loop, meaning all active lanes have identical lights and light filter
+        // lists. However, we are iterating over the light, not the light filter list, so we must grab
+        // a light filter list from one of the active lanes to convert it from a varying pointer to a
+        // uniform pointer.
+        uniform int lane = count_trailing_zeros(lanemask());
+        const uniform LightFilterList * uniform lfl =
+            (const uniform LightFilterList * uniform) extract((intptr_t) lightFilterList, lane);
+        result = evalFn(l, tls, wi, p, filterR, time, isect, fromCamera, lfl, rayDirFootprint, pdf);
+    }
+
+    return result;
+}
+
+//----------------------------------------------------------------------------
+
+// Reject dir/pos combos depending on sidedness.
+// (Note: a 'true' return value means 'reject'.)
+inline varying bool
+Light_rejectPosDirSidedness(const uniform Light * uniform light, varying float pz, varying float wz)
+{
+    if ((pz < 0.0f) == (wz < 0.0f)) return true;
+    return (pz < 0.0f) ? light->mSidedness == LIGHT_SIDEDNESS_REGULAR
+                       : light->mSidedness == LIGHT_SIDEDNESS_REVERSE;
+}
+
+//----------------------------------------------------------------------------
+

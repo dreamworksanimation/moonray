@@ -1,0 +1,42 @@
+Import('env')
+from os import path, environ
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = 'application'
+sources    = [
+    'ChangeWatcher.cc',
+    'RaasApplication.cc'
+]
+
+incdir     = [str(env.Dir('..').srcnode())]
+
+public_headers = [
+                  'ChangeWatcher.h',
+                  'RaasApplication.h'
+                 ]
+
+env.DWAInstallInclude(public_headers, 'moonray/application')
+
+components = [
+    'render_logging',
+    'common_except',
+    'rendering_rndr'
+]
+# --------------------------------------------------------------------------
+()
+
+env.DWAUseComponents(components)
+if int(environ.get('REZ_QT_MAJOR_VERSION',
+                   env.get('QT_RELEASE', '4').split('.')[0])
+       ) > 4 and 'icc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-wd1875'])
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=target, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

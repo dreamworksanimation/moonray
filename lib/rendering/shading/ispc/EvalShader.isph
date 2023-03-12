@@ -1,0 +1,24 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file EvalShader.isph
+
+/// @note these functions are meant to be called by the renderer to evaluate
+/// shading - not by shaders.  They are not part of the shading API.
+
+#pragma once
+
+struct BsdfBuilder;
+struct Material;
+struct ShadingTLState;
+struct State;
+
+/// @brief shade a material using an AOSOA state
+/// computes an array of bsdf, which must be pre-allocated
+void
+shadeMaterial(const uniform Material * uniform material,
+                    uniform ShadingTLState * uniform tls,
+              const uniform int nstate,
+              const varying State * const uniform state,
+              varying BsdfBuilder * uniform bsdfBuilder);
+

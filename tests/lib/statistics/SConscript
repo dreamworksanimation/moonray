@@ -1,0 +1,24 @@
+Import('env')
+
+# -----------------------------------------------------------------------------
+# Test configuration.
+
+name = 'statistics'
+
+sources = [
+    'main.cc',
+    'TestFormatters.cc'
+]
+
+components = [
+    'pdevunit',
+    'statistics'
+]
+
+()
+env.DWAUseComponents(components)
+
+# -----------------------------------------------------------------------------
+
+#env['RUN_TEST_ENV']['SOFTMAP_PATH'] = env.subst('${INSTALL_DIR}:${BASE_MAP_DIR}')
+test = env.DWAPdevUnitTest(name, sources, "", COMPONENTS=components)

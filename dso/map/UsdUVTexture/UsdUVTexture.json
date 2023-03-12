@@ -1,0 +1,116 @@
+{
+    "name": "UsdUVTexture",
+    "type": "Map",
+    "attributes": {
+        "attrFile": {
+            "name": "file",
+            "type": "String",
+            "flags": "FLAGS_FILENAME",
+            "comment": "Path to the texture"
+        },
+        "attrOutputMode": {
+            "name": "output_mode",
+            "label": "output mode",
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "rgb": "0",
+                "r": "1",
+                "g": "2",
+                "b": "3",
+                "a": "4"
+            },
+            "comment": "Controls which channel(s) to output"
+        },
+        "attrSt": {
+            "name": "st",
+            "label": "st",
+            "type": "Vec2f",
+            "default": "Vec2f(1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "Texture coordinate to use to fetch this texture."
+        },
+        "attrWrapS": {
+            "name": "wrapS",
+            "label": "wrap s",
+            "type": "Int",
+            "default": "4",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "black": "0",
+                "clamp": "1",
+                "repeat": "2",
+                "mirror": "3",
+                "useMetadata": "4"
+            },
+            "comment": "Wrap mode when reading this texture."
+        },
+        "attrWrapT": {
+            "name": "wrapT",
+            "label": "wrap t",
+            "type": "Int",
+            "default": "4",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "black": "0",
+                "clamp": "1",
+                "repeat": "2",
+                "mirror": "3",
+                "useMetadata": "4"
+            },
+            "comment": "Wrap mode when reading this texture."
+        },
+        "attrFallback": {
+            "name": "fallback",
+            "label": "fallback",
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)",
+            "comment": "Fallback value used when texture can not be read."
+        },
+        "attrScale": {
+            "name": "scale",
+            "label": "scale",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "comment": "Scale to be applied to all components of the texture.  output = textureValue * scale + bias"
+        },
+        "attrBias": {
+            "name": "bias",
+            "label": "bias",
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)",
+            "comment": "Bias to be applied to all components of the texture.  output = textureValue * scale + bias"
+        },
+        "attrSourceColorSpace": {
+            "name": "sourceColorSpace",
+            "label": "source color space",
+            "type": "Int",
+            "default": "3",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "raw": "0",
+                "sRGB": "1",
+                "auto": "3"
+            },
+            "comment": "Flag indicating the color space in which the source texture is encoded."
+        },
+        "attrUDimValues": {
+            "name": "udim_values",
+            "label": "udim values",
+            "type": "IntVector"
+        },
+        "attrUDimFiles": {
+            "name": "udim_files",
+            "label": "udim files",
+            "type": "StringVector"
+        },
+        "attrMaxVdim": {
+            "name": "udim_max_v",
+            "label": "udim max v",
+            "type": "Int",
+            "default": "10",
+            "comment": "udim maximum v value"
+        }
+    }
+}

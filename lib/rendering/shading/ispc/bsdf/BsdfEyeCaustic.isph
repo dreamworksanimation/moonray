@@ -1,0 +1,247 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfEyeCaustic.isph
+
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfSlice.isph"
+#include "BsdfUtil.isph"
+#include <moonray/rendering/shading/ispc/Util.isph>
+
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+/// @class EyeCausticBsdfLobe BsdfEyeCaustic.isph <rendering/shading/bsdf/BsdfEyeCaustic.isph>
+/// @brief normalized (N.L)^Exponent lobe
+/// This lobe creates a Phong-like specular lobe, but along the surface normal instead of
+/// the 'reflection vector'. It is called "EyeCaustic" because it is empirically modeled
+/// based on the caustics observed in eyeballs from refractions through the cornea.
+/// When used in conjunction with 'iris-bulge' (concave bending of the flat iris-geo)
+/// via normal mapping, the concave normals, combined with the eye caustic lobe,
+/// produce the effect of light 'pooling' on the iris, opposite to the light-reflection
+/// on the cornea. This gives the caustic-like behavior desired in our characters' eyes.
+/// References for Normalized Phong and Sampling:
+/// [1] Lafortune et al, ReportCW 1994, "Using the Modified Phong Reflectance Model for Physically Based Rendering"
+/// [2] Walter et al, EGSR 2007, "Microfacet Models for Refraction through Rough Surfaces"
+struct EyeCausticBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    ReferenceFrame mFrame;
+    Vec3f mNg;
+    float mExponent;
+    Color mCausticColor;
+    float mdDFactor;
+    float mNormalizationFactor;
+};
+
+// (Copied from CookTorranceBsdf, since the Beckmann and Phong distributions are related [2])
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float EyeCaustic_sdDFactorMin = 1.0f;
+static const float EyeCaustic_sdDFactorMax = 8.0f;
+static const float EyeCaustic_sdDFactorSlope = EyeCaustic_sdDFactorMax - EyeCaustic_sdDFactorMin;
+// As mentioned in [2], Phong exponents relates to Beckmann roughness using:
+// exponent = 2 * pow(roughness, -2) -2
+// Using a minimum roughness of 0.01, gives us the maximum exponent allowed for this lobe.
+static const float EyeCaustic_sMaxExponent = 20000.0f;
+
+
+inline varying Color
+EyeCausticBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                        const varying BsdfSlice &slice,
+                        const Vec3f &wi,
+                        varying float * uniform pdf)
+{
+    // Prepare for early exit
+    if (pdf != NULL) {
+        *pdf = 0.0f;
+    }
+
+    varying EyeCausticBsdfLobe *uniform
+    eyeCausticLobe = (varying EyeCausticBsdfLobe *uniform) lobe;
+
+    const Vec3f N = getN(eyeCausticLobe->mFrame);
+    const varying Color black = Color_ctor(0.f);
+
+    // Note: we assume this lobe has been setup with a OneMinus*Fresnel
+    // as we want to use 1 - specular_fresnel. Also notice we use
+    // cosThetaWo to evaluate the fresnel term, as an approximation of what
+    // hDotWi would be for the specular lobe.
+    const float cosThetaO = dot(eyeCausticLobe->mNg, slice.mWo);
+    if (cosThetaO <= sEpsilon) return black;
+
+    const float eyeCausticBrdfCosThetaI = min(dot(N, wi), sOneMinusEpsilon);
+    if (eyeCausticBrdfCosThetaI <= sEpsilon) return black;
+
+    const float alphaP = eyeCausticLobe->mExponent;
+    const float phongBrdf = pow(eyeCausticBrdfCosThetaI, alphaP);
+    // Compute the EyeCaustic Normalized Phong bsdf
+    // section 3.1 in [1]
+    const float normalizedPhong = eyeCausticLobe->mNormalizationFactor * phongBrdf;
+    const Color f = eyeCausticLobe->mCausticColor * BsdfLobe_computeScaleAndFresnel(lobe, cosThetaO) *
+                    normalizedPhong * (slice.mIncludeCosineTerm ? eyeCausticBrdfCosThetaI : 1.0);
+
+    // Compute pdf of sampling
+    // section 3.3.1 in [1])
+    if (pdf != NULL) {
+        *pdf = (alphaP + 1) * sOneOverTwoPi * phongBrdf;
+    }
+
+    // Soften hard shadow terminator due to shading normals
+    const float Gs = BsdfSlice_computeShadowTerminatorFix(&slice, N, wi);
+
+    return Gs * f;
+}
+
+inline varying Color
+EyeCausticBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          varying float r1, varying float r2,
+                          varying Vec3f &wi, varying float &pdf)
+{
+    varying EyeCausticBsdfLobe * uniform
+    eyeCausticLobe = (varying EyeCausticBsdfLobe * uniform) lobe;
+    
+    const float cosNO = dot(eyeCausticLobe->mNg, slice.mWo);
+    if (cosNO <= 0.0f) {
+        wi = Vec3f_ctor(0.0f);
+        pdf = 0.0f;
+        return Color_ctor(0.0f);
+    }
+
+    // section 3.3.1 in [1]
+    const float alphaP = eyeCausticLobe->mExponent;
+    const float cosThetaM = pow(r1, 1/(alphaP+1));
+    const float sinThetaM = sqrt(1 - cosThetaM*cosThetaM);
+    const float phiM = sTwoPi * r2;
+
+    Vec3f m = computeLocalSphericalDirection(cosThetaM, sinThetaM, phiM);
+
+    //sample along normal
+    wi = localToGlobal(eyeCausticLobe->mFrame, m);
+
+    return EyeCausticBsdfLobe_eval(lobe, slice, wi, &pdf);
+}
+
+inline varying Color
+EyeCausticBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice)
+{
+    varying EyeCausticBsdfLobe *uniform eyeCausticLobe =
+            (varying EyeCausticBsdfLobe * uniform) lobe;
+    
+    float cosThetaWo = max(dot(eyeCausticLobe->mNg, slice.mWo), 0.0f);
+    return eyeCausticLobe->mCausticColor * BsdfLobe_computeScaleAndFresnel(lobe, cosThetaWo);
+}
+
+inline void
+EyeCausticBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                 const varying Vec3f &wo,
+                                 const varying Vec3f &wi,
+                                 varying float r1, varying float r2,
+                                 const varying Vec3f &dNdx,
+                                 const varying Vec3f &dNdy,
+                                 varying Vec3f &dDdx, varying Vec3f &dDdy)
+{
+    varying EyeCausticBsdfLobe * uniform
+    eyeCausticLobe = (varying EyeCausticBsdfLobe * uniform) lobe;
+    
+    // Factors taken from CookTorrance roughness-based differential computation
+    dDdx = dNdx * eyeCausticLobe->mdDFactor;
+    dDdy = dNdy * eyeCausticLobe->mdDFactor;
+}
+
+inline uniform bool
+EyeCausticBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                               uniform BsdfLobeProperty property,
+                               varying float * uniform dest)
+{
+    varying EyeCausticBsdfLobe * uniform
+    eyeCausticLobe = (varying EyeCausticBsdfLobe * uniform) lobe;
+
+    uniform bool handled = true;
+
+    switch (property)
+    {
+    case BSDF_LOBE_PROPERTY_NORMAL:
+        {
+            const Vec3f N = getN(eyeCausticLobe->mFrame);
+            *dest       = N.x;
+            *(dest + 1) = N.y;
+            *(dest + 2) = N.z;
+        }
+        break;
+    default:
+        handled = false;
+        break;
+    }
+
+    return handled;
+}
+
+inline void
+EyeCausticBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                        const uniform uint8_t ntab)
+{
+    const varying EyeCausticBsdfLobe * const uniform me =
+        (const varying EyeCausticBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+    const varying Vec3f irisN = getN(me->mFrame);
+
+    BsdfUtil_indent(ntab);   print("[EyeCausticBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("caustic color: % % %\n", BSDF_UTIL_EXTRACT(me->mCausticColor.r),
+                                                             BSDF_UTIL_EXTRACT(me->mCausticColor.g),
+                                                             BSDF_UTIL_EXTRACT(me->mCausticColor.b));
+    BsdfUtil_indent(ntab+1); print("exponent: %\n", BSDF_UTIL_EXTRACT(me->mExponent));
+    BsdfUtil_indent(ntab+1); print("iris N: % % %\n", BSDF_UTIL_EXTRACT(irisN.x),
+                                                      BSDF_UTIL_EXTRACT(irisN.y),
+                                                      BSDF_UTIL_EXTRACT(irisN.z));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(me->mNg.x),
+                                                 BSDF_UTIL_EXTRACT(me->mNg.y),
+                                                 BSDF_UTIL_EXTRACT(me->mNg.z));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a eye caustic lobe
+inline void
+EyeCausticBsdfLobe_init(varying EyeCausticBsdfLobe * uniform lobe,
+                        const varying Vec3f &normal,
+                        const varying Vec3f &irisN,
+                        const varying float exponent,
+                        const varying Color &causticColor)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_EYE_CAUSTIC,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL,
+                  /* evalFn = */ EyeCausticBsdfLobe_eval,
+                  /* sampleFn = */ EyeCausticBsdfLobe_sample,
+                  /* albedoFn = */ EyeCausticBsdfLobe_albedo,
+                  /* differentialsFn = */ EyeCausticBsdfLobe_differentials,
+                  /* getPropertyFn = */ EyeCausticBsdfLobe_getProperty,
+                  /* showFn = */ EyeCausticBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, irisN);
+    lobe->mNg = normal;
+
+    lobe->mCausticColor = causticColor;
+
+    lobe->mExponent = clamp(exponent, 0.1f, EyeCaustic_sMaxExponent);
+    lobe->mNormalizationFactor = (lobe->mExponent + 2) * sOneOverTwoPi;
+
+    const float normalizedExponent = lobe->mExponent / EyeCaustic_sMaxExponent;
+    lobe->mdDFactor = EyeCaustic_sdDFactorMin + normalizedExponent * EyeCaustic_sdDFactorSlope;
+}
+

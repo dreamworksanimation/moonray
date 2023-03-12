@@ -1,0 +1,90 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file TestUtil.isph
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/math/ispc/Math.isph>
+#include <scene_rdl2/render/util/Random.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+
+//----------------------------------------------------------------------------
+
+struct Range2d
+{
+    uniform uint32_t mRowBegin;
+    uniform uint32_t mRowEnd;
+    uniform uint32_t mColBegin;
+    uniform uint32_t mColEnd;
+};
+
+
+//----------------------------------------------------------------------------
+
+inline varying bool
+isValidPdf(varying float pdf)
+{
+    return isfinite(pdf) && pdf > 0.0f;
+}
+
+inline varying bool
+isValidDirection(const varying Vec3f &v)
+{
+    if (!isfinite(v.x) || !isfinite(v.y) || !isfinite(v.z)) {
+        return false;
+    }
+    return isNormalized(v);
+}
+
+inline varying bool
+isValidColor(const varying Color &c)
+{
+    if (!isfinite(c.r) || !isfinite(c.g) || !isfinite(c.b)) {
+        return false;
+    }
+    return c.r >= 0.f && c.g >= 0.f && c.b >= 0.f;
+}
+
+inline varying float
+computeError(varying float v1, varying float v2)
+{
+    assert(v1 >= 0.f);
+    assert(v2 >= 0.f);
+
+    varying float m = max(v1, v2);
+    if (m > 1.f) {
+        return abs(v2 - v1) / m;
+    } else {
+        return abs(v2 - v1);
+    }
+}
+
+// Test if the angle between two vectors is within a set tolerance.
+inline varying bool
+isEqualDirection(const varying Vec3f &a, const varying Vec3f &b,
+        uniform float toleranceInDegrees)
+{
+    return dot(normalize(a), normalize(b)) > cos(deg2rad(toleranceInDegrees));
+}
+
+// Test if uvs match. Uvs are assumed wrapped so for example, 0 == 1 == -1 == 2
+// and so on.
+inline varying bool
+isEqualWrappedUv(const varying Vec2f &a, const varying Vec2f &b,
+        uniform float eps = sEpsilon)
+{
+    Vec2f diff = a - b;
+    float diffU = fmod(diff.x, 1.0f);
+    float diffV = fmod(diff.y, 1.0f);
+
+    return (isZero(diffU, eps) || isEqual(diffU, 1.0f, eps) || isEqual(diffU, -1.0f, eps)) &&
+           (isZero(diffV, eps) || isEqual(diffV, 1.0f, eps) || isEqual(diffV, -1.0f, eps));
+}
+
+//----------------------------------------------------------------------------
+

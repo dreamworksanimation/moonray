@@ -1,0 +1,89 @@
+{
+    "name": "DebugMap",
+    "type": "Map",
+    "attributes": {
+        "attrCheckerboard": {
+            "name": "checkerboard",
+            "type": "Bool",
+            "default": "true"
+        },
+        "attrDebugMapType": {
+            "name": "map_type",
+            "label": "map type",
+            "aliases": [ "map type" ],
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+             "enum": {
+                "position": "0",
+                "texture st": "1",
+                "shading normal": "2",
+                "geometric normal": "3",
+                "dpds": "4",
+                "dpdt": "5",
+                "primitive attribute": "6"
+            }
+        },
+        "attrInputNormal": {
+            "name": "input_normal",
+            "label": "input normal",
+            "aliases": [ "input normal" ],
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrInputNormalSpace": {
+            "name": "input_normal_space",
+            "label": "input normal space",
+            "aliases": [ "input normal space" ],
+            "comment": "Specifies what space the input normal is in.  Usually this is tangent space for texture maps and render space for projections",
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "group": "Normal",
+            "enum": {
+                "tangent": "0",
+                "render": "1"
+            },
+            "default": "0"
+        },
+        "attrInputNormalDial": {
+            "name": "input_normal_dial",
+            "label": "input normal dial",
+            "aliases": [ "input normal dial" ],
+            "type": "Float",
+            "default": "1.0f"
+        },
+        "attrPrimitiveAttributeName" : {
+            "name": "primitive_attribute_name",
+            "label": "primitive attribute name",
+            "aliases": [ "primitive attribute name" ],
+            "type": "String",
+            "default": "\"surface_st\"",
+            "comment": "the name of primitive attribute to displayed when attribute 'map type' is set to 'primitive attribute'",
+            "group": "Primitive Attribute"
+        },
+        "attrPrimitiveAttributeType" : {
+            "name": "primitive_attribute_type",
+            "label": "primitive attribute type",
+            "aliases": [ "primitive attribute type" ],
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "default": "1",
+            "enum": {
+                "float": "0",
+                "vec2f": "1",
+                "vec3f": "2",
+                "rgb": "3"
+            },
+            "comment": "the type of primitive attribute to displayed when attribute 'map type' is set to 'primitive attribute'",
+            "group": "Primitive Attribute"
+        }
+    },
+
+    "normals": {
+        "Input": {
+            "value": "attrInputNormal",
+            "dial": "attrInputNormalDial",
+            "space": "attrInputNormalSpace"
+        }
+    }
+}

@@ -1,0 +1,16 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+
+#include "TestUtil.isph"
+
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+
+ISPC_UTIL_EXPORT_UNIFORM_STRUCT_TO_HEADER(Range2d);
+
+
+//----------------------------------------------------------------------------
+

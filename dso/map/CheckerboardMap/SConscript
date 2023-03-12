@@ -1,0 +1,21 @@
+Import('env')
+
+env.Tool('ispc_dso', toolpath = ['../../../bart_tools'])
+# ---------------------------------------------------------------
+
+target = 'CheckerboardMap.so'
+cc_source = ['CheckerboardMap.cc']
+ispc_source = ['CheckerboardMap.ispc']
+json_source = ['CheckerboardMap.json']
+components = [
+    'rendering_shading',
+    'shading_ispc',
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)

@@ -1,0 +1,108 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include "HairUtil.isph"
+
+// forward declarations
+struct HairState;
+
+// phiO is always 0 when not using custom normal
+static const float HairState_sPhiO = 0.0f;
+
+/// @class HairState BsdfHair.isph <rendering/shading/Bsdf/BsdfHair.isph>
+/// @brief This is a support structure for computing common data
+///        between all the lobes.
+struct HairState
+{
+    float mEta;
+    float mEtaP, mEtaPP;
+
+    Vec3f mWo;
+
+    // Hair Reference Frame
+    Vec3f mHairDir;
+    Vec3f mHairNorm;
+    Vec3f mHairBiNorm;
+
+    float mSinGammaO;
+    float mCosGammaO;
+
+    float mThetaD;
+    float mPhiD;
+
+    // Also depends on mWi
+    float mSinThetaD;
+    float mCosThetaD;
+    float mCosPhiDOverTwo;
+
+    float mPhiO, mPhiI;
+    float mPhiH;
+    float mThetaO, mThetaI;
+    float mSinThetaI, mCosThetaI;
+    float mSinThetaO, mCosThetaO;
+
+    Color mSigmaA;
+    Color mAbsorptionTerm;
+
+    bool mUsingCustomNormal;
+};
+
+// Called from Sample
+void
+HairState_updateAngles(varying HairState * uniform hairState,
+                       const varying Vec3f &direction,
+                       const varying float phiI,
+                       const varying float thetaI);
+
+// Called from Sample
+Vec3f
+HairState_localToGlobal(varying HairState * uniform hairState,
+                        const varying Vec3f &direction);
+Vec3f
+HairState_localToGlobal(varying HairState * uniform hairState,
+                        const varying float x,
+                        const varying float y,
+                        const varying float z);
+
+// Called from HairTRTLobe evalNTermWithAbsorption
+Color
+HairState_calculateAbsorptionTerm(const varying float h,
+                                  const varying float eta,
+                                  const varying Color& sigmaAC,
+                                  const varying float etaP,
+                                  const varying float cosThetaO,
+                                  const varying float sinThetaO);
+
+/// @brief initialize a HairState
+// The given hair direction is assumed to be normalized by the caller
+void
+HairState_init(varying HairState * uniform hairState,
+               const varying Vec3f& wo,
+               const varying Vec3f& wi,
+               const varying Vec3f& hairDirection,
+               const varying float h,
+               const varying float refractiveIndex,
+               const varying Color& sigmaA,
+               const varying float hairRotation,
+               const varying Vec3f& hairNormal);
+
+// Called from Sample
+void
+HairState_init(varying HairState * uniform hairState,
+               const varying Vec3f& wo,
+               const varying Vec3f& hairDirection,
+               const varying float h,
+               const varying float refractiveIndex,
+               const varying Color& sigmaA,
+               const varying float hairRotation,
+               const varying Vec3f& hairNormal);
+
+// Called from HairDiffuse Sample
+void
+HairState_init(varying HairState * uniform hairState,
+               const varying Vec3f& wo,
+               const varying Vec3f& hairDirection);
+
+

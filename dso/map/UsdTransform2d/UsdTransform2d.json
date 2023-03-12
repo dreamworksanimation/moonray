@@ -1,0 +1,33 @@
+{
+    "name": "UsdTransform2d",
+    "type": "Map",
+    "attributes": {
+        "attrIn": {
+            "name": "in",
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "This input provides the data. It is usually connected to a UsdPrimvarReader_float2 that will provide the data."
+        },
+        "attrRotation": {
+            "name": "rotation",
+            "label": "rotation",
+            "aliases": [ "rotation" ],
+            "type": "Float",
+            "default": "0.0f",
+            "comment": "Counter-clockwise rotation in degrees around the origin to be applied to all components of the data."
+        },
+        "attrScale": {
+            "name": "scale",
+            "type": "Vec2f",
+            "default": "Vec2f(1.0f, 1.0f)",
+            "comment": "Scale around the origin to be applied to all components of the data."
+        },
+        "attrTranslation": {
+            "name": "translation",
+            "type": "Vec2f",
+            "default": "Vec2f(0.0f, 0.0f)",
+            "comment": "Translation to be applied to all components of the data."
+        }
+    }
+}

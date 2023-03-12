@@ -1,0 +1,81 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfAshikhminShirleyDiffuse.isph
+#pragma once
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+
+// Hardcoded constants
+static const float AshikhminShirley_sDiffuseConstant = 28.0 / (23.0 * sPi);
+
+//----------------------------------------------------------------------------
+
+///
+/// @class AshikhminShirleyDiffuseBsdfLobe BsdfAshikhminShirleyDiffuse.isph <pbr/BsdfAshikhminShirleyDiffuse.isph>
+/// @brief The Ashikhmin Shirley Diffuse Brdf
+/// This corresponds to equation (5) of the paper, with the omission of the
+/// Rd * (1 - Rs) term. That term should be set via setScale() by the material.
+///
+struct AshikhminShirleyDiffuseBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    
+    ReferenceFrame mFrame;
+};
+
+/// @brief evaluate an Ashikhmin-Shirley lobe
+varying Color
+AshikhminShirleyDiffuseBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          const Vec3f &wi,
+                          varying float * uniform pdf);
+
+/// @brief sample an Ashikhmin-Shirley lobe
+varying Color
+AshikhminShirleyDiffuseBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+AshikhminShirleyDiffuseBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+AshikhminShirleyDiffuseBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+AshikhminShirleyDiffuseBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                            uniform BsdfLobeProperty property,
+                                            varying float * uniform dest);
+
+/// @brief allocate and add an Ashikhmin-Shirley lobe to a bsdf
+inline void
+AshikhminShirleyDiffuseBsdfLobe_init(varying AshikhminShirleyDiffuseBsdfLobe * uniform lobe,
+                                    const varying Vec3f &N)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_ASHIKHMIN_SHIRLEY,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_DIFFUSE,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ AshikhminShirleyDiffuseBsdfLobe_eval,
+                  /* sampleFn = */ AshikhminShirleyDiffuseBsdfLobe_sample,
+                  /* albedoFn = */ AshikhminShirleyDiffuseBsdfLobe_albedo,
+                  /* differentialsFn = */ AshikhminShirleyDiffuseBsdfLobe_differentials,
+                  /* getPropertyFn = */ AshikhminShirleyDiffuseBsdfLobe_getProperty,
+                  /* showFn = */ NULL);
+
+    ReferenceFrame_init(lobe->mFrame, N);
+}
+

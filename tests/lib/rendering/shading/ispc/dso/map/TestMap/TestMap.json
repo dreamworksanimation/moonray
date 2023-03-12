@@ -1,0 +1,184 @@
+{
+    "name": "TestMap",
+    "type": "Map",
+    "attributes": {
+        "attrMode": {
+            "name": "mode",
+            "type": "Int",
+            "default": "0"
+        },
+        "attrMult": {
+            "name": "mult",
+            "type": "Float",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrColor1": {
+            "name": "color1",
+            "type": "Rgb"
+        },
+        "attrBool1": {
+            "name": "bool1",
+            "type": "Bool"
+        },
+        "attrInt1": {
+            "name": "int1",
+            "type": "Int"
+        },
+        "attrFloat1": {
+            "name": "float1",
+            "type": "Float"
+        },
+        "attrVec21": {
+            "name": "vec21",
+            "type": "Vec2f"
+        },
+        "attrVec31": {
+            "name": "vec31",
+            "type": "Vec3f"
+        },
+        "attrColor2": {
+            "name": "color2",
+            "type": "Rgb",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrFloat2": {
+            "name": "float2",
+            "type": "Float",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec32": {
+            "name": "vec32",
+            "type": "Vec3f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec22": {
+            "name": "vec22",
+            "type": "Vec2f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec3f10": {
+            "name": "vec3f10",
+            "type": "Vec3f"
+        },
+        "attrFloat11": {
+            "name": "float11",
+            "type": "Float"
+        },
+        "attrVec3f11": {
+            "name": "vec3f11",
+            "type": "Vec3f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrInt11": {
+            "name": "int11",
+            "type": "Int",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrFloat101": {
+            "name": "float101",
+            "type": "Float"
+        },
+        "attrDfdx101": {
+            "name": "dfdx101",
+            "type": "Float"
+        },
+        "attrDfdy101": {
+            "name": "dfdy101",
+            "type": "Float"
+        },
+        "attrFloat102": {
+            "name": "float102",
+            "type": "Float",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrColor105": {
+            "name": "color105",
+            "type": "Rgb"
+        },
+        "attrDcdx105": {
+            "name": "dcdx105",
+            "type": "Rgb"
+        },
+        "attrDcdy105": {
+            "name": "dcdy105",
+            "type": "Rgb"
+        },
+        "attrColor106": {
+            "name": "color106",
+            "type": "Rgb",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec3f110": {
+            "name": "vec3f110",
+            "type": "Vec3f"
+        },
+        "attrDvdx110": {
+            "name": "dvdx110",
+            "type": "Vec3f"
+        },
+        "attrDvdy110": {
+            "name": "dvdy110",
+            "type": "Vec3f"
+        },
+        "attrVec3f111": {
+            "name": "vec3f111",
+            "type": "Vec3f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec2f120": {
+            "name": "vec2f120",
+            "type": "Vec2f"
+        },
+        "attrDvdx120": {
+            "name": "dvdx120",
+            "type": "Vec2f"
+        },
+        "attrDvdy120": {
+            "name": "dvdy120",
+            "type": "Vec2f"
+        },
+        "attrVec2f121": {
+            "name": "vec2f121",
+            "type": "Vec2f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrVec3f115": {
+            "name": "vec3f115",
+            "type": "Vec3f"
+        },
+        "attrDvdx115": {
+            "name": "dvdx115",
+            "type": "Vec3f"
+        },
+        "attrDvdy115": {
+            "name": "dvdy115",
+            "type": "Vec3f"
+        },
+        "attrFloat116": {
+            "name": "float116",
+            "type": "Float"
+        },
+        "attrVec3f116": {
+            "name": "vec3f116",
+            "type": "Vec3f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrInt116": {
+            "name": "int116",
+            "type": "Int",
+            "flags": "FLAGS_BINDABLE"
+        }
+    },
+    "normals": {
+        "Vec3f11": {
+            "value": "attrVec3f11",
+            "dial": "attrFloat11",
+            "space": "attrInt11"
+        },
+        "Vec3f116": {
+            "value": "attrVec3f116",
+            "dial": "attrFloat116",
+            "space": "attrInt116"
+        }
+    }
+}

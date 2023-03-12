@@ -1,0 +1,22 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+// Include this before any other includes!
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include "TextureTLState.hh"
+
+struct Arena;
+struct Perthread;
+struct TextureSampler;
+struct TextureSystem;
+
+struct TextureTLState
+{
+    BASE_TL_STATE_MEMBERS;
+    TEXTURE_TL_STATE_MEMBERS;
+};
+

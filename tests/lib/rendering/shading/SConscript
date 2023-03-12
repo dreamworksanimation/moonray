@@ -1,0 +1,47 @@
+Import('env')
+
+name       = 'shading'
+# --------------------------------------------------------------------
+
+components = [
+              'common_except',
+              'common_math',
+              'rendering_mcrt_common',
+              'rendering_shading',
+              'shading_eval_ispc',
+              'pdevunit',
+              'scene_rdl2',
+              'tbb',
+              ]
+env.DWAUseComponents(components)
+
+# silence ISPC gather warnings
+env.AppendUnique(ISPCFLAGS = ['--wno-perf'])
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+# ISPC source files.
+sources, headers = env.IspcShared([
+        'TestHair.ispc',
+        ])
+
+# C++ source files.
+sources   += [
+              'TestHair.cc',
+              'main.cc',
+              ]
+
+# append cpppath for auto-generated ISPC headers
+env.AppendUnique(CPPPATH=[
+        env.Dir('.'),
+        env.Dir('$BUILD_DIR/lib')])
+
+ref        = []
+
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref,
+                         COMPONENTS=components, TIMEOUT=900)

@@ -1,0 +1,15 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+#include "PathIntegrator.hh"
+
+struct PathIntegrator
+{
+    PATH_INTEGRATOR_STATE_MEMBERS;
+};
+
+
+
+

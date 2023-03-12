@@ -1,0 +1,21 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <scene_rdl2/render/util/BitUtils.isph>
+
+struct FrameState;
+struct IntegratorSample1D;
+struct IntegratorSample2D;
+struct IntegratorSample3D;
+
+void partitioned1D(const varying IntegratorSample1D& is,
+                   varying float& output,
+                   const uniform FrameState& fs);
+
+void partitioned2D(const varying IntegratorSample2D& is,
+                   varying float& output1,
+                   varying float& output2,
+                   const uniform FrameState& fs);
+

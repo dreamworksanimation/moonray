@@ -1,0 +1,106 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfLambert.isph
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfUtil.isph"
+
+/// @class LambertBsdfLobe BsdfLambert.isph <rendering/shading/Bsdf/BsdfLambert.isph>
+/// @brief lambert bsdf lobe
+struct LambertBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    ReferenceFrame mFrame;
+    Color mAlbedo;
+};
+
+varying Color
+LambertBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                     const varying BsdfSlice &slice,
+                     const Vec3f &wi,
+                     varying float * uniform pdf);
+
+varying Color
+LambertBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                       const varying BsdfSlice &slice,
+                       varying float r1, varying float r2,
+                       varying Vec3f &wi, varying float &pdf);
+
+varying Color
+LambertBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                       const varying BsdfSlice &slice);
+
+void
+LambertBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                              const varying Vec3f &wo,
+                              const varying Vec3f &wi,
+                              varying float r1, varying float r2,
+                              const varying Vec3f &dNdx,
+                              const varying Vec3f &dNdy,
+                              varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+LambertBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                            uniform BsdfLobeProperty property,
+                            varying float * uniform dest);
+
+inline void
+LambertBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                     const uniform uint8_t ntab)
+{
+    const varying LambertBsdfLobe * uniform me =
+        (const varying LambertBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    if (BsdfLobe_matchesFlag(lobe, BSDF_LOBE_TYPE_REFLECTION)) {
+        BsdfUtil_indent(ntab);   print("[LambertBsdfLobe] (reflection) mask: %\n", lobe->mMask);
+    } else {
+        BsdfUtil_indent(ntab);   print("[LambertBsdfLobe] (transmission) mask: %\n", lobe->mMask);
+    }
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("albedo: % % %\n", BSDF_UTIL_EXTRACT(me->mAlbedo.r),
+                                                      BSDF_UTIL_EXTRACT(me->mAlbedo.g),
+                                                      BSDF_UTIL_EXTRACT(me->mAlbedo.b));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief intialize a lambert lobe
+inline void
+LambertBsdfLobe_init(varying LambertBsdfLobe * uniform lobe,
+                     const varying Vec3f &normal,
+                     const varying Color &albedo,
+                     const uniform bool reflection)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_LAMBERT,
+                  /* type = */
+                  reflection?
+                  BSDF_LOBE_TYPE_REFLECTION   | BSDF_LOBE_TYPE_DIFFUSE :
+                  BSDF_LOBE_TYPE_TRANSMISSION | BSDF_LOBE_TYPE_DIFFUSE,
+                  /* differentialFlags = */ BSDF_LOBE_IGNORES_INCOMING_DIFFERENTIALS,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ LambertBsdfLobe_eval,
+                  /* sampleFn = */ LambertBsdfLobe_sample,
+                  /* albedoFn = */ LambertBsdfLobe_albedo,
+                  /* differentialsFn = */ LambertBsdfLobe_differentials,
+                  /* getPropertyFn = */ LambertBsdfLobe_getProperty,
+                  /* showFn = */ LambertBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+    lobe->mAlbedo = albedo;
+}
+

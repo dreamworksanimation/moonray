@@ -1,0 +1,97 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Mat4.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+struct State;
+
+/**
+ * @class Xform
+ * @brief Xform, a utility library for shaders - for space transforms.
+ */
+
+enum SHADING_Space {
+    SHADING_SPACE_RENDER,
+    SHADING_SPACE_CAMERA,
+    SHADING_SPACE_WORLD,
+    SHADING_SPACE_SCREEN,
+    SHADING_SPACE_OBJECT,
+    SHADING_SPACE_REFERENCE,
+    SHADING_SPACE_TEXTURE,
+    SHADING_SPACE_INPUT_COORDINATES,
+    SHADING_SPACE_HAIR_SURFACE_ST,
+    SHADING_SPACE_HAIR_CLOSEST_SURFACE_ST
+};
+
+#define MAX_CAMERAS 8   // Also in rendering/pbr/Types.hh
+
+/**
+ * This structure encapsulates all the transform data used by
+ * the xform library. In order to use any of the library functions in ISPC,
+ * you must pass an initialized instance of this structure.
+ *
+ * You can obtain an initialized instance of this struct by calling
+ * Xform::getIspcXform().
+ */
+struct Xform
+{
+    uniform Xform3f mR2C[MAX_CAMERAS];
+    uniform Xform3f mR2W;
+    uniform Mat4f mR2S[MAX_CAMERAS];
+    uniform Xform3f mR2O;
+    uniform Xform3f mR2CInv[MAX_CAMERAS];
+    uniform Xform3f mR2WInv;
+    uniform Mat4f mR2SInv[MAX_CAMERAS];
+    uniform Xform3f mR2OInv;
+    uniform intptr_t mGetR2OFn; // Function pointer to getR2O()
+    uniform int mUseExternalObj;
+};
+
+/**
+ * @brief Transform a 3D point from source space to destination space
+ *
+ * The spaces supported are: Render, World, Camera, Screen and Object
+ * @param srcSpace Source space (enum, begins with SHADING_SPACE)
+ * @param destSpace Destination space (enum, begins with SHADING_SPACE)
+ * @param state Current shading state
+ * @param inPoint 3D point to transform
+ */
+Vec3f transformPoint(const uniform Xform * const uniform xform,
+                     const uniform int srcSpace,
+                     const uniform int dstSpace,
+                     const varying State &state,
+                     const varying Vec3f inPoint);
+
+/**
+ * @brief Transform a normal from source space to destination space
+ *
+ * The spaces supported are: Render, World, Camera and Object
+ * @param srcSpace Source space (enum, begins with SHADING_SPACE)
+ * @param destSpace Destination space (enum, begins with SHADING_SPACE)
+ * @param state Current shading state
+ * @param inNormal 3D point to transform
+ */
+Vec3f transformNormal(const uniform Xform * const uniform xform,
+                      const uniform int srcSpace, const uniform int dstSpace,
+                      const varying State &state,
+                      const varying Vec3f inNormal);
+
+/**
+ * @brief Transform a vector from source space to destination space
+ *
+ * The spaces supported are: Render, World, Camera and Object
+ * @param srcSpace Source space (enum, begins with SHADING_SPACE)
+ * @param destSpace Destination space (enum, begins with SHADING_SPACE)
+ * @param state Current shading state
+ * @param inVector 3D point to transform
+ */
+Vec3f transformVector(const uniform Xform * const uniform xform,
+                      const uniform int srcSpace, const uniform int dstSpace,
+                      const varying State &state,
+                      const varying Vec3f inVector);
+

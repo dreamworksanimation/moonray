@@ -1,0 +1,81 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "EllipticalFalloff.hh"
+
+#include <moonray/rendering/pbr/light/LightUtil.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+//----------------------------------------------------------------------------
+
+///
+/// @struct EllipticalFalloff
+/// @brief Implements super elliptical falloff.
+///
+struct EllipticalFalloff
+{
+    ELLIPTICAL_FALLOFF_MEMBERS;
+};
+
+
+/// Superellipse soft clipping
+///  Inputs:
+///    - point Q on the x-y plane
+///    - the equations of two superellipses (with major/minor axes given by
+///         a,b and A,B for the inner and outer ellipses, respectively)
+///  Return value:
+///    - 0 if Q was inside the inner ellipse
+///    - 1 if Q was outside the outer ellipse
+///    - smoothly varying from 0 to 1 in between
+varying float
+evalSuperEllipse(varying float x, varying float y,  // cartesian point we are evaluating at
+                 uniform float a, uniform float b,  // inner superellipse major/minor axes
+                 uniform float A, uniform float B,  // Outer superellipse major/minor axes
+                 uniform float roundness);          // shared roundness for both ellipses
+
+/// Returns true if the supplied uvs represent a valid location on the function.
+// TODO: Replace this with a sampling function...
+// TODO: store this information to pass it into eval()
+inline varying bool
+EllipticalFalloff_intersect(const uniform EllipticalFalloff * uniform ef,
+        varying float u, varying float v)
+{
+    u = u * 2.0f - 1.0f;
+    v = v * 2.0f - 1.0f;
+
+    float attenuation = evalSuperEllipse(
+        u, v,
+        ef->mInnerW, ef->mInnerH,
+        ef->mOuterW, ef->mOuterH,
+        ef->mRoundness);
+
+    return attenuation > 0.0001f;
+}
+
+/// This function is responsible for modifying the incoming color anyway
+/// it sees fit. UV space is square, any further transformation should be
+/// done in here.
+inline void
+EllipticalFalloff_eval(const uniform EllipticalFalloff * uniform ef,
+        varying float u, varying float v, varying Color * uniform color)
+{
+    u = u * 2.0f - 1.0f;
+    v = v * 2.0f - 1.0f;
+
+    float attenuation = evalSuperEllipse(
+        u, v,
+        ef->mInnerW, ef->mInnerH,
+        ef->mOuterW, ef->mOuterH,
+        ef->mRoundness);
+
+    attenuation = OldFalloffCurve_eval(&ef->mOldFalloffCurve, attenuation);
+
+    *color = *color * attenuation;
+}
+
+
+//----------------------------------------------------------------------------
+

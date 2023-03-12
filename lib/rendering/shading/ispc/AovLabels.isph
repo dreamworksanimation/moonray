@@ -1,0 +1,39 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file AovLabels.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/AovLabels.hh>
+
+inline uniform int
+aovEncodeLabels(uniform int label,
+                const uniform int materialLabelId,
+                const uniform int lpeMaterialLabelId,
+                const uniform int * uniform lobeLabelIds,
+                const uniform int * uniform lpeLobeLabelIds)
+{
+    return SHADING_aovEncodeLabels(label, materialLabelId, lpeMaterialLabelId,
+                               lobeLabelIds, lpeLobeLabelIds);
+}
+
+inline uniform bool
+aovLabelIsTransformed(uniform int label)
+{
+    return SHADING_aovLabelIsTransformed(label);
+}
+
+inline uniform int
+aovDecodeLabel(uniform int encodedLabel)
+{
+    return SHADING_aovDecodeLabel(encodedLabel);
+}
+
+inline uniform int
+aovDecodeLpeLabel(uniform int encodedLabel)
+{
+    return SHADING_aovDecodeLpeLabel(encodedLabel);
+}                                           
+
+

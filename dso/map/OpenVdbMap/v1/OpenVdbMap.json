@@ -1,0 +1,96 @@
+{
+    "name": "OpenVdbMap",
+    "type": "Map",
+    "attributes": {
+        "attrVdbSource": {
+            "name": "vdb_source",
+            "label": "vdb source",
+            "comment": "Where to look for the vdb filename.  Choose 'from texture' to specify a .vdb filename directly via the 'texture' attribute.  Choose 'from OpenVdbGeometry' to use the .vdb filename and transform from an OpenVdbGeometry object in the scene using the 'openvdb geometry' attribute",
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "from texture": "0",
+                "from OpenVdbGeometry": "1"
+            }
+        },
+        "attrTexture": {
+            "name": "texture",
+            "label": "texture",
+            "comment": "",
+            "type": "String",
+            "flags": "FLAGS_FILENAME"
+        },
+        "attrOpenVdbGeometry": {
+            "name": "openvdb_geometry",
+            "label": "openvdb geometry",
+            "comment": "The OpenVdbGeometry object from which to retrieve the .vdb filename and transform when 'vdb source' is set to 'from OpenVdbGeometry'",
+            "type": "SceneObject*",
+            "flags": "FLAGS_NONE",
+            "interface": "INTERFACE_GEOMETRY"
+        },
+        "attrGridName" : {
+            "name": "grid_name",
+            "label": "grid name (optional)",
+            "type": "String",
+            "default": "\"\"",
+            "comment": "The name of the grid within the .vdb file from which to sample (hint: use openvdb_print to see contents of .vdb file). If no grid is specified, the first grid found in the .vdb will be used.  In cases where there are multiple grids with the same name, the grid name can be indexed (eg. density[1])"
+        },
+        "attrTextureCoordSource": {
+            "name": "texture_coordinates",
+            "label": "texture coordinates",
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "position": "0",
+                "reference position": "1",
+                "input texture coordinates": "2"
+            },
+            "comment" : "Which coordinate source to use for the texture lookup"
+        },
+        "attrInputTextureCoordinate": {
+            "name": "input_texture_coordinates",
+            "label": "input texture coordinates",
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment" : "The world-space coordinate to use when 'texture coordinates' is set to 'input texture coordinates'"
+        },
+        "attrInterpolation": {
+            "name": "interpolation",
+            "label": "interpolation",
+            "type": "Int",
+            "default": "2",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "point": "0",
+                "box": "1",
+                "quadratic": "2"
+            },
+            "comment": "The type of interpolation to use when sampling the vdb"
+        },
+        "attrDefaultValue": {
+            "name": "default_value",
+            "label": "default value",
+            "type": "Rgb",
+            "default": "Rgb(0,0,0)",
+            "comment": "A default value to use when A) the .vdb file is not found, B) the requested grid is not found, C) the grid is unspecified, but no grid is found"
+        },
+        "attrShowWarnings": {
+            "name": "show_warnings",
+            "label": "show warnings",
+            "type": "Bool",
+            "default": "false",
+            "comment": "Enables a warning message when A) the .vdb file is not found, B) the requested grid is not found, C) the grid is unspecified, but no grid is found"
+        },
+        "attrShowActiveField": {
+            "name": "show_active_field",
+            "label": "show active field",
+            "type": "Bool",
+            "default": "false",
+            "comment": "When enabled active/inactive field locations will be white/black, respectively",
+            "group": "Advanced"
+        }
+    }
+}

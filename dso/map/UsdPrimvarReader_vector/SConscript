@@ -1,0 +1,21 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+target = 'UsdPrimvarReader_vector.so'
+cc_source = ['UsdPrimvarReader_vector.cc']
+ispc_source = ['UsdPrimvarReader_vector.ispc']
+json_source = ['UsdPrimvarReader_vector.json']
+components = [
+    'rendering_shading',
+    'shading_ispc',
+    'scene_rdl2',
+    'map_primvar'
+]
+
+# ---------------------------------------------------------------
+
+env.DWAForceWarningAsError()
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)

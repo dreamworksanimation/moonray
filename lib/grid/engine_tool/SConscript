@@ -1,0 +1,39 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = env.DWAGlob('*.cc')
+incdir     = [str(env.Dir('../..').srcnode())]
+components = [
+	   'common_fb_util',
+	   'common_grid_util',
+	   'common_math',
+	   'common_platform',
+	   'rendering_mcrt_common',
+	   'rendering_rndr',
+	   'scene_rdl2'
+	   ]
+
+# --------------------------------------------------------------------------
+publicHeaders = [
+	      'FrameStatus.h',
+	      'ImgEncodingType.h',
+	      'McrtFbSender.h'
+	      ]
+env.DWAInstallInclude(publicHeaders, 'moonray/grid/engine_tool')
+env.DWAUseComponents(components)
+env.Prepend (CPPPATH=incdir,LIBS=["ssl"])
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=target+["ssl"], CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

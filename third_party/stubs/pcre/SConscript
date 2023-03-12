@@ -1,0 +1,15 @@
+Import('env')
+
+env.DWAComponent(
+  'pcre',
+  LIBS = [
+        'pcre',
+        'pcrecpp'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+        ]
+  )

@@ -1,0 +1,220 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "LightFilter.hh"
+
+#include <moonray/rendering/bvh/shading/ispc/ShadingTLState.isph>
+#include <moonray/rendering/pbr/core/Distribution.isph>
+#include <moonray/rendering/pbr/light/LightUtil.isph>
+#include <moonray/rendering/shading/ispc/RampControl.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Vec4.isph>
+#include <scene_rdl2/common/math/ispc/Mat3.isph>
+#include <scene_rdl2/common/math/ispc/Mat4.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+//----------------------------------------------------------------------------
+
+///
+/// @struct LightFilter LightFilter.isph <pbr/lightfilter/LightFilter.isph>
+/// @brief Base class that defines the light filter interface. All light filters
+/// operate in render space.
+///
+
+struct CanIlluminateData
+{
+    Vec3f lightPosition;
+    float lightRadius;
+    Vec3f shadingPointPosition;
+    Xform3f lightRender2LocalXform;
+    float shadingPointRadius;
+    float time;
+};
+
+struct EvalData
+{
+    uniform ShadingTLState* uniform tls;
+    const varying LightIntersection* uniform isect;
+    Vec3f lightPosition;
+    Vec3f lightDirection;
+    Vec3f shadingPointPosition;
+    LightFilterRandomValues randVar;
+    float time;
+    Xform3f lightRender2LocalXform;
+    Vec3f wi;   // direction of incoming light
+};
+
+struct LightFilter 
+{
+    LIGHT_FILTER_MEMBERS;
+};
+
+/// Light derived structs
+
+struct ColorRampLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    COLOR_RAMP_LIGHT_FILTER_MEMBERS;
+};
+
+struct CombineLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    COMBINE_LIGHT_FILTER_MEMBERS;
+};
+
+struct CookieLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    COOKIE_LIGHT_FILTER_MEMBERS;
+};
+
+struct CookieLightFilter_v2
+{
+    LIGHT_FILTER_MEMBERS;
+    COOKIE_LIGHT_FILTER_V2_MEMBERS;
+};
+
+struct BarnDoorLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    BARN_DOOR_LIGHT_FILTER_MEMBERS;
+};
+
+struct DecayLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    DECAY_LIGHT_FILTER_MEMBERS;
+};
+
+struct IntensityLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    INTENSITY_LIGHT_FILTER_MEMBERS;
+};
+
+struct RodLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    ROD_LIGHT_FILTER_MEMBERS;
+};
+
+struct VdbLightFilter
+{
+    LIGHT_FILTER_MEMBERS;
+    VDB_LIGHT_FILTER_MEMBERS;
+};
+
+//----------------------------------------------------------------------------
+
+/// Derived types implement the canIlluminate and eval interface via
+/// these function pointers
+
+typedef varying bool (* uniform LightFilterCanIlluminateFn)(
+        const uniform LightFilter * uniform lightfilter,
+        const varying CanIlluminateData &data);
+
+typedef void (* uniform LightFilterEvalFn)(
+        const uniform LightFilter * uniform lightfilter,
+        const varying EvalData &data,
+        varying Color * uniform filterValue);
+
+inline void
+LightFilter_init(uniform LightFilter * uniform lightfilter,
+                 LightFilterCanIlluminateFn canIlluminateFn,
+                 LightFilterEvalFn evalFn)
+{
+    lightfilter->mCanIlluminateFn = (intptr_t)canIlluminateFn;
+    lightfilter->mEvalFn = (intptr_t)evalFn;
+}
+
+inline varying bool
+LightFilter_canIlluminate(const uniform LightFilter * uniform lightfilter,
+                          const varying CanIlluminateData &data)
+{
+    MNRY_ASSERT(lightfilter->mCanIlluminateFn != 0);
+    LightFilterCanIlluminateFn canIlluminateFn = (LightFilterCanIlluminateFn)lightfilter->mCanIlluminateFn;
+    return canIlluminateFn(lightfilter, data);
+}
+
+inline void
+LightFilter_eval(const uniform LightFilter * uniform lightfilter,
+                 const varying EvalData &data,
+                 varying Color * uniform filterValue)
+{
+    MNRY_ASSERT(lightfilter->mEvalFn != 0);
+    LightFilterEvalFn evalFn = (LightFilterEvalFn)lightfilter->mEvalFn;
+    evalFn(lightfilter, data, filterValue);
+}
+
+///
+/// @struct LightFilterList LightFilterList.isph <pbr/lightfilter/LightFilterList.isph>
+/// @brief Collection of Light Filters to be applied to a single Light.
+///
+
+struct LightFilterList
+{
+    LIGHT_FILTER_LIST_MEMBERS;
+};
+
+inline const uniform LightFilter * uniform
+LightFilterList_getLightFilter(const uniform LightFilterList * uniform lfl, uniform int i)
+{
+    MNRY_ASSERT(lfl);
+    const uniform LightFilter * uniform * uniform lightFilters =
+        *((const uniform LightFilter * uniform * uniform * uniform) lfl);
+    return lightFilters[i];
+}
+
+inline uniform int
+LightFilterList_getLightFilterCount(const uniform LightFilterList * uniform lfl)
+{
+    MNRY_ASSERT(lfl);
+    return lfl->mLightFilterCount;
+}
+
+inline uniform bool
+LightFilterList_getNeedsLightXform(const uniform LightFilterList * uniform lfl)
+{
+    MNRY_ASSERT(lfl);
+    return lfl->mNeedsLightXform;
+}
+
+inline varying bool
+LightFilterList_canIlluminate(const uniform LightFilterList * uniform lfl,
+                              varying CanIlluminateData& data)
+{
+    MNRY_ASSERT(lfl);
+    uniform int lightFilterCount = LightFilterList_getLightFilterCount(lfl);
+    for (uniform int i = 0; i < lightFilterCount; ++i) {
+        const uniform LightFilter * uniform lightFilter = LightFilterList_getLightFilter(lfl, i);
+        MNRY_ASSERT(lightFilter);
+        if (!LightFilter_canIlluminate(lightFilter, data)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+inline void
+LightFilterList_eval(const uniform LightFilterList * uniform lfl,
+                     varying EvalData& data,
+                     varying Color * uniform radiance)
+{
+    MNRY_ASSERT(lfl);
+    uniform int lightFilterCount = LightFilterList_getLightFilterCount(lfl);
+    for (uniform int i = 0; i < lightFilterCount; ++i) {
+        const uniform LightFilter * uniform lightFilter = LightFilterList_getLightFilter(lfl, i);
+        MNRY_ASSERT(lightFilter);
+        Color filterValue;
+        LightFilter_eval(lightFilter, data, &filterValue);
+        *radiance = *radiance * filterValue;
+    }
+}
+
+//----------------------------------------------------------------------------
+

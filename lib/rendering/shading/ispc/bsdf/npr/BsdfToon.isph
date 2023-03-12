@@ -1,0 +1,387 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfToon.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/BsdfLambert.isph>
+#include <moonray/rendering/shading/ispc/RampControl.isph>
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/cook_torrance/BsdfGGXCookTorrance.isph>
+#include <moonray/rendering/shading/ispc/bsdf/hair/BsdfHairLobes.isph>
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float HairToon_sdDFactorMin = 1.0f;
+static const float HairToon_sdDFactorMax = 8.0f;
+static const float HairToon_sdDFactorSlope = HairToon_sdDFactorMax - HairToon_sdDFactorMin;
+
+/// @class ToonBsdfLobe BsdfToon.isph <rendering/shading/Bsdf/BsdfToon.isph>
+/// @brief toon bsdf lobe
+struct ToonBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    ReferenceFrame mFrame;
+    Color mAlbedo;
+    ColorRampControl mRampControl;
+    bool mExtendRamp;
+};
+
+varying Color
+ToonBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                  const varying BsdfSlice &slice,
+                  const Vec3f &wi,
+                  varying float * uniform pdf);
+
+varying Color
+ToonBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                    const varying BsdfSlice &slice,
+                    varying float r1, varying float r2,
+                    varying Vec3f &wi, varying float &pdf);
+
+inline void
+ToonBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                  const uniform uint8_t ntab)
+{
+    const varying ToonBsdfLobe * uniform me =
+        (const varying ToonBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("base color: % % %\n", BSDF_UTIL_EXTRACT(me->mAlbedo.r),
+                                                          BSDF_UTIL_EXTRACT(me->mAlbedo.g),
+                                                          BSDF_UTIL_EXTRACT(me->mAlbedo.b));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief intialize a lambert lobe
+inline void
+ToonBsdfLobe_init(varying ToonBsdfLobe * uniform lobe,
+                  uniform Arena * uniform arena,
+                  const varying Vec3f &normal,
+                  const varying Color &albedo,
+                  const varying int numRampPoints,
+                  const varying float* uniform rampPositions,
+                  const varying RampInterpolatorMode* uniform rampInterpolators,
+                  const varying Color* uniform rampColors,
+                  const varying bool extendRamp)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_TOON,
+                  /* type = */
+                  BSDF_LOBE_TYPE_REFLECTION   | BSDF_LOBE_TYPE_DIFFUSE,
+                  /* differentialFlags = */ BSDF_LOBE_IGNORES_INCOMING_DIFFERENTIALS,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ ToonBsdfLobe_eval,
+                  /* sampleFn = */ ToonBsdfLobe_sample,
+                  /* albedoFn = */ LambertBsdfLobe_albedo,
+                  /* differentialsFn = */ LambertBsdfLobe_differentials,
+                  /* getPropertyFn = */ LambertBsdfLobe_getProperty,
+                  /* showFn = */ ToonBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+    lobe->mAlbedo = albedo;
+    
+    ColorRampControl_init(&lobe->mRampControl, 
+                           numRampPoints,
+                           rampPositions,
+                           rampColors,
+                           rampInterpolators,
+                           COLOR_RAMP_CONTROL_SPACE_RGB);
+    lobe->mExtendRamp = extendRamp;
+}
+
+struct HairToonSpecularBsdfLobe
+{
+    BSDF_LOBE_BASE;
+
+    ReferenceFrame mFrame;
+    float mIntensity;
+    Color mTint;
+    FloatRampControl mRampControl;
+
+    float mIndirectReflectionsIntensity;
+
+    varying HairBsdfLobe * uniform mDirectHairLobe;
+    varying HairBsdfLobe * uniform mIndirectHairLobe;
+};
+
+varying Color
+HairToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                              const varying BsdfSlice &slice,
+                              const Vec3f &wi,
+                              varying float * uniform pdf);
+
+varying Color
+HairToonSpecularBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice,
+                                varying float r1, varying float r2,
+                                varying Vec3f &wi, varying float &pdf);
+
+void
+HairToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                          const uniform uint8_t ntab);
+
+/// @brief albedo function
+varying Color
+HairToonSpecularBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                                const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+HairToonSpecularBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                       const varying Vec3f &wo,
+                                       const varying Vec3f &wi,
+                                       varying float r1, varying float r2,
+                                       const varying Vec3f &dNdx,
+                                       const varying Vec3f &dNdy,
+                                       varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+HairToonSpecularBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                     uniform BsdfLobeProperty property,
+                                     varying float * uniform dest);
+
+inline void
+HairToonSpecularBsdfLobe_init(varying HairToonSpecularBsdfLobe * uniform lobe,
+                              uniform Arena * uniform arena,
+                              const varying Vec3f &normal,
+                              const varying float intensity,
+                              const Color& tint,
+                              const varying int numRampPoints,
+                              const varying float* uniform rampPositions,
+                              const varying RampInterpolatorMode* uniform rampInterpolators,
+                              const varying float* uniform rampValues,
+                              varying HairBsdfLobe * uniform directHairLobe)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_TOON,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ HairToonSpecularBsdfLobe_eval,
+                  /* sampleFn = */ HairToonSpecularBsdfLobe_sample,
+                  /* albedoFn = */ HairToonSpecularBsdfLobe_albedo,
+                  /* differentialsFn = */ HairToonSpecularBsdfLobe_differentials,
+                  /* getPropertyFn = */HairToonSpecularBsdfLobe_getProperty,
+                  /* showFn = */ HairToonSpecularBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+    lobe->mIntensity = intensity;
+    lobe->mTint = tint;
+    FloatRampControl_init(&lobe->mRampControl, 
+                          numRampPoints,
+                          rampPositions,
+                          rampValues,
+                          rampInterpolators);
+    lobe->mDirectHairLobe = directHairLobe;
+    lobe->mIndirectHairLobe = NULL;
+    lobe->mIndirectReflectionsIntensity = 0.0f;
+}
+
+inline void
+HairToonSpecularBsdfLobe_init(varying HairToonSpecularBsdfLobe * uniform lobe,
+                              uniform Arena * uniform arena,
+                              const varying Vec3f &normal,
+                              const varying float intensity,
+                              const Color& tint,
+                              const varying int numRampPoints,
+                              const varying float* uniform rampPositions,
+                              const varying RampInterpolatorMode* uniform rampInterpolators,
+                              const varying float* uniform rampValues,
+                              varying HairBsdfLobe * uniform directHairLobe,
+                              varying HairBsdfLobe * uniform indirectHairLobe,
+                              const varying float indirectReflectionsIntensity)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_TOON,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ HairToonSpecularBsdfLobe_eval,
+                  /* sampleFn = */ HairToonSpecularBsdfLobe_sample,
+                  /* albedoFn = */ HairToonSpecularBsdfLobe_albedo,
+                  /* differentialsFn = */ HairToonSpecularBsdfLobe_differentials,
+                  /* getPropertyFn = */HairToonSpecularBsdfLobe_getProperty,
+                  /* showFn = */ HairToonSpecularBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+    lobe->mIntensity = intensity;
+    lobe->mTint = tint;
+    FloatRampControl_init(&lobe->mRampControl, 
+                          numRampPoints,
+                          rampPositions,
+                          rampValues,
+                          rampInterpolators);
+    lobe->mDirectHairLobe = directHairLobe;
+    lobe->mIndirectHairLobe = indirectHairLobe;
+    lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
+}
+
+struct ToonSpecularBsdfLobe
+{
+    BSDF_LOBE_BASE;
+
+    ReferenceFrame mFrame;
+    float mIntensity;
+    float mRoughness;
+    Color mTint;
+    FloatRampControl mRampControl;
+
+    float mStretchU;
+    float mStretchV;
+    Vec3f mdPds;
+    Vec3f mdPdt;
+
+    float mIndirectReflectionsIntensity;
+    varying GGXCookTorranceBsdfLobe * uniform mIndirectLobe;
+};
+
+varying Color
+ToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          const Vec3f &wi,
+                          varying float * uniform pdf);
+
+varying Color
+ToonSpecularBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+void
+ToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                          const uniform uint8_t ntab);
+
+/// @brief albedo function
+varying Color
+ToonSpecularBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+ToonSpecularBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+ToonSpecularBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                 uniform BsdfLobeProperty property,
+                                 varying float * uniform dest);
+
+inline void
+ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
+                          uniform Arena * uniform arena,
+                          const varying Vec3f &normal,
+                          const varying float intensity,
+                          const varying float roughness,
+                          const Color& tint,
+                          const varying int numRampPoints,
+                          const varying float* uniform rampPositions,
+                          const varying RampInterpolatorMode* uniform rampInterpolators,
+                          const varying float* uniform rampValues,
+                          const varying float stretchU,
+                          const varying float stretchV,
+                          const varying Vec3f &dPds,
+                          const varying Vec3f &dPdt)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_TOON,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ ToonSpecularBsdfLobe_eval,
+                  /* sampleFn = */ ToonSpecularBsdfLobe_sample,
+                  /* albedoFn = */ ToonSpecularBsdfLobe_albedo,
+                  /* differentialsFn = */ ToonSpecularBsdfLobe_differentials,
+                  /* getPropertyFn = */ToonSpecularBsdfLobe_getProperty,
+                  /* showFn = */ ToonSpecularBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+
+    lobe->mIntensity = intensity;
+    lobe->mRoughness = roughness;
+    lobe->mTint = tint;
+    lobe->mStretchU = stretchU;
+    lobe->mStretchV = stretchV;
+    lobe->mdPds = dPds;
+    lobe->mdPdt = dPdt;
+    FloatRampControl_init(&lobe->mRampControl, 
+                          numRampPoints,
+                          rampPositions,
+                          rampValues,
+                          rampInterpolators);
+    lobe->mIndirectLobe = NULL;
+    lobe->mIndirectReflectionsIntensity = 0.0f;
+}
+
+inline void
+ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
+                          uniform Arena * uniform arena,
+                          const varying Vec3f &normal,
+                          const varying float intensity,
+                          const varying float roughness,
+                          const Color& tint,
+                          const varying int numRampPoints,
+                          const varying float* uniform rampPositions,
+                          const varying RampInterpolatorMode* uniform rampInterpolators,
+                          const varying float* uniform rampValues,
+                          const varying float stretchU,
+                          const varying float stretchV,
+                          const varying Vec3f &dPds,
+                          const varying Vec3f &dPdt,
+                          varying GGXCookTorranceBsdfLobe * uniform indirectLobe,
+                          const varying float indirectReflectionsIntensity)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_TOON,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ ToonSpecularBsdfLobe_eval,
+                  /* sampleFn = */ ToonSpecularBsdfLobe_sample,
+                  /* albedoFn = */ ToonSpecularBsdfLobe_albedo,
+                  /* differentialsFn = */ ToonSpecularBsdfLobe_differentials,
+                  /* getPropertyFn = */ToonSpecularBsdfLobe_getProperty,
+                  /* showFn = */ ToonSpecularBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+
+    lobe->mIntensity = intensity;
+    lobe->mRoughness = roughness;
+    lobe->mTint = tint;
+    lobe->mStretchU = stretchU;
+    lobe->mStretchV = stretchV;
+    lobe->mdPds = dPds;
+    lobe->mdPdt = dPdt;
+    FloatRampControl_init(&lobe->mRampControl, 
+                          numRampPoints,
+                          rampPositions,
+                          rampValues,
+                          rampInterpolators);
+    lobe->mIndirectLobe = indirectLobe;
+    lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
+}
+

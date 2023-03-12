@@ -1,0 +1,46 @@
+name: Trigger the RaTS Plan Run
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'flowpipeline.yaml'
+      - 'LICENSE'
+      - 'pull_request_template.md'
+      - 'tsc/**'
+
+jobs:
+  trigger_RaTS_plan:
+    env:
+      CHATROOM: 'https://chat.googleapis.com/v1/spaces/AAAAhg7dAzc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t2d8q2Emc5xqXqOuQm4RKgrbv_JX7ekqFZ-4qfhrutU%3D'
+    runs-on: [self-hosted]
+    steps:
+      - name: Add Dynamic Environment Variable
+        run: |
+          echo "FILENAME=LastTrigger_$(basename ${{ github.repository }})" >> ${GITHUB_ENV}
+          echo "MESSAGE=A push to the main branch of the $(basename ${{ github.repository }}) repo.  A RaTS test run should start in the next 5 minutes." >> ${GITHUB_ENV}
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          repository: arras/RaTSTrigger  
+          token: ${{ secrets.BART_GA_PAT }}
+      - name: Update File
+        run: echo $(date) > ${FILENAME}
+      - name: Commit and Push         
+        run: |
+          git add ${FILENAME}
+          git commit -m 'New triggered run.'
+          git push --force || true
+      - name: Report to Chat Room
+        run: |
+          curl -X POST -H 'Content-Type: application/json' ${CHATROOM} -d '{"text": "'"${MESSAGE}"'"}'
+      - name: Cleanup
+        shell: bash
+        run: |
+          shopt -s dotglob
+          echo Removing ${{ github.workspace }}
+          rm -rf ${{ github.workspace }}/*

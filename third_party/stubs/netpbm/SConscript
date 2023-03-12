@@ -1,0 +1,13 @@
+Import('env')
+
+env.DWAComponent(
+  'netpbm',
+  LIBS = [
+    env.File('/work/rd/arras/third_party/netpbm/lib/libnetpbm.so')
+  ],
+  CPPPATH_THIRDPARTY = [
+    '/work/rd/arras/third_party/netpbm/include',
+  ],
+  COMPONENTS = [
+  ],
+)

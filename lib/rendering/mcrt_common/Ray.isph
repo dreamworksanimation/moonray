@@ -1,0 +1,193 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+#include "Ray.hh"
+#include "Util.isph"
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+
+/// Defining this avoid rays differential computations. Mainly useful for
+/// profiling. TODO: put this on a runtime flag?
+//#define FORCE_SKIP_RAY_DIFFERENTIALS
+
+#define RAY_HAS_DIFFERENTIALS   (1u << 8)
+
+struct RayExtension
+{
+    MCRT_COMMON_RAY_EXTENSION_MEMBERS;
+};
+
+struct RayDifferential
+{
+    MCRT_COMMON_RAY_MEMBERS;
+    MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS;
+};
+
+inline void
+Ray_init(      varying RayDifferential *uniform ray,
+         const varying RayDifferential &        parent,
+         const varying float                    start,
+         const varying float                    end)
+{
+    ray->org = parent.org;
+    ray->tnear = start;
+    ray->dir = parent.dir;
+    ray->time = parent.time;
+    ray->tfar = end;
+    ray->mask = parent.mask;
+
+    ray->geomID = -1;
+    ray->primID = -1;
+    ray->instID = -1;
+    ray->ext.materialID = -1;
+    ray->ext.depth = parent.ext.depth + 1;
+    Address64_clear(&(ray->ext.userData));
+    Address64_clear(&(ray->ext.geomTls));
+    Address64_clear(&(ray->ext.priorityMaterial0));
+    Address64_clear(&(ray->ext.priorityMaterial1));
+    Address64_clear(&(ray->ext.priorityMaterial2));
+    Address64_clear(&(ray->ext.priorityMaterial3));
+    Address64_clear(&(ray->ext.instance0OrLight));
+    Address64_clear(&(ray->ext.instance1));
+    Address64_clear(&(ray->ext.instance2));
+    Address64_clear(&(ray->ext.instance3));
+    ray->ext.instanceAttributesDepth = 0;
+    ray->mFlags.mBits = (parent.mFlags.mBits & RAY_HAS_DIFFERENTIALS);
+
+    ray->mOriginX = parent.mOriginX;
+    ray->mDirX = parent.mDirX;
+    ray->mOriginY = parent.mOriginY;
+    ray->mDirY = parent.mDirY;
+    ray->mOrigTfar = parent.mOrigTfar;
+}
+
+inline const varying Vec3f &
+Ray_getOrigin(const varying RayDifferential &ray)
+{
+    return ray.org;
+}
+
+inline const varying Vec3f &
+Ray_getDirection(const varying RayDifferential &ray)
+{
+    return ray.dir;
+}
+
+inline const varying float
+Ray_getTime(const varying RayDifferential &ray)
+{
+    return ray.time;
+}
+
+inline const varying float
+Ray_getStart(const varying RayDifferential &ray)
+{
+    return ray.tnear;
+}
+
+inline const varying float
+Ray_getEnd(const varying RayDifferential &ray)
+{
+    return ray.tfar;
+}
+
+inline const varying int
+Ray_getMask(const varying RayDifferential &ray)
+{
+    return ray.mask;
+}
+
+inline const varying Vec3f &
+Ray_getNg(const varying RayDifferential &ray)
+{
+    return ray.Ng;
+}
+
+inline const varying float
+Ray_getDepth(const varying RayDifferential &ray)
+{
+    return ray.ext.depth;
+}
+
+inline const varying Flags
+Ray_getFlags(const varying RayDifferential &ray)
+{
+    return ray.mFlags;
+}
+
+inline const varying uint32_t
+Ray_hasDifferentials(const varying RayDifferential &ray)
+{
+    return Flags_get(ray.mFlags, RAY_HAS_DIFFERENTIALS);
+}
+
+inline const varying Vec3f &
+Ray_getOriginX(const varying RayDifferential &ray)
+{
+    return ray.mOriginX;
+}
+
+inline const varying Vec3f &
+Ray_getDirX(const varying RayDifferential &ray)
+{
+    return ray.mDirX;
+}
+
+inline const varying Vec3f &
+Ray_getOriginY(const varying RayDifferential &ray)
+{
+    return ray.mOriginY;
+}
+
+inline const varying Vec3f &
+Ray_getDirY(const varying RayDifferential &ray)
+{
+    return ray.mDirY;
+}
+
+/// Derivative of ray position wrt. pixel increments along x and y
+inline varying Vec3f
+Ray_getdPdx(const varying RayDifferential &ray)
+{
+    return Ray_getOriginX(ray) - Ray_getOrigin(ray);
+}
+
+inline varying Vec3f
+Ray_getdPdy(const varying RayDifferential &ray)
+{
+    return Ray_getOriginY(ray) - Ray_getOrigin(ray);
+}
+
+/// Derivative of  ray normalized direction wrt. pixel increments
+/// along x and y
+inline varying Vec3f
+Ray_getdDdx(const varying RayDifferential &ray)
+{
+    return Ray_getDirX(ray) - Ray_getDirection(ray);
+}
+
+inline varying Vec3f
+Ray_getdDdy(const varying RayDifferential &ray)
+{
+    return Ray_getDirY(ray) - Ray_getDirection(ray);
+}
+
+/// Return a float value for the footprint established by the direction differentials.
+/// TODO: there are multiple options for this calculation, so investigate which one(s) give the best results. e.g.
+/// min, max, arithmetic mean, projected area of parallelogram, etc. Here we take the geometric mean.
+///  (We take the log2() at the end since it is used in a mip mapping calculation)
+inline varying float
+Ray_getDirFootprint(const varying RayDifferential &ray)
+{
+    if (!Ray_hasDifferentials(ray)) {
+        return -sInf;
+    }
+    float lx = length(Ray_getdDdx(ray));
+    float ly = length(Ray_getdDdy(ray));
+    return 0.5f/log(2.0f) * log(lx * ly);  // = log2(sqrt(lx * ly)); note that we don't have log2() in ISPC
+}
+
+
+

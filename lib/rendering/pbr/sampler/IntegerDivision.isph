@@ -1,0 +1,710 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#ifndef ISPC_UINT_IS_DEFINED
+typedef unsigned int uint32;
+#endif
+
+// Hacker's Delight ed2 divu3
+inline varying uint32 quotient3(varying uint32 n)
+{
+    varying uint32 q = (n >> 2u) + (n >> 4u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+
+    varying uint32 r = n - q*3u;
+    //return q + (11u*r >> 5u);              // Alternative 1
+    //return q + (5u*(r + 1u) >> 4u);        // Alternative 2
+    return q + ((r + 5u + (r << 2u)) >> 4u);
+}
+
+inline uniform uint32 quotient3(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 2u) + (n >> 4u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+
+    uniform uint32 r = n - q*3u;
+    //return q + (11u*r >> 5u);              // Alternative 1
+    //return q + (5u*(r + 1u) >> 4u);        // Alternative 2
+    return q + ((r + 5u + (r << 2u)) >> 4u);
+}
+
+// Hacker's Delight ed2 divu5a
+inline varying uint32 quotient5(varying uint32 n)
+{
+    varying uint32 q = (n >> 3u) + (n >> 4u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    varying uint32 r = n - q*5u;
+    return q + (13u*r >> 6u);
+}
+
+// Hacker's Delight ed2 divu5a
+inline uniform uint32 quotient5(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 3u) + (n >> 4u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    uniform uint32 r = n - q*5u;
+    return q + (13u*r >> 6u);
+}
+
+// Hacker's Delight ed2 divu6a
+inline varying uint32 quotient6(varying uint32 n)
+{
+    varying uint32 q = (n >> 3u) + (n >> 5u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    varying uint32 r = n - q*6u;
+    return q + (11u*r >> 6u);
+}
+
+// Hacker's Delight ed2 divu6a
+inline uniform uint32 quotient6(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 3u) + (n >> 5u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    uniform uint32 r = n - q*6u;
+    return q + (11u*r >> 6u);
+}
+
+// Hacker's Delight ed2 divu7
+inline varying uint32 quotient7(varying uint32 n)
+{
+    varying uint32 q = (n >> 1u) + (n >> 4u);
+    q = q + (q >>  6u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 2u;
+    varying uint32 r = n - q*7u;
+    return q + ((r + 1u) >> 3u);
+}
+
+inline uniform uint32 quotient7(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 1u) + (n >> 4u);
+    q = q + (q >>  6u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 2u;
+    uniform uint32 r = n - q*7u;
+    return q + ((r + 1u) >> 3u);
+}
+
+// Hacker's Delight ed2 divu9
+inline varying uint32 quotient9(varying uint32 n)
+{
+    varying uint32 q = n - (n >> 3u);
+    q = q + (q >>  6u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 3u;
+    varying uint32 r = n - q*9u;
+    return q + ((r + 7u) >> 4u);
+}
+
+inline uniform uint32 quotient9(uniform uint32 n)
+{
+    uniform uint32 q = n - (n >> 3u);
+    q = q + (q >>  6u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 3u;
+    uniform uint32 r = n - q*9u;
+    return q + ((r + 7u) >> 4u);
+}
+
+// Hacker's Delight ed2 divu10
+inline varying uint32 quotient10(varying uint32 n)
+{
+    varying uint32 q = (n >> 1u) + (n >> 2u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    q = q >> 3u;
+    varying uint32 r = n - q*10u;
+    return q + ((r + 6u) >> 4u);
+}
+
+inline uniform uint32 quotient10(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 1u) + (n >> 2u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    q = q >> 3u;
+    uniform uint32 r = n - q*10u;
+    return q + ((r + 6u) >> 4u);
+}
+
+// Hacker's Delight ed2 divu11
+inline varying uint32 quotient11(varying uint32 n)
+{
+    varying uint32 q = (n >> 1u) + (n >> 2u) - (n >> 5u) + (n >> 7u);
+    q = q + (q >> 10u);
+    q = q + (q >> 20u);
+    q = q >> 3u;
+    varying uint32 r = n - q*11u;
+    return q + ((r + 5u) >> 4u);
+}
+
+inline uniform uint32 quotient11(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 1u) + (n >> 2u) - (n >> 5u) + (n >> 7u);
+    q = q + (q >> 10u);
+    q = q + (q >> 20u);
+    q = q >> 3u;
+    uniform uint32 r = n - q*11u;
+    return q + ((r + 5u) >> 4u);
+}
+
+// Hacker's Delight ed2 divu12
+inline varying uint32 quotient12(varying uint32 n)
+{
+    varying uint32 q = (n >> 1u) + (n >> 3u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    q = q >> 3u;
+    varying uint32 r = n - q*12u;
+    return q + ((r + 4u) >> 4u);
+}
+
+inline uniform uint32 quotient12(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 1u) + (n >> 3u);
+    q = q + (q >>  4u);
+    q = q + (q >>  8u);
+    q = q + (q >> 16u);
+    q = q >> 3u;
+    uniform uint32 r = n - q*12u;
+    return q + ((r + 4u) >> 4u);
+}
+
+// Hacker's Delight ed2 divu13
+inline varying uint32 quotient13(varying uint32 n)
+{
+    varying uint32 q = (n >> 1u) + (n >> 4u);
+    q = q + (q >>  4u) + (q >> 5u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 3u;
+    varying uint32 r = n - q*13u;
+    return q + ((r + 3u) >> 4u);
+}
+
+// Hacker's Delight ed2
+inline uniform uint32 quotient13(uniform uint32 n)
+{
+    uniform uint32 q = (n >> 1u) + (n >> 4u);
+    q = q + (q >>  4u) + (q >> 5u);
+    q = q + (q >> 12u) + (q >> 24u);
+    q = q >> 3u;
+    uniform uint32 r = n - q*13u;
+    return q + ((r + 3u) >> 4u);
+}
+
+// Hacker's Delight ed2
+inline varying uint32 mod3(varying uint32 a)
+{
+    a = popcnt((int32)(a ^ 0xaaaaaaaau)) + 23u;
+    a = popcnt((int32)(a ^ 0x2au)) - 3u;
+    return a + (((int32)(a) >> 31) & 3); // Signed shift
+}
+
+inline uniform uint32 mod3(uniform uint32 a)
+{
+    a = popcnt((int32)(a ^ 0xaaaaaaaau)) + 23u;
+    a = popcnt((int32)(a ^ 0x2au)) - 3u;
+    return a + (((int32)(a) >> 31) & 3); // Signed shift
+}
+
+// Hacker's Delight ed2
+inline varying uint32 mod5(varying uint32 a)
+{
+    a = (a >> 16u) + (a & 0xffffu); // sum base 2^16 digits
+    a = (a >>  8u) + (a & 0x00ffu);   // sum base 2^8 digits
+    a = (a >>  4u) + (a & 0x000fu);    // sum base 2^4 digits
+    a = (a >>  4u) - ((a >> 2u) & 3u) + (a & 3u);
+    return (0x88d111au >> 3u*(a + 3u)) & 7u;
+}
+
+inline uniform uint32 mod5(uniform uint32 a)
+{
+    a = (a >> 16u) + (a & 0xffffu); // sum base 2^16 digits
+    a = (a >>  8u) + (a & 0x00ffu);   // sum base 2^8 digits
+    a = (a >>  4u) + (a & 0x000fu);    // sum base 2^4 digits
+    a = (a >>  4u) - ((a >> 2u) & 3u) + (a & 3u);
+    return (0x88d111au >> 3u*(a + 3u)) & 7u;
+}
+
+// http://homepage.cs.uiowa.edu/~jones/bcd/mod.shtml
+inline varying uint32 mod6(varying uint32 a)
+{
+    while (a > 11u) {
+        varying uint32 s = 0u; // accumulator for the sum of the digits
+        while (a != 0u) {
+            s = s + (a & 7u);
+            a = (a >> 2u) & -2u;
+        }
+        a = s;
+    }
+    // note, at this point: a < 12
+    if (a > 5u) a = a - 6u;
+    return a;
+}
+
+inline uniform uint32 mod6(uniform uint32 a)
+{
+    while (a > 11u) {
+        uniform uint32 s = 0u; // accumulator for the sum of the digits
+        while (a != 0u) {
+            s = s + (a & 7u);
+            a = (a >> 2u) & -2u;
+        }
+        a = s;
+    }
+    // note, at this point: a < 12
+    if (a > 5u) a = a - 6u;
+    return a;
+}
+
+// Hacker's Delight ed2
+inline varying uint32 mod7(varying uint32 a)
+{
+    a = (a >> 15u) + (a & 0x7fffu);
+    a = (a >>  9u) + (a & 0x001ffu);
+    a = (a >>  6u) + (a & 0x0003fu);
+
+    // Hacker's Delight uses a table, but ISPC complains about a gather. Is this really faster?
+    switch (a) {
+        case  0u: return 0u;
+        case  1u: return 1u;
+        case  2u: return 2u;
+        case  3u: return 3u;
+        case  4u: return 4u;
+        case  5u: return 5u;
+        case  6u: return 6u;
+        case  7u: return 0u;
+        case  8u: return 1u;
+        case  9u: return 2u;
+        case 10u: return 3u;
+        case 11u: return 4u;
+        case 12u: return 5u;
+        case 13u: return 6u;
+        case 14u: return 0u;
+        case 15u: return 1u;
+        case 16u: return 2u;
+        case 17u: return 3u;
+        case 18u: return 4u;
+        case 19u: return 5u;
+        case 20u: return 6u;
+        case 21u: return 0u;
+        case 22u: return 1u;
+        case 23u: return 2u;
+        case 24u: return 3u;
+        case 25u: return 4u;
+        case 26u: return 5u;
+        case 27u: return 6u;
+        case 28u: return 0u;
+        case 29u: return 1u;
+        case 30u: return 2u;
+        case 31u: return 3u;
+        case 32u: return 4u;
+        case 33u: return 5u;
+        case 34u: return 6u;
+        case 35u: return 0u;
+        case 36u: return 1u;
+        case 37u: return 2u;
+        case 38u: return 3u;
+        case 39u: return 4u;
+        case 40u: return 5u;
+        case 41u: return 6u;
+        case 42u: return 0u;
+        case 43u: return 1u;
+        case 44u: return 2u;
+        case 45u: return 3u;
+        case 46u: return 4u;
+        case 47u: return 5u;
+        case 48u: return 6u;
+        case 49u: return 0u;
+        case 50u: return 1u;
+        case 51u: return 2u;
+        case 52u: return 3u;
+        case 53u: return 4u;
+        case 54u: return 5u;
+        case 55u: return 6u;
+        case 56u: return 0u;
+        case 57u: return 1u;
+        case 58u: return 2u;
+        case 59u: return 3u;
+        case 60u: return 4u;
+        case 61u: return 5u;
+        case 62u: return 6u;
+        case 63u: return 0u;
+        case 64u: return 1u;
+        case 65u: return 2u;
+        case 66u: return 3u;
+        case 67u: return 4u;
+        case 68u: return 5u;
+        case 69u: return 6u;
+        case 70u: return 0u;
+        case 71u: return 1u;
+        case 72u: return 2u;
+        case 73u: return 3u;
+        case 74u: return 4u;
+    }
+}
+
+inline uniform uint32 mod7(uniform uint32 a)
+{
+    a = (a >> 15u) + (a & 0x7fffu);
+    a = (a >>  9u) + (a & 0x001ffu);
+    a = (a >>  6u) + (a & 0x0003fu);
+
+    // Hacker's Delight uses a table, but ISPC complains about a gather. Is this really faster?
+    switch (a) {
+        case  0u: return 0u;
+        case  1u: return 1u;
+        case  2u: return 2u;
+        case  3u: return 3u;
+        case  4u: return 4u;
+        case  5u: return 5u;
+        case  6u: return 6u;
+        case  7u: return 0u;
+        case  8u: return 1u;
+        case  9u: return 2u;
+        case 10u: return 3u;
+        case 11u: return 4u;
+        case 12u: return 5u;
+        case 13u: return 6u;
+        case 14u: return 0u;
+        case 15u: return 1u;
+        case 16u: return 2u;
+        case 17u: return 3u;
+        case 18u: return 4u;
+        case 19u: return 5u;
+        case 20u: return 6u;
+        case 21u: return 0u;
+        case 22u: return 1u;
+        case 23u: return 2u;
+        case 24u: return 3u;
+        case 25u: return 4u;
+        case 26u: return 5u;
+        case 27u: return 6u;
+        case 28u: return 0u;
+        case 29u: return 1u;
+        case 30u: return 2u;
+        case 31u: return 3u;
+        case 32u: return 4u;
+        case 33u: return 5u;
+        case 34u: return 6u;
+        case 35u: return 0u;
+        case 36u: return 1u;
+        case 37u: return 2u;
+        case 38u: return 3u;
+        case 39u: return 4u;
+        case 40u: return 5u;
+        case 41u: return 6u;
+        case 42u: return 0u;
+        case 43u: return 1u;
+        case 44u: return 2u;
+        case 45u: return 3u;
+        case 46u: return 4u;
+        case 47u: return 5u;
+        case 48u: return 6u;
+        case 49u: return 0u;
+        case 50u: return 1u;
+        case 51u: return 2u;
+        case 52u: return 3u;
+        case 53u: return 4u;
+        case 54u: return 5u;
+        case 55u: return 6u;
+        case 56u: return 0u;
+        case 57u: return 1u;
+        case 58u: return 2u;
+        case 59u: return 3u;
+        case 60u: return 4u;
+        case 61u: return 5u;
+        case 62u: return 6u;
+        case 63u: return 0u;
+        case 64u: return 1u;
+        case 65u: return 2u;
+        case 66u: return 3u;
+        case 67u: return 4u;
+        case 68u: return 5u;
+        case 69u: return 6u;
+        case 70u: return 0u;
+        case 71u: return 1u;
+        case 72u: return 2u;
+        case 73u: return 3u;
+        case 74u: return 4u;
+    }
+}
+
+inline varying uint32 quotient(varying uint32 a, varying uint32 b)
+{
+    switch (b) {
+        case  1: return a;
+        case  2: return a >> 1u;
+        case  3: return quotient3(a);
+        case  4: return a >> 2u;
+        case  5: return quotient5(a);
+        case  6: return quotient6(a);
+        case  7: return quotient7(a);
+        case  8: return a >> 3u;
+        case  9: return quotient9(a);
+        case 10: return quotient10(a);
+        case 11: return quotient11(a);
+        case 12: return quotient12(a);
+        case 13: return quotient13(a);
+        default: return a / b;
+    }
+}
+
+inline varying uint32 quotient(varying uint32 a, uniform uint32 b)
+{
+    switch (b) {
+        case  1: return a;
+        case  2: return a >> 1u;
+        case  3: return quotient3(a);
+        case  4: return a >> 2u;
+        case  5: return quotient5(a);
+        case  6: return quotient6(a);
+        case  7: return quotient7(a);
+        case  8: return a >> 3u;
+        case  9: return quotient9(a);
+        case 10: return quotient10(a);
+        case 11: return quotient11(a);
+        case 12: return quotient12(a);
+        case 13: return quotient13(a);
+        default: return a / b;
+    }
+}
+
+inline varying uint32 quotient(uniform uint32 a, varying uint32 b)
+{
+    switch (b) {
+        case  1: return a;
+        case  2: return a >> 1u;
+        case  3: return quotient3(a);
+        case  4: return a >> 2u;
+        case  5: return quotient5(a);
+        case  6: return quotient6(a);
+        case  7: return quotient7(a);
+        case  8: return a >> 3u;
+        case  9: return quotient9(a);
+        case 10: return quotient10(a);
+        case 11: return quotient11(a);
+        case 12: return quotient12(a);
+        case 13: return quotient13(a);
+        default: return a / b;
+    }
+}
+
+inline uniform uint32 quotient(uniform uint32 a, uniform uint32 b)
+{
+    switch (b) {
+        case  1: return a;
+        case  2: return a >> 1u;
+        case  3: return quotient3(a);
+        case  4: return a >> 2u;
+        case  5: return quotient5(a);
+        case  6: return quotient6(a);
+        case  7: return quotient7(a);
+        case  8: return a >> 3u;
+        case  9: return quotient9(a);
+        case 10: return quotient10(a);
+        case 11: return quotient11(a);
+        case 12: return quotient12(a);
+        case 13: return quotient13(a);
+        default: return a / b;
+    }
+}
+
+inline varying uint32 mod(varying uint32 a, varying uint32 b)
+{
+    switch (b) {
+        case 1: return 0;
+        case 2: return a & 0x1u;
+        case 3: return mod3(a);
+        case 4: return a & 0x3u;
+        case 5: return mod5(a);
+        case 6: return mod6(a);
+        case 7: return mod7(a);
+        case 8: return a & 0x7u;
+        default: return a % b;
+    }
+}
+
+inline varying uint32 mod(varying uint32 a, uniform uint32 b)
+{
+    switch (b) {
+        case 1: return 0;
+        case 2: return a & 0x1u;
+        case 3: return mod3(a);
+        case 4: return a & 0x3u;
+        case 5: return mod5(a);
+        case 6: return mod6(a);
+        case 7: return mod7(a);
+        case 8: return a & 0x7u;
+        default: return a % b;
+    }
+}
+
+inline varying uint32 mod(uniform uint32 a, varying uint32 b)
+{
+    switch (b) {
+        case 1: return 0;
+        case 2: return a & 0x1u;
+        case 3: return mod3(a);
+        case 4: return a & 0x3u;
+        case 5: return mod5(a);
+        case 6: return mod6(a);
+        case 7: return mod7(a);
+        case 8: return a & 0x7u;
+        default: return a % b;
+    }
+}
+
+inline uniform uint32 mod(uniform uint32 a, uniform uint32 b)
+{
+    switch (b) {
+        case 1: return 0;
+        case 2: return a & 0x1u;
+        case 3: return mod3(a);
+        case 4: return a & 0x3u;
+        case 5: return mod5(a);
+        case 6: return mod6(a);
+        case 7: return mod7(a);
+        case 8: return a & 0x7u;
+        default: return a % b;
+    }
+}
+
+struct div_t
+{
+    uint32 quot;
+    uint32 rem;
+};
+
+inline varying div_t div(varying uint32 a, varying uint32 b)
+{
+    varying div_t ret;
+    switch (b) {
+        case 1:
+            ret.quot = a;
+            ret.rem  = 0;
+            break;
+        case 2:
+            ret.quot = a >> 1u;
+            ret.rem  = a & 0x1u;
+            break;
+        case 4:
+            ret.quot = a >> 2u;
+            ret.rem  = a & 0x3u;
+            break;
+        case 8:
+            ret.quot = a >> 3u;
+            ret.rem  = a & 0x7u;
+            break;
+        default:
+            ret.quot = quotient(a, b);
+            ret.rem = a - ret.quot*b;
+            break;
+    }
+
+    return ret;
+}
+
+inline varying div_t div(varying uint32 a, uniform uint32 b)
+{
+    varying div_t ret;
+    switch (b) {
+        case 1:
+            ret.quot = a;
+            ret.rem  = 0;
+            break;
+        case 2:
+            ret.quot = a >> 1u;
+            ret.rem  = a & 0x1u;
+            break;
+        case 4:
+            ret.quot = a >> 2u;
+            ret.rem  = a & 0x3u;
+            break;
+        case 8:
+            ret.quot = a >> 3u;
+            ret.rem  = a & 0x7u;
+            break;
+        default:
+            ret.quot = quotient(a, b);
+            ret.rem = a - ret.quot*b;
+            break;
+    }
+
+    return ret;
+}
+
+inline varying div_t div(uniform uint32 a, varying uint32 b)
+{
+    varying div_t ret;
+    switch (b) {
+        case 1:
+            ret.quot = a;
+            ret.rem  = 0;
+            break;
+        case 2:
+            ret.quot = a >> 1u;
+            ret.rem  = a & 0x1u;
+            break;
+        case 4:
+            ret.quot = a >> 2u;
+            ret.rem  = a & 0x3u;
+            break;
+        case 8:
+            ret.quot = a >> 3u;
+            ret.rem  = a & 0x7u;
+            break;
+        default:
+            ret.quot = quotient(a, b);
+            ret.rem = a - ret.quot*b;
+            break;
+    }
+
+    return ret;
+}
+
+inline uniform div_t div(uniform uint32 a, uniform uint32 b)
+{
+    uniform div_t ret;
+    switch (b) {
+        case 1:
+            ret.quot = a;
+            ret.rem  = 0;
+            break;
+        case 2:
+            ret.quot = a >> 1u;
+            ret.rem  = a & 0x1u;
+            break;
+        case 4:
+            ret.quot = a >> 2u;
+            ret.rem  = a & 0x3u;
+            break;
+        case 8:
+            ret.quot = a >> 3u;
+            ret.rem  = a & 0x7u;
+            break;
+        default:
+            ret.quot = quotient(a, b);
+            ret.rem = a - ret.quot*b;
+            break;
+    }
+
+    return ret;
+}
+

@@ -1,0 +1,38 @@
+{
+    "name": "ImageDisplayFilter",
+    "type": "DisplayFilter",
+    "directives": {
+        "include": [
+            "lib/displayfilter/json/common.json"
+        ]
+    },
+    "attributes": {
+        "attrInput": {
+            "name": "input",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_RENDEROUTPUT | INTERFACE_DISPLAYFILTER",
+            "comment": "RenderOutput to use in the ImageDisplayFilter"
+        },
+        "attrImagePath": {
+            "name": "image_path",
+            "type": "String",
+            "flags": "FLAGS_FILENAME",
+            "comment": "File path to the .exr we want to fit to the image plane"
+        },
+        "attrDisplayType": {
+            "name": "display_type",
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "stretch": "0",
+                "fit_horizontal": "1",
+                "fit_vertical": "2",
+                "fit_by_smallest_dimension": "3",
+                "fit_by_largest_dimension": "4",
+                "no_scale": "5"
+            },
+            "default": "0",
+            "comment": "Method used to fit the input image to the image plane."
+        }
+    }
+}

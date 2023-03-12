@@ -1,0 +1,26 @@
+Import('env')
+from os import path
+# ------------------------------------------
+name       = 'mcrt_rt_merge_computation'
+libname    = 'mcrt_rt_merge'
+sources    = env.DWAGlob('*.cc')
+incdir     = [str(env.Dir('..').srcnode())]
+components = [
+    'common_network',
+    'engine_computation',
+    'generic_message',
+    'partial_frame',
+    'render_util',
+    'base_frame',
+    'rendered_frame',
+    'rendering_rndr',
+    'viewport_message',
+]
+
+env.DWAUseComponents(components)
+lib = env.DWASharedLibrary(libname, sources, NO_VARIANT_NAME=True)
+target = env.DWAInstallDso(lib)
+env.DWAComponent(name, LIBS=[target], CPPPATH=incdir, COMPONENTS=components)
+
+# From breakpad.py, DWAGenerateBreakpadSymbols(path to library, name of library, installed library, env)
+env.DWAGenerateBreakpadSymbols(path.dirname(target[0].abspath), lib, target, env)

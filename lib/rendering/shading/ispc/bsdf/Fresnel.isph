@@ -1,0 +1,1210 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Fresnel.isph
+#pragma once
+#ifndef FRESNEL_ISPH
+#define FRESNEL_ISPH
+
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include "Fresnel.hh"
+#include "fabric/VelvetAlbedo.isph"
+
+#include <moonray/rendering/mcrt_common/Util.isph>
+#include <moonray/rendering/shading/ispc/PbrValidity.isph>
+#include <scene_rdl2/common/math/ispc/asA.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+/// Fresnel types
+enum FresnelType {
+    FRESNEL_TYPE_NONE = 0,
+    FRESNEL_TYPE_SCHLICK_FRESNEL,
+    FRESNEL_TYPE_ONE_MINUS_ROUGH_SCHLICK_FRESNEL,
+    FRESNEL_TYPE_ONE_MINUS_FRESNEL,
+    FRESNEL_TYPE_ONE_MINUS_ROUGH_FRESNEL,
+    FRESNEL_TYPE_ONE_MINUS_VELVET_FRESNEL,
+    FRESNEL_TYPE_CONDUCTOR_FRESNEL,
+    FRESNEL_TYPE_DIELECTRIC_FRESNEL,
+    FRESNEL_TYPE_MULTIPLE_TRANSMISSION_FRESNEL
+};
+
+/// Fresnel properties
+enum FresnelProperty {
+    FRESNEL_PROPERTY_NONE         = 0,
+    FRESNEL_PROPERTY_COLOR        = 1 << 0,
+    FRESNEL_PROPERTY_FACTOR       = 1 << 1,
+    FRESNEL_PROPERTY_ROUGHNESS    = 1 << 2
+};
+
+struct Fresnel;
+
+/// Evaluation Function
+typedef varying Color (* uniform FresnelEvalFn)(const varying Fresnel * uniform fresnel,
+                                                varying float hDotWi);
+
+/// GetProperty Function
+typedef void (* uniform FresnelGetPropertyFn)(const varying Fresnel * uniform fresnel,
+                                              uniform FresnelProperty property,
+                                              varying float * uniform dest);
+
+/// Evaluation Function
+typedef varying Color (* uniform FresnelComputePbrValidityFn)(const varying Fresnel * uniform fresnel);
+
+/// show function (print misc Fresnel info)
+typedef void (* uniform FresnelShowFn)(const varying Fresnel * const uniform fresnel,
+                                       const uniform uint8_t ntab);
+
+/// Members of the Fresnel base class
+/// This class is used as a mechanism in ISPC code to instantiate and supply
+/// the attributes required (thickness, attenuationColor and eta) for UnderOuterSpecularBsdfLobe.
+#define FRESNEL_BASE                        \
+    uniform intptr_t mEvalFn;               \
+    uniform intptr_t mGetPropertyFn;        \
+    uniform intptr_t mComputePbrValidityFn; \
+    uniform intptr_t mShowFn;               \
+    uniform int mType;                      \
+    uniform int mPflags;                    \
+    uniform int mMask;                      \
+    uniform int mPad[1];                    \
+    varying float mWeight;                  \
+    varying float mEtaI;                    \
+    varying float mEtaT;                    \
+    varying float mThickness;               \
+    varying Color mAttenuationColor;        \
+    varying int   mUseBending
+
+
+
+/// @class Fresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// @brief Fresnel base class
+struct Fresnel
+{
+    FRESNEL_BASE;
+};
+
+/// @brief is the Fresnel active for the current lane?
+inline varying bool
+isActive(const varying Fresnel * uniform fresnel)
+{
+    return (fresnel != NULL) && (bool)((1 << programIndex) & fresnel->mMask);
+}
+
+/// @brief initialize a fresnel
+inline void
+Fresnel_init(varying Fresnel * uniform fresnel,
+             uniform FresnelType type,
+             uniform int pflags,
+             FresnelEvalFn evalFn,
+             FresnelGetPropertyFn getPropertyFn,
+             FresnelComputePbrValidityFn computePbrValidityFn,
+             FresnelShowFn showFn,
+             varying float weight = 1.0f,
+             varying float etaI   = 1.0f,
+             varying float etaT   = 1.5f,
+             varying float thickness = 0.0f,
+             varying float attnColorR = 1.0f,
+             varying float attnColorG = 1.0f,
+             varying float attnColorB = 1.0f,
+             varying bool  useBending = false)
+{
+    fresnel->mType = type;
+    fresnel->mPflags = pflags;
+    fresnel->mMask = lanemask();
+    fresnel->mEvalFn = (intptr_t) evalFn;
+    fresnel->mGetPropertyFn = (intptr_t) getPropertyFn;
+    fresnel->mComputePbrValidityFn = (intptr_t) computePbrValidityFn;
+    fresnel->mShowFn = (intptr_t) showFn;
+    fresnel->mWeight = weight;
+
+    fresnel->mEtaI = etaI;
+    fresnel->mEtaT = etaT;
+    fresnel->mThickness = thickness;
+    fresnel->mAttenuationColor = Color_ctor(attnColorR,
+                                            attnColorG,
+                                            attnColorB);
+    fresnel->mUseBending = (int)(useBending && !isOne(etaI/etaT));
+}
+
+/// @brief call the eval function
+inline varying Color
+Fresnel_eval(const varying Fresnel * uniform fresnel,
+             varying float hDotWi)
+{
+    FresnelEvalFn fn = (FresnelEvalFn) fresnel->mEvalFn;
+    return fn(fresnel, hDotWi);
+}
+
+/// @brief does the fresnel have this property?
+inline uniform bool
+Fresnel_hasProperty(const varying Fresnel * uniform fresnel,
+                    uniform FresnelProperty property)
+{
+    return fresnel->mPflags & property;
+}
+
+/// @brief get the fresnel property flags
+inline uniform int
+Fresnel_getPropertyFlags(const varying Fresnel * uniform fresnel)
+{
+    return fresnel->mPflags;
+}
+
+/// @brief call the the getProperty function
+inline void
+Fresnel_getProperty(const varying Fresnel * uniform fresnel,
+                    uniform FresnelProperty property,
+                    varying float * uniform dest)
+{
+    FresnelGetPropertyFn getPropertyFn = (FresnelGetPropertyFn) fresnel->mGetPropertyFn;
+    getPropertyFn(fresnel, property, dest);
+}
+
+/// @brief call the computePbrValidity function
+inline varying Color
+Fresnel_computePbrValidity(const varying Fresnel * uniform fresnel)
+{
+    FresnelComputePbrValidityFn computePbrValidityFn = (FresnelComputePbrValidityFn) fresnel->mComputePbrValidityFn;
+    return computePbrValidityFn(fresnel);
+}
+
+/// Default function for computePbrValidity(); use this when shading validity isn't going
+/// to be implemented for a given derived fresnel type
+inline varying Color
+Fresnel_computePbrValidityDefault(const varying Fresnel * uniform fresnel)
+{
+    const varying Color black = sBlack;
+    return black;
+}
+
+/// @brief call Fresnel show function which prints out misc
+/// info specific to each Fresnel type
+inline void
+Fresnel_show(const varying Fresnel * const uniform fresnel,
+             const uniform uint8_t ntab)
+{
+    uniform FresnelShowFn show = (uniform FresnelShowFn)fresnel->mShowFn;
+    if (show != NULL) show(fresnel, ntab);
+}
+
+/// @class SchlickFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// @brief Schlick approximation to fresnel reflectance.
+struct SchlickFresnel
+{
+    FRESNEL_BASE;
+    SCHLICK_FRESNEL_MEMBERS;
+};
+
+/// @brief Schlick Fresnel evaluation
+inline varying Color
+SchlickFresnel_eval(const varying Fresnel * uniform fresnel,
+                    varying float hDotWi)
+{
+    varying SchlickFresnel * uniform schlick =
+        (varying SchlickFresnel * uniform) fresnel;
+    if (schlick->mFactor == 0.f) {
+        return schlick->mSpec;
+    }
+
+    // Deal with total internal reflection if neta is > 1.0f
+    float tmp;
+    if (schlick->mNeta > 1.0f) {
+        const float rcpNeta = rcp(schlick->mNeta);
+        const float cosSqrCriticalAngle = 1.0f - rcpNeta * rcpNeta;
+        const float cosSqrTheta =  hDotWi * hDotWi;
+        if (cosSqrTheta < cosSqrCriticalAngle) {
+            // Total internal reflection!
+            return Color_ctor(1.0f, 1.0f, 1.0f);
+        }
+        // Remap the curve to peak at the critical angle
+        tmp = (1.0f - hDotWi) * rcp(1.0f - sqrt(cosSqrCriticalAngle));
+    } else {
+        tmp = 1.0f - hDotWi;
+    }
+
+    float power = tmp * tmp;
+    power = tmp * power * power;
+
+    return schlick->mSpec + schlick->mFactor *
+        (Color_ctor(1.0f, 1.0f, 1.0f) - schlick->mSpec) * power;
+}
+
+/// @brief Schlick Fresnel getProperty
+inline void
+SchlickFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                           uniform FresnelProperty prop,
+                           varying float * uniform dest)
+{
+    varying SchlickFresnel * uniform schlick =
+        (varying SchlickFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_COLOR:
+        *dest       = schlick->mSpec.r * schlick->mWeight;
+        *(dest + 1) = schlick->mSpec.g * schlick->mWeight;
+        *(dest + 2) = schlick->mSpec.b * schlick->mWeight;
+        break;
+    case FRESNEL_PROPERTY_FACTOR:
+        *dest = schlick->mFactor;
+        break;
+    default:
+        MNRY_ASSERT(0);
+    }
+}
+
+inline void
+SchlickFresnel_show(const varying Fresnel * const uniform fresnel,
+                    const uniform uint8_t ntab)
+{
+    const varying SchlickFresnel * const uniform me =
+        (const varying SchlickFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{SchlickFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+    BsdfUtil_indent(ntab+1); print("reflectivity at 0: % % %\n", BSDF_UTIL_EXTRACT(me->mSpec.r),
+                                                                 BSDF_UTIL_EXTRACT(me->mSpec.g),
+                                                                 BSDF_UTIL_EXTRACT(me->mSpec.b));
+}
+
+/// @brief initialize a SchlickFresnel
+/// Pass in neta, the ratio of the ior for incident / transmitted material.
+inline void
+SchlickFresnel_init(varying SchlickFresnel * uniform fresnel,
+                    const varying Color &spec,
+                    const varying float factor,
+                    const varying float neta = 1.0f,
+                    const varying float weight = 1.0f)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel, FRESNEL_TYPE_SCHLICK_FRESNEL,
+                 FRESNEL_PROPERTY_COLOR | FRESNEL_PROPERTY_FACTOR,
+                 SchlickFresnel_eval,
+                 SchlickFresnel_getProperty,
+                 Fresnel_computePbrValidityDefault,
+                 SchlickFresnel_show,
+                 weight);
+    fresnel->mSpec = spec;
+    fresnel->mFactor = factor;
+    fresnel->mNeta = neta;
+}
+
+/// @class OneMinusRoughSchlickFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// Approximation used to attenuate lobes under a more-or-less rough
+/// specular lobe and enforce energy conservation.
+struct OneMinusRoughSchlickFresnel
+{
+    FRESNEL_BASE;
+    ONE_MINUS_ROUGH_SCHLICK_FRESNEL_MEMBERS;
+};
+
+/// @brief OneMinusRoughSchlick Fresnel evaluation
+/// This approximation works well when passing nDotWo instead of hDotWi
+inline varying Color
+OneMinusRoughSchlickFresnel_eval(const varying Fresnel * uniform fresnel,
+                                 varying float nDotWo)
+{
+    const varying OneMinusRoughSchlickFresnel * uniform oms =
+        (const varying OneMinusRoughSchlickFresnel * uniform) fresnel;
+
+    // Interpolating non-linearly based on roughness, using:
+    // t = 1 - (1 - roughness)^3
+    const float tmp = 1.0f - oms->mSpecRoughness;
+    const float t = 1.0f - (tmp * tmp * tmp);
+    varying Fresnel * uniform schlick = (varying Fresnel * uniform) oms->mTopFresnel;
+    return lerp(Color_ctor(1.0f) - Fresnel_eval(schlick, nDotWo),
+                Color_ctor(1.0f) - oms->mTopFresnel->mSpec,
+                clamp(t, 0.f, 1.f));
+}
+
+/// @brief OneMinusRoughSchlickFresnel getProperty function
+inline void
+OneMinusRoughSchlickFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                                        uniform FresnelProperty prop,
+                                        varying float * uniform dest)
+{
+    const varying OneMinusRoughSchlickFresnel * uniform oms =
+        (const varying OneMinusRoughSchlickFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_ROUGHNESS: {
+            const float inputRoughness = sqrt(oms->mSpecRoughness);
+            // this is a VEC2F property for compatibility with bsdf lobes
+            *dest       = inputRoughness;
+            *(dest + 1) = inputRoughness;
+            break;
+        }
+    default:
+        Fresnel_getProperty((const varying Fresnel * uniform) oms->mTopFresnel, prop, dest);
+        // if the property is color, we'll 1 -dest, other properties
+        // remain as is
+        if (prop == FRESNEL_PROPERTY_COLOR) {
+            *dest       = 1.f - *dest;
+            *(dest + 1) = 1.f - *(dest + 1);
+            *(dest + 2) = 1.f - *(dest + 2);
+        }
+        break;
+    }
+}
+
+inline void
+OneMinusRoughSchlickFresnel_show(const varying Fresnel * const uniform fresnel,
+                                 const uniform uint8_t ntab)
+{
+    const varying OneMinusRoughSchlickFresnel * const uniform me =
+        (const varying OneMinusRoughSchlickFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{OneMinusRoughSchlickFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    Fresnel_show((const varying Fresnel * uniform) me->mTopFresnel, ntab+1);
+}
+
+/// @brief initialize a OneMinusRoughSchlickFresnel
+inline void
+OneMinusRoughSchlickFresnel_init(varying OneMinusRoughSchlickFresnel * uniform fresnel,
+                                 varying Fresnel * uniform schlick,
+                                 varying float specRoughness)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel, FRESNEL_TYPE_ONE_MINUS_ROUGH_SCHLICK_FRESNEL,
+                 Fresnel_getPropertyFlags(schlick) | FRESNEL_PROPERTY_ROUGHNESS,
+                 OneMinusRoughSchlickFresnel_eval,
+                 OneMinusRoughSchlickFresnel_getProperty,
+                 Fresnel_computePbrValidityDefault,
+                 OneMinusRoughSchlickFresnel_show);
+    fresnel->mTopFresnel = (varying SchlickFresnel * uniform) schlick;
+
+    // Apply roughness squaring to linearize roughness response
+    // like all roughness-based lobes do.
+    fresnel->mSpecRoughness = specRoughness * specRoughness;
+}
+
+/// @class DielectricFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// A dielectric fresnel reflectance object.
+struct DielectricFresnel
+{
+    FRESNEL_BASE;
+};
+
+/// @brief DielectricFresnel Fresnel evaluation
+inline varying Color
+DielectricFresnel_eval(const varying Fresnel * uniform fresnel,
+                       varying float hDotWi)
+{
+    const varying DielectricFresnel * uniform die =
+        (const varying DielectricFresnel * uniform) fresnel;
+
+    // Make sure we don't nan out down below
+    hDotWi = max(hDotWi, -1.0f);
+    hDotWi = min(hDotWi, 1.0f);
+
+    // Compute Snell law
+    const float eta = die->mEtaI * rcp(die->mEtaT);
+    const float sinThetaSqr = eta * eta * (1.0f - hDotWi * hDotWi);
+    if (sinThetaSqr >= 1.0f) {
+
+        // Total internal reflection
+        return Color_ctor(1.0f, 1.0f, 1.0f) * die->mWeight;
+
+    } else {
+
+        const float cosTheta = sqrt(1.0f - sinThetaSqr);
+        hDotWi = abs(hDotWi);
+
+        const float etaTHDotWi = die->mEtaT * hDotWi;
+        const float etaIcosTheta = die->mEtaI * cosTheta;
+        const float parallel = ((etaTHDotWi) - (etaIcosTheta)) *
+                      rcp((etaTHDotWi) + (etaIcosTheta));
+
+        const float etaIHDotWi = die->mEtaI * hDotWi;
+        const float etaTcosTheta = die->mEtaT * cosTheta;
+        const float perp = ((etaIHDotWi) - (etaTcosTheta)) *
+                  rcp((etaIHDotWi) + (etaTcosTheta));
+
+        const float fr = 0.5f * (parallel * parallel + perp * perp) * die->mWeight;
+        return Color_ctor(fr, fr, fr);
+    }
+}
+
+/// @brief DielectricFresnel getProperty
+inline void
+DielectricFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                              uniform FresnelProperty prop,
+                              varying float * uniform dest)
+{
+    const varying DielectricFresnel * uniform die =
+        (const varying DielectricFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_COLOR:
+        *dest = *(dest + 1) = *(dest + 2) = die->mWeight;
+        break;
+    default:
+        MNRY_ASSERT(0);
+    }
+}
+
+/// @brief DielectricFresnel computePbrValidity
+inline Color
+DielectricFresnel_computePbrValidity(const varying Fresnel * uniform fresnel)
+{
+    const varying DielectricFresnel * uniform die =
+        (const varying DielectricFresnel * uniform) fresnel;
+
+    Color res = sBlack;
+
+    if (die->mEtaT < sPbrValidityDielectricValidLowBegin || die->mEtaT > sPbrValidityDielectricValidHighEnd) {
+        res = sPbrValidityInvalidColor;
+    } else if (die->mEtaT > sPbrValidityDielectricValidLowEnd && die->mEtaT < sPbrValidityDielectricValidHighBegin) {
+        res = sPbrValidityValidColor;
+    } else if (die->mEtaT > sPbrValidityDielectricValidHighBegin) {
+        const float gradient = (die->mEtaT - sPbrValidityDielectricValidHighBegin) /
+                (sPbrValidityDielectricValidHighEnd - sPbrValidityDielectricValidHighBegin);
+        res = lerp(sPbrValidityValidColor, sPbrValidityInvalidColor, gradient);
+    } else {
+        const float gradient = (die->mEtaT - sPbrValidityDielectricValidLowBegin) /
+                (sPbrValidityDielectricValidLowEnd - sPbrValidityDielectricValidLowBegin);
+        res = lerp(sPbrValidityInvalidColor, sPbrValidityValidColor, gradient);
+    }
+    return res;
+}
+
+inline void
+DielectricFresnel_show(const varying Fresnel * const uniform fresnel,
+                       const uniform uint8_t ntab)
+{
+    const varying DielectricFresnel * const uniform me =
+        (const varying DielectricFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{DielectricFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    BsdfUtil_indent(ntab+1); print("etaI: %\n", BSDF_UTIL_EXTRACT(me->mEtaI));
+    BsdfUtil_indent(ntab+1); print("etaT: %\n", BSDF_UTIL_EXTRACT(me->mEtaT));
+}
+
+/// @brief initialize a DielectricFresnel
+/// Pass in neta, the ratio of the ior for incident / transmitted material.
+// Note: Not passing PROPERTY_PBR_VALIDITY to the Fresnel constructor so that PBR_VALIDITY
+// is only accessible on DielectricFresnel when called from a BsdfLobe getProperty() function.
+inline void
+DielectricFresnel_init(varying DielectricFresnel * uniform fresnel,
+                       const varying float etaI = 1.0f,
+                       const varying float etaT = 1.0f,
+                       const varying float weight = 1.0f)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel,
+                 FRESNEL_TYPE_DIELECTRIC_FRESNEL,
+                 FRESNEL_PROPERTY_COLOR | FRESNEL_PROPERTY_FACTOR,
+                 DielectricFresnel_eval,
+                 DielectricFresnel_getProperty,
+                 DielectricFresnel_computePbrValidity,
+                 DielectricFresnel_show,
+                 weight,
+                 etaI,
+                 etaT);
+}
+
+/// @class LayeredDielectricFresnel Fresnel.isph <rendering/shading/ispc/bsdf/Fresnel.isph>
+/// A layered dielectric fresnel reflectance object.
+struct LayeredDielectricFresnel
+{
+    FRESNEL_BASE;
+    LAYERED_DIELECTRIC_FRESNEL_MEMBERS;
+};
+
+/// @brief LayeredDielectricFresnel Fresnel evaluation
+varying Color
+LayeredDielectricFresnel_evalFresnel(const varying float etaI,
+                                     const varying float etaT,
+                                     const varying float etaPerp,
+                                     const varying float etaParallel,
+                                     const varying float cosThetaI,
+                                     const varying float numLayers);
+
+/// @brief LayeredDielectricFresnel Fresnel evaluation
+inline varying Color
+LayeredDielectricFresnel_eval(const varying Fresnel * uniform fresnel,
+                              varying float cosThetaI);
+
+inline void
+LayeredDielectricFresnel_show(const varying Fresnel * const uniform fresnel,
+                              const uniform uint8_t ntab)
+{
+    const varying LayeredDielectricFresnel * const uniform me =
+        (const varying LayeredDielectricFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{LayeredDielectricFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    BsdfUtil_indent(ntab+1); print("etaI: %\n", BSDF_UTIL_EXTRACT(me->mEtaI));
+    BsdfUtil_indent(ntab+1); print("etaT: %\n", BSDF_UTIL_EXTRACT(me->mEtaT));
+    BsdfUtil_indent(ntab+1); print("num layers: %\n", BSDF_UTIL_EXTRACT(me->mNumLayers));
+}
+
+/// @brief initialize a LayeredDielectricFresnel
+/// Pass in neta, the ratio of the ior for incident / transmitted material.
+// Note: Not passing PROPERTY_PBR_VALIDITY to the Fresnel constructor so that PBR_VALIDITY
+// is only accessible on LayeredDielectricFresnel when called from a BsdfLobe getProperty() function.
+inline void
+LayeredDielectricFresnel_init(varying LayeredDielectricFresnel * uniform fresnel,
+                              const varying float etaI = 1.0f,
+                              const varying float etaT = 1.0f,
+                              const varying float layerThickness = 0.0f,
+                              const varying float weight = 1.0f)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel,
+                 FRESNEL_TYPE_DIELECTRIC_FRESNEL,
+                 FRESNEL_PROPERTY_COLOR | FRESNEL_PROPERTY_FACTOR,
+                 LayeredDielectricFresnel_eval,
+                 DielectricFresnel_getProperty,
+                 DielectricFresnel_computePbrValidity,
+                 LayeredDielectricFresnel_show,
+                 weight,
+                 etaI,
+                 etaT);
+
+    // Layers vary in between [0.5, 1.5]
+    // See Table 2
+    fresnel->mNumLayers = lerp(0.5f, 1.5f, layerThickness);
+}
+
+/// A conductor fresnel reflectance object.
+struct ConductorFresnel
+{
+    FRESNEL_BASE;
+    CONDUCTOR_FRESNEL_MEMBERS;
+};
+
+/// @class ConductorFresnel Fresnel.isph <rendering/shading/ispc/bsdf/Fresnel.isph>
+/// @brief ConductorFresnel Fresnel evaluation
+inline varying Color
+ConductorFresnel_eval(const varying Fresnel * uniform fresnel,
+                      varying float hDotWi)
+{
+    const varying ConductorFresnel * uniform cond =
+        (const varying ConductorFresnel * uniform) fresnel;
+
+    const float hDotWiSqrd = hDotWi * hDotWi;
+    const Color factor = cond->mEta * cond->mEta + cond->mAbsorption * cond->mAbsorption;
+    const Color tmp = factor * hDotWiSqrd;
+    const Color etaHDotWi = cond->mEta * hDotWi;
+
+    // FIXME: add operator/(Color, Color) to math lib
+    const Color parallel =
+        asAColor(asAVec3f((tmp - (2.0f * etaHDotWi) + Color_ctor(1.0f))) /
+                 asAVec3f((tmp + (2.0f * etaHDotWi) + Color_ctor(1.0f))));
+
+    const Color perp =
+        asAColor(asAVec3f((factor - (2.0f * etaHDotWi) + Color_ctor(hDotWiSqrd))) /
+                 asAVec3f((factor + (2.0f * etaHDotWi) + Color_ctor(hDotWiSqrd))));
+
+    return 0.5f * (parallel + perp) * cond->mWeight;
+}
+
+inline void
+ConductorFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                             uniform FresnelProperty prop,
+                             varying float * uniform dest)
+{
+    const varying ConductorFresnel * uniform cond =
+        (const varying ConductorFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_COLOR:
+        *dest       = (1.f - cond->mAbsorption.r) * cond->mWeight;
+        *(dest + 1) = (1.f - cond->mAbsorption.g) * cond->mWeight;
+        *(dest + 2) = (1.f - cond->mAbsorption.b) * cond->mWeight;
+        break;
+    default:
+        MNRY_ASSERT(0);
+    }
+}
+
+/// @brief ConductorFresnel ComputePbrValidity
+inline varying Color
+ConductorFresnel_computePbrValidity(const varying Fresnel * uniform fresnel)
+{
+    const varying ConductorFresnel * uniform cond =
+        (const varying ConductorFresnel * uniform) fresnel;
+
+    Color res = sBlack;
+
+    const varying Color reflectivity = ConductorFresnel_eval(fresnel, 1.f);
+    const varying float value = max(max(reflectivity.r,
+                                        reflectivity.g),
+                                        reflectivity.b);
+
+    if (value < sPbrValidityConductorInvalid || value > 1.0f) {
+        res = sPbrValidityInvalidColor;
+    } else if (value > sPbrValidityConductorValid) {
+        res = sPbrValidityValidColor;
+    } else {
+        const varying float gradient = (value - sPbrValidityConductorInvalid) /
+                (sPbrValidityConductorValid - sPbrValidityConductorInvalid);
+        res = lerp(sPbrValidityInvalidColor, sPbrValidityValidColor, gradient);
+    }
+    return res;
+}
+
+inline void
+ConductorFresnel_show(const varying Fresnel * const uniform fresnel,
+                      const uniform uint8_t ntab)
+{
+    const varying ConductorFresnel * const uniform me =
+        (const varying ConductorFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{ConductorFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    BsdfUtil_indent(ntab+1); print("Eta: % % %\n", BSDF_UTIL_EXTRACT(me->mEta.r),
+                                                   BSDF_UTIL_EXTRACT(me->mEta.g),
+                                                   BSDF_UTIL_EXTRACT(me->mEta.b));
+    BsdfUtil_indent(ntab+1); print("Absorption: % % %\n", BSDF_UTIL_EXTRACT(me->mAbsorption.r),
+                                                          BSDF_UTIL_EXTRACT(me->mAbsorption.g),
+                                                          BSDF_UTIL_EXTRACT(me->mAbsorption.b));
+}
+
+inline void
+ConductorFresnel_init(varying ConductorFresnel * uniform fresnel,
+                      const varying Color &eta,
+                      const varying Color &absorption,
+                      const varying float weight = 1.0f)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel, FRESNEL_TYPE_CONDUCTOR_FRESNEL,
+                 FRESNEL_PROPERTY_COLOR,
+                 ConductorFresnel_eval,
+                 ConductorFresnel_getProperty,
+                 ConductorFresnel_computePbrValidity,
+                 ConductorFresnel_show,
+                 weight);
+    fresnel->mEta = eta;
+    fresnel->mAbsorption = absorption;
+}
+
+/// @class OneMinusFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// used to attenuate lobes under another fresnel object
+struct OneMinusFresnel
+{
+    FRESNEL_BASE;
+    ONE_MINUS_FRESNEL_MEMBERS;
+};
+
+/// @brief OneMinusFresnel evaluation
+inline varying Color
+OneMinusFresnel_eval(const varying Fresnel * uniform fresnel,
+                     varying float nDotWo)
+{
+    const varying OneMinusFresnel * uniform oms =
+        (const varying OneMinusFresnel * uniform) fresnel;
+
+    return (Color_ctor(1.0f) - Fresnel_eval(oms->mTopFresnel, nDotWo));
+}
+
+/// @brief OneMinusFresnel getProperty function
+inline void
+OneMinusFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                            uniform FresnelProperty prop,
+                            varying float * uniform dest)
+{
+    const varying OneMinusFresnel * uniform oms =
+        (const varying OneMinusFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_COLOR:
+        Fresnel_getProperty(oms->mTopFresnel,
+                            prop,
+                            dest);
+        *dest       = 1.f - *dest;
+        *(dest + 1) = 1.f - *(dest + 1);
+        *(dest + 2) = 1.f - *(dest + 2);
+        break;
+    default:
+        Fresnel_getProperty(oms->mTopFresnel,
+                            prop,
+                            dest);
+        break;
+    }
+}
+
+inline void
+OneMinusFresnel_show(const varying Fresnel * const uniform fresnel,
+                     const uniform uint8_t ntab)
+{
+    const varying OneMinusFresnel * const uniform me =
+        (const varying OneMinusFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{OneMinusFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    Fresnel_show(me->mTopFresnel, ntab+1);
+}
+
+/// @brief initialize a OneMinusFresnel
+inline void
+OneMinusFresnel_init(varying OneMinusFresnel * uniform fresnel,
+                     const varying Fresnel * uniform topFresnel)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel, FRESNEL_TYPE_ONE_MINUS_FRESNEL,
+                 Fresnel_getPropertyFlags(topFresnel),
+                 OneMinusFresnel_eval,
+                 OneMinusFresnel_getProperty,
+                 Fresnel_computePbrValidityDefault,
+                 OneMinusFresnel_show);
+    fresnel->mTopFresnel = topFresnel;
+}
+
+/// @class OneMinusRoughFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// Approximation used to attenuate lobes under a more-or-less rough
+/// specular lobe and enforce energy conservation.
+struct OneMinusRoughFresnel
+{
+    FRESNEL_BASE;
+    ONE_MINUS_ROUGH_FRESNEL_MEMBERS;
+};
+
+/// @brief OneMinusRough Fresnel evaluation
+/// This approximation works well when passing nDotWo instead of hDotWi
+inline varying Color
+OneMinusRoughFresnel_eval(const varying Fresnel * uniform fresnel,
+                          varying float nDotWo)
+{
+    const varying OneMinusRoughFresnel * uniform oms =
+        (const varying OneMinusRoughFresnel * uniform) fresnel;
+
+    varying Fresnel * uniform topFresnel = (varying Fresnel * uniform) oms->mTopFresnel;
+    return lerp(sWhite - Fresnel_eval(topFresnel, nDotWo),
+                oms->mOneMinusFresnelAt0,
+                oms->mInterpolator);
+}
+
+/// @brief OneMinusRoughFresnel getProperty function
+inline void
+OneMinusRoughFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                                 uniform FresnelProperty prop,
+                                 varying float * uniform dest)
+{
+    const varying OneMinusRoughFresnel * uniform oms =
+        (const varying OneMinusRoughFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_ROUGHNESS: {
+            const float inputRoughness = sqrt(oms->mSpecRoughness);
+            // this is a VEC2F property for compatibility with bsdf lobes
+            *dest       = inputRoughness;
+            *(dest + 1) = inputRoughness;
+            break;
+        }
+    default:
+        Fresnel_getProperty((const varying Fresnel * uniform) oms->mTopFresnel, prop, dest);
+        // if the property is color, we'll 1 -dest, other properties
+        // remain as is
+        if (prop == FRESNEL_PROPERTY_COLOR) {
+            *dest       = 1.f - *dest;
+            *(dest + 1) = 1.f - *(dest + 1);
+            *(dest + 2) = 1.f - *(dest + 2);
+        }
+        break;
+    }
+}
+
+/// @brief helper function to initialize a OneMinusRoughFresnel
+inline void
+calculateOneMinusRoughFresnelParams(const varying Fresnel * uniform topFresnel,
+                                    const varying float specRoughness,
+                                    varying float& roughness,
+                                    varying float& interpolator,
+                                    varying Color& oneMinusFresnelAt0)
+{
+    // Apply roughness squaring to linearize roughness response
+    // like all roughness-based lobes do.
+    roughness = specRoughness * specRoughness;
+
+    // Interpolating non-linearly based on roughness, using:
+    // t = 1 - (1 - roughness)^3
+    const float tmp = 1.0f - roughness;
+    interpolator = clamp(1.0f - (tmp * tmp * tmp), 0.0f, 1.0f);
+
+    // At normal incidence, nDotWo = 1
+    oneMinusFresnelAt0 = sWhite - Fresnel_eval(topFresnel, 1.0f);
+}
+
+inline void
+OneMinusRoughFresnel_show(const varying Fresnel * const uniform fresnel,
+                          const uniform uint8_t ntab)
+{
+    const varying OneMinusRoughFresnel * const uniform me =
+        (const varying OneMinusRoughFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{OneMinusRoughFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    BsdfUtil_indent(ntab+1); print("1 - Fresnel at 0: % % %\n", BSDF_UTIL_EXTRACT(me->mOneMinusFresnelAt0.r),
+                                                                BSDF_UTIL_EXTRACT(me->mOneMinusFresnelAt0.g),
+                                                                BSDF_UTIL_EXTRACT(me->mOneMinusFresnelAt0.b));
+    BsdfUtil_indent(ntab+1); print("roughness^2: %\n", BSDF_UTIL_EXTRACT(me->mSpecRoughness));
+    BsdfUtil_indent(ntab+1); print("interpolator: %\n", BSDF_UTIL_EXTRACT(me->mInterpolator));
+    Fresnel_show(me->mTopFresnel, ntab+1);
+}
+
+/// @brief initialize a OneMinusRoughFresnel
+inline void
+OneMinusRoughFresnel_init(varying OneMinusRoughFresnel * uniform fresnel,
+                          const varying Fresnel * uniform topFresnel,
+                          varying float specRoughness)
+
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel,
+                 FRESNEL_TYPE_ONE_MINUS_ROUGH_FRESNEL,
+                 Fresnel_getPropertyFlags(topFresnel) | FRESNEL_PROPERTY_ROUGHNESS,
+                 OneMinusRoughFresnel_eval,
+                 OneMinusRoughFresnel_getProperty,
+                 Fresnel_computePbrValidityDefault,
+                 OneMinusRoughFresnel_show);
+
+    fresnel->mTopFresnel = (varying Fresnel * uniform) topFresnel;
+
+    calculateOneMinusRoughFresnelParams(topFresnel,
+                                        specRoughness,
+                                        fresnel->mSpecRoughness,
+                                        fresnel->mInterpolator,
+                                        fresnel->mOneMinusFresnelAt0);
+}
+
+///
+/// @class MultipleTransmissionFresnel Fresnel.isph <shading/bsdf/Fresnel.isph>
+/// @brief Packages up to three 'transmission' (OneMinus*) Fresnel objects.
+/// Use the add() function to add these fresnel objects
+///
+struct MultipleTransmissionFresnel
+{
+    FRESNEL_BASE;
+    MULTIPLE_TRANSMISSION_FRESNEL_MEMBERS;
+};
+
+inline void
+MultipleTransmissionFresnel_add(varying MultipleTransmissionFresnel * uniform multFresnel,
+                                const varying Fresnel * uniform fresnel)
+{
+    MNRY_ASSERT(fresnel);
+    MNRY_ASSERT(multFresnel->mNumFresnels < 16);
+    multFresnel->mFresnels[multFresnel->mNumFresnels++] = fresnel;
+    multFresnel->mPflags |= fresnel->mPflags;
+}
+
+inline void
+MultipleTransmissionFresnel_computeColorProperty(const varying Fresnel * uniform fresnel,
+                                                 varying float * uniform dest)
+{
+    const varying MultipleTransmissionFresnel * uniform multFresnel =
+            (varying MultipleTransmissionFresnel * uniform)fresnel;
+    Color avg = sBlack;
+    Color tmp;
+    for (uniform int i = 0; i < multFresnel->mNumFresnels; ++i) {
+        if (Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_COLOR)) {
+            const varying Fresnel * uniform f = multFresnel->mFresnels[i];
+            if (isActive(f)) {
+                Fresnel_getProperty(f, FRESNEL_PROPERTY_COLOR, &tmp.r);
+                avg = avg + tmp;
+            }
+        }
+        avg = avg * rcp((varying float) multFresnel->mNumFresnels);
+        *dest       = avg.r;
+        *(dest + 1) = avg.g;
+        *(dest + 2) = avg.b;
+    }
+}
+
+inline void
+MultipleTransmissionFresnel_computeFactorProperty(const varying Fresnel * uniform fresnel,
+                                                  varying float * uniform dest)
+{
+    const varying MultipleTransmissionFresnel * uniform multFresnel =
+            (varying MultipleTransmissionFresnel * uniform)fresnel;
+    float avg = 0.0f;
+    float tmp;
+    for (uniform int i = 0; i < multFresnel->mNumFresnels; ++i) {
+        if (Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_FACTOR)) {
+            const varying Fresnel * uniform f = multFresnel->mFresnels[i];
+            if (isActive(f)) {
+                Fresnel_getProperty(f, FRESNEL_PROPERTY_FACTOR, &tmp);
+                avg = avg + tmp;
+            }
+        }
+        avg = avg * rcp((varying float)multFresnel->mNumFresnels);
+        *dest       = avg;
+    }
+}
+
+inline void
+MultipleTransmissionFresnel_computeRoughnessProperty(const varying Fresnel * uniform fresnel,
+                                                     varying float * uniform dest)
+{
+    const varying MultipleTransmissionFresnel * uniform multFresnel =
+            (varying MultipleTransmissionFresnel * uniform)fresnel;
+    Vec2f avg = Vec2f_ctor(0.0f);
+    Vec2f tmp;
+    for (uniform int i = 0; i < multFresnel->mNumFresnels; ++i) {
+        if (Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_ROUGHNESS)) {
+            const varying Fresnel * uniform f = multFresnel->mFresnels[i];
+            if (isActive(f)) {
+                Fresnel_getProperty(f, FRESNEL_PROPERTY_ROUGHNESS, &tmp.x);
+                avg = avg + tmp;
+            }
+        }
+        avg = avg * rcp((varying float)multFresnel->mNumFresnels);
+        *dest       = avg.x;
+        *(dest + 1) = avg.y;
+    }
+}
+
+inline void
+MultipleTransmissionFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                                        uniform FresnelProperty prop,
+                                        varying float * uniform dest)
+{
+    const varying MultipleTransmissionFresnel * uniform mutlFresnel =
+        (const varying MultipleTransmissionFresnel * uniform) fresnel;
+    MNRY_ASSERT(mutlFresnel->mNumFresnels > 0);
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_COLOR:
+        MultipleTransmissionFresnel_computeColorProperty(fresnel, dest);
+        break;
+    case FRESNEL_PROPERTY_FACTOR:
+        MultipleTransmissionFresnel_computeFactorProperty(fresnel, dest);
+        break;
+    case FRESNEL_PROPERTY_ROUGHNESS:
+        MultipleTransmissionFresnel_computeRoughnessProperty(fresnel, dest);
+        break;
+    }
+}
+
+inline varying Color
+MultipleTransmissionFresnel_eval(const varying Fresnel * uniform fresnel,
+                                 varying float nDotWo)
+{
+    Color result = sWhite;
+
+    varying MultipleTransmissionFresnel * uniform multFresnel =
+            (varying MultipleTransmissionFresnel * uniform)fresnel;
+
+    for (uniform int i = 0; i < multFresnel->mNumFresnels; ++i) {
+        const varying Fresnel * uniform f = multFresnel->mFresnels[i];
+        if (isActive(f)) {
+            result = result * Fresnel_eval(f, nDotWo);
+        }
+    }
+    return result;
+}
+
+inline void
+MultipleTransmissionFresnel_show(const varying Fresnel * const uniform fresnel,
+                                 const uniform uint8_t ntab)
+{
+    const varying MultipleTransmissionFresnel * const uniform me =
+        (const varying MultipleTransmissionFresnel * uniform) fresnel;
+
+    BsdfUtil_indent(ntab);   print("{MultipleTransmissionFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+
+    for (uniform int i = 0; i < me->mNumFresnels; ++i) {
+        Fresnel_show(me->mFresnels[i], ntab+1);
+    }
+}
+
+inline void
+MultipleTransmissionFresnel_init(varying MultipleTransmissionFresnel * uniform fresnel,
+                                 const varying float etaI = 1.0f,
+                                 const varying float etaT = 1.5f,
+                                 const varying float thickness = 0.0f,
+                                 const varying float attnColorR = 1.0f,
+                                 const varying float attnColorG = 1.0f,
+                                 const varying float attnColorB = 1.0f,
+                                 const uniform bool   useBending = false)
+
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel,
+                 FRESNEL_TYPE_MULTIPLE_TRANSMISSION_FRESNEL,
+                 FRESNEL_PROPERTY_NONE,
+                 MultipleTransmissionFresnel_eval,
+                 MultipleTransmissionFresnel_getProperty,
+                 Fresnel_computePbrValidityDefault,
+                 MultipleTransmissionFresnel_show,
+                 1.0f,
+                 etaI,
+                 etaT,
+                 thickness,
+                 attnColorR,
+                 attnColorG,
+                 attnColorB,
+                 useBending);
+
+    fresnel->mNumFresnels = 0;
+}
+
+/// @class OneMinusVelvetFresnel Fresnel.isph <rendering/shading/bsdf/Fresnel.isph>
+/// used to *attenuate* lobes under velvet lobes
+struct OneMinusVelvetFresnel
+{
+    FRESNEL_BASE;
+    ONE_MINUS_VELVET_FRESNEL_MEMBERS;
+};
+
+/// @brief OneMinusFresnel evaluation
+inline varying Color
+OneMinusVelvetFresnel_eval(const varying Fresnel * uniform fresnel,
+                           varying float nDotWo)
+{
+
+    const varying OneMinusVelvetFresnel * uniform oms =
+        (const varying OneMinusVelvetFresnel * uniform) fresnel;
+
+    float matteComponent = (1.0f - VelvetAlbedo_at(nDotWo, oms->mRoughness) * oms->mWeight);
+    /* The paper includes the following terms for bidirectionality.
+     * However, for the current multi-sample BSDF sampling approach, coupled with the
+     * one-minus-fresnel architecture, a simple reduction in energy based on the
+     * *average reflectance of the outgoing vector* is suitable for our needs, similar to the
+     * other oneMinus lobes. */
+//    matteComponent      *= (1.0f - VelvetAlbedo_at(nDotWi, oms->mRoughness) * oms->mAlbedo);
+//    matteComponent      /= (1.0f - VelvetAlbedo_avg(oms->mRoughness));
+
+    return (sWhite*matteComponent);
+}
+
+/// @brief OneMinusVelvetFresnel getProperty function
+inline void
+OneMinusVelvetFresnel_getProperty(const varying Fresnel * uniform fresnel,
+                                  uniform FresnelProperty prop,
+                                  varying float * uniform dest)
+{
+    const varying OneMinusVelvetFresnel * uniform velvet =
+        (const varying OneMinusVelvetFresnel * uniform) fresnel;
+
+    switch (prop)
+    {
+    case FRESNEL_PROPERTY_ROUGHNESS:
+        *dest       = velvet->mRoughness;
+        *(dest + 1) = velvet->mRoughness;
+        break;
+    }
+}
+
+inline void
+OneMinusVelvetFresnel_show(const varying Fresnel * const uniform fresnel,
+                           const uniform uint8_t ntab)
+{
+    const varying OneMinusVelvetFresnel * const uniform me =
+        (const varying OneMinusVelvetFresnel * uniform) fresnel;
+    BsdfUtil_indent(ntab);   print("{OneMinusVelvetFresnel} % weight: % mask: %\n",
+                                me,
+                                BSDF_UTIL_EXTRACT(me->mWeight),
+                                fresnel->mMask);
+    BsdfUtil_indent(ntab+1); print("roughness: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+}
+/// @brief initialize a OneMinusVelvetFresnel
+inline void
+OneMinusVelvetFresnel_init(varying OneMinusVelvetFresnel * uniform fresnel,
+                           const varying float roughness,
+                           const varying float weight = 1.0f)
+{
+    Fresnel_init((varying Fresnel * uniform) fresnel,
+                 FRESNEL_TYPE_ONE_MINUS_VELVET_FRESNEL,
+                 FRESNEL_PROPERTY_ROUGHNESS,
+                 OneMinusVelvetFresnel_eval,
+                 OneMinusVelvetFresnel_getProperty,
+                 Fresnel_computePbrValidity,
+                 OneMinusVelvetFresnel_show,
+                 weight);
+
+    fresnel->mRoughness = roughness;
+}
+
+// Utility function for diffuse reflectance fresnel used in the dipole model
+inline varying float
+diffuseFresnelReflectance(varying float eta)
+{
+    if (eta >= 1.0f) {
+        return -1.4399f / (eta * eta) + 0.7099f / eta + 0.6681f + 0.0636f * eta;
+    } else {
+        const float etaSqr = eta * eta;
+        return -0.4399f + 0.7099f / eta - 0.3319f / etaSqr + 0.0636f /
+                (etaSqr * eta);
+    }
+}
+
+// Average Dielectric Fresnel Reflectance
+// Ref:"Revisiting Physically Based Shading", Kulla'17
+inline varying float
+averageFresnelReflectance(varying float neta)
+{
+    MNRY_ASSERT(neta >= 1.0f);
+    const float favg =
+            (neta - 1.0f) / (4.08567f + 1.00071f*neta);
+    return favg;
+}
+
+// Average Dielectric Fresnel Reflectance
+// Ref:"Revisiting Physically Based Shading", Kulla'17
+inline varying float
+averageInvFresnelReflectance(varying float neta)
+{
+    MNRY_ASSERT(neta < 1.0f);
+    const float favgInv = 0.997118f +
+              0.1014f * neta -
+              0.965241f * neta * neta -
+              0.130607f * neta * neta * neta;
+    return favgInv;
+}
+
+// Average Conductor Fresnel Reflectance
+// Ref:"Revisiting Physically Based Shading", Kulla'17
+inline varying Color
+averageFresnelReflectance(const varying Color& reflectivity,
+                          const varying Color& edgeTint)
+{
+    const Color r2 = reflectivity * reflectivity;
+    const Color e2 = edgeTint*edgeTint;
+    const Color favg = Color_ctor(0.087237f) + 0.0230685f * edgeTint -
+            0.0864902f * e2 +
+            0.0774594f * e2 * edgeTint +
+            0.782654f * reflectivity -
+            0.136432f * r2 +
+            0.278708f * r2 * reflectivity +
+            0.19744f * edgeTint * reflectivity +
+            0.0360605f * e2 * reflectivity -
+            0.2586f * edgeTint * r2;
+    return favg;
+}
+
+// Average Dielectric Fresnel Reflectance
+// Ref:"Revisiting Physically Based Shading", Kulla'17
+inline void
+averageFresnelReflectance(varying float neta,
+                          varying float& favg,
+                          varying float& favgInv)
+{
+    if (neta > 1.0f) {
+        favg = averageFresnelReflectance(neta);
+        favgInv = averageInvFresnelReflectance(1.0f/neta);
+    } else if (neta < 1.0f) {
+        favg = averageFresnelReflectance(1.0f/neta);
+        favgInv = averageInvFresnelReflectance(neta);
+    } else {
+        favg = favgInv = 0.0f;
+    }
+}
+
+#endif // FRESNEL_ISPH

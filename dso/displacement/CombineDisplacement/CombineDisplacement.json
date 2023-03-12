@@ -1,0 +1,53 @@
+{
+    "name": "CombineDisplacement",
+    "type": "Displacement",
+    "attributes": {
+         "attrOperation": {
+            "name": "operation",
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "add":                  "0",
+                "max magnitude":        "1",
+                "min magnitude":        "2"
+            }
+        },
+        "attrInput1": {
+            "name": "input_1",
+            "label": "input 1",
+            "aliases": [ "input 1" ],
+            "type": "SceneObject*",
+            "flags": "FLAGS_NONE",
+            "interface": "INTERFACE_DISPLACEMENT",
+            "comment": "Displacement object 1"
+        },
+        "attrScale1": {
+            "name": "scale_1",
+            "label": "scale 1",
+            "aliases": [ "scale 1" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "Scale of input 1"
+        },
+        "attrInput2": {
+            "name": "input_2",
+            "label": "input 2",
+            "aliases": [ "input 2" ],
+            "type": "SceneObject*",
+            "flags": "FLAGS_NONE",
+            "interface": "INTERFACE_DISPLACEMENT",
+            "comment": "Displacement object 2"
+        },
+        "attrScale2": {
+            "name": "scale_2",
+            "label": "scale 2",
+            "aliases": [ "scale 2" ],
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "Scale of input 2"
+        }
+    }
+}

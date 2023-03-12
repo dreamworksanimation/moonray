@@ -1,0 +1,128 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfFlatDiffuse.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+
+/// @class FlatDiffuseBsdfLobe BsdfFlatDiffuse.isph <rendering/shading/Bsdf/npr/BsdfFlatDiffuse.isph>
+/// @brief  This is a totally made-up NPR "flat diffuse" BRDF that
+///         matches Lambert when flatness = 0.  It works by bending
+///         the normal towards the light as flatness goes from 0 to 1.
+struct FlatDiffuseBsdfLobe
+{
+    struct OrenNayarBsdfLobe mOrenNayar;
+    float mTerminatorShift;
+    float mFlatness;
+    float mFlatnessFalloff;
+};
+
+varying Color
+FlatDiffuseBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                         const varying BsdfSlice &slice,
+                         const Vec3f &wi,
+                         varying float * uniform pdf);
+
+varying Color
+FlatDiffuseBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                           const varying BsdfSlice &slice,
+                           varying float r1, varying float r2,
+                           varying Vec3f &wi, varying float &pdf);
+
+varying Color
+FlatDiffuseBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                           const varying BsdfSlice &slice);
+
+void
+FlatDiffuseBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                  const varying Vec3f &wo,
+                                  const varying Vec3f &wi,
+                                  varying float r1, varying float r2,
+                                  const varying Vec3f &dNdx,
+                                  const varying Vec3f &dNdy,
+                                  varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+FlatDiffuseBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                uniform BsdfLobeProperty property,
+                                varying float * uniform dest);
+
+inline void
+FlatDiffuseBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                         const uniform uint8_t ntab)
+{
+    const varying FlatDiffuseBsdfLobe * uniform me =
+        (const varying FlatDiffuseBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mOrenNayar.mFrame);
+    const varying Fresnel * const uniform fresnel = me->mOrenNayar.mFresnel;
+
+    if (BsdfLobe_matchesFlag(lobe, BSDF_LOBE_TYPE_REFLECTION)) {
+        BsdfUtil_indent(ntab);   print("[LambertBsdfLobe] (reflection) mask: %\n", lobe->mMask);
+    } else {
+        BsdfUtil_indent(ntab);   print("[LambertBsdfLobe] (transmission) mask: %\n", lobe->mMask);
+    }
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mOrenNayar.mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mOrenNayar.mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mOrenNayar.mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("albedo: % % %\n", BSDF_UTIL_EXTRACT(me->mOrenNayar.mAlbedo.r),
+                                                      BSDF_UTIL_EXTRACT(me->mOrenNayar.mAlbedo.g),
+                                                      BSDF_UTIL_EXTRACT(me->mOrenNayar.mAlbedo.b));
+    BsdfUtil_indent(ntab+1); print("roughness: %\n", BSDF_UTIL_EXTRACT(me->mOrenNayar.mRoughness));
+    BsdfUtil_indent(ntab+1); print("terminator shift: %\n", BSDF_UTIL_EXTRACT(me->mTerminatorShift));
+    BsdfUtil_indent(ntab+1); print("flatness: %\n", BSDF_UTIL_EXTRACT(me->mFlatness));
+    BsdfUtil_indent(ntab+1); print("flatness falloff: %\n", BSDF_UTIL_EXTRACT(me->mFlatnessFalloff));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief intialize a lambert lobe
+inline void
+FlatDiffuseBsdfLobe_init(varying FlatDiffuseBsdfLobe * uniform lobe,
+                         const varying Vec3f &normal,
+                         const varying Color &albedo,
+                         const varying float roughness,
+                         const varying float terminatorShift,
+                         const varying float flatness,
+                         const varying float flatnessFalloff,
+                         const uniform bool reflection)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_FLAT_DIFFUSE,
+                  /* type = */
+                  reflection?
+                  BSDF_LOBE_TYPE_REFLECTION   | BSDF_LOBE_TYPE_DIFFUSE :
+                  BSDF_LOBE_TYPE_TRANSMISSION | BSDF_LOBE_TYPE_DIFFUSE,
+                  /* differentialFlags = */ BSDF_LOBE_IGNORES_INCOMING_DIFFERENTIALS,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ FlatDiffuseBsdfLobe_eval,
+                  /* sampleFn = */ FlatDiffuseBsdfLobe_sample,
+                  /* albedoFn = */ FlatDiffuseBsdfLobe_albedo,
+                  /* differentialsFn = */ FlatDiffuseBsdfLobe_differentials,
+                  /* getPropertyFn = */ FlatDiffuseBsdfLobe_getProperty,
+                  /* showFn = */ FlatDiffuseBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mOrenNayar.mFrame, normal);
+    lobe->mOrenNayar.mAlbedo = albedo;
+    lobe->mOrenNayar.mRoughness = roughness;
+
+    float s = deg2rad(roughness * 90.0f);
+    // No sqr() function in ispc
+    s = s * s;
+    lobe->mOrenNayar.mA = 1.0f - (0.5f * (s / (s + 0.33f)));
+    lobe->mOrenNayar.mB = 0.45f * (s / (s + 0.09f));
+
+    lobe->mTerminatorShift = terminatorShift;
+    lobe->mFlatness = flatness;
+    lobe->mFlatnessFalloff = flatnessFalloff;
+}
+

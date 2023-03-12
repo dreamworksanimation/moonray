@@ -1,0 +1,71 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+name    = modName + '_' + libName
+
+# --------------------------------------------------------------------------
+
+components = [
+    'atomic',
+    'common_math',
+    'common_mcrt_macros',
+    'common_platform',
+    'common_time',
+    'embree',
+    'render_logging',
+    'render_util',
+    'scene_rdl2',
+    'tbb',
+]
+env.DWAUseComponents(components)
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+# ISPC source files.
+sourceFiles, headers = env.IspcShared([
+        'Ray.ispc',
+        'ThreadLocalState.ispc'])
+
+# C++ source files.
+sourceFiles += [
+              'Frustum.cc',
+              'ProfileAccumulator.cc',
+              'ProfileAccumulatorHandles.cc',
+              'Ray.cc',
+              'ThreadLocalState.cc',
+              'Util.cc',
+             ]
+
+incdir     = [
+    env.Dir('../..').srcnode(),
+    env.Dir('.'),
+    env.Dir('.').srcnode()
+]
+
+public_headers = [
+    'ExecutionMode.h',
+    'Frustum.h',
+    'ThreadLocalState.hh',
+    # TODO: Util.isph contains stuff that should not be public,
+    # such as Address64, but until we rework our vector API
+    # (I'm looking at you, State, Intersection), we need to keep this public.
+    'Util.isph',
+    ]
+
+# --------------------------------------------------------------------------
+env.DWAInstallInclude(public_headers, 'moonray/rendering/mcrt_common')
+env.Prepend (CPPPATH=incdir)
+lib = env.DWASharedLibrary(name, sourceFiles)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name,
+                 LIBS=target,
+                 CPPPATH=incdir,
+                 COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

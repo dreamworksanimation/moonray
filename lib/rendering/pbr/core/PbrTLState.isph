@@ -1,0 +1,71 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+#pragma once
+
+// Include this before any other includes!
+#include <scene_rdl2/common/platform/Platform.isph>
+#include "PbrTLState.hh"
+#include "Statistics.isph"
+#include <moonray/rendering/pbr/Types.isph>
+
+#define CHECK_CANCELLATION(tls, action)              { if (isCanceled(tls)) { unmasked { action; } }; }
+#define CHECK_CANCELLATION_IN_LOOP(tls, i, action)   { if ((i & 15) == 0 && isCanceled(tls)) { unmasked { action; } }; }
+
+struct Arena;
+struct ThreadLocalState;
+
+enum CancellationState
+{
+    CANCELLATION_STATE_DISABLED = 0,
+    CANCELLATION_STATE_CANCELED = 1,
+    CANCELLATION_STATE_WAITING_FOR_SAMPLE_PER_PIXEL = 2,
+    CANCELLATION_STATE_WAITING_FOR_CANCEL = 3,
+};
+
+struct PbrTLState
+{
+    BASE_TL_STATE_MEMBERS;
+    PBR_TL_STATE_MEMBERS;
+};
+
+uniform bool isCanceled(uniform PbrTLState * uniform pbrTls);
+
+static const uniform uint32_t PBR_nullHandle = PBR_TL_STATE_NULL_HANDLE;
+
+varying uint32_t
+PbrTLState_allocList(uniform PbrTLState * uniform pbrTls,
+                     uniform unsigned int itemSize,
+                     varying unsigned int numItems);
+
+void
+PbrTLState_freeList(uniform PbrTLState * uniform pbrTls,
+                    varying uint32_t listPtr);
+
+varying unsigned int
+PbrTLState_getNumListItems(uniform PbrTLState * uniform pbrTls,
+                           varying uint32_t listPtr);
+
+void * varying
+PbrTLState_getListItem(uniform PbrTLState * uniform pbrTls,
+                       varying uint32_t listPtr,
+                       varying unsigned int item);
+
+void
+PbrTLState_acquireDeepData(uniform PbrTLState * uniform pbrTls,
+                           varying uint32_t deepPtr);
+
+void
+PbrTLState_releaseDeepData(uniform PbrTLState * uniform pbrTls,
+                           varying uint32_t deepPtr);
+
+void
+PbrTLState_acquireCryptomatteData(uniform PbrTLState * uniform pbrTls,
+                                  varying uint32_t cryptomattePtr);
+
+void
+PbrTLState_releaseCryptomatteData(uniform PbrTLState * uniform pbrTls,
+                                  varying uint32_t cryptomattePtr);
+

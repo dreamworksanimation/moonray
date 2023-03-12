@@ -1,0 +1,18 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file StateMachine.isph
+
+#pragma once
+
+#include "Event.isph"
+
+typedef unsigned int8 LpeStateMachine;
+
+varying int
+LpeStateMachine_transition(const uniform LpeStateMachine * uniform stateMachine,
+                           varying int stateId,
+                           uniform LpeEventType ev,
+                           uniform LpeEventScatteringType evs,
+                           varying int labelId);
+

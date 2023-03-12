@@ -1,0 +1,31 @@
+Import('env')
+
+# -----------------------------------------------------------------------------
+# Test configuration.
+
+name = 'rendering_rndr'
+
+sources = [
+    'main.cc',
+    'TestActivePixelMask.cc',
+    'TestCheckpoint.cc',
+    'TestSocketStream.cc',
+    'TestOverlappingRegions.cc'
+]
+
+components = [
+    'atomic',
+    'rendering_rndr',
+    'tbb'
+]
+
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+()
+env.DWAUseComponents(components)
+
+# -----------------------------------------------------------------------------
+
+env['RUN_TEST_ENV']['SOFTMAP_PATH'] = env.subst('${INSTALL_DIR}:${BASE_MAP_DIR}')
+test = env.DWAPdevUnitTest(name, sources, "", COMPONENTS=components)

@@ -1,0 +1,277 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "LightUtil.hh"
+
+#include <moonray/rendering/pbr/sampler/SequenceID.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+struct Arena;
+struct Bsdf;
+struct LightFilterList;
+struct LightSet;
+struct PbrTLState;
+
+//----------------------------------------------------------------------------
+
+struct LightIntersection
+{
+    Vec3f N;            ///< normal at hit point on light surface
+    float distance;     ///< distance traveled along ray to the hit point
+    Vec2f uv;           ///< used for texture mapped lights
+    float mipLevel;     ///< used for texture mapped lights
+    float data[2];      ///< light type specific data passed to eval from
+                        ///< intersect or sample
+    float pdf;          ///< pdf of sample
+    int   primID;       ///< primID of face on mesh light
+    int   geomID;       ///< geomID of geometry on mesh light
+};
+
+//----------------------------------------------------------------------------
+
+struct LightFilterRandomValues
+{
+    Vec2f r2;
+    Vec3f r3;
+};
+
+//----------------------------------------------------------------------------
+
+// TODO: flesh this out and move it into common/math?
+struct Plane
+{
+    /// The plane is formed by the equation: dot(mN, p) + mOffset = 0.
+    PLANE_MEMBERS;
+};
+
+
+// Needed by unittest
+inline void
+Plane_init(uniform Plane * uniform plane, const uniform Vec3f &p, const uniform Vec3f &n)
+{
+    plane->mN = n;
+    plane->mOffset = -dot(p, n);
+}
+
+inline void
+Plane_init(varying Plane * uniform plane, const varying Vec3f &p, const varying Vec3f &n)
+{
+    plane->mN = n;
+    plane->mOffset = -dot(p, n);
+}
+
+inline varying Plane
+Plane_ctor(const varying Vec3f &p, const varying Vec3f &n)
+{
+    Plane plane;
+    Plane_init(&plane, p, n);
+    return plane;
+}
+
+inline varying Plane
+Plane_ctor(const varying Vec3f &p1, const varying Vec3f &p2, const varying Vec3f &p3)
+{
+    Plane plane;
+    plane.mN = normalize(cross(p2 - p1, p3 - p1));
+    plane.mOffset = -dot(p1, plane.mN);
+
+    return plane;
+}
+
+/// Returns the signed distance from a set of points to a plane
+inline varying float
+Plane_getDistance(const uniform Plane * uniform plane, const varying Vec3f &p)
+{
+    return dot(p, plane->mN) + plane->mOffset;
+}
+
+/// Returns the signed distance from a point to a set of planes
+inline varying float
+Plane_getDistance(const varying Plane * uniform plane, const uniform Vec3f &p)
+{
+    return dot(p, plane->mN) + plane->mOffset;
+}
+
+/// Returns the signed distance from a point to a set of planes
+inline varying float
+Plane_getDistance(const varying Plane * uniform plane, const varying Vec3f &p)
+{
+    return dot(p, plane->mN) + plane->mOffset;
+}
+
+
+//----------------------------------------------------------------------------
+
+enum FalloffCurveType
+{
+    FALLOFF_CURVE_TYPE_ENUM
+};
+
+struct FalloffCurve
+{
+    FALLOFF_CURVE_MEMBERS;
+};
+
+enum OldFalloffCurveType
+{
+    OLD_FALLOFF_CURVE_TYPE_ENUM
+};
+
+struct OldFalloffCurve
+{
+    OLD_FALLOFF_CURVE_MEMBERS;
+};
+
+
+//----------------------------------------------------------------------------
+
+inline varying float
+FalloffCurve_eval(const uniform FalloffCurve * uniform fc, varying float t)
+{
+    t = clamp(t, 0.0f, 1.0f);
+
+    switch (fc->mType) {
+    case FALLOFF_CURVE_TYPE_NONE:
+        return (t > 0.0f) ? 1.0f : 0.0f;
+    case FALLOFF_CURVE_TYPE_LINEAR:
+        return t;
+    case FALLOFF_CURVE_TYPE_EASEIN:
+        return t * t;
+    case FALLOFF_CURVE_TYPE_EASEOUT:
+        return t * (2.0f - t);
+    case FALLOFF_CURVE_TYPE_EASEINOUT:
+        return t * t * (3.0f - 2.0f * t);
+    default:
+        return t;
+    }
+}
+
+
+//----------------------------------------------------------------------------
+ 
+//
+// We use the following function in the [0..1] interval:
+//   natural_falloff(x) = h(x) / h(0)
+//   h(x) = g(x) - g(1)
+//   g(x) = f(tail * x + 1)
+//   f(x) = 1.0 / (x ** power)
+// Here tail and g(x) are chosen so that
+//   g'(0) is a large negative value (high slope)
+//   g'(1) is close to 0 (small slope)
+// In gnuplot:
+//   tail = 7
+//   power = 2
+//   plot [x=0:1][0:1] ((1.0 / ((tail*x+1)**power)) - (1.0 / ((tail*1+1)**power))) / ((1.0 / ((tail*0+1)**power)) - (1.0 / ((tail*1+1)**power)))
+//
+#define OLD_FALLOFF_HEAD    1.0f
+#define OLD_FALLOFF_TAIL    7.0f
+
+inline varying float
+OldFalloffCurve_f(const uniform OldFalloffCurve * uniform fc, varying float x)
+{
+    return 1.0f / pow(x, fc->mExp);
+}
+
+inline varying float
+OldFalloffCurve_g(const uniform OldFalloffCurve * uniform fc, varying float x)
+{
+    return OldFalloffCurve_f(fc, OLD_FALLOFF_TAIL * x + OLD_FALLOFF_HEAD);
+}
+
+inline varying float
+OldFalloffCurve_h(const uniform OldFalloffCurve * uniform fc, varying float x)
+{
+    return OldFalloffCurve_g(fc, x) - fc->mG1;
+}
+
+inline varying float
+OldFalloffCurve_naturalOldFalloff(const uniform OldFalloffCurve * uniform fc, varying float x)
+{
+    return 1.0f - (OldFalloffCurve_h(fc, x) * fc->mInvH0);
+}
+
+
+//----------------------------------------------------------------------------
+
+inline varying float
+OldFalloffCurve_eval(const uniform OldFalloffCurve * uniform fc, varying float t)
+{
+    t = clamp(t, 0.0f, 1.0f);
+
+    switch (fc->mType) {
+    case OLD_FALLOFF_CURVE_TYPE_NONE:
+        return t;
+    case OLD_FALLOFF_CURVE_TYPE_EASEOUT:
+        return pow(3.0f * t * t - 2.0f * t * t * t, fc->mExp);
+    case OLD_FALLOFF_CURVE_TYPE_GAUSSIAN:
+        return pow((cos((1.0f - t) * sPi) + 1.0f) * 0.5f, fc->mExp);
+    case OLD_FALLOFF_CURVE_TYPE_LINEAR:
+        return pow(t, fc->mExp);
+    case OLD_FALLOFF_CURVE_TYPE_SQUARED:
+        return t * t;
+    case OLD_FALLOFF_CURVE_TYPE_NATURAL:
+        return OldFalloffCurve_naturalOldFalloff(fc, t);
+     }
+ 
+     return t;
+}
+
+
+//----------------------------------------------------------------------------
+
+// Approximation which breaks down the closer p gets to the light but should
+// be sufficiently accurate as the light gets more distant.
+inline varying float
+getPlanarApproxSubtendedSolidAngle(const varying Vec3f &p,  // point we are illuminating
+                                   const uniform Vec3f &lightPos,
+                                   const uniform Vec3f &lightDir,
+                                   uniform float lightArea)
+{
+    Vec3f negWi = p - lightPos;
+    float distSq = lengthSqr(negWi);
+    if (distSq < sEpsilon) {
+        return sTwoPi;
+    }
+    float dist = sqrt(distSq);
+    float solidAngle = dot(negWi, lightDir) * lightArea / (distSq * dist);
+    return clamp(solidAngle, 0.0f, sTwoPi);
+}
+
+inline void
+setInvalidCullingNormal(varying Vec3f *uniform cullingNormal)
+{
+    cullingNormal->x = 1000000.f;
+}
+
+inline bool
+isValidCullingNormal(const varying Vec3f &cullingNormal)
+{
+    return cullingNormal.x <= 1.f;
+}
+
+// Generate the set of active lights for a LightSet and position/normal
+// in space.
+void computeActiveLights(uniform Arena * uniform arena,
+                         const uniform LightSet * uniform lightList,
+                         const varying Vec3f &pos,
+                         const varying Vec3f &normal,
+                         const varying Bsdf * uniform bsdf,
+                         varying float rayTime,
+                         // outputs
+                         uniform LightSet * uniform lightSet,
+                         uniform bool &hasRayTerminatorLights);
+
+// Randomly choose a light based on how many lights have been hit so far
+bool chooseThisLight(uniform PbrTLState * uniform pbrTls,
+                     varying IntegratorSample1D &samples,
+                     varying int depth,
+                     varying int numHits);
+
+//----------------------------------------------------------------------------
+
+

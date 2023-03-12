@@ -1,0 +1,102 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file ReflectionAlbedo.isph
+/// $Id$
+///
+
+/*
+ * This file encodes the average directional albedo and
+ * the normalization factor required for the Cook-Torrance Microfacet BRDF.
+ * As of 10/14/19, we provide tables for Beckmann and GGX NDFs.
+ * This class provides accessors to encapsulate the
+ * indexing into the albedo table. Values can be looked up as:
+ * E(cosThetaO, roughness)
+ * oneMinusEavg(roughness)
+ * These tables have been calculated using moonshine_devtools/compute_albedo
+ * Ref:
+ * A Microfacet Based Coupled Specular-Matte BRDF Model, Kelemen'01
+ *
+ */
+
+#pragma once
+
+#include "ReflectionAlbedo.inl"
+
+unsigned int
+ReflectionAlbedo_rIndex(float roughness,
+                        float& weight)
+{
+    const float i = roughness * (COMP - 1);
+    const float indexI = floor(i);
+    weight = (i-indexI);
+    return (unsigned int)(indexI);
+}
+
+void
+ReflectionAlbedo_index(float cosTheta,
+                       float roughness,
+                       float& w,
+                       unsigned int& iLow,
+                       unsigned int& iHigh)
+{
+    const unsigned int lIndex = ReflectionAlbedo_rIndex(roughness, w);
+    const unsigned int hIndex = min(lIndex+1, COMP*COMP-1);
+    const float if1 = lIndex * COMP +
+              cosTheta * (COMP - 1);
+    const float if2 = hIndex * COMP +
+              cosTheta * (COMP - 1);
+    // Take cosTheta's ceiling for the index
+    iLow = (unsigned int)(ceil(if1));
+    iHigh = (unsigned int)(ceil(if2));
+}
+
+float
+ReflectionAlbedo_E(MicrofacetDistribution type,
+                   float cosTheta,
+                   float roughness)
+{
+    float w;
+    unsigned int iLow, iHigh;
+    ReflectionAlbedo_index(cosTheta, roughness,
+                           w, iLow, iHigh);
+    float e = 0.0f;
+    switch (type) {
+    case MICROFACET_DISTRIBUTION_BECKMANN:
+        e = lerp(ReflectionAlbedo_BeckmannE[iLow],
+                 ReflectionAlbedo_BeckmannE[iHigh],
+                 w);
+        break;
+    case MICROFACET_DISTRIBUTION_GGX:
+        e = lerp(ReflectionAlbedo_GGXE[iLow],
+                 ReflectionAlbedo_GGXE[iHigh],
+                 w);
+        break;
+    }
+    return e;
+}
+
+float
+ReflectionAlbedo_oneMinusAvg(MicrofacetDistribution type,
+                             float roughness)
+{
+    float w;
+    const unsigned int iLow = ReflectionAlbedo_rIndex(roughness, w);
+    const unsigned int iHigh = min(iLow+1, COMP-1);
+    float e = 0.0f;
+    switch (type) {
+    case MICROFACET_DISTRIBUTION_BECKMANN:
+        e = lerp(ReflectionAlbedo_BeckmannOneMinusEavg[iLow],
+                 ReflectionAlbedo_BeckmannOneMinusEavg[iHigh],
+                 w);
+        break;
+    case MICROFACET_DISTRIBUTION_GGX:
+        e = lerp(ReflectionAlbedo_GGXOneMinusEavg[iLow],
+                 ReflectionAlbedo_GGXOneMinusEavg[iHigh],
+                 w);
+        break;
+    }
+    return e;
+}
+

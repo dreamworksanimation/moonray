@@ -1,0 +1,146 @@
+{
+    "name": "ListMap",
+    "type": "Map",
+    "attributes": {
+        "attrMap0": {
+            "name": "map0",
+            "label": "map0",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap1": {
+            "name": "map1",
+            "label": "map1",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap2": {
+            "name": "map2",
+            "label": "map2",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap3": {
+            "name": "map3",
+            "label": "map3",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap4": {
+            "name": "map4",
+            "label": "map4",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap5": {
+            "name": "map5",
+            "label": "map5",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap6": {
+            "name": "map6",
+            "label": "map6",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap7": {
+            "name": "map7",
+            "label": "map7",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap8": {
+            "name": "map8",
+            "label": "map8",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap9": {
+            "name": "map9",
+            "label": "map9",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap10": {
+            "name": "map10",
+            "label": "map10",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap11": {
+            "name": "map11",
+            "label": "map11",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap12": {
+            "name": "map12",
+            "label": "map12",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap13": {
+            "name": "map13",
+            "label": "map13",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap14": {
+            "name": "map14",
+            "label": "map14",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap15": {
+            "name": "map15",
+            "label": "map15",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap16": {
+            "name": "map16",
+            "label": "map16",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap17": {
+            "name": "map17",
+            "label": "map17",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap18": {
+            "name": "map18",
+            "label": "map18",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        },
+        "attrMap19": {
+            "name": "map19",
+            "label": "map19",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MAP",
+            "comment": "Map object reference"
+        }
+    }
+}

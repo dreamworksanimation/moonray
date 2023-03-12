@@ -1,0 +1,8 @@
+costheta(r2) := sqrt(r2);
+sintheta(r2) := sqrt(1-r2);
+cosphy(r1) := cos(2*pi*r1);
+sinphy(r1) := sin(2*pi*r1);
+D(r1, r2) := [cosphy(r1)*sintheta(r2), sinphy(r1)*sintheta(r2), costheta(r2)];
+diff(D(r1,r2), r1);
+diff(D(r1,r2), r2);
+

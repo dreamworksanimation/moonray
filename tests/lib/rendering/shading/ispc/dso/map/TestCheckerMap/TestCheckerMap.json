@@ -1,0 +1,36 @@
+{
+    "name": "TestCheckerMap",
+    "type": "Map",
+    "attributes": {
+        "attrColorA": {
+            "name": "color_a",
+            "label": "color A",
+            "aliases": [ "color A" ],
+            "type": "Rgb",
+            "default": "Rgb(0.75f, 0.75f, 0.75f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrColorB": {
+            "name": "color_b",
+            "label": "color B",
+            "aliases": [ "color B" ],
+            "type": "Rgb",
+            "default": "Rgb(0.9f, 0.9f, 0.9f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrUStep": {
+            "name": "u_step",
+            "label": "u step",
+            "aliases": [ "u step" ],
+            "type": "Float",
+            "default": "0.125f"
+        },
+        "attrVStep": {
+            "name": "v_step",
+            "label": "v step",
+            "aliases": [ "v step" ],
+            "type": "Float",
+            "default": "0.125f"
+        }
+    }
+}

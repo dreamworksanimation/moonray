@@ -1,0 +1,112 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include "Bssrdf.isph"
+
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+
+//----------------------------------------------------------------------------
+
+///
+/// @struct DipoleBssrdf Dipole.h <pbr/bssrdf/Dipole.h>
+/// @brief Derived class to implement the dipole Bssrdf with importance sampling.
+///
+/// This Bssrdf implements the dipole approximation as in (multiple scattering
+/// only, single scattering is ignored):
+/// [1] "A Practical Model for Subsurface Light Transport",
+///     Jensen et al., Siggraph 2001
+///
+/// It implements an exact dipole importance sampling scheme for local multiple
+/// scattering is described in:
+/// [2] "Efficient Rendering of Local Subsurface Scattering", Mertens et al.,
+///     Pacific Conference on Computer Graphics and Applications, 2003
+///
+/// It uses optionally the Bssrdf re-parameterization described in:
+/// [3] "A Rapid Hierarchical Rendering Technique for Translucent Materials",
+///     Jensen & Buhler, Siggraph 2002
+///
+struct DipoleBssrdf
+{
+    BSSRDF_BASE;
+
+    varying Color mSigmaA;
+    varying Color mSigmaSP;
+
+    varying float mA;
+    varying Color mSigmaTP;
+    varying Color mSigmaTr;
+    varying Color mAlphaP;
+    varying Color mZr;
+    varying Color mZv;
+
+    /// Used for local importance sampling.
+    varying Color mChannelCdf;
+    varying Color mRatio;
+    varying Color mPdfNormFactor;
+
+    varying Color mDiffuseReflectance;
+
+    varying Color mAlbedo; // used only for pbr validity
+};
+
+
+/// Constructor with standard physical parameters (cross sections in mm-1)
+/// The cross sections are converted to world-units-1 (in render space)
+/// according to the world scale:
+///      world space unit * worldScale = meter
+void
+DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
+            const varying Vec3f &N, varying float eta, const varying Color &sigmaA,
+            const varying Color &sigmaSP, varying float sceneScale,
+            const uniform Material *uniform  material,
+            const uniform intptr_t evalNormalFn);
+
+/// Constructor with artist-friendly parameters (see [3] for conversion),
+/// where the color-dependent radius is specified in render space. Note that
+/// the translucentColor cannot be grater than 1 due to the applied conversion.
+void
+DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
+            const varying Vec3f &N,
+            const varying Color &translucentColor, const varying Color &radius,
+            const uniform Material *uniform  material, 
+            const uniform intptr_t evalNormalFn);
+
+
+//----------------------------------------------------------------------------
+
+/// Sampling API:
+
+/// This function returns Rd(r), the diffuse reflectance
+/// The radius r should be in render space
+/// The global flag tells the bssrdf whether this is for local scattering
+/// or global scattering.
+/// Important note: it is the responsibility of the integrator to query
+/// getTransmissionFresnel() and to apply it accordingly. Unlike for Bsdf,
+/// the result of eval() does NOT contain any fresnel term.
+varying Color DipoleBssrdf_eval(const varying Bssrdf * uniform bssrdf,
+        varying float r, uniform bool global = false);
+
+/// Sample a position around the origin, in the tangent plane as defined by N.
+/// We also return the distance r from the origin for the sampled position.
+/// It's up to the integrator to re-project the sampled points onto the surface.
+/// We return the pdf of sampling dPi with respect to surface area
+/// measure (this is sTwoPi * r away from the radial pdf of sampling r).
+varying float DipoleBssrdf_sampleLocal(const varying Bssrdf * uniform bssrdf,
+       varying float r1, varying float r2, varying Vec3f &dPi, varying float &r);
+
+/// This is only needed for unit-testing and verify that the pdf integrates to 1.
+varying float DipoleBssrdf_pdfLocal(const varying Bssrdf * uniform bssrdf,
+        varying float r);
+
+varying Color DipoleBssrdf_diffuseReflectance(const varying Bssrdf * uniform bssrdf);
+
+uniform bool DipoleBssrdf_getProperty(const varying Bssrdf * uniform bssrdf,
+                                      uniform SubsurfaceProperty property,
+                                      varying float * uniform dest);
+
+//----------------------------------------------------------------------------
+

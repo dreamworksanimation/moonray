@@ -1,0 +1,156 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file BsdfSlice.isph
+/// $Id$
+///
+
+#pragma once
+
+#include "Bsdf.isph"
+#include <scene_rdl2/render/util/Arena.isph>
+
+
+/// A bsdf slice can request that bsdf lobe evaluation perform
+/// shadow terminator smoothing
+enum ShadowTerminatorFix {
+    SHADOW_TERMINATOR_FIX_OFF = 0,
+    SHADOW_TERMINATOR_FIX_CUSTOM,
+    SHADOW_TERMINATOR_FIX_SINE_COMPENSATION,
+    SHADOW_TERMINATOR_FIX_GGX,
+    SHADOW_TERMINATOR_FIX_COSINE_COMPENSATION,
+    SHADOW_TERMINATOR_FIX_NUM_MODES // number of valid modes, keep at the end
+};
+
+///
+/// @class BsdfSlice Bsdf.isph <pbr/Bsdf.isph>
+/// @brief A BsdfSlice object is used to both represent a lower-dimensional
+/// slice of a multi-lobe bsdf and to evaluate multi-lobe bsdfs.
+///
+struct BsdfSlice
+{
+    Vec3f mNg;
+    Vec3f mWo;
+    BsdfLobeType mFlags;
+    int32_t mShadowTerminatorFix;
+    bool mIncludeCosineTerm;
+    bool mEntering;
+};
+
+/// @brief initialize a BsdfSlice
+inline void
+BsdfSlice_init(varying BsdfSlice * uniform slice,
+               const varying Vec3f &Ng, 
+               const varying Vec3f &wo,
+               const varying BsdfLobeType flags,
+               varying bool includeCosineTerm, 
+               varying bool entering,
+               varying ShadowTerminatorFix shadowTerminatorFix)
+{
+    slice->mNg = Ng;
+    slice->mWo = wo;
+    slice->mFlags = flags;
+    slice->mShadowTerminatorFix= shadowTerminatorFix;
+    slice->mIncludeCosineTerm = includeCosineTerm;
+    slice->mEntering = entering;
+}
+
+/// A bsdf slice is defined given a surface geometric normal Ng and
+/// observer direction wo. We are also narrowing down on only the lobes that
+/// match the given flags. It also controls when a Bsdf is evaluated or
+/// sampled, whether or not its result includes the cosine term,
+/// and what if any shadow terminator smoothing should be applied.
+inline varying BsdfSlice * uniform
+BsdfSlice_create(uniform Arena * uniform arena, 
+                 const varying Vec3f Ng, 
+                 const varying Vec3f &wo, 
+                 varying bool includeCosineTerm, 
+                 varying bool entering,
+                 varying ShadowTerminatorFix shadowTerminatorFix,
+                 const varying BsdfLobeType flags = BSDF_LOBE_TYPE_ALL)
+{
+    varying BsdfSlice * uniform slice = (varying BsdfSlice * uniform)
+        Arena_alloc(arena, sizeof(varying BsdfSlice));
+
+    BsdfSlice_init(slice, Ng, wo, flags, includeCosineTerm, entering, shadowTerminatorFix);
+
+    return slice;
+}
+
+inline varying BsdfLobeType
+BsdfSlice_getFlags(const varying BsdfSlice * uniform slice)
+{
+    return slice->mFlags;
+}
+
+inline varying ShadowTerminatorFix
+BsdfSlice_getShadowTerminatorFix(const varying BsdfSlice * uniform slice)
+{
+    return (varying ShadowTerminatorFix) slice->mShadowTerminatorFix;
+}
+
+/// This method returns true if a given sample is compatible with the given
+/// lobe and according to the geometric surface. It tests if
+/// wo and wi are in the same / opposite hemispheres wrt. Ng and checks
+/// whether this is compatible with the lobe type REFLECTION vs. TRANSMISSION.
+/// This method always returns false for spherical lobes.
+inline varying bool 
+BsdfSlice_isSampleGeometricallyInvalid(const varying BsdfSlice * uniform slice,
+                                       const varying BsdfLobe &lobe, 
+                                       const Vec3f &wi)
+{
+    if (BsdfLobe_getIsSpherical(&lobe)) {
+        return false;
+    }
+    else {
+        if (dot(slice->mNg, slice->mWo) * dot(slice->mNg, wi) > 0.0f) {
+            return !(BsdfLobe_getType(&lobe) & BSDF_LOBE_TYPE_REFLECTION);
+        } else {
+            return !(BsdfLobe_getType(&lobe) & BSDF_LOBE_TYPE_TRANSMISSION);
+        }
+    }
+}
+
+/// Computes a lobe type flag that lets integrators ignore btdfs or brdfs
+/// based on whether wo and wi are respectively on the same or opposite side
+/// of the geometric surface (wrt. Ng).
+/// For spherical Bsdfs, this always returns the unmodified slice flags.
+inline varying BsdfLobeType 
+BsdfSlice_getSurfaceFlags(const varying BsdfSlice * uniform slice,
+                          const varying Bsdf &bsdf, 
+                          const varying Vec3f &wi)
+{
+    if (Bsdf_getIsSpherical(&bsdf)) {
+        return slice->mFlags;
+    } else {
+        if (dot(slice->mNg, slice->mWo) * dot(slice->mNg, wi) > 0.0f) {
+            return slice->mFlags & ~BSDF_LOBE_TYPE_TRANSMISSION;
+        } else {
+            return slice->mFlags & ~BSDF_LOBE_TYPE_REFLECTION;
+        }
+    }
+}
+
+inline int 
+BsdfSlice_getSurfaceFlags(const varying BsdfSlice * uniform slice,
+                          const BsdfLobe &lobe, 
+                          const Vec3f &wi)
+{
+    if (BsdfLobe_getIsSpherical(&lobe)) {
+        return slice->mFlags;
+    } else {
+        if (dot(slice->mNg, slice->mWo) * dot(slice->mNg, wi) > 0.0f) {
+            return slice->mFlags & ~BSDF_LOBE_TYPE_TRANSMISSION;
+        } else {
+            return slice->mFlags & ~BSDF_LOBE_TYPE_REFLECTION;
+        }
+    }
+}
+
+/// Compute a visibility multipilier based on shadow terminator fix mode
+/// N should be the lobe's shading normal and wi is the incoming light direction
+varying float BsdfSlice_computeShadowTerminatorFix(const varying BsdfSlice * uniform slice,
+                                                   const varying Vec3f &N,
+                                                   const varying Vec3f &wi);
+

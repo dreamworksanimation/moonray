@@ -1,0 +1,16 @@
+{
+    "name": "UsdPrimvarReader_float3",
+    "type": "Map",
+    "directives": {
+        "include": ["lib/map/primvar/json/primvar.json"]
+    },
+    "attributes": {
+        "attrFallback": {
+            "name": "fallback",
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "fallback value to be returned if geometry fetch failed."
+        }
+    }
+}

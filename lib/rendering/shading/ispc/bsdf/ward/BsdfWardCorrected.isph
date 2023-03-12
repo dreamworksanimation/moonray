@@ -1,0 +1,49 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfWardCorrected.isph
+
+#include "BsdfWard.isph"
+
+/// @class WardCorrectedBsdfLobe BsdfWardCorrected.isph <rendering/shading/Bsdf/BsdfWardCorrected.isph>
+/// @brief ward corrected bsdf lobe
+struct WardCorrectedBsdfLobe
+{
+    WARD_BSDF_LOBE;
+};
+
+varying Color
+WardCorrectedBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                           const varying BsdfSlice &slice,
+                           const Vec3f &wi,
+                           varying float * uniform pdf);
+
+varying Color
+WardCorrectedBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                             const varying BsdfSlice &slice,
+                             varying float r1, varying float r2,
+                             varying Vec3f &wi, varying float &pdf);
+
+
+/// @brief intialize a ward duer lobe
+inline void
+WardCorrectedBsdfLobe_init(varying WardCorrectedBsdfLobe * uniform lobe,
+                           const varying Vec3f &normal,
+                           const varying Vec3f &anisoDirection,
+                           const varying float roughnessU,
+                           const varying float roughnessV,
+                           const uniform bool squareRoughness)
+{
+    WardBsdfLobe_init((varying WardBsdfLobe * uniform) lobe,
+                      /* name = */ BSDF_LOBE_WARD_CORRECTED,
+                      /* normal = */ normal,
+                      /* anisoDirection = */ anisoDirection,
+                      /* roughnessU = */ roughnessU,
+                      /* roughnessV = */ roughnessV,
+                      /* squareRoughness = */ squareRoughness,
+                      /* evalFn = */ WardCorrectedBsdfLobe_eval,
+                      /* sampleFn = */ WardCorrectedBsdfLobe_sample,
+                      /* albedoFn = */ WardBsdfLobe_albedo,                 // Fallback to WardBsdfLobe.
+                      /* differentialsFn = */ WardBsdfLobe_differentials);  // Fallback to WardBsdfLobe.
+}
+

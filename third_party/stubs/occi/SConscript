@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'occi',
+  LIBS = [
+    env.File('/rel/third_party64/oracle/product/current/lib/libocci.so'),
+    env.File('/rel/third_party64/oracle/product/current/lib/libclntsh.so'),
+  ],
+  CPPPATH_THIRDPARTY = [
+    '/rel/third_party64/oracle/product/current/rdbms/public/',
+  ],
+  COMPONENTS = [
+  ],
+)

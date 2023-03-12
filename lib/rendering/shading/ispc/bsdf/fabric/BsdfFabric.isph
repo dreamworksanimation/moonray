@@ -1,0 +1,487 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfFabric.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfSlice.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/Util.isph>
+
+#include <scene_rdl2/common/math/ispc/Math.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float Fabric_sdDFactorMin = 1.0f;
+static const float Fabric_sdDFactorMax = 8.0f;
+static const float Fabric_sdDFactorSlope = Fabric_sdDFactorMax - Fabric_sdDFactorMin;
+
+// Precomputed List of 1 / (4*pi*integral (1-sin(x))^N*(1-2*sin^2(x))), x from 0 to pi/4
+// N from 0 to 31
+static const float
+precomputedDwaFabricNormalizationFactor[] = {
+                                           0.41788f, 0.52691f, 0.64072f, 0.76163f, 0.88620f,
+                                           1.00729f, 1.13352f, 1.26158f, 1.39352f, 1.52527f,
+                                           1.64034f, 1.78520f, 1.91616f, 2.01158f, 2.18194f,
+                                           2.27028f, 2.41961f, 2.54223f, 2.69755f, 2.81754f,
+                                           2.98730f, 3.07603f, 3.22963f, 3.28170f, 3.48190f,
+                                           3.61855f, 3.75108f, 3.83304f, 3.96912f, 4.09358f,
+                                           4.27677f };
+
+
+struct FabricBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    varying ReferenceFrame mFrame;
+    varying float mRoughness;
+    varying float mSpecularExponent;
+    varying float mNormalizationFactor;
+    varying Vec3f mThreadDirection;
+    varying Color mColor;
+    uniform bool  mUseDwaFabric;
+    varying float mdDFactor;
+};
+
+inline varying float
+dwaFabricSpecular(const varying Vec3f& wo,
+                  const varying Vec3f& wi,
+                  const varying Vec3f& threadDirection,
+                  const varying float specularExponent,
+                  const varying float normalizationFactor,
+                  varying float * uniform pdf)
+{
+    Vec3f H;
+    if (!computeNormalizedHalfVector(wo, wi, H)) {
+        return 0.0f;
+    }
+
+    const float cosHWo = dot(H, wo);
+    if (cosHWo < sEpsilon)   return 0.0f;
+
+    // thetaH is wrt the normal plane, so this dot product equals cos(pi/2 - thetaH) = sin(thetaH)
+    const float sinThetaH = clamp(dot(H, threadDirection), -.99f, .99f);
+    const float oneMinusAbsSinThetaH    = (1.0f - abs(sinThetaH));
+    if (oneMinusAbsSinThetaH < sEpsilon) return 0.0f;
+    const float oneMinusAbsSinThetaHPow = pow(oneMinusAbsSinThetaH, specularExponent);
+
+    const float brdf = normalizationFactor * oneMinusAbsSinThetaHPow;
+
+    // PDF for sampling theta_h is (n+1)/pi * pow(1-abs(sinThetaH), n)
+    if (pdf != nullptr) {
+        *pdf = (specularExponent+1.0f)*sOneOverPi*oneMinusAbsSinThetaHPow;
+        // Converting the PDF from sampling the thetaH to sampling thetaI
+        // divide by jacobian (dOmegaI/dOmegaH)
+        *pdf *= 0.25f * rcp(cosHWo);
+    }
+
+    return brdf;
+}
+
+inline varying float
+kajiyaKaySpecular(const varying Vec3f& wo,
+                  const varying Vec3f& wi,
+                  const varying Vec3f& threadDirection,
+                  const varying float specularExponent,
+                  const varying float normalizationFactor,
+                  varying float * uniform pdf)
+{
+
+    // BRDF = cos^N(thetaD)
+    // BRDF = cos^N(thetaIPrime - thetaO)
+    // BRDF = (cos(thetaIPrime)*cos(thetaO) + sin(thetaIPrime)*sin(thetaO))^N
+    const float cosThetaO = clamp(dot(threadDirection, wo), -0.99f, 0.99f);
+    const float sinThetaO = sqrt(1 - cosThetaO*cosThetaO);
+
+    // IPrime is I reflected across the normal plane
+    const float cosThetaIPrime = (-1) * clamp(dot(threadDirection, wi), -0.99f, 0.99f);
+    const float sinThetaIPrime = sqrt(1 - cosThetaIPrime*cosThetaIPrime);
+
+    // cos(thetaD) = cos(thetaIPrime - thetaO);
+    const float cosThetaD = cosThetaO*cosThetaIPrime + sinThetaO*sinThetaIPrime;
+
+    if (cosThetaD < sEpsilon || cosThetaD > 1.f) {
+        return 0.0f;
+    }
+
+    const float cosThetaDPow = pow(cosThetaD, specularExponent);
+    float fabricBRDF = normalizationFactor * cosThetaDPow;
+//    *pdf = sOneOverTwoPi;
+    // PDF
+    if (pdf != nullptr && sinThetaIPrime > sEpsilon) {
+        // We sample theta_d, so to convert the PDF to sample theta_i we divide by
+        // the Jacobian (dOmegaI/dOmegaD) = sin(thetaI) / sin(thetaD)
+
+        // PDF for sampling theta_d is (n+1)/2pi * pow(costhetaD, n)
+        *pdf = (specularExponent+1)*sOneOverTwoPi*cosThetaDPow;
+
+        // Converting the PDF from sampling the theta_d to sampling theta_i
+        // divide by jacobian (dOmegaI/dOmegaD)
+        const float sinThetaD = sqrt(clamp(1 - cosThetaD*cosThetaD, 0.0f, 1.0f));
+        *pdf *= sinThetaD;
+        *pdf /= sinThetaIPrime; // sinThetaI = sinThetaIPrime
+        // Control Variance Spikes - www.pbrt.org/hair.pdf (Section 1.8)
+        // If the ratio of pdf in theta_d with the BRDF gets too high, clamp it
+        // to control variance spikes. A ratio more than 4 seems satisfactory in tests.
+        if (fabricBRDF/(*pdf) > 4) {
+            *pdf = fabricBRDF/4;
+        }
+    }
+
+    return fabricBRDF;
+}
+
+inline varying Color
+FabricBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                    const varying BsdfSlice &slice,
+                    const Vec3f &wi,
+                    varying float * uniform pdf)
+{
+    // Prepare for early exit
+    if (pdf != nullptr) {
+        *pdf = 0.0f;
+    }
+    const varying FabricBsdfLobe * uniform fab =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    const float cosThetaWi = dot(getN(fab->mFrame), wi);
+    if (cosThetaWi <= sEpsilon) return sBlack;
+    const float cosThetaWo = dot(getN(fab->mFrame), slice.mWo);
+    if (cosThetaWo <= sEpsilon) return sBlack;
+
+    float fabricBRDF = 0.0f;
+    if (fab->mUseDwaFabric) {
+        fabricBRDF = dwaFabricSpecular(slice.mWo, wi,
+                                       fab->mThreadDirection,
+                                       fab->mSpecularExponent,
+                                       fab->mNormalizationFactor,
+                                       pdf);
+    }
+    else {
+        fabricBRDF = kajiyaKaySpecular(slice.mWo, wi,
+                                       fab->mThreadDirection,
+                                       fab->mSpecularExponent,
+                                       fab->mNormalizationFactor,
+                                       pdf);
+    }
+
+    const Color f = BsdfLobe_computeScaleAndFresnel(lobe, cosThetaWo) *
+                    fabricBRDF * fab->mColor *
+                    (slice.mIncludeCosineTerm ? cosThetaWi : 1.0f);
+
+    return f;
+}
+
+inline void
+sampleDwaFabric(const varying Vec3f& wo,
+                const varying Vec3f& threadDirection,
+                const varying float specularExponent,
+                varying float r1, varying float r2,
+                varying Vec3f& wi)
+{
+    // theta is wrt the normal plane
+    const float sinThetaO = clamp(dot(threadDirection, wo), -.99f, .99f);
+    const float thetaO    = asin(sinThetaO);
+
+    // We sample thetaH and use it to calculate thetaI
+    float thetaH = asin(1.0f - pow(r1, 1.0f/(specularExponent+1.0f)));
+    if (r2 < 0.5f) thetaH *= -1.0f;
+
+    float thetaI = 2.0f * thetaH - thetaO;
+    float cosThetaI, sinThetaI;
+    sincos(thetaI, &sinThetaI, &cosThetaI);
+
+    // Phi Sampling
+    const float phiM = sPi*r2;
+    float cosPhi, sinPhi;
+    sincos(phiM, &sinPhi, &cosPhi);
+
+    // Sample Vector in the hair space for dwa fabric (theta wrt normal plane)
+    wi.x = sinThetaI;
+    wi.y = cosThetaI * cosPhi;
+    wi.z = cosThetaI * sinPhi;
+}
+
+inline void
+sampleKajiyaKay(const varying Vec3f& wo,
+                const varying Vec3f& threadDirection,
+                const varying float specularExponent,
+                varying float r1, varying float r2,
+                varying Vec3f& wi)
+{
+    // Theta is wrt the hair tangent
+    const float thetaO = acos(clamp(dot(threadDirection, wo),-.99f,.99f));
+
+    // We sample theta_d and then convert it into the sample vector omega_i
+    const float thetaD = acos(pow(r1, 1/(specularExponent+1)));
+
+    // theta_d = abs(theta_o - theta_i_prime)
+    // so, theta_i_prime = theta_o - theta_d || theta_i_prime = theta_o + theta_d
+    float thetaIPrime = thetaO + thetaD;
+    if (thetaIPrime >= sPi) {
+        thetaIPrime = thetaO - thetaD;
+    }
+    if ((thetaD < thetaO) && (r2 < 0.5)) {
+        thetaIPrime = thetaO - thetaD;
+    }
+
+    float cosThetaI, sinThetaI;
+    sincos(thetaIPrime, &sinThetaI, &cosThetaI);
+
+    // Phi Sampling
+    const float phiM = sPi*r2;
+    float cosPhi, sinPhi;
+    sincos(phiM, &sinPhi, &cosPhi);
+
+    // Sample Vector in the hair space (theta wrt tangent)
+    wi.x = -cosThetaI;
+    wi.y =  sinThetaI * cosPhi;
+    wi.z =  sinThetaI * sinPhi;
+}
+
+inline varying Color
+FabricBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                      const varying BsdfSlice &slice,
+                      varying float r1, varying float r2,
+                      varying Vec3f &wi,
+                      varying float &pdf)
+{
+    const varying FabricBsdfLobe * uniform fab =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    const float cosNO = dot(getN(fab->mFrame), slice.mWo);
+    if (cosNO <= sEpsilon) {
+        pdf = 0.0f;
+        return sBlack;
+    }
+
+    Vec3f omegaI;
+    if (fab->mUseDwaFabric) {
+        sampleDwaFabric(slice.mWo,
+                        fab->mThreadDirection,
+                        fab->mSpecularExponent,
+                        r1, r2,
+                        omegaI);
+    }
+    else {
+        sampleKajiyaKay(slice.mWo,
+                        fab->mThreadDirection,
+                        fab->mSpecularExponent,
+                        r1, r2,
+                        omegaI);
+    }
+
+    wi = normalize(localToGlobal(fab->mFrame, omegaI));
+
+    return FabricBsdfLobe_eval(lobe, slice, wi, &pdf);
+}
+
+inline varying Color
+FabricBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                      const varying BsdfSlice &slice)
+{
+    const varying FabricBsdfLobe * uniform fab =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    float cosThetaWo = max(dot(getN(fab->mFrame), slice.mWo), 0.0f);
+    return BsdfLobe_computeScaleAndFresnel(lobe, cosThetaWo);
+}
+
+inline void
+FabricBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                             const varying Vec3f &wo,
+                             const varying Vec3f &wi,
+                             varying float r1, varying float r2,
+                             const varying Vec3f &dNdx,
+                             const varying Vec3f &dNdy,
+                             varying Vec3f &dDdx, varying Vec3f &dDdy)
+{
+    const varying FabricBsdfLobe * uniform fab =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    // It's complex to capture the full derivative. Instead we use the
+    // derivative of a mirror reflection about the H vector, and scale the
+    // length of the directional derivative proportionally with roughness.
+    Vec3f H;
+    if (!computeNormalizedHalfVector(wo, wi, H)) {
+        H = getN(fab->mFrame);
+    }
+    computeReflectionDirectionDifferentialNoCurvature(wo, wi, H, dDdx, dDdy);
+    // TODO calculate the right factors for fabric
+    // These are take   n from the hair lobe
+    dDdx = normalize(dDdx) * fab->mdDFactor;
+    dDdy = normalize(dDdy) * fab->mdDFactor;
+}
+
+inline uniform bool
+FabricBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                           uniform BsdfLobeProperty property,
+                           varying float * uniform dest)
+{
+    const varying FabricBsdfLobe * uniform fab =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    uniform bool handled = true;
+
+    switch (property)
+    {
+    case BSDF_LOBE_PROPERTY_COLOR:
+    {
+        *dest       = fab->mColor.r;
+        *(dest+1)   = fab->mColor.g;
+        *(dest+2)   = fab->mColor.b;
+        break;
+    }
+    case BSDF_LOBE_PROPERTY_ROUGHNESS:
+    {
+        *dest       = fab->mRoughness;
+        *(dest+1)   = fab->mRoughness;
+        break;
+    }
+    case BSDF_LOBE_PROPERTY_NORMAL:
+        {
+            const Vec3f N = getN(fab->mFrame);
+            *dest       = N.x;
+            *(dest + 1) = N.y;
+            *(dest + 2) = N.z;
+        }
+        break;
+    default:
+        handled = false;
+        break;
+    }
+
+    return handled;
+}
+
+inline void
+FabricBsdfLobe_calculateNormalizationFactors(varying FabricBsdfLobe * uniform lobe)
+{
+    if (lobe->mUseDwaFabric) {
+        // Roughness remapping, [0,1] -> [1,30]
+        // Square the roughness for a visually linear effect
+        const float rgh = 1.0f - lobe->mRoughness;
+        lobe->mSpecularExponent = ceil(1.0f + 29.0f * rgh*rgh);
+
+        int index = (int)clamp(lobe->mSpecularExponent - 1, 0.0f, 30.0f);
+        lobe->mNormalizationFactor = precomputedDwaFabricNormalizationFactor[index];
+    }
+    else {
+        const float oneOverR = 1.0 / lobe->mRoughness;
+        // Convert roughness into specular exponent
+        // Walter et al, EGSR 2007, "Microfacet Models for Refraction through Rough Surfaces"
+        // Square the roughness for a visually linear result
+        lobe->mSpecularExponent = 2.0*oneOverR*oneOverR*oneOverR*oneOverR;
+        // Normalization factor = gamma((n+3)/2) / gamma((n+2)/2) / pi^1.5
+        // Stirling's Approximation
+        // Ratio of two gamma functions could be simplified as:
+        // See  - "Pacific Journal of Mathematics"
+        // Link - http://msp.org/pjm/1951/1-1/pjm-v1-n1-p14-s.pdf
+        lobe->mNormalizationFactor = sqrt(lobe->mSpecularExponent/2.0)*(1+3/(4*lobe->mSpecularExponent));
+        // 1/pow(pi,1.5) = 0.1795871;
+        lobe->mNormalizationFactor *= 0.1795871f;
+    }
+}
+
+inline void
+FabricBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                    const uniform uint8_t ntab)
+{
+    const varying FabricBsdfLobe * uniform me =
+        (const varying FabricBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    // Hmm... this will probably cause confusion to anyone debugging.
+    // The actual struct is called FabricBsdfLobe, but here we are
+    // going to call it (Dwa)FabricBsdfLobe because that is
+    // what the scalar counterpart is called. I've put it in parenthesis
+    // to give the user a hint that there's something odd about this.
+    if (me->mUseDwaFabric) {
+        BsdfUtil_indent(ntab);   print("[(Dwa)FabricBsdfLobe] mask: %\n", lobe->mMask);
+    } else {
+        BsdfUtil_indent(ntab);   print("[FabricBsdfLobe] mask: %\n", lobe->mMask);
+    }
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("color: % % %\n", BSDF_UTIL_EXTRACT(me->mColor.r),
+                                                     BSDF_UTIL_EXTRACT(me->mColor.g),
+                                                     BSDF_UTIL_EXTRACT(me->mColor.b));
+    BsdfUtil_indent(ntab+1); print("roughness: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+    BsdfUtil_indent(ntab+1); print("specular exponent: %\n", BSDF_UTIL_EXTRACT(me->mSpecularExponent));
+    BsdfUtil_indent(ntab+1); print("thread direction: % % %\n", BSDF_UTIL_EXTRACT(me->mThreadDirection.x),
+                                                                BSDF_UTIL_EXTRACT(me->mThreadDirection.y),
+                                                                BSDF_UTIL_EXTRACT(me->mThreadDirection.z));
+    BsdfUtil_indent(ntab+1); print("normalization factor: %\n", BSDF_UTIL_EXTRACT(me->mNormalizationFactor));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add a diffuse fabric lobe to a bsdf
+inline void
+FabricBsdfLobe_init(varying FabricBsdfLobe * uniform lobe,
+                    const varying Vec3f &normal,
+                    const varying Vec3f &tangent,
+                    const varying Vec3f &threadDirection,
+                    const varying float threadElevation,
+                    const varying float roughness,
+                    const varying Color& threadColor,
+                    const uniform bool  useDwaFabric)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_FABRIC,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ BSDF_LOBE_IGNORES_INCOMING_DIFFERENTIALS,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ FabricBsdfLobe_eval,
+                  /* sampleFn = */ FabricBsdfLobe_sample,
+                  /* albedoFn = */ FabricBsdfLobe_albedo,
+                  /* differentialsFn = */ FabricBsdfLobe_differentials,
+                  /* getPropertyFn = */ FabricBsdfLobe_getProperty,
+                  /* showFn = */ FabricBsdfLobe_show);
+
+    // Init FabricBsdfLobe components
+    ReferenceFrame_init(lobe->mFrame, normal, tangent);
+
+    // Remove this once we reach a decision on which form of the fabric BRDF to use
+    lobe->mUseDwaFabric = useDwaFabric;
+
+    lobe->mRoughness = clamp(roughness, 0.05f, 1.0f);
+
+    lobe->mColor = threadColor;
+
+    // Rotate the thread direction in the X,Z (T, N) plane
+    Vec3f newDir;
+    float sinTheta, cosTheta;
+    sincos(deg2rad(threadElevation), &sinTheta, &cosTheta);
+    newDir.x = threadDirection.x * cosTheta - threadDirection.z * sinTheta;
+    newDir.y = threadDirection.y;
+    newDir.z = threadDirection.x * sinTheta + threadDirection.z * cosTheta;
+
+    lobe->mThreadDirection = normalize(localToGlobal(lobe->mFrame, newDir));
+
+    // Center The frame along the thread direction now
+    if (isOne(dot(normal, lobe->mThreadDirection))) {
+        // If the two are colinear, just use the normal
+        ReferenceFrame_init(lobe->mFrame, normal);
+    } else {
+        ReferenceFrame_init(lobe->mFrame, normal, lobe->mThreadDirection);
+    }
+
+    // Derive a directional differential scale that varies according to width
+    // TODO Figure out if the hair shader defaults work well or we need new ones for fabric
+    // Convert specular exponent to roughness
+    // Walter et al, EGSR 2007, "Microfacet Models for Refraction through Rough Surfaces"
+    lobe->mdDFactor = Fabric_sdDFactorMin + lobe->mRoughness * Fabric_sdDFactorSlope;
+
+    FabricBsdfLobe_calculateNormalizationFactors(lobe);
+}
+

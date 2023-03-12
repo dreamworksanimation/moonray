@@ -1,0 +1,17 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file OpenVdb.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+enum OpenVdbMapTextureCoordinate
+{
+    OPENVDBMAP_COORD_P,
+    OPENVDBMAP_COORD_REFP,
+    OPENVDBMAP_COORD_INPUT,
+};
+

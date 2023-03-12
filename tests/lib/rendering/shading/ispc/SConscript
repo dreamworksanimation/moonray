@@ -1,0 +1,93 @@
+Import('env')
+
+name = 'rendering_shading_ispc'
+# -----------------------------------------------------------------------------
+# Test configuration.
+
+components = [
+    'atomic',
+    'common_mcrt_macros',
+    'rendering_rndr',
+    'rendering_shading',
+    'shading_eval_ispc',
+    'shading_ispc',
+    'scene_rdl2',
+    'test_render',
+    'texturing_sampler',
+    'tbb'
+]
+env.DWAUseComponents(components)
+
+# This path isn't actually needed for SCons builds,
+# but the macro must be defined as it is referenced in the
+# code (because our CMake builds need it)
+env.AppendUnique(CPPDEFINES=[('RDL2DSO_PATH', '\\"\./\\"')])
+
+sources = [
+    'main.cc',
+    'TestBase.cc',
+    'TestDisplace.cc',
+    'TestEvalAttribute.cc',
+    'TestPrimitiveAttribute.cc',
+    'TestShading.cc',
+]
+
+# append cpppath for auto-generated ISPC headers
+env.AppendUnique(CPPPATH=[
+        env.Dir('.'),
+        env.Dir('$BUILD_DIR/lib')])
+
+ispc_output, header = env.IspcShared(['TestPrimitiveAttribute.ispc'])
+sources += ispc_output
+
+# -----------------------------------------------------------------------------
+# disable warning #1478: class "std::auto_ptr<CppUnit::TestSuite>" was declared deprecated
+if 'icc' in env['CC']:
+    env['CXXFLAGS'].append('-wd1478')
+elif 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+env['RUN_TEST_ENV']['SOFTMAP_PATH'] = env.subst('${INSTALL_DIR}:${BASE_MAP_DIR}')
+env['RUN_TEST_ENV']['RDL2_DSO_PATH'] = env.subst('${INSTALL_DIR}/rdl2dso')
+test = env.DWAPdevUnitTest(name, sources, ['ref'],
+                           COMPONENTS=components, LOCAL_DSO=False, TIMEOUT=900)
+
+# -----------------------------------------------------------------------------
+# Test Dsos
+
+import os.path
+
+def addTestDso(test, dsoPath):
+    dsoEnv = env.Clone()
+    dsoEnv.AppendUnique(CPPPATH=[dsoEnv.Dir(dsoPath)])
+    dsoName = os.path.basename(dsoPath)
+    dso = dsoEnv.DWAIspcDso(dsoEnv.File(dsoPath + '/' + dsoName + '.so'),
+                            ccSource = [dsoPath + '/' + dsoName + '.cc'],
+                            ispcSource = [dsoPath + '/' + dsoName + '.ispc'],
+                            jsonSource = [dsoPath + '/' + dsoName + '.json'],
+                            RDL2_BUILD_PATH_APPEND = "..",
+                            TEST_DSO = True)
+    dsoEnv.Depends(test, dso['source'])
+    dsoEnv.Depends(test, dso['proxy'])
+    dsoEnv.Depends(test, dso['bc'])
+
+# TODO: re-write code to avoid performance warnings
+# disable performance warnings due to
+# Performance Warning: Modulus operator with varying types is very
+# inefficient. (Mandlebrot)
+# Performance Warning: Gather required to load value. (Noise)
+env.AppendUnique(ISPCFLAGS = ['--wno-perf'])
+
+addTestDso(test, 'dso/map/TestCheckerMap')
+addTestDso(test, 'dso/map/TestDebugMap')
+addTestDso(test, 'dso/map/TestMandelbrot')
+addTestDso(test, 'dso/map/TestMap')
+addTestDso(test, 'dso/map/TestNoise')
+addTestDso(test, 'dso/material/TestMaterial')
+addTestDso(test, 'dso/displacement/TestDisplacement')
+
+# test requires the ImageMap shader
+env.Depends(test, env.File('${INSTALL_DIR}/rdl2dso/ImageMap.so'))
+env.Depends(test, env.File('${INSTALL_DIR}/rdl2dso/ImageMap.bc'))
+env.Depends(test, env.File('${INSTALL_DIR}/rdl2dso/BaseMaterial.so'))
+env.Depends(test, env.File('${INSTALL_DIR}/rdl2dso/BaseMaterial.bc'))

@@ -1,0 +1,57 @@
+{
+    "name": "CheckerboardMap",
+    "type": "Map",
+    "attributes": {
+        "attrColorA": {
+            "name": "color_A",
+            "label": "color A",
+            "aliases": [ "color A" ],
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)"
+        },
+        "attrColorB": {
+            "name": "color_B",
+            "label": "color B",
+            "aliases": [ "color B" ],
+            "type": "Rgb",
+            "default": "Rgb(1.0f, 1.0f, 1.0f)"
+        },
+        "attrUTiles": {
+            "name": "num_u_tiles",
+            "label": "num u tiles",
+            "aliases": [ "num u tiles" ],
+            "type": "Int",
+            "default": "8",
+            "comment": "number of checkerboard squares in the U direction"
+        },
+        "attrVTiles": {
+            "name": "num_v_tiles",
+            "label": "num v tiles",
+            "aliases": [ "num v tiles" ],
+            "type": "Int",
+            "default": "8",
+            "comment": "number of checkerboard squares in the V direction"
+        },"attrTextureEnum": {
+            "name": "texture_coordinates",
+            "label": "texture coordinates",
+            "aliases": [ "texture coordinates" ],
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "texture": "0",
+                "input texture coordinates": "1"
+            },
+            "comment": "switches between the model's uv coordinates or the input texture coordinates"
+        },
+        "attrInputTextureCoordinate": {
+            "name": "input_texture_coordinates",
+            "label": "input texture coordinates",
+            "aliases": [ "input texture coordinates" ],
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "comment": "bind a shader that outputs UV coordinates (such as a projection shader) here"
+        }
+    }
+}

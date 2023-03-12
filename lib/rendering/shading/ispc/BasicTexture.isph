@@ -1,0 +1,66 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BasicTexture.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+
+#include <moonray/rendering/bvh/shading/ispc/ThreadLocalObjectState.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+typedef uniform intptr_t (*uniform StartAccumulatorFn) (uniform ShadingTLState * uniform tls, uniform uint32_t displacement);
+typedef void (*uniform StopAccumulatorFn) (uniform intptr_t accumulator);
+
+struct BASIC_TEXTURE_StaticData {
+    // Function pointers for accumulator
+    uniform intptr_t mStartAccumulator;
+    uniform intptr_t mStopAccumulator;
+};
+
+struct BASIC_TEXTURE_Data
+{
+    uniform intptr_t                            mShader;
+    uniform intptr_t * uniform                  mTextureHandles;
+    uniform int                                 mWidth;
+    uniform int                                 mHeight;
+    uniform float                               mPixelAspectRatio;
+    uniform bool                                mIsValid;
+    uniform bool                                mUseDefaultColor;
+    uniform Color                               mDefaultColor;
+    uniform Color                               mFatalColor;
+    uniform BASIC_TEXTURE_StaticData* uniform   mBasicTextureStaticDataPtr;
+    uniform intptr_t                            mTextureOptions;
+    uniform bool                                mApplyGamma;
+    uniform bool                                mIs8bit;
+};
+
+Col4f
+BASIC_TEXTURE_sample(
+    const uniform BASIC_TEXTURE_Data * uniform tx,
+    uniform ShadingTLState * uniform  tls,
+    const varying State& state,
+    varying Vec2f st,
+    varying float (&derivatives)[4]
+);
+
+Col4f
+BASIC_TEXTURE_sample(
+    const uniform BASIC_TEXTURE_Data * varying tx,
+    uniform ShadingTLState * uniform  tls,
+    const varying State& state,
+    varying Vec2f st,
+    varying float (&derivatives)[4]
+);
+
+void
+BASIC_TEXTURE_getDimensions(
+    const uniform BASIC_TEXTURE_Data * uniform tx,
+    varying int& x,
+    varying int& y);
+
+float
+BASIC_TEXTURE_getPixelAspectRatio(const uniform BASIC_TEXTURE_Data * uniform tx);
+
+

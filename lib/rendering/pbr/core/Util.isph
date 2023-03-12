@@ -1,0 +1,200 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+/// Map samples from a square to a unit radius disk with the same pdf
+inline void
+squareSampleToCircle(varying float r1, varying float r2,
+        varying float * uniform u, varying float * uniform v)
+{
+    float r = sqrt(r1);
+    float angle = 2.0f * sPi * r2;
+    *u = r * cos(angle);
+    *v = r * sin(angle);
+}
+
+inline void
+squareSampleToCircle(varying float xy[2], varying float uv[2])
+{
+    squareSampleToCircle(xy[0], xy[1], &uv[0], &uv[1]);
+}
+
+
+inline void
+toUnitDisk(float& u, float& v)
+{
+    if (u == 0.5f && v == 0.5f) {
+        u = 0.0f;
+        v = 0.0f;
+    } else {
+        float phi,r;
+        const float a = 2.0f*u - 1.0f;
+        const float b = 2.0f*v - 1.0f;
+
+        if (abs(a) > abs(b)) {
+            r = a;
+            phi = (PI/4.0f)*(b/a);
+        } else {
+            r = b;
+            phi = (PI/2.0f) - (PI/4.0f)*(a/b);
+        }
+
+        float cosPhi;
+        float sinPhi;
+
+        sincos(phi, &sinPhi, &cosPhi);
+
+        u = r*cosPhi;
+        v = r*sinPhi;
+    }
+}
+
+//----------------------------------------------------------------------------
+
+inline varying bool
+isSampleValid(const varying Color &c, varying float pdf)
+{
+    varying bool validSample = (pdf != 0.f && (c.r != 0.f || c.g != 0.f || c.b != 0.f));
+
+    return validSample;
+}
+
+inline varying bool
+isSampleInvalid(const varying Color &c, varying float pdf)
+{
+    varying bool invalidSample = (pdf == 0.f || (c.r == 0.f && c.g == 0.f && c.b == 0.f));
+
+    return invalidSample;
+}
+
+inline varying float
+powerHeuristic(varying float f, varying float g)
+{
+    return (f * f) / (f * f + g * g);
+}
+
+//----------------------------------------------------------------------------
+
+// If integrating over a surface instead of solid angle, we need to scale
+// by this factor. If the return value could result in a denormalized result,
+// return 0. Also see absAreaToSolidAngleScale.
+inline varying float
+areaToSolidAngleScale(const varying Vec3f &wi, const varying Vec3f &lightNormal,
+        varying float dist)
+{
+    float denom = -dot(wi, lightNormal);
+    return (denom < 0.00001f) ? 0.0f : (dist * dist) / denom;
+}
+
+// Like the areaToSolidAngleScale function but use this one if there is a
+// posibililty that wi and lightNormal are within 90 degrees of each other.
+// If that's not possible, then using the above version is slightly faster since
+// it bypasses the fabsf call.
+inline varying float
+absAreaToSolidAngleScale(const varying Vec3f &wi, const varying Vec3f &lightNormal,
+        varying float dist)
+{
+    float denom = abs(dot(wi, lightNormal));
+    return (denom < 0.00001f) ? 0.0f : (dist * dist) / denom;
+}
+
+
+inline varying bool
+intersectUnitSphere(const varying Vec3f &pos, const varying Vec3f &dir,
+        Vec3f varying * uniform hit, float varying * uniform dist)
+{
+    MNRY_ASSERT(isNormalized(dir));
+
+    float b = dot(dir, pos) * 2.0f;
+    float c = lengthSqr(pos) - 1.0f;
+
+    // Exit if ray outside sphere (c > 0) and is pointing away (b > 0).
+    if (c > 0.0f && b > 0.0f) {
+        return false;
+    }
+
+    // Find quadratic discriminant
+    float discrim = b * b - 4.0f * c;
+    if (discrim < 0.0f) {
+        return false;
+    }
+
+    float sqrtDiscrim = sqrt(discrim);
+    float t0 = -0.5f * ((b < 0.0f) ? (b - sqrtDiscrim) : (b + sqrtDiscrim));
+    float t1 = c / t0;
+
+    if (t0 > t1) {
+        // Swap t0 and t1
+        float tmp = t0;
+        t0 = t1;
+        t1 = tmp;
+    }
+
+    if (t1 <= 0.0f) {
+        return false;
+    }
+
+    float t = (t0 < 0.0f) ? t1 : t0;
+
+    // Mathematically, we shouldn't need to normalize here. In practice, it helps
+    // with robustness since it ensures that all components are within [-1, 1].
+    // This is not the case under normal circumstances due to floating point
+    // inaccuracies.
+    *hit = normalize(pos + dir * t);
+    *dist = t;
+
+    return true;
+}
+
+
+// The word "reduce" in this context is used in a algoritmic sense, i.e. take
+// multiple values and combine them somehow to form a single value. This is opposed
+// to the more common usage which would be to lessen something. We're not actually
+// lessening the transparency here.
+inline varying float
+reduceTransparency(const varying Color &color)
+{
+    return (color.r + color.g + color.b) / 3.0f;
+}
+
+
+//----------------------------------------------------------------------------
+
+// Clamp radiance by scaling it down to avoid hue-shift problems
+inline varying Color
+smartClamp(const varying Color &radiance, varying float maxValue)
+{
+    if (maxValue > 0.0f) {
+        float maxComponent = max(radiance.r, max(radiance.g, radiance.b));
+        if (maxComponent > maxValue) {
+            float factor = maxValue * rcp(maxComponent);
+            return radiance * factor;
+        } else {
+            return radiance;
+        }
+    } else {
+        return radiance;
+    }
+}
+
+inline float
+quadraticBSplineWarp(float r)
+{
+    if (r < 1.0f / 6.0f) {
+        return pow(6.0f * r, 1.0f / 3.0f) - 3.0f / 2.0f;
+    } else if (r < 5.0f / 6.0f) {
+        float u = (6.0f * r - 3.0f) / 4.0f;
+        for (int j = 0; j < 4; ++j) {
+            u = (8.0f * u * u * u - 12.0f * r + 6.0f) / (12.0f * u * u - 9.0f);
+        }
+        return u;
+    } else {
+        return 3.0f / 2.0f - pow(6.0f * (1.0f - r), 1.0f / 3.0f);
+    }
+}
+

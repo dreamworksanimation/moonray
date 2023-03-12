@@ -1,0 +1,38 @@
+Import('env')
+
+# llvm installation location
+LLVM_DIR = '/rel/third_party/llvm/3.6.1'
+
+# use llvm-config to fill out the component definition
+configCmd = LLVM_DIR + '/bin/llvm-config'
+kwargs = env.ParseFlags('!' + configCmd + ' --libs --system-libs --cppflags')
+# filter '_DEBUG' out of CPPDEFINES, if present.  this can trigger
+# large blocks of unwanted #ifdef DEBUG code
+# (see scene_rdl2/arras/lib/render/util/SharedPlatform.h)
+if 'CPPDEFINES' in kwargs:
+    kwargs['CPPDEFINES'] = [x for x in kwargs['CPPDEFINES'] if x not in ['_DEBUG']]
+# discard empty construction variables - some will trigger exceptions
+kwargs = dict(filter(lambda (k, v): len(v) > 0 and k not in ['CPPPATH'], kwargs.items()))
+# icc complains (probably rightfully so) about certain errors
+# in the llvm headers
+if env['CXX'] == 'icpc':
+    # CXXFLAGS should be empty
+    assert 'CXXFLAGS' not in kwargs
+    kwargs.update({'CXXFLAGS': [
+                '-wd82',   # storage class is not first
+                '-wd304',  # acces control not specified
+                '-wd411',  # class template defines no constructor to initialize
+                '-wd444',  # non-virtual base class destructor
+                '-wd522',  # funcion re-declared 'inline'
+                '-wd597',  # operator will not be called
+                '-wd869',  # parameter never referenced
+                '-wd873',  # operator new has no corresponding operator delete
+                '-wd967',  # conversion from int to void*
+                '-wd1684', # conversion from pointer to same size int
+                '-wd3280', # declaration hides member
+                ]
+                   })
+env.DWAComponent('llvm',
+                 CPPPATH_THIRDPARTY = LLVM_DIR + '/include',
+                 LIBPATH = LLVM_DIR + '/lib',
+                 **kwargs)

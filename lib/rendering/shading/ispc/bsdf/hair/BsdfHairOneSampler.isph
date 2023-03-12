@@ -1,0 +1,132 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfHairOneSampler.isph
+#pragma once
+
+#include "BsdfHairLobes.isph"
+
+// Uncomment this to use uniform sampling
+/* #define PBR_HAIR_USE_UNIFORM_SAMPLING 1 */
+
+//----------------------------------------------------------------------------
+
+struct HairOneSamplerBsdfLobe
+{
+    BSDF_HAIR_LOBE_BASE;
+
+    // R Lobe
+    varying bool  mShowR;
+    varying float mRSinAlpha;
+    varying float mRCosAlpha;
+    varying float mRLongitudinalShift;
+    varying float mRLongitudinalRoughness;
+    varying float mRLongitudinalVariance;
+    varying Color mRTint;
+
+    // TT Lobe
+    varying bool  mShowTT;
+    varying float mTTSinAlpha;
+    varying float mTTCosAlpha;
+    varying float mTTLongitudinalShift;
+    varying float mTTLongitudinalRoughness;
+    varying float mTTLongitudinalVariance;
+    varying float mTTAzimuthalRoughness;
+    varying float mTTAzimuthalVariance;
+    varying Color mTTTint;
+    varying float mTTSaturation;
+
+    // TRT Lobe
+    varying bool  mShowTRT;
+    varying float mTRTSinAlpha;
+    varying float mTRTCosAlpha;
+    varying float mTRTLongitudinalShift;
+    varying float mTRTLongitudinalRoughness;
+    varying float mTRTLongitudinalVariance;
+    varying Color mTRTTint;
+    BSDF_HAIR_LOBE_GLINT;
+
+    // TRRT+ Lobe
+    varying bool  mShowTRRT;
+    varying float mTRRTLongitudinalRoughness;
+    varying float mTRRTLongitudinalVariance;
+};
+
+inline uniform bool
+HairOneSamplerBsdfLobe_getProperty(const varying BsdfLobe * uniform hairLobe,
+                                   uniform BsdfLobeProperty property,
+                                   varying float * uniform dest)
+{
+    const varying HairOneSamplerBsdfLobe * uniform lobe =
+            (const varying HairOneSamplerBsdfLobe * uniform) hairLobe;
+
+    uniform bool handled = true;
+
+    switch (property)
+    {
+    case BSDF_LOBE_PROPERTY_COLOR:
+        *dest       = lobe->mHairColor.r;
+        *(dest + 1) = lobe->mHairColor.g;
+        *(dest + 2) = lobe->mHairColor.b;
+        break;
+    case BSDF_LOBE_PROPERTY_ROUGHNESS:
+        *dest       = lobe->mRLongitudinalRoughness;
+        *(dest + 1) = lobe->mTTAzimuthalRoughness;
+        break;
+    case BSDF_LOBE_PROPERTY_NORMAL:
+        *dest       = lobe->mHairDir.x;
+        *(dest + 1) = lobe->mHairDir.y;
+        *(dest + 2) = lobe->mHairDir.z;
+        break;
+    case BSDF_LOBE_PROPERTY_PBR_VALIDITY:
+        {
+            // Forward call to fresnel
+            varying Color res = sBlack;
+            if (isActive(lobe->mFresnel)) {
+                res = Fresnel_computePbrValidity(lobe->mFresnel);
+            }
+            *dest       = res.r;
+            *(dest + 1) = res.g;
+            *(dest + 2) = res.b;
+        }
+        break;
+    default:
+        handled = false;
+        break;
+    }
+    return handled;
+}
+
+void
+HairOneSamplerBsdfLobe_init(varying HairOneSamplerBsdfLobe * uniform lobe,
+                            const varying Vec3f& hairDir,
+                            const varying Vec2f& hairUV,
+                            const varying float mediumIOR,
+                            const varying float ior,
+                            const varying HairFresnelType fresnelType,
+                            const varying float cuticleLayers,
+                            const varying bool  showR,
+                            const varying float rLongShift,
+                            const varying float rLongRoughness,
+                            const varying Color& rTint,
+                            const varying bool  showTT,
+                            const varying float ttLongShift,
+                            const varying float ttLongRoughness,
+                            const varying float ttAzimRoughness,
+                            const varying Color& ttTint,
+                            const varying float ttSaturation,
+                            const varying bool  showTRT,
+                            const varying float trtLongShift,
+                            const varying float trtLongRoughness,
+                            const varying Color& trtTint,
+                            const varying bool showGlint,
+                            const varying float roughnessGlint,
+                            const varying float eccentricityGlint,
+                            const varying float saturationGlint,
+                            const varying float hairRotation,
+                            const varying Vec3f& hairNormal,
+                            const varying bool  showTRRT,
+                            const varying float trrtLongRoughness,
+                            const varying Color& hairColor,
+                            const varying Color& hairSigmaA);
+

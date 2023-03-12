@@ -1,0 +1,521 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Closure.isph
+#pragma once
+#warning "Closure.isph is deprecated!"
+#ifndef CLOSURE_ISPH
+#define CLOSURE_ISPH
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/render/util/Arena.isph>
+
+struct Bsdf;
+struct ShadingTLState;
+struct State;
+struct Material;
+struct TraceSet;
+
+// Microfacet distributions
+enum SpecularModel {
+    Beckmann,
+    GGX,
+};
+
+// ---------------------------------------------------------------------
+// Closure Creation
+// ---------------------------------------------------------------------
+
+// Shader code manipulates "Closures", which can be thought of as an opaque
+// equivalent of the renderer's lib/pbr Bsdf type.
+struct Closure;
+
+/// @brief initiliaze a Closure
+/// Shaders should not typically need to call this function because
+/// closures are passed into shade() functions pre-allocated and initialized.
+void Closure_init(varying Closure * uniform closure);
+
+/// @brief cast a closure to a lib/pbr Bsdf type
+inline varying Bsdf * uniform asBsdf(varying Closure * uniform closure)
+{ return (varying Bsdf * uniform) closure; }
+
+/// @brief cast a lib/pbr bsdf to a closure
+inline varying Closure * uniform asClosure(varying Bsdf * uniform bsdf)
+{ return (varying Closure * uniform) bsdf; }
+
+// ---------------------------------------------------------------------
+// Fresnel Creation
+// ---------------------------------------------------------------------
+
+struct Fresnel;
+
+/// @brief create a SchlickFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createSchlick(uniform ShadingTLState * uniform tls,
+                                                const varying State &state,
+                                                const varying Color &spec,
+                                                const varying float factor,
+                                                const varying float neta = 1.0f,
+                                                const varying float weight = 1.0f);
+
+/// @brief create a DielectricFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createDielectric(uniform ShadingTLState * uniform tls,
+                                                   const varying State &state,
+                                                   const varying float etaI = 1.0f,
+                                                   const varying float etaT = 1.0f,
+                                                   const varying float weight = 1.0f);
+
+/// @brief create a ConductorFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createConductor(uniform ShadingTLState * uniform tls,
+                                                  const varying State &state,
+                                                  const varying Color &eta,
+                                                  const varying Color &absorption,
+                                                  const varying float weight = 1.0f);
+
+/// @brief create a OneMinusRoughSchlickFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createOneMinusRoughSchlick(uniform ShadingTLState * uniform tls,
+                                                             const varying State &state,
+                                                             varying Fresnel * uniform schlick,
+                                                             varying float specRoughness);
+
+/// @brief create a OneMinusFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createOneMinusFresnel(uniform ShadingTLState * uniform tls,
+                                                        const varying State &state,
+                                                        const varying Fresnel * uniform topFresnel);
+
+/// @brief create a OneMinusFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createOneMinusRoughFresnel(uniform ShadingTLState * uniform tls,
+                                                             const varying State &state,
+                                                             const varying Fresnel * uniform topFresnel,
+                                                             varying float specRoughness);
+
+
+
+/// @brief create a MultipleTransmissionFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createMultipleTransmissionFresnel(uniform ShadingTLState * uniform tls,
+                                                                    const varying State &state,
+                                                                    const varying Fresnel * uniform fresnel1,
+                                                                    const varying Fresnel * uniform fresnel2,
+                                                                    const varying Fresnel * uniform fresnel3,
+                                                                    const varying float etaI = 1.0f,
+                                                                    const varying float etaT = 1.5f,
+                                                                    const varying float thickness = 0.0f,
+                                                                    const varying float attnColorR = 1.0f,
+                                                                    const varying float attnColorG = 1.0f,
+                                                                    const varying float attnColorB = 1.0f,
+                                                                    const uniform bool useBending = false);
+
+/// @brief create a OneMinusVelvetFresnel with a memory arena
+varying Fresnel * uniform Fresnel_createOneMinusVelvetFresnel(uniform ShadingTLState * uniform tls,
+                                                              const varying State &state,
+                                                              const varying float roughness,
+                                                              const varying float albedo = 1.0f);
+
+// ---------------------------------------------------------------------
+// Bssrdf Creation
+// ---------------------------------------------------------------------
+
+/// @brief add a dipole bssrdf to the closure
+/// @note only a single bssrdf can be added to a closure
+void Closure_addDipoleBssrdf(varying Closure * uniform closure,
+                             uniform ShadingTLState * uniform tls,
+                             const varying State &state,
+                             const varying Color &scale,
+                             varying Fresnel * uniform fresnel,
+                             const varying Vec3f &normal,
+                             const varying Color &translucentColor,
+                             const varying Color &radius,
+                             const uniform TraceSet * uniform traceSet,
+                             const uniform Material * uniform material,
+                             const uniform intptr_t evalNormalFn,
+                             const uniform int label = -1);
+
+void
+Closure_addNormalizedDiffusionBssrdf(varying Closure * uniform closure,
+                                     uniform ShadingTLState * uniform tls,
+                                     const varying State &state,
+                                     const varying Color &scale,
+                                     varying Fresnel * uniform fresnel,
+                                     const varying Vec3f &normal,
+                                     const varying Color &translucentColor,
+                                     const varying Color &radius,
+                                     const uniform TraceSet * uniform traceSet,
+                                     const uniform Material * uniform material,
+                                     const uniform intptr_t evalNormalFn,
+                                     const uniform int label = -1);
+
+void
+Closure_addVolumeSubsurface(varying Closure * uniform closure,
+                            uniform ShadingTLState * uniform tls,
+                            const varying State &state,
+                            const varying Color &scale,
+                            varying Fresnel * uniform fresnel,
+                            const varying Vec3f &normal,
+                            const varying Color &scatteirngColor,
+                            const varying Color &scatteringRadius,
+                            uniform bool resolveSelfIntersections,
+                            const uniform TraceSet * uniform traceSet,
+                            const uniform Material * uniform material,
+                            const uniform intptr_t evalNormalFn,
+                            const uniform int label = -1);
+
+// ---------------------------------------------------------------------
+// BsdfLobe Creation
+// ---------------------------------------------------------------------
+
+/// A lobe with a well defined normal can be added directly to the
+/// Closure with an assigned scale and fresnel.  Optionally, if an "underFresnel"
+/// is also active, the lobe can be made a child of an UnderLobe, which
+/// is assigned the underFresnel.  This UnderLobe is then added to the Closure.
+
+/// @brief allocate and init an ansiotropic cook-torrance lobe
+void Closure_addAnisoCookTorranceBsdfLobe(varying Closure * uniform closure,
+                                          uniform ShadingTLState * uniform tls,
+                                          const varying State &state,
+                                          const varying Color &scale,
+                                          varying Fresnel * uniform fresnel,
+                                          varying Fresnel * uniform underFresnel,
+                                          const varying Vec3f &normal,
+                                          const varying Vec3f &anisotropicDirection,
+                                          const varying float uRoughness,
+                                          const varying float vRoughness,
+                                          uniform int label = -1);
+
+/// @brief allocate and init a Cook-Torrance lobe
+void Closure_addCookTorranceBsdfLobe(varying Closure * uniform closure,
+                                     uniform ShadingTLState * uniform tls,
+                                     const varying State &state,
+                                     const varying Color &scale,
+                                     varying Fresnel * uniform fresnel,
+                                     varying Fresnel * uniform underFresnel,
+                                     const varying Vec3f &normal,
+                                     const varying float roughness,
+                                     const varying Color favg,
+                                     const varying Color favgInv,
+                                     uniform int label = -1);
+
+/// @brief allocate and init a GGX Cook-Torrance lobe
+void Closure_addGGXCookTorranceBsdfLobe(varying Closure * uniform closure,
+                                     uniform ShadingTLState * uniform tls,
+                                     const varying State &state,
+                                     const varying Color &scale,
+                                     varying Fresnel * uniform fresnel,
+                                     varying Fresnel * uniform underFresnel,
+                                     const varying Vec3f &normal,
+                                     const varying float roughness,
+                                     uniform int label = -1);
+
+/// @brief allocate and init a GGX Cook-Torrance lobe
+void Closure_addGlitterGGXCookTorranceBsdfLobe(varying Closure * uniform closure,
+                                               uniform ShadingTLState * uniform tls,
+                                               const varying State &state,
+                                               const varying Color &scale,
+                                               varying Fresnel * uniform fresnel,
+                                               varying Fresnel * uniform underFresnel,
+                                               const varying Vec3f &normal,
+                                               const varying Vec3f &flakeNormal,
+                                               const varying float roughness,
+                                               const varying Color& favg,
+                                               uniform int label = -1);
+
+/// @brief allocate and init a Cook-Torrance lobe
+void Closure_addTransmissionCookTorranceBsdfLobe(varying Closure * uniform closure,
+                                                 uniform ShadingTLState * uniform tls,
+                                                 const varying State &state,
+                                                 const varying Color &scale,
+                                                 varying Fresnel * uniform fresnel,
+                                                 varying Fresnel * uniform underFresnel,
+                                                 const varying Vec3f &normal,
+                                                 const varying float roughness,
+                                                 const varying float iorIncident,
+                                                 const varying float iorTransmitted,
+                                                 const varying float favg,
+                                                 const varying float favgInv,
+                                                 const varying float abbeNumber = 0.0f,
+                                                 uniform int label = -1);
+
+struct BsdfLobe;
+/// @brief allocate and init an Iridescence lobe
+/// note: requires as argument, an allocated and initialized child specular lobe
+void
+Closure_addIridescenceBsdfLobe(varying Closure * uniform closure,
+                               uniform ShadingTLState * uniform tls,
+                               const varying State &state,
+                               const varying Color &scale,
+                               varying Fresnel * uniform fresnel,
+                               varying Fresnel * uniform underFresnel,
+                               const varying Vec3f &normal,
+                               const varying float roughness,
+                               const varying float anisotropy,
+                               const varying Vec3f &anisotropicDirection,
+                               const varying float uRoughness,
+                               const varying float vRoughness,
+                               const varying float iridescence,
+                               const varying Color &primary,
+                               const varying Color &secondary,
+                               const varying bool flipHue,
+                               const varying float thickness,
+                               const varying float exponent,
+                               const varying float iridescenceAt0,
+                               const varying float iridescenceAt90,
+                               const varying int specularModel,
+                               uniform int label = -1);
+
+/// @brief allocate and init a lambert lobe
+void Closure_addLambertBsdfLobe(varying Closure * uniform closure,
+                                uniform ShadingTLState * uniform tls,
+                                const varying State &state,
+                                const varying Color &scale,
+                                varying Fresnel * uniform fresnel,
+                                varying Fresnel * uniform underFresnel,
+                                const varying Vec3f &normal,
+                                const varying Color &albedo,
+                                uniform bool isReflection,
+                                uniform int label = -1);
+
+/// @brief allocate and init a Retroreflection lobe
+void Closure_addRetroreflectionBsdfLobe(varying Closure * uniform closure,
+                                        uniform ShadingTLState * uniform tls,
+                                        const varying State &state,
+                                        const varying Color &scale,
+                                        varying Fresnel * uniform fresnel,
+                                        varying Fresnel * uniform underFresnel,
+                                        const varying Vec3f &normal,
+                                        const varying float roughness,
+                                        uniform int label = -1);
+
+/// @brief allocate and init a EyeCaustic lobe
+void Closure_addEyeCausticBsdfLobe(varying Closure * uniform closure,
+                                   uniform ShadingTLState * uniform tls,
+                                   const varying State &state,
+                                   const varying Color &scale,
+                                   varying Fresnel * uniform fresnel,
+                                   varying Fresnel * uniform underFresnel,
+                                   const varying Vec3f &normal,
+                                   const varying Vec3f &irisN,
+                                   const varying float exponent,
+                                   uniform int label = -1);
+
+/// @brief allocate and init a mirror reflection lobe
+void Closure_addMirrorReflectionBsdfLobe(varying Closure * uniform closure,
+                                         uniform ShadingTLState * uniform tls,
+                                         const varying State &state,
+                                         const varying Color &scale,
+                                         varying Fresnel * uniform fresnel,
+                                         varying Fresnel * uniform underFresnel,
+                                         const varying Vec3f &normal,
+                                         uniform int label = -1);
+
+/// @brief allocate and init a mirror transmission lobe
+void Closure_addMirrorTransmissionBsdfLobe(varying Closure * uniform closure,
+                                           uniform ShadingTLState * uniform tls,
+                                           const varying State &state,
+                                           const varying Color &scale,
+                                           varying Fresnel * uniform fresnel,
+                                           varying Fresnel * uniform underFresnel,
+                                           const varying Vec3f &normal,
+                                           const varying float etaI,
+                                           const varying float etaT,
+                                           const varying float abbeNumber,
+                                           uniform int label = -1);
+
+/// @brief allocate and init a mirror retroreflection lobe
+void Closure_addMirrorRetroreflectionBsdfLobe(varying Closure * uniform closure,
+                                              uniform ShadingTLState * uniform tls,
+                                              const varying State &state,
+                                              const varying Color &scale,
+                                              varying Fresnel * uniform fresnel,
+                                              varying Fresnel * uniform underFresnel,
+                                              const varying Vec3f &normal,
+                                              uniform int label = -1);
+
+// allocate and init a fabric lobe
+void
+Closure_addFabricBsdfLobe(varying Closure * uniform closure,
+                          uniform ShadingTLState * uniform tls,
+                          const varying State &state,
+                          const varying Color &scale,
+                          varying Fresnel * uniform fresnel,
+                          varying Fresnel * uniform underFresnel,
+                          const varying Vec3f &normal,
+                          const varying Vec3f &tangent,
+                          const varying Vec3f &threadDirection,
+                          const varying float threadRotation,
+                          const varying float roughness,
+                          const uniform int fabricModel,
+                          const uniform int label = -1);
+
+// allocate and init a velvet fabric lobe
+void
+Closure_addFabricVelvetBsdfLobe(varying Closure * uniform closure,
+                                uniform ShadingTLState * uniform tls,
+                                const varying State &state,
+                                const varying Color &scale,
+                                varying Fresnel * uniform fresnel,
+                                varying Fresnel * uniform underFresnel,
+                                const varying Vec3f &normal,
+                                const varying float roughness,
+                                const uniform int label = -1);
+
+/// @brief allocate and init a WardDuerBsdfLobe
+void Closure_addWardDuerBsdfLobe(varying Closure * uniform closure,
+                                 uniform ShadingTLState * uniform tls,
+                                 const varying State &state,
+                                 const varying Color &scale,
+                                 varying Fresnel * uniform fresnel,
+                                 varying Fresnel * uniform underFresnel,
+                                 const varying Vec3f &normal,
+                                 const varying Vec3f &anisoDirection,
+                                 const varying float roughnessU,
+                                 const varying float roughnessV,
+                                 const uniform bool squareRoughness,
+                                 uniform int label = -1);
+
+/// @brief allocate and init a StochasticFlakesBsdfLobe
+void Closure_addStochasticFlakesBsdfLobe(varying Closure * uniform closure,
+                                         uniform ShadingTLState * uniform tls,
+                                         const varying State &state,
+                                         const varying Color &scale,
+                                         const varying Vec3f& normal,
+                                         const varying Vec3f * varying flakeNormals,
+                                         const varying Color * varying flakeColors,
+                                         const varying size_t flakeCount,
+                                         const varying float roughness,
+                                         const varying float inputFlakeRandomness,
+                                         const uniform int label = -1);
+
+/// @brief allocate and initialize a HairDiffuseBsdfLobe
+void Closure_addHairDiffuseBsdfLobe(varying Closure * uniform closure,
+                                    uniform ShadingTLState * uniform tls,
+                                    const varying State &state,
+                                    const varying Vec3f &hairDir,
+                                    const varying Color &frontHairColor,
+                                    const varying Color &backHairColor,
+                                    uniform int label = -1);
+
+/// @brief allocate and initialize a HairRLobe
+void Closure_addHairRBsdfLobe(varying Closure * uniform closure,
+                              uniform ShadingTLState * uniform tls,
+                              const varying State &state,
+                              const varying Color &scale,
+                              const varying Vec3f &hairDir,
+                              const varying Vec2f &hairUV,
+                              const uniform float mediumIOR,
+                              const uniform float ior,
+                              const uniform int fresnelType,
+                              const varying float cuticleLayerThickness,
+                              const varying float longShift,
+                              const varying float longRoughness,
+                              varying Fresnel * uniform fresnel,
+                              uniform int label = -1);
+
+// @brief allocate and initialize a HairTTLobe
+void Closure_addHairTTBsdfLobe(varying Closure * uniform closure,
+                               uniform ShadingTLState * uniform tls,
+                               const varying State &state,
+                               const varying Color &scale,
+                               const varying Vec3f &hairDir,
+                               const varying Vec2f &hairUV,
+                               const uniform float mediumIOR,
+                               const uniform float ior,
+                               const uniform int fresnelType,
+                               const varying float cuticleLayerThickness,
+                               const varying float longShift,
+                               const varying float longRoughness,
+                               const varying float aziRoughness,
+                               const varying Color &hairColor,
+                               varying Fresnel * uniform fresnel,
+                               uniform int label = -1);
+
+/// @brief allocate and initialize a HairTRTLobe
+void Closure_addHairTRTBsdfLobe(varying Closure * uniform closure,
+                                uniform ShadingTLState * uniform tls,
+                                const varying State &state,
+                                const varying Color &scale,
+                                const varying Vec3f &hairDir,
+                                const varying Vec2f &hairUV,
+                                const uniform float mediumIOR,
+                                const uniform float ior,
+                                const uniform int fresnelType,
+                                const varying float cuticleLayerThickness,
+                                const varying float longShift,
+                                const varying float longRoughness,
+                                const varying Color &hairColor,
+                                varying Fresnel * uniform fresnel,
+                                uniform int label = -1);
+
+/// @brief allocate and initialize a HairTRRTLobe
+void Closure_addHairTRRTBsdfLobe(varying Closure * uniform closure,
+                                 uniform ShadingTLState * uniform tls,
+                                 const varying State &state,
+                                 const varying Color &scale,
+                                 const varying Vec3f &hairDir,
+                                 const varying Vec2f &hairUV,
+                                 const uniform float mediumIOR,
+                                 const uniform float ior,
+                                 const uniform int fresnelType,
+                                 const varying float cuticleLayerThickness,
+                                 const varying float longShift,
+                                 const varying float longRoughness,
+                                 const varying Color &hairColor,
+                                 varying Fresnel * uniform fresnel,
+                                 uniform int label = -1);
+
+/// @brief allocate and initialize a HairOneSamplersLobe
+void Closure_addHairOneSamplerBsdfLobe(varying Closure * uniform closure,
+                                       uniform ShadingTLState * uniform tls,
+                                       const varying State &state,
+                                       const varying Vec3f &hairDir,
+                                       const varying Vec2f &hairUV,
+                                       const uniform float mediumIOR,
+                                       const uniform float ior,
+                                       const uniform int fresnelType,
+                                       const varying float cuticleLayerThickness,
+                                       const uniform bool  showR,
+                                       const varying float rLongShift,
+                                       const varying float rLongRoughness,
+                                       const varying Color& rTint,
+                                       const uniform bool  showTT,
+                                       const varying float ttLongShift,
+                                       const varying float ttLongRoughness,
+                                       const varying float ttAzimRoughness,
+                                       const varying Color& ttTint,
+                                       const uniform bool  showTRT,
+                                       const varying float trtLongShift,
+                                       const varying float trtLongRoughness,
+                                       const varying Color& trtTint,
+                                       const uniform bool  showTRRT,
+                                       const varying float trrtLongRoughness,
+                                       const varying Color& hairColor,
+                                       varying Fresnel * uniform fresnel,
+                                       uniform int label = -1);
+
+// ---------------------------------------------------------------------
+// Misc.
+// ---------------------------------------------------------------------
+
+/// @brief take the lobes from @param underMaterial and add them to the @param closure,
+/// applying a scale if necessary
+void Closure_addBsdfLobes(varying Closure * uniform closure,
+                          varying Bsdf * uniform bsdf,
+                          const varying float scale,
+                          const uniform bool overrideBssrdfAndEmission);
+
+/// @brief set early termination on a closure
+void Closure_setEarlyTermination(varying Closure * uniform closure,
+                                 uniform ShadingTLState * uniform tls,
+                                 const varying State &state,
+                                 const varying Color &color,
+                                 const varying float alpha);
+
+
+/// @brief set a self emission on a closure
+void Closure_setSelfEmission(varying Closure * uniform closure, const varying Color &color);
+
+/// @brief get the size of a closure to aid iterating over a consecutive arrayof them.
+uniform int Closure_getSize();
+
+#endif // CLOSURE_ISPH

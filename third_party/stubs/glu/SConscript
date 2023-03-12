@@ -1,0 +1,14 @@
+Import('env')
+
+env.DWAComponent(
+  'glu',
+  LIBS = [
+        'GLU'
+        ],
+  CPPPATH_THIRDPARTY = [
+        ],
+  LIBPATH = [
+        ],
+  COMPONENTS = [
+  	]
+  )

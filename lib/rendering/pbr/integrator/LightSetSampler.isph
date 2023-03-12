@@ -1,0 +1,199 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <moonray/rendering/pbr/light/LightSet.isph>
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+
+struct Arena;
+
+
+//----------------------------------------------------------------------------
+
+struct LightSampleLPE {
+    Color t[BSDF_MAX_LOBE];
+    const varying BsdfLobe * uniform lobe[BSDF_MAX_LOBE];
+};
+
+struct LightSample {
+    Vec3f wi;
+    float distance;
+    float pdf;
+    Color Li;
+    Color t;
+
+    LightSampleLPE lp;
+};
+
+static const uniform float sInvalidLightSampleDistance = 0.0f;
+
+inline void LightSample_setInvalid(varying LightSample * uniform lsmp)
+{  lsmp->distance = sInvalidLightSampleDistance;  }
+inline varying bool LightSample_isValid(const varying LightSample * uniform lsmp)
+{  return lsmp->distance > 0.0f;  }
+inline varying bool LightSample_isInvalid(const varying LightSample * uniform lsmp)
+{  return lsmp->distance <= 0.0f;  }
+
+
+//----------------------------------------------------------------------------
+
+///
+/// @struct LightSetSampler LightSetSampler.isph <pbr/LightSetSampler.isph>
+/// @brief A LightSetSampler object is used to efficiently sample a LightSet,
+/// using Veach's multi-sample model.
+/// It uses light importance sampling, but also enforces good stratification
+/// of light sampling, giving at least one sample per active light, at most
+/// one sample per delta light, and a variable number of samples for other
+/// lights. It also rounds the number of sample per light to a power of two
+/// and enforces other sample count constraints.
+/// This class lets the integrator:
+/// - Setup a maximum number of samples per light
+/// - Generate / Iterate over lights and their samples
+///
+struct LightSetSampler {
+    const uniform LightSet * uniform mLightSet;
+    varying int mMaxSamplesPerLight;
+
+    // max total sample count for all lanes
+    uniform int mSampleCount;
+    uniform float mInvSampleCount;
+ 
+    // sample count for 1 light
+    varying int mLightSampleCount;
+    varying float mInvLightSampleCount;
+
+    const varying Bsdf * uniform mBsdf;
+};
+
+
+void LightSetSampler_init(varying LightSetSampler * uniform lSampler,
+                          uniform Arena * uniform arena,
+                          const uniform LightSet * uniform lightSet,
+                          const varying Bsdf * uniform bsdf,
+                          const varying Vec3f &p,
+                          varying int maxSamplesPerLight);
+
+
+/// Returns maximum samples per light
+inline varying int
+LightSetSampler_getMaxSamplesPerLight(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mMaxSamplesPerLight;
+}
+
+
+/// Returns light count
+inline uniform int
+LightSetSampler_getLightCount(const varying LightSetSampler * uniform lSampler)
+{
+    return LightSet_getLightCount(lSampler->mLightSet);
+}
+
+/// Returns light
+inline const uniform Light * uniform
+LightSetSampler_getLight(const varying LightSetSampler * uniform lSampler,
+        uniform int lightIndex)
+{
+    MNRY_ASSERT(lightIndex < LightSet_getLightCount(lSampler->mLightSet));
+    return LightSet_getLight(lSampler->mLightSet, lightIndex);
+}
+
+inline const uniform Light * varying
+LightSetSampler_getLight(const varying LightSetSampler * uniform lSampler,
+        varying int lightIndex)
+{
+    MNRY_ASSERT(lightIndex < LightSet_getLightCount(lSampler->mLightSet));
+    return LightSet_getLight(lSampler->mLightSet, lightIndex);
+}
+
+/// Return light filter list
+inline const uniform LightFilterList * uniform
+LightSetSampler_getLightFilterList(const varying LightSetSampler * uniform lSampler,
+        uniform int lightIndex)
+{
+    MNRY_ASSERT(lightIndex < LightSet_getLightCount(lSampler->mLightSet));
+    return LightSet_getLightFilterList(lSampler->mLightSet, lightIndex);
+}
+
+/// Returns total number of samples for all lights in the light set
+inline uniform int
+LightSetSampler_getSampleCount(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mSampleCount;
+}
+
+inline uniform float
+LightSetSampler_getInvSampleCount(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mInvSampleCount;
+}
+
+
+/// Returns number of samples for a single light
+inline varying int
+LightSetSampler_getLightSampleCount(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mLightSampleCount;
+}
+
+inline varying float
+LightSetSampler_getInvLightSampleCount(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mInvLightSampleCount;
+}
+
+inline varying int
+LightSetSampler_getLightIndexFromSample(const varying LightSetSampler * uniform lSampler,
+                                        uniform int s)
+{
+    MNRY_ASSERT(s < LightSetSampler_getSampleCount(lSampler));
+    return s / lSampler->mLightSampleCount;
+}
+
+inline const uniform Light * varying
+LightSetSampler_getLightFromSample(const varying LightSetSampler * uniform lSampler, uniform int s)
+{
+    MNRY_ASSERT(s < LightSetSampler_getSampleCount(lSampler));
+    varying int lightIndex = s / lSampler->mLightSampleCount;
+    return LightSetSampler_getLight(lSampler, lightIndex);
+}
+
+/// Draws a sample for light with index given lightIndex, checks that the light
+/// sample is not intersected by another light in the LightSet, and computes the
+/// light sample contribution. All results are stored in the LightSample.
+void LightSetSampler_sampleIntersectAndEval(
+        const varying LightSetSampler * uniform lSampler,
+        uniform ShadingTLState * uniform tls,
+        const uniform Light * uniform light,
+        const uniform LightFilterList * uniform lightFilterList,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying LightFilterRandomValues &filterR, 
+        varying float time,
+        const varying Vec3f &r, varying LightSample &sample, varying float rayDirFootprint);
+
+inline void LightSetSampler_intersectAndEval(
+        const varying LightSetSampler * uniform lSampler,
+        uniform PbrTLState * uniform pbrTls,
+        uniform ShadingTLState * uniform tls, const varying Vec3f &P, 
+        const varying Vec3f &N, varying const Vec3f &wi, const varying LightFilterRandomValues &filterR, 
+        varying float time, uniform bool fromCamera, varying bool includeRayTerminationLights, 
+        varying IntegratorSample1D &samples, varying int depth,
+        const varying int visibilityMask, varying LightContribution &lCo, varying float rayDirFootprint)
+{
+    LightSet_intersectAndEval(pbrTls, lSampler->mLightSet, tls, P, N, wi, filterR, time, fromCamera,
+                              includeRayTerminationLights, samples, depth, visibilityMask, lCo, rayDirFootprint);
+}
+
+inline const varying Bsdf * uniform
+LightSetSampler_getBsdf(const varying LightSetSampler * uniform lSampler)
+{
+    return lSampler->mBsdf;
+}
+
+//----------------------------------------------------------------------------
+

@@ -1,0 +1,196 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfCookTorrance.isph
+#pragma once
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+
+// Sample with a slightly widened roughness at grazing angles
+#define PBR_CT_SAMPLE_WIDENED_ROUGHNESS 1
+
+// The notation used in this module is based on the paper:
+//      "Microfacet Models for Refraction through Rough Surfaces"
+//      (Walter et al. - EGSR 2007)
+//
+// The formula for the reflection term (or BRDF) of the BSDF
+// described in the paper is the following (eq. 20 with m == Hr):
+// (Note: except for the Anisotropic Cook-Torrance)
+//
+//                       F(i, m) * G(i, o, m) * D(m)
+// reflectance(i,o,n) = -----------------------------
+//                           4 * |i.n| * |o.n|
+//
+// Where the Fresnel term is provided by the lobe Fresnel closure
+//
+// where:
+//    i     - incoming (light) direction
+//    o     - outgoing (view) direction
+//    n     - surface normal
+//    m     - half-direction for reflection
+//    F     - Fresnel term
+//    G     - shadow-masking function
+
+
+//----------------------------------------------------------------------------
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float CookTorrance_sdDFactorMin = 1.0f;
+static const float CookTorrance_sdDFactorMax = 8.0f;
+static const float CookTorrance_sdDFactorSlope = CookTorrance_sdDFactorMax - CookTorrance_sdDFactorMin;
+
+
+#define COOK_TORRANCE_LOBE_BASE \
+    BSDF_LOBE_BASE;             \
+    ReferenceFrame mFrame;      \
+    float mInputRoughness;      \
+    float mRoughness;    /*  = mInputRoughness ^ 2  */   \
+    float mInvRoughness;        \
+    float mdDFactor;            \
+    Color mFavg;                \
+    Color mFavgInv;             \
+    float mEtaI, mEtaT;         \
+    bool  mCoupledWithTransmission
+
+
+
+/// @class CookTorranceBsdfLobe CookTorrance.isph <rendering/shading/bsdf/CookTorrance.isph>
+/// @brief Cook-Torrance bsdf lobe
+struct CookTorranceBsdfLobe
+{
+    COOK_TORRANCE_LOBE_BASE;
+};
+
+/// @brief evaluate a cook torrance lobe
+varying Color
+CookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          const Vec3f &wi,
+                          varying float * uniform pdf);
+
+/// @brief sample a cook torrance lobe
+varying Color
+CookTorranceBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+CookTorranceBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+CookTorranceBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+CookTorranceBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                 uniform BsdfLobeProperty property,
+                                 varying float * uniform dest);
+
+inline void
+CookTorranceBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                          const uniform uint8_t ntab)
+{
+    const varying CookTorranceBsdfLobe * uniform me =
+        (const varying CookTorranceBsdfLobe * uniform) lobe;
+
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[CookTorranceBsdfLobe] mask: %\n", lobe->mMask);
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("roughness^2: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add a Cook-Torrance lobe to a bsdf
+inline void
+CookTorranceBsdfLobe_init(varying CookTorranceBsdfLobe * uniform lobe,
+                          const varying Vec3f &normal,
+                          const varying float roughness,
+                          const varying Color& favg,
+                          const varying Color& favgInv,
+                          const varying float etaI = 1.0f,
+                          float varying etaT = 1.5f,
+                          bool coupledWithTransmission = false)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_COOK_TORRANCE,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS |
+                                        BSDF_LOBE_PROPERTY_PBR_VALIDITY,
+                  /* evalFn = */ CookTorranceBsdfLobe_eval,
+                  /* sampleFn = */ CookTorranceBsdfLobe_sample,
+                  /* albedoFn = */ CookTorranceBsdfLobe_albedo,
+                  /* differentialsFn = */ CookTorranceBsdfLobe_differentials,
+                  /* getPropertyFn = */ CookTorranceBsdfLobe_getProperty,
+                  /* showFn = */ CookTorranceBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+
+    lobe->mInputRoughness = roughness;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    lobe->mRoughness = lobe->mInputRoughness * lobe->mInputRoughness;
+
+    // TODO: Smaller thresholds trigger nans
+    lobe->mRoughness = max(0.001f, lobe->mRoughness);
+
+    lobe->mInvRoughness = rcp(lobe->mRoughness);
+
+    // Use a directional differential scale that varies with roughness
+    lobe->mdDFactor = CookTorrance_sdDFactorMin + lobe->mRoughness * CookTorrance_sdDFactorSlope;
+
+    lobe->mFavg = favg;
+    lobe->mFavgInv = favgInv;
+    lobe->mEtaI = etaI;
+    lobe->mEtaT = etaT;
+    lobe->mCoupledWithTransmission = coupledWithTransmission;
+}
+
+/// @brief allocate and add a Cook-Torrance lobe to a bsdf
+inline void
+CookTorranceBsdfLobe_init(varying CookTorranceBsdfLobe * uniform lobe,
+                          const varying Vec3f &normal,
+                          const varying float roughness)
+{
+    Color favg = sBlack;
+    Color favgInv = sBlack;
+    CookTorranceBsdfLobe_init(lobe, normal, roughness,
+                              favg, favgInv);
+}
+
+// Widen roughness at grazing angles, to reduce maximum weight
+// Also called the "Walter trick". See sect. 5.3 "Modified Sampling Distrubtion"
+inline float
+widenRoughness(float roughness, float cosNO)
+{
+#if PBR_CT_SAMPLE_WIDENED_ROUGHNESS
+    return (1.2f - 0.2f * sqrt(cosNO)) * roughness;
+#else
+    return roughness;
+#endif
+}
+

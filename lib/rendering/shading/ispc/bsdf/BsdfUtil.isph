@@ -1,0 +1,19 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfUtil.isph
+
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <moonray/rendering/shading/BsdfUtil.hh>
+
+struct Bsdf;
+struct Material;
+
+void BsdfUtil_indent(const uniform uint8_t ntab);
+
+extern "C"
+void CPP_printBsdfHeader(const uniform Material * const uniform material,
+                         const varying Bsdf * const uniform bsdf);
+

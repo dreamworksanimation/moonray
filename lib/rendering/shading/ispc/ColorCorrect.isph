@@ -1,0 +1,304 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file ColorCorrect.isph
+/// $Id$
+///
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+#include <scene_rdl2/common/math/ispc/ColorSpace.isph>
+
+inline Color
+clampColor(const varying Color& c)
+{
+    Color t;
+    t.r = clamp(c.r, 0.0f, 1.0f);
+    t.g = clamp(c.g, 0.0f, 1.0f);
+    t.b = clamp(c.b, 0.0f, 1.0f);
+    return t;
+}
+
+inline Color
+lerpOpt(const varying Color v0,
+        const varying Color v1,
+        const varying float t)
+{
+    // lerpOpt = lerp optimized.
+    // optimized version (3 instructions instead of 4)
+    // return (1.0 - t) * v0 + t * v1;
+    return (v1 - v0) * t + v0;
+}
+
+inline float
+lerpOpt(const varying float v0,
+        const varying float v1,
+        const varying float t)
+{
+    // lerpOpt = lerp optimized.
+    // optimized version (3 instructions instead of 4)
+    // return (1.0 - t) * v0 + t * v1;
+    return (v1 - v0) * t + v0;
+}
+
+inline void
+applyContrast(varying float contrast, varying float& result)
+{
+    if (isZero(contrast)) {
+        return;
+    }
+
+    contrast = clamp(contrast, -1.0f, 1.0f);
+
+    if (contrast < 0) {
+        contrast *= -1.0f;
+        result = lerp(result, 0.5f, contrast);
+    } else {
+        if (isEqual(contrast, 1.0f)) contrast = 0.999f;
+        contrast = 1.0f / (1.0f - contrast);
+        result = ((result - 0.5f) * contrast) + 0.5f;
+    }
+}
+
+inline void
+applyContrast(varying Color contrast, varying Color& result)
+{
+    applyContrast(contrast.r, result.r);
+    applyContrast(contrast.g, result.g);
+    applyContrast(contrast.b, result.b);
+}
+
+inline void
+applyNukeContrast(  const uniform float contrast_x,
+                    const uniform float contrast_y,
+                    const uniform float contrast_z,
+                    float& r, float& g, float& b)
+{
+    // Mimic Nuke's ColorCorrect node's contrast function.
+    // Pivot around 18%
+    static const uniform float pivot = 0.18f;
+    static const uniform float invPivot = 1.0f / pivot;
+    if (r > 0) {
+        r = pow(r * invPivot, contrast_x) * pivot;
+    } else {
+        r = r * pow(invPivot, contrast_x) * pivot;
+    }
+    if (g > 0) {
+        g = pow(g * invPivot, contrast_y) * pivot;
+    } else {
+        g = g * pow(invPivot, contrast_y) * pivot;
+    }
+    if (b > 0) {
+        b = pow(b * invPivot, contrast_z) * pivot;
+    } else {
+        b = b * pow(invPivot, contrast_z) * pivot;
+    }
+}
+
+inline void
+applyNukeContrast(  const varying float contrast_x,
+                    const varying float contrast_y,
+                    const varying float contrast_z,
+                    float& r, float& g, float& b)
+{
+    // Mimic Nuke's ColorCorrect node's contrast function.
+    // Pivot around 18%
+    static const uniform float pivot = 0.18f;
+    static const uniform float invPivot = 1.0f / pivot;
+    if (r > 0) {
+        r = pow(r * invPivot, contrast_x) * pivot;
+    } else {
+        r = r * pow(invPivot, contrast_x) * pivot;
+    }
+    if (g > 0) {
+        g = pow(g * invPivot, contrast_y) * pivot;
+    } else {
+        g = g * pow(invPivot, contrast_y) * pivot;
+    }
+    if (b > 0) {
+        b = pow(b * invPivot, contrast_z) * pivot;
+    } else {
+        b = b * pow(invPivot, contrast_z) * pivot;
+    }
+}
+
+inline float
+computeLuminance(const float& in_r, const float& in_g, const float& in_b)
+{
+    return in_r * 0.212671f + in_g * 0.715160f + in_b * 0.072169f;
+}
+
+inline void
+applyHueShift(const varying float hueShift, varying Color& result)
+{
+    varying Color hsv = rgbToHsv(result);
+    hsv.r = fmod(hsv.r + hueShift, 1.f);
+    result = hsvToRgb(hsv);
+}
+
+inline void
+applySaturation(const uniform float sat,
+                float& r, float& g, float& b)
+{
+    float y = computeLuminance(r, g, b);
+    r = lerpOpt(y, r, sat);
+    g = lerpOpt(y, g, sat);
+    b = lerpOpt(y, b, sat);
+}
+
+inline void
+applySaturation(const varying float sat,
+                float& r, float& g, float& b)
+{
+    float y = computeLuminance(r, g, b);
+    r = lerpOpt(y, r, sat);
+    g = lerpOpt(y, g, sat);
+    b = lerpOpt(y, b, sat);
+}
+
+inline void
+applySaturation(const uniform float sat_r, const uniform float sat_g, const uniform float sat_b,
+                float& r, float& g, float& b)
+{
+    float y = computeLuminance(r, g, b);
+    r = lerpOpt(y, r, sat_r);
+    g = lerpOpt(y, g, sat_g);
+    b = lerpOpt(y, b, sat_b);
+}
+
+inline void
+applySaturation(const varying float sat_r, const varying float sat_g, const varying float sat_b,
+                float& r, float& g, float& b)
+{
+    float y = computeLuminance(r, g, b);
+    r = lerpOpt(y, r, sat_r);
+    g = lerpOpt(y, g, sat_g);
+    b = lerpOpt(y, b, sat_b);
+}
+
+inline void
+applySaturationWithoutPreservingLuminance(const uniform float sat,
+                                          float& r, float& g, float& b)
+{
+    float m = max(r, max(g, b));
+    r = lerpOpt(m, r, sat);
+    g = lerpOpt(m, g, sat);
+    b = lerpOpt(m, b, sat);
+}
+
+inline void
+applySaturationWithoutPreservingLuminance(const varying float sat,
+                                          float& r, float& g, float& b)
+{
+    float m = max(r, max(g, b));
+    r = lerpOpt(m, r, sat);
+    g = lerpOpt(m, g, sat);
+    b = lerpOpt(m, b, sat);
+}
+
+inline void
+applyGamma( const uniform float& gamma_r, const uniform float& gamma_g, const uniform float& gamma_b,
+            float& r, float& g, float& b)
+{
+    if (r > 0) r = pow(r, gamma_r);
+    if (g > 0) g = pow(g, gamma_g);
+    if (b > 0) b = pow(b, gamma_b);
+}
+
+inline void
+applyGainAndOffset( const uniform float& gain_r, const uniform float& gain_g, const uniform float& gain_b,
+                    const uniform float& offset_r, const uniform float& offset_g, const uniform float& offset_b,
+                    float& r, float& g, float& b)
+{
+    r = r * gain_r + offset_r;
+    g = g * gain_g + offset_g;
+    b = b * gain_b + offset_b;
+}
+
+inline void
+applyGainAndOffset( const varying float& gain_r, const varying float& gain_g, const varying float& gain_b,
+                    const varying float& offset_r, const varying float& offset_g, const varying float& offset_b,
+                    float& r, float& g, float& b)
+{
+    r = r * gain_r + offset_r;
+    g = g * gain_g + offset_g;
+    b = b * gain_b + offset_b;
+}
+
+inline void
+applyTMI(const uniform float k_T,
+         const uniform float k_M,
+         const uniform float k_I,
+         float& r, float& g, float& b)
+{
+    // TMI(E)
+    // Color Temperature (T)
+    // Magenta/Green (M):
+    // Energy (E) / Intensity (I):
+
+    // k_T: yellow/blue vector (temperature), default range [-2,+2]
+    // k_M: green/magenta vector, default range [-2,+2]
+    // k_I: intensirt is more useful in a lighting context
+    //      than simple intensity, default range 0..4
+    //      the range for k_E should be -8..+8.
+
+    static const uniform float oneOverSix = 1.0 / 6.0;
+    static const uniform float oneOverThree = 1.0 / 3.0;
+
+    const uniform float expScale = pow(2.0f, k_I);
+    const uniform float rScale = (6.0f * expScale + 2.0f * k_M - 3.0f * k_T)
+                               * oneOverSix;
+    const uniform float gScale = (3.0f * expScale - 2.0f * k_M)
+                               * oneOverThree;
+    const uniform float bScale = rScale + k_T;
+
+    r = r * rScale;
+    g = g * gScale;
+    b = b * bScale;
+}
+
+inline void
+applyTMI(const varying float k_T,
+         const varying float k_M,
+         const varying float k_I,
+         float& r, float& g, float& b)
+{
+    // TMI(E)
+    // Color Temperature (T)
+    // Magenta/Green (M):
+    // Energy (E) / Intensity (I):
+
+    // k_T: yellow/blue vector (temperature), default range [-2,+2]
+    // k_M: green/magenta vector, default range [-2,+2]
+    // k_I: intensirt is more useful in a lighting context
+    //      than simple intensity, default range 0..4
+    //      the range for k_E should be -8..+8.
+
+    static const uniform float oneOverSix = 1.0 / 6.0;
+    static const uniform float oneOverThree = 1.0 / 3.0;
+
+    const varying float expScale = pow(2.0f, k_I);
+    const varying float rScale = (6.0f * expScale + 2.0f * k_M - 3.0f * k_T)
+                               * oneOverSix;
+    const varying float gScale = (3.0f * expScale - 2.0f * k_M)
+                               * oneOverThree;
+    const varying float bScale = rScale + k_T;
+
+    r = r * rScale;
+    g = g * gScale;
+    b = b * bScale;
+}
+
+inline void
+applyGamma( const varying float& gamma_r, const varying float& gamma_g, const varying float& gamma_b,
+            float& r, float& g, float& b)
+{
+    // Avoid creating imaginary numbers if r, g, or b are negative.
+    // Consistent with Nuke.
+    if (r > 0) r = pow(r, gamma_r);
+    if (g > 0) g = pow(g, gamma_g);
+    if (b > 0) b = pow(b, gamma_b);
+}
+

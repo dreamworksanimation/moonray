@@ -1,0 +1,140 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+
+/**
+ * This structure stores incident and transmitted Index Of Refraction (Ior)
+ * as well as their ratio
+ */
+struct ShaderIor
+{
+    float mIncident;
+    float mTransmitted;
+    float mRatio;            // mIncident / mTransmitted
+};
+
+// compute reflectance at normal incidence to feed Schlick Fresnel model
+inline float
+ShaderIor_computeReflectance(const varying ShaderIor* const uniform ior) {
+    const float tmp = (ior->mIncident - ior->mTransmitted) * rcp(ior->mIncident + ior->mTransmitted);
+    return (tmp * tmp);
+}
+
+/**
+ * @brief Initialize a ShaderIor object given the current shading state and
+ * the incident and transmitted indices of refraction.
+ */
+inline void
+ShaderIor_init(const varying State &state,
+               const varying float incidentIOR,
+               const varying float transmittedIOR,
+               varying ShaderIor * const uniform shaderIor)
+{
+    shaderIor->mIncident = incidentIOR;
+    shaderIor->mTransmitted = transmittedIOR;
+    shaderIor->mRatio = shaderIor->mIncident * rcp(shaderIor->mTransmitted);
+}
+
+/**
+ * @brief Initialize a ShaderIor object given the current shading state and
+ * material index of refraction. It automatically handles computing the correct
+ * incident and transmitted indices of refraction, as well as their ratio.
+ */
+inline void
+ShaderIor_init(const varying State &state,
+               const varying float materialIor,
+               varying ShaderIor * const uniform shaderIor,
+               const uniform bool isThinGeometry)
+{
+    // TODO: Query the renderer for what is the incident transmitted medium
+    // ior that is not the material (a.k.a. handling overlapping dielectrics).
+    shaderIor->mIncident =      (isEntering(state) || isThinGeometry) ? 1.0f : materialIor;
+    shaderIor->mTransmitted =   (isEntering(state) || isThinGeometry) ? materialIor : 1.0f;
+    shaderIor->mRatio = shaderIor->mIncident * rcp(shaderIor->mTransmitted);
+}
+
+// -----------------------------------------------------------------------------------------------
+
+/**
+ * This class stores complex index of refraction that is generally used to represent
+ * metallic surface interactions.
+ */
+struct ShaderComplexIor
+{
+    Color mEta;
+    Color mAbsorption;
+};
+
+inline void
+ShaderComplexIor_init(varying ShaderComplexIor * uniform ior,
+                      const varying Color &eta,
+                      const varying Color &absorption)
+{
+    ior->mEta = eta;
+    ior->mAbsorption = absorption;
+}
+
+// Utility functions for computing complex IOR values for conductor Fresnel
+// from 'reflectivity' and 'edge tint' colors.
+// See paper: "Artist Friendly Metallic Fresnel", by Ole Gulbrandsen
+// from Framestore, published at JCGT in 2014 (http://jcgt.org)
+inline varying Color
+ShaderComplexIor_nMin(const varying Color &r)
+{
+    // FIXME: add operator/(Color, Color) to math lib
+    /* return (sWhite - r) / (sWhite + r); */
+    return asAColor(
+        asAVec3f((sWhite - r)) /
+        asAVec3f((sWhite + r)));
+}
+
+inline varying Color
+ShaderComplexIor_nMax(const varying Color &r)
+{
+    const varying Color rSqrt = sqrt(r);
+
+    // FIXME: add operator/(Color, Color) to math lib
+    /* return (sWhite + rSqrt) / (sWhite - rSqrt); */
+    return asAColor(
+        asAVec3f((sWhite + rSqrt)) /
+        asAVec3f((sWhite - rSqrt)));
+}
+
+inline varying Color
+ShaderComplexIor_computeEta(const varying Color &r, const varying Color &g)
+{
+    return g * ShaderComplexIor_nMin(r) + (sWhite - g) * ShaderComplexIor_nMax(r);
+}
+
+inline varying Color
+ShaderComplexIor_computeK(const varying Color &r, const varying Color &n)
+{
+    const varying Color a = n + sWhite;
+    const varying Color b = n - sWhite;
+    // Take a max() here to get rid of any numerical -0 etc
+    const varying Color nr = max(sBlack, r * a * a - b * b);
+    // FIXME: add operator/(Color, Color) to math lib
+    /* return nr / (sWhite - r); */
+    return sqrt(asAColor(asAVec3f(nr) / asAVec3f((sWhite - r))));
+}
+
+inline varying ShaderComplexIor
+ShaderComplexIor_createComplexIorFromColor(const varying Color& color,
+                                            const varying Color& edgeColor)
+{
+    // Make sure no color channel is at 1.0
+    const Color maxRefl = Color_ctor(0.999);
+    const Color clampedColor = min(max(color, sBlack), maxRefl);
+    const Color clampedEdgeColor = min(max(edgeColor, sBlack), maxRefl);
+    // Convert them colors to complex IOR
+    const varying Color eta = max(sBlack, ShaderComplexIor_computeEta(clampedColor, clampedEdgeColor));
+    const varying Color k = ShaderComplexIor_computeK(clampedColor, eta);
+    varying ShaderComplexIor result;
+    ShaderComplexIor_init(&result, eta, k);
+    return result;
+}
+

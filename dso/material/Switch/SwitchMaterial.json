@@ -1,0 +1,19 @@
+{
+    "name": "SwitchMaterial",
+    "type": "Material",
+    "attributes": {
+         "attrChoice": {
+            "name": "choice",
+            "type": "Int",
+            "default": "0",
+            "comment": "which of the 64 inputs (0 to 63) to use"
+        },
+        "attrMaterial": {
+            "name": "material",
+            "label": "material",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL",
+            "multi": "64"
+        }
+    }
+}

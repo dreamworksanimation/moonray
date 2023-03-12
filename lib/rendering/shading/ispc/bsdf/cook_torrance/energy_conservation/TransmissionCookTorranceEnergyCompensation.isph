@@ -1,0 +1,47 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+/// @file TransmissionCookTorranceEnergyCompensation.isph
+/// $Id$
+///
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+#pragma once
+
+// Transmission Energy Compensation
+//----------------------------------------------------------------------------
+Color
+TransmissionCookTorranceEnergyCompensation_evalR(float cosNO, float cosNI,
+                                                 float roughness,
+                                                 float etaI, float etaT,
+                                                 float favg, float favgInv,
+                                                 bool includeCosineTerm);
+
+Color
+TransmissionCookTorranceEnergyCompensation_evalT(float cosNO, float cosNI,
+                                                 float roughness,
+                                                 float etaI, float etaT,
+                                                 float favg, float favgInv,
+                                                 bool includeCosineTerm);
+
+void
+TransmissionCookTorranceEnergyCompensation_sampleR(const Vec3f& wo,
+                                                   const ReferenceFrame& frame,
+                                                   float r1, float r2,
+                                                   Vec3f &wi,
+                                                   float r,
+                                                   float etaI, float etaT);
+float
+TransmissionCookTorranceEnergyCompensation_pdfR(float cosNI,
+                                                float etaI, float etaT,
+                                                float roughness);
+float
+TransmissionCookTorranceEnergyCompensation_weightR(float etaI, float etaT,
+                                                   float roughness);
+//----------------------------------------------------------------------------
+
+

@@ -1,0 +1,27 @@
+{
+    "name": "TestMandelbrot",
+    "type": "Map",
+    "attributes": {
+        "attrMaxCount": {
+            "name": "iterations",
+            "type": "Int",
+            "default": "20"
+        },
+        "attrNumColors": {
+            "name": "number_of_colors",
+            "aliases": [ "number of colors", "numberOfColors" ],
+            "type": "Int",
+            "default": "7"
+        },
+        "attrOffset": {
+            "name": "offset",
+            "type": "Vec2f",
+            "default": "Vec2f(0.f, 0.f)"
+        },
+        "attrScale": {
+            "name": "scale",
+            "type": "Vec2f",
+            "default": "Vec2f(1.f, 1.f)"
+        }
+    }
+}

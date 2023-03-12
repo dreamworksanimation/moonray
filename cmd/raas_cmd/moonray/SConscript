@@ -1,0 +1,35 @@
+Import('env')
+
+# ------------------------------------------
+
+name = 'moonray'
+old_name = 'raas_render'
+sources = env.DWAGlob('*.cc')
+
+components = [
+    'application',
+    'atomic',
+    'mkl',
+    'oiio',
+    'render_util',
+    'rendering_rndr',
+    'rendering_pbr',
+    'rendering_shading',
+    'scene_rdl2',
+]
+
+incdir     = [str(env.Dir('../../..').srcnode())]
+
+env.AppendUnique(CPPDEFINES='ENABLE_ATHENA_LOGGING')
+
+# ------------------------------------------
+
+()
+env.Replace(QT4_AUTOSCAN=0)
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+env.DWAUseComponents(components)
+prog = env.DWAProgram(name, sources)
+env.DWAInstallBin(prog)
+env.DWAInstallBin(old_name, source=prog)

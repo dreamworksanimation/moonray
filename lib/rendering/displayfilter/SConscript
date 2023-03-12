@@ -1,0 +1,56 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources, headers = env.IspcShared([
+    'DisplayFilter.ispc',
+    'InputBuffer.ispc'
+])
+sources   += [
+    'InputBuffer.cc',
+]
+# assemble public headers
+# Ideally only InputBuffer.isph, InputBuffer.h,
+# DisplayFilter.isph, and DisplayFilter.h
+# should be public headers.
+publicHeaders = [
+    'DisplayFilter.isph',
+    'DisplayFilter.h',
+    'DisplayFilter_ispc_stubs.h',
+    'DisplayFilterMacros.isph',
+    'DisplayFilterState.hh',
+    'InputBuffer.hh',
+    'InputBuffer.isph',
+    'InputBuffer.h',
+]
+
+components = [
+    'common_fb_util',
+    'scene_rdl2'
+]
+env.DWAUseComponents(components)
+# --------------------------------------------------------------------------
+env.DWAInstallInclude(publicHeaders, 'moonray/rendering/displayfilter')
+
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'],
+                 CPPPATH = [env.Dir('.'),
+                            env.Dir('$BUILD_DIR/lib')])
+env.AppendUnique(CPPPATH = [
+        env.Dir('.'),
+        env.Dir('#/lib')])
+
+lib = env.DWASharedLibrary(name, sources)
+installed_lib = env.DWAInstallLib(lib)
+incdir = [
+    str(env.Dir('../..').srcnode()),
+    env.Dir('.')
+]
+env.DWAComponent(name, LIBS=installed_lib, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=installed_lib,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

@@ -1,0 +1,9 @@
+Import('env')
+
+# OpenEXR 3 no longer provides IlmImfUtil but provides OpenEXR, OpenEXRCore and
+# OpenEXRUtil instead.
+
+name = 'IlmImfUtil'
+openEXR_components = ['OpenEXRUtil', 'OpenEXRCore', 'OpenEXR']
+
+env.DWAComponent(name, COMPONENTS=openEXR_components)

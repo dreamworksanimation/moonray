@@ -1,0 +1,1028 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfComponent.isph
+#pragma once
+#ifndef BSDFCOMPONENT_ISPH
+#define BSDFCOMPONENT_ISPH
+
+#include <moonray/rendering/shading/ispc/RampControl.isph>
+#include <moonray/rendering/shading/ispc/Util.isph>
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+struct Material;
+struct TraceSet;
+
+// -----------------------------------------------------
+// Microfacet models
+// -----------------------------------------------------
+
+enum MicrofacetDistribution {
+    MICROFACET_DISTRIBUTION_BECKMANN,
+    MICROFACET_DISTRIBUTION_GGX
+};
+
+enum MicrofacetGeometric {
+    MICROFACET_GEOMETRIC_SMITH
+};
+
+
+// -----------------------------------------------------
+// Subsurface scattering models
+// -----------------------------------------------------
+enum SubsurfaceType {
+    SUBSURFACE_NORMALIZED_DIFFUSION,
+    SUBSURFACE_DIPOLE_DIFFUSION,
+    SUBSURFACE_RANDOM_WALK,
+    SUBSURFACE_RANDOM_WALK_DWIVEDI,
+    SUBSURFACE_NONE
+};
+
+
+// -----------------------------------------------------
+// Hair Fresnel models
+// -----------------------------------------------------
+enum HairFresnelType {
+    HAIR_FRESNEL_SIMPLE_LONGITUDINAL,
+    HAIR_FRESNEL_DIELECTRIC_CYLINDER,
+    HAIR_FRESNEL_LAYERED_CUTICLES
+};
+
+// -----------------------------------------------------
+// Iridescence color mode
+// -----------------------------------------------------
+enum SHADING_IridescenceColorMode {
+    SHADING_IRIDESCENCE_COLOR_USE_HUE_INTERPOLATION,
+    SHADING_IRIDESCENCE_COLOR_USE_RAMP
+};
+
+// -----------------------------------------------------
+// Forward declarations of available BxDF components
+// -----------------------------------------------------
+
+struct MicrofacetAnisotropicClearcoat;
+struct MicrofacetIsotropicClearcoat;
+struct MirrorClearcoat;
+struct MirrorBRDF;
+struct MirrorBTDF;
+struct MirrorBSDF;
+struct MicrofacetAnisotropicBRDF;
+struct MicrofacetIsotropicBRDF;
+struct MicrofacetAnisotropicBTDF;
+struct MicrofacetIsotropicBTDF;
+struct MicrofacetAnisotropicBSDF;
+struct MicrofacetIsotropicBSDF;
+struct LambertianBRDF;
+struct LambertianBTDF;
+struct FlatDiffuseBRDF;
+struct OrenNayarBRDF;
+struct DipoleDiffusion;
+struct NormalizedDiffusion;
+struct RandomWalkSubsurface;
+struct FabricBRDF;
+struct VelvetBRDF;
+struct EyeCausticBRDF;
+struct HairDiffuseBSDF;
+struct HairBSDF;
+struct HairRBRDF;
+struct HairTRTBRDF;
+struct HairTTBTDF;
+struct HairTRRTBRDF;
+struct GlitterFlakeBRDF;
+struct StochasticFlakesBRDF;
+struct ToonBRDF;
+struct ToonSpecularBRDF;
+struct HairToonSpecularBRDF;
+
+// Iridescence tint can be applied to many of the above BxDF components
+struct Iridescence;
+
+// -----------------------------------------------------
+// BxDF component initialization functions
+// -----------------------------------------------------
+
+void MicrofacetAnisotropicClearcoat_init(
+        varying MicrofacetAnisotropicClearcoat& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const varying float thickness,
+        const varying Color& attenuationColor,
+        const uniform bool refracts,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void MicrofacetIsotropicClearcoat_init(
+        varying MicrofacetIsotropicClearcoat& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const varying float thickness,
+        const varying Color& attenuationColor,
+        const uniform bool refracts,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence* const uniform iridescence = NULL);
+
+void MirrorClearcoat_init(
+        varying MirrorClearcoat& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float thickness,
+        const varying Color& attenuationColor,
+        const uniform bool refracts,
+        const varying Iridescence* const uniform iridescence = NULL);
+
+// dielectric initializer
+void MirrorBRDF_init(
+        varying MirrorBRDF& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// conductor initializer
+void MirrorBRDF_init(
+        varying MirrorBRDF& brdf,
+        const varying Color& eta,
+        const varying Color& k,
+        const varying Vec3f& N,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// artist-friendly conductor initializer
+void MirrorBRDF_init(
+        varying MirrorBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& reflectivity,
+        const varying Color& edgeTint,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void MirrorBTDF_init(
+        varying MirrorBTDF& btdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying Color& tint,
+        const varying float abbeNumber);
+
+void MirrorBSDF_init(
+        varying MirrorBSDF& bsdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// dielectric initializer
+void MicrofacetAnisotropicBRDF_init(
+        varying MicrofacetAnisotropicBRDF& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// conductor initializer
+void MicrofacetAnisotropicBRDF_init(
+        varying MicrofacetAnisotropicBRDF& brdf,
+        const varying Color& eta,
+        const varying Color& k,
+        const varying Vec3f& N,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// artist-friendly conductor initializer
+void MicrofacetAnisotropicBRDF_init(
+        varying MicrofacetAnisotropicBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& reflectivity,
+        const varying Color& edgeTint,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// dielectric initializer
+void MicrofacetIsotropicBRDF_init(
+        varying MicrofacetIsotropicBRDF& brdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// conductor initializer
+void MicrofacetIsotropicBRDF_init(
+        varying MicrofacetIsotropicBRDF& brdf,
+        const varying Color& eta,
+        const varying Color& k,
+        const varying Vec3f& N,
+        const varying float roughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+// artist-friendly conductor initializer
+void MicrofacetIsotropicBRDF_init(
+        varying MicrofacetIsotropicBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& reflectivity,
+        const varying Color& edgeTint,
+        const varying float roughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void MicrofacetAnisotropicBTDF_init(
+        varying MicrofacetAnisotropicBTDF& btdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric);
+
+void MicrofacetIsotropicBTDF_init(
+        varying MicrofacetIsotropicBTDF& btdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric);
+
+void MicrofacetAnisotropicBSDF_init(
+        varying MicrofacetAnisotropicBSDF& bsdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void MicrofacetIsotropicBSDF_init(
+        varying MicrofacetIsotropicBSDF& bsdf,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void LambertianBRDF_init(
+        varying LambertianBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void ToonBRDF_init(
+        varying ToonBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying int numRampPoints,
+        const varying float* uniform rampPositions,
+        const varying RampInterpolatorMode* uniform rampInterpolators,
+        const varying Color* uniform rampColors,
+        const varying bool extendRamp,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void ToonSpecularBRDF_init(
+        varying ToonSpecularBRDF& brdf,
+        const varying Vec3f& N,
+        const varying float intensity,
+        const varying float roughness,
+        const varying Color& tint,
+        const varying int numRampPoints,
+        const varying float* uniform rampPositions,
+        const varying RampInterpolatorMode* uniform rampInterpolators,
+        const varying float* uniform rampValues,
+        const varying float stretchU,
+        const varying float stretchV,
+        const varying Vec3f& dPds,
+        const varying Vec3f& dPdt,
+        const uniform bool enableIndirectReflections,
+        const varying float indirectReflectionsIntensity,
+        const varying float indirectReflectionsRoughness);
+
+void HairToonSpecularBRDF_init(
+        varying HairToonSpecularBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Vec3f& hairDir,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying float shiftAmount,
+        const varying float roughness,
+        const varying Color& tint,
+        const varying float intensity,
+        const varying int numRampPoints,
+        const varying float* uniform rampPositions,
+        const varying RampInterpolatorMode* uniform rampInterpolators,
+        const varying float* uniform rampValues,
+        const uniform bool enableIndirectReflections,
+        const varying float indirectReflectionsIntensity,
+        const varying float indirectReflectionsRoughness);
+
+void LambertianBTDF_init(
+        varying LambertianBTDF& btdf,
+        const varying Vec3f& N, // caller's responsibility to pass negated normal
+        const varying Color& tint);
+
+void FlatDiffuseBRDF_init(
+        varying FlatDiffuseBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying float roughness,
+        const varying float falloff,
+        const varying float flatness,
+        const varying float flatnessFalloff,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void OrenNayarBRDF_init(
+        varying OrenNayarBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying float roughness,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void DipoleDiffusion_init(
+        varying DipoleDiffusion& bssrdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying Color& radius,
+        const uniform Material * uniform material,
+        const uniform TraceSet * uniform traceSet,
+        const uniform intptr_t evalNormalFn);
+
+void NormalizedDiffusion_init(
+        varying NormalizedDiffusion& bssrdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying Color& radius,
+        const uniform Material * uniform material,
+        const uniform TraceSet * uniform traceSet,
+        const uniform intptr_t evalNormalFn);
+
+void RandomWalkSubsurface_init(
+        varying RandomWalkSubsurface& brdf,
+        const varying Vec3f& N,
+        const varying Color& albedo,
+        const varying Color& radius,
+        const uniform bool resolveSelfIntersections,
+        const uniform Material * uniform material,
+        const uniform TraceSet * uniform traceSet,
+        const uniform intptr_t evalNormalFn);
+
+void FabricBRDF_init(
+        varying FabricBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Vec3f& shadingTangent,
+        const varying Vec3f& threadDirection,
+        const varying float threadElevation,
+        const varying float roughness,
+        const varying Color& threadColor,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void VelvetBRDF_init(
+        varying VelvetBRDF& brdf,
+        const varying Vec3f& N,
+        const varying float roughness,
+        const varying Color& color,
+        const varying bool useAbsorbingFibers,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void EyeCausticBRDF_init(
+        varying EyeCausticBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Vec3f& irisNormal,
+        const varying Color& causticColor,
+        const varying float exponent);
+
+void HairDiffuseBSDF_init(
+        varying HairDiffuseBSDF& bsdf,
+        const varying Vec3f& hairDirection,
+        const varying Color& reflectionColor,
+        const varying Color& transmissionColor);
+
+void HairBSDF_init(
+        varying HairBSDF& bsdf,
+        const varying Vec3f& hairDirection,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying bool showR,
+        const varying float longShiftR,
+        const varying float roughnessR,
+        const varying Color& tintR,
+        const varying bool showTT,
+        const varying float longShiftTT,
+        const varying float roughnessTT,
+        const varying float aziRoughnessTT,
+        const varying Color& tintTT,
+        const varying float saturationTT,
+        const varying bool showTRT,
+        const varying float longShiftTRT,
+        const varying float roughnessTRT,
+        const varying Color& tintTRT,
+        const varying bool showGlint,
+        const varying float roughnessGlint,
+        const varying float eccentricityGlint,
+        const varying float saturationGlint,
+        const varying float hairRotation,
+        const varying Vec3f& hairNormal,
+        const varying bool showTRRT,
+        const varying Color& hairColor);
+
+void HairRBRDF_init(
+        varying HairRBRDF& brdf,
+        const varying Vec3f& hairDirection,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying float longShift,
+        const varying float roughness,
+        const varying Color& tint);
+
+void HairTRTBRDF_init(
+        varying HairTRTBRDF& brdf,
+        const varying Vec3f& hairDirection,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying float longShift,
+        const varying float roughness,
+        const varying float aziRoughness,
+        const varying Color& hairColor,
+        const varying Color& tint,
+        const varying bool showGlint,
+        const varying float roughnessGlint,
+        const varying float eccentricityGlint,
+        const varying float saturationGlint,
+        const varying float hairRotation,
+        const varying Vec3f& hairNormal);
+
+void HairTTBTDF_init(
+        varying HairTTBTDF& btdf,
+        const varying Vec3f& hairDirection,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying float longShift,
+        const varying float roughness,
+        const varying float aziRoughness,
+        const varying Color& hairColor,
+        const varying Color& tint,
+        const varying float saturation = 1.0f);
+
+void HairTRRTBRDF_init(
+        varying HairTRRTBRDF& brdf,
+        const varying Vec3f& hairDirection,
+        const varying Vec2f& hairUV,
+        const varying float ior,
+        const varying HairFresnelType fresnelType,
+        const varying float layers,
+        const varying float roughness,
+        const varying float aziRoughness,
+        const varying Color& hairColor,
+        const varying Color& tint);
+
+void GlitterFlakeBRDF_init(
+        varying GlitterFlakeBRDF& brdf,
+        const varying Vec3f& N,
+        const varying Vec3f& flakeN,
+        const varying Color& reflectivity,
+        const varying Color& edgeColor,
+        const varying float roughness,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void StochasticFlakesBRDF_init(
+        varying StochasticFlakesBRDF& brdf,
+        const varying Vec3f& N,
+        const varying uint32_t flakeCount,
+        const varying Vec3f * varying flakeNormals,
+        const varying Color * varying flakeColors,
+        const varying float flakeRoughness,
+        const uniform float flakeRandomness,
+        const varying Iridescence * const uniform iridescence = NULL);
+
+void Iridescence_init(
+        varying Iridescence& iridescence,
+        const varying Vec3f& N,
+        const varying float strength,
+        const varying Color& primary,
+        const varying Color& secondary,
+        const varying bool flipHue,
+        const varying float thickness,
+        const varying float exponent,
+        const varying float strengthAt0,
+        const varying float strengthAt90);
+
+void Iridescence_init(
+        varying Iridescence& iridescence,
+        const varying Vec3f& N,
+        const varying float strength,
+        const varying ColorRampControlSpace rampInterpolationMode,
+        const varying int numPoints,
+        const varying float * uniform positions,
+        const varying RampInterpolatorMode * uniform interpolators,
+        const varying Color * uniform colors,
+        const varying float thickness,
+        const varying float exponent,
+        const varying float strengthAt0,
+        const varying float strengthAt90);
+
+// -----------------------------------------------------
+// BxDF component struct definitions
+// -----------------------------------------------------
+// Although the fields in these structs are accessible directly,
+// shader writers should not do so - instead use the initializer
+// functions above.
+// TODO:  Reconsider this approach, perhaps use PIMPL pattern
+// for each component in both scalar and vector APIs, however,
+// that eliminates possibility of inlining for performance.
+struct MicrofacetAnisotropicClearcoat
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughnessU;
+    varying float   mRoughnessV;
+    varying Vec3f   mShadingTangent;
+    varying float   mThickness;
+    varying Color   mAttenuationColor;
+    uniform bool    mRefracts;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MicrofacetIsotropicClearcoat
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughness;
+    varying float   mThickness;
+    varying Color   mAttenuationColor;
+    uniform bool    mRefracts;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MirrorClearcoat
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mThickness;
+    varying Color   mAttenuationColor;
+    uniform bool    mRefracts;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MirrorBRDF
+{
+    varying Vec3f   mN;
+    varying Color   mEta;
+    varying Color   mK;
+    uniform bool    mIsConductor;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MirrorBTDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+};
+
+struct MirrorBSDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+    varying float   mRefractionEta;
+    varying float   mReflectionWeight;
+    varying float   mTransmissionWeight;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MicrofacetAnisotropicBRDF
+{
+    varying Vec3f   mN;
+    varying Color   mEta;
+    varying Color   mK;
+    varying float   mRoughnessU;
+    varying float   mRoughnessV;
+    varying Vec3f   mShadingTangent;
+    uniform bool    mIsConductor;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+    varying Color   mFavg;
+};
+
+struct MicrofacetIsotropicBRDF
+{
+    varying Vec3f   mN;
+    varying Color   mEta;
+    varying Color   mK;
+    varying float   mRoughness;
+    uniform bool    mIsConductor;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+    varying Color   mFavg;
+};
+
+struct MicrofacetAnisotropicBTDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughnessU;
+    varying float   mRoughnessV;
+    varying Vec3f   mShadingTangent;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+};
+
+struct MicrofacetIsotropicBTDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughness;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    varying Color   mFavg;
+};
+
+struct MicrofacetAnisotropicBSDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughnessU;
+    varying float   mRoughnessV;
+    varying Vec3f   mShadingTangent;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+    varying float   mRefractionEta;
+    varying float   mReflectionWeight;
+    varying float   mTransmissionWeight;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct MicrofacetIsotropicBSDF
+{
+    varying Vec3f   mN;
+    varying float   mEta;
+    varying float   mRoughness;
+    varying Color   mTint;
+    varying float   mAbbeNumber;
+    varying float   mRefractionEta;
+    varying float   mReflectionWeight;
+    varying float   mTransmissionWeight;
+    uniform MicrofacetDistribution mMicrofacetDistribution;
+    uniform MicrofacetGeometric mMicrofacetGeometric;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct ToonBRDF
+{
+    varying Vec3f mN;
+    varying Color mAlbedo;
+    varying int mRampNumPoints;
+    const varying float* uniform mRampPositions;
+    const varying RampInterpolatorMode* uniform mRampInterpolators;
+    const varying Color* uniform mRampColors;
+    varying bool mExtendRamp;
+
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct HairToonSpecularBRDF
+{
+    varying Vec3f   mN;
+
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+
+    varying float mIOR;
+
+    varying HairFresnelType mFresnelType;
+    varying float mCuticleLayerThickness;
+
+    varying float   mShift;
+    varying float   mRoughness;
+    varying Color   mTint;
+
+    varying float   mIntensity;
+
+    varying int mRampNumPoints;
+    const varying float* uniform mRampPositions;
+    const varying RampInterpolatorMode* uniform mRampInterpolators;
+    const varying float* uniform mRampValues;
+
+    uniform bool mEnableIndirectReflections;
+    varying float mIndirectReflectionsIntensity;
+    varying float mIndirectReflectionsRoughness;
+};
+
+
+struct ToonSpecularBRDF
+{
+    varying Vec3f   mN;
+    varying float   mIntensity;
+    varying float   mRoughness;
+    varying Color   mTint;
+
+    varying int mRampNumPoints;
+    const varying float* uniform mRampPositions;
+    const varying RampInterpolatorMode* uniform mRampInterpolators;
+    const varying float* uniform mRampValues;
+
+    varying float   mStretchU;
+    varying float   mStretchV;
+    varying Vec3f   mdPds;
+    varying Vec3f   mdPdt;
+
+    uniform bool mEnableIndirectReflections;
+    varying float mIndirectReflectionsIntensity;
+    varying float mIndirectReflectionsRoughness;
+};
+
+struct LambertianBRDF
+{
+    varying Vec3f mN;
+    varying Color mAlbedo;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct LambertianBTDF
+{
+    Vec3f mN;
+    Color mTint;
+};
+
+struct FlatDiffuseBRDF
+{
+    varying Vec3f mN;
+    varying Color mAlbedo;
+    varying float mRoughness;
+    varying float mTerminatorShift;
+    const varying Iridescence * uniform mIridescence;
+    varying float mFlatness;
+    varying float mFlatnessFalloff;
+};
+
+struct OrenNayarBRDF
+{
+    varying Vec3f mN;
+    varying Color mAlbedo;
+    varying float mRoughness;
+    const varying Iridescence * uniform mIridescence;
+};
+
+
+struct DipoleDiffusion
+{
+    varying Vec3f   mN;
+    varying Color   mAlbedo;
+    varying Color   mRadius;
+    const uniform Material * uniform  mMaterial;
+    const uniform TraceSet * uniform  mTraceSet;
+    uniform intptr_t mEvalNormalFn;
+};
+
+struct NormalizedDiffusion
+{
+    varying Vec3f   mN;
+    varying Color   mAlbedo;
+    varying Color   mRadius;
+    const uniform Material * uniform  mMaterial;
+    const uniform TraceSet * uniform  mTraceSet;
+    uniform intptr_t mEvalNormalFn;
+};
+
+struct RandomWalkSubsurface
+{
+    varying Vec3f   mN;
+    varying Color   mAlbedo;
+    varying Color   mRadius;
+    uniform bool    mResolveSelfIntersections;
+    const uniform Material * uniform  mMaterial;
+    const uniform TraceSet * uniform  mTraceSet;
+    uniform intptr_t mEvalNormalFn;
+};
+
+struct FabricBRDF
+{
+    varying Vec3f   mN;
+    varying Vec3f   mShadingTangent;
+    varying float   mRoughness;
+    varying Vec3f   mThreadDirection;
+    varying float   mThreadElevation;
+    varying Color   mThreadColor;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct VelvetBRDF
+{
+    varying Vec3f   mN;
+    varying float   mRoughness;
+    varying Color   mColor;
+    varying bool    mUseAbsorbingFibers;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct EyeCausticBRDF
+{
+    varying Vec3f   mN;
+    varying Vec3f   mIrisNormal;
+    varying Color   mCausticColor;
+    varying float   mExponent;
+};
+
+struct HairDiffuseBSDF
+{
+    varying Vec3f   mHairDir;
+    varying Color   mReflectionColor;
+    varying Color   mTransmissionColor;
+};
+
+struct HairBSDF
+{
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+    varying float   mIOR;
+    varying HairFresnelType mFresnelType;
+    varying float   mCuticleLayerThickness;
+    varying bool    mShowR;
+    varying float   mShiftR;
+    varying float   mRoughnessR;
+    varying Color   mTintR;
+    varying bool    mShowTT;
+    varying float   mShiftTT;
+    varying float   mRoughnessTT;
+    varying float   mAziRoughnessTT;
+    varying Color   mTintTT;
+    varying float   mSaturationTT;
+    varying bool    mShowTRT;
+    varying float   mShiftTRT;
+    varying float   mRoughnessTRT;
+    varying Color   mTintTRT;
+    varying bool    mShowGlint;
+    varying float   mRoughnessGlint;
+    varying float   mEccentricityGlint;
+    varying float   mSaturationGlint;
+    varying float   mHairRotation;
+    varying Vec3f   mHairNormal;
+    varying bool    mShowTRRT;
+    varying Color   mHairColor;
+};
+
+struct HairRBRDF
+{
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+    varying float   mIOR;
+    varying HairFresnelType mFresnelType;
+    varying float   mCuticleLayerThickness;
+    varying float   mShift;
+    varying float   mRoughness;
+    varying Color   mTint;
+};
+
+struct HairTRTBRDF
+{
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+    varying float   mIOR;
+    varying HairFresnelType mFresnelType;
+    varying float   mCuticleLayerThickness;
+    varying float   mShift;
+    varying float   mRoughness;
+    varying float   mAziRoughness;
+    varying Color   mHairColor;
+    varying Color   mTint;
+    varying bool    mShowGlint;
+    varying float   mRoughnessGlint;
+    varying float   mEccentricityGlint;
+    varying float   mSaturationGlint;
+    varying float   mHairRotation;
+    varying Vec3f   mHairNormal;
+};
+
+struct HairTTBTDF
+{
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+    varying float   mIOR;
+    varying HairFresnelType mFresnelType;
+    varying float   mCuticleLayerThickness;
+    varying float   mShift;
+    varying float   mRoughness;
+    varying float   mAziRoughness;
+    varying Color   mHairColor;
+    varying Color   mTint;
+    varying float   mSaturation;
+};
+
+struct HairTRRTBRDF
+{
+    varying Vec3f   mHairDir;
+    varying Vec2f   mHairUV;
+    varying float   mIOR;
+    varying HairFresnelType mFresnelType;
+    varying float   mCuticleLayerThickness;
+    varying float   mRoughness;
+    varying float   mAziRoughness;
+    varying Color   mHairColor;
+    varying Color   mTint;
+};
+
+struct GlitterFlakeBRDF
+{
+    varying Vec3f   mN;
+    varying Vec3f   mFlakeN;
+    varying Color   mEta;
+    varying Color   mK;
+    varying float   mRoughness;
+    const varying Iridescence * uniform mIridescence;
+    varying Color   mFavg;
+};
+
+struct StochasticFlakesBRDF
+{
+    varying Vec3f   mN;
+    varying uint32_t mFlakeCount;
+    const varying Vec3f * varying mFlakeNormals;
+    const varying Color * varying mFlakeColors;
+    varying float   mFlakeRoughness;
+    uniform float   mFlakeRandomness;
+    const varying Iridescence * uniform mIridescence;
+};
+
+struct Iridescence
+{
+    varying Vec3f   mN;
+    varying float   mStrength;
+    varying SHADING_IridescenceColorMode   mColorControl;
+    varying Color   mPrimary;
+    varying Color   mSecondary;
+    varying ColorRampControlSpace mRampInterpolationMode;
+    varying int     mRampNumPoints;
+    const varying float * uniform  mRampPositions;
+    const varying RampInterpolatorMode * uniform mRampInterpolators;
+    const varying Color * uniform  mRampColors;
+    varying bool    mFlipHue;
+    varying float   mThickness;
+    varying float   mExponent;
+    varying float   mIridescenceAt0;
+    varying float   mIridescenceAt90;
+};
+
+#endif // BSDFCOMPONENT_ISPH

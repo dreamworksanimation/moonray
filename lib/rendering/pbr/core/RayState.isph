@@ -1,0 +1,44 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+// Include this before any other includes!
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include "RayState.hh"
+#include <moonray/rendering/mcrt_common/Ray.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+
+//----------------------------------------------------------------------------
+
+// Identifies where the primary ray comes from
+struct Subpixel {
+    SUBPIXEL_MEMBERS;
+};
+
+
+//----------------------------------------------------------------------------
+
+// Keep track of state along the path recursion, specifically at the ray
+// origin of the current ray being processed.
+struct PathVertex {
+    PATH_VERTEX_MEMBERS;
+};
+
+
+//----------------------------------------------------------------------------
+
+// Structure which encapsulates the state of a ray as it flows through
+// the pipeline.
+// TODO: shrink the information required to queue a ray.
+struct RayState
+{
+    RAY_STATE_MEMBERS;
+};
+
+
+//----------------------------------------------------------------------------
+

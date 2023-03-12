@@ -1,0 +1,17 @@
+{
+    "attributes": {
+        "attrVarName" : {
+            "name": "varname",
+            "label": "variable name",
+            "type": "String",
+            "default": "\"\"",
+            "comment": "Name of the primvar to be read from the mesh"
+        },
+        "attrWarnWhenUnavailable": {
+            "name": "warn_when_unavailable",
+            "type": "Bool",
+            "default": "false",
+            "comment": "Whether or not to issue a warning when the requested attribute is unavailable"
+        }
+    }
+}

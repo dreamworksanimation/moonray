@@ -1,0 +1,66 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "Light.isph"
+
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+// shading state for Map Shader
+struct State;
+
+struct Cone
+{
+    Vec3f mAxis;
+    float mThetaO;
+    // for the mesh light, we do not need to store thetaE because it is always
+    // pi / 2. For a many light solution we would need to store thetaE for each
+    // bounding cone.
+    //float mThetaE;
+};
+
+// A Face is a polygon in the mesh. It behaves as a flat polygonal light.
+struct Face
+{
+    const int * mIndices; // vertex buffer indices
+    Vec3f mCenter; // center of  the face
+    float mInvArea; // 1 / area of the face
+    Vec3f mNormal; // face normal
+    int mPrimID; // primitive id of the face in the mesh
+    int mGeomID; // id of mesh in the mesh light
+    float mEnergy; // energy of the face
+    float mThetaO; // for quad faces, the angle between the two normals
+};
+
+struct Node
+{
+    float mEnergy; // total energy in this node
+    int mRightChildIndex; // index of right child in BVH. Left child is current index + 1.
+    int mParentIndex; // index of parent in BVH
+    Face * mFace; // pointer to the face in the mFaces buffer
+    Cone mBcone; // bounding cone of the node
+    BBox3f mBbox; // bounding box of the node
+};
+
+struct MeshLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    MESH_LIGHT_MEMBERS;
+};
+
+extern "C" void
+CPP_initShadingState(const uniform MeshLight * uniform light,
+                     uniform ShadingTLState * uniform tls,
+                     const varying int * uniform geomID,
+                     const varying int * uniform primID,
+                     const varying float * uniform p,
+                     const varying float * uniform n,
+                     const varying float * uniform uv,
+                     uniform int32_t laneMask,
+                     varying State& state);
+
+
+

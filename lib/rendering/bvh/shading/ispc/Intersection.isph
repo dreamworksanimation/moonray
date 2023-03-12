@@ -1,0 +1,185 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Intersection.isph
+
+#pragma once
+
+#include "Intersection.hh"
+
+#include <moonray/rendering/mcrt_common/Util.isph>
+
+#include <scene_rdl2/common/math/ispc/autodiff.isph>
+#include <scene_rdl2/common/math/ispc/Xform.isph>
+
+
+//---------------------------------------------------------------------------
+
+enum IntersectionFlags {
+    // Warning: Keep this enum in sync with enum Intersection::Flags
+    // in Intersection.h
+    INTERSECTION_FLAGS_GEOM_INITIALIZED            = 1 << 1,   // Is the data fully initialized for a geom intersection.
+    INTERSECTION_FLAGS_DISPLACEMENT_INITIALIZED    = 1 << 2,   // Is the data fully initialized for a displacement intersection.
+
+    INTERSECTION_FLAGS_ENTERING                    = 1 << 3,
+    INTERSECTION_FLAGS_SUBSURFACE_ALLOWED          = 1 << 4,  // Should we calculate subsurface on this path?
+    INTERSECTION_FLAGS_CAUSTIC_PATH                = 1 << 5,  // Is this on a caustic path ?
+
+    // If you move this, be sure to adjust sPathTypeOffset and sPathTypeMask
+    INTERSECTION_FLAGS_PATH_TYPE_LO_BIT            = 1 << 6,  // |
+    INTERSECTION_FLAGS_PATH_TYPE_MID_BIT           = 1 << 7,  // | Three bits to encode PathType
+    INTERSECTION_FLAGS_PATH_TYPE_HI_BIT            = 1 << 8,  // |
+
+    // INTERSECTION_FLAGS_HAS_ALL_REQUIRED_ATTRIBUTES = 1 << 9, // Present in Intersection.h, so leaving room for it here
+
+    INTERSECTION_FLAGS_USE_ADAPT_NORMAL            = 1 <<10
+};
+
+// Ispc compiler bug (?) doesn't let us initialize using the IntersectionFlags
+// enum symbols
+static const uniform uint32_t sPathTypeMask = 1 << 6 | 1 << 7 | 1 << 8;
+static const uniform uint32_t sPathTypeOffset = 6;
+
+
+enum PathType {
+    // Camera paths
+    PATH_TYPE_PRIMARY = 0,        // Primary ray hit
+    PATH_TYPE_INDIRECT_MIRROR,     // At least one mirror bounce
+    PATH_TYPE_INDIRECT_GLOSSY,     // At least one glossy or mirror bounce
+    PATH_TYPE_INDIRECT_DIFFUSE,    // At least one diffuse or glossy or mirror bounce
+
+    // Light path not yet connected to the camera (bi-directional integrators)
+    PATH_TYPE_LIGHT,
+
+    PATH_TYPE_COUNT
+};
+
+// A.k.a shading Intersection.
+struct Intersection
+{
+    INTERSECTION_MEMBERS;
+};
+
+//---------------------------------------------------------------------------
+
+// This macro is an unfortunate side effect of the limited power of typedefs in
+// ISPC. They don't allow us to typedef an Intersection structure to a State
+// structure. Only functions which we want to expose to the shaders should go in
+// here.
+
+#define DEFINE_BASIC_INTERSECTION_STATE_INTERFACE(TypeName)                                                                                                   \
+    /* Get most common shading state properties in render space */                                                                                            \
+    inline const varying Vec3f &getP(const varying TypeName &me)     { return me.mP; }                                                                        \
+    inline const varying Vec3f &getNg(const varying TypeName &me)    { return me.mNg; }                                                                       \
+    inline const varying Vec3f &getN(const varying TypeName &me)     { return me.mN; }                                                                        \
+    inline const varying Vec2f &getSt(const varying TypeName &me)    { return me.mSt; }                                                                       \
+    inline const varying Vec3f &getWo(const varying TypeName &me)    { return me.mWo; }                                                                       \
+                                                                                                                                                              \
+    /* Get partial derivatives in render space */                                                                                                             \
+    inline const varying Vec3f &getdPds(const varying TypeName &me)  { return me.mdPds; }                                                                     \
+    inline const varying Vec3f &getdPdt(const varying TypeName &me)  { return me.mdPdt; }                                                                     \
+    inline const varying Vec3f &getdNds(const varying TypeName &me)  { return me.mdNds; }                                                                     \
+    inline const varying Vec3f &getdNdt(const varying TypeName &me)  { return me.mdNdt; }                                                                     \
+                                                                                                                                                              \
+    /* Get texture coordinate differentials wrt. dx and dy. This is the ray */                                                                                \
+    /* footprint in texture space after scaling. Just what we need for texturing. */                                                                          \
+    inline varying float getdSdx(const varying TypeName &me)         { return me.mdSdx; }                                                                     \
+    inline varying float getdSdy(const varying TypeName &me)         { return me.mdSdy; }                                                                     \
+    inline varying float getdTdx(const varying TypeName &me)         { return me.mdTdx; }                                                                     \
+    inline varying float getdTdy(const varying TypeName &me)         { return me.mdTdy; }                                                                     \
+                                                                                                                                                              \
+    inline varying intptr_t getGeometryObject(const varying TypeName &me)    { return Address64_get(me.mGeometryObject); }                                    \
+    inline varying intptr_t getMaterial(const varying TypeName &me)      { return Address64_get(me.mMaterial); }                                              \
+    inline varying intptr_t getLayerAssignmentId(const varying TypeName &me) { return me.mLayerAssignmentId; }                                                \
+                                                                                                                                                              \
+    inline uniform uint32_t isDisplacement(const varying TypeName &me)       { return (extract(me.mFlags.mBits, 0) & INTERSECTION_FLAGS_DISPLACEMENT_INITIALIZED); }\
+    inline varying bool isEntering(const varying TypeName &me)               { return Flags_get(me.mFlags, INTERSECTION_FLAGS_ENTERING); }                    \
+    inline varying bool isCausticPath(const varying TypeName &me)            { return Flags_get(me.mFlags, INTERSECTION_FLAGS_CAUSTIC_PATH); }                \
+    inline varying bool isSubsurfaceAllowed(const varying TypeName &me)      { return Flags_get(me.mFlags, INTERSECTION_FLAGS_SUBSURFACE_ALLOWED); }          \
+                                                                                                                                                              \
+    /* What type of path leads to this intersection? */                                                                                                       \
+    inline varying PathType getPathType(const varying TypeName &me) { return (PathType)((Flags_getAll(me.mFlags) & sPathTypeMask) >> sPathTypeOffset); }      \
+                                                                                                                                                              \
+    inline varying bool isIndirect(const varying TypeName &me)   { return (getPathType(me) != PATH_TYPE_PRIMARY); }                                           \
+                                                                                                                                                              \
+    /* Get the minimum roughness to be used for roughness clamping. We always */                                                                              \
+    /* guarantee that minRoughness.x <= minRoughness.y */                                                                                                     \
+    inline const varying Vec2f &getMinRoughness(const varying TypeName &me)    {  return me.mMinRoughness;  }
+
+DEFINE_BASIC_INTERSECTION_STATE_INTERFACE(Intersection)
+
+// Convenience functions to enforce convention on hi / low fidelity
+inline varying bool
+isHifi(varying PathType pathType)
+{
+    return (pathType == PATH_TYPE_PRIMARY ||
+            pathType == PATH_TYPE_INDIRECT_MIRROR ||
+            pathType == PATH_TYPE_LIGHT);
+}
+
+inline varying bool
+isHifi(const varying Intersection &isect)
+{
+    PathType pathType = getPathType(isect);
+    return isHifi(pathType);
+}
+
+/// Normal derivatives
+inline varying Vec3f
+getdNdx(const varying Intersection &isect)
+{
+    // mN is already flipped at this point, unflip it if necessary to compute aux normals
+    float sign = isEntering(isect) ? 1.f : -1.f;
+    Vec3f auxNormalX = normalize(isect.mN * sign + isect.mdNds * isect.mdSdx + isect.mdNdt * isect.mdTdx);
+    return (auxNormalX * sign) - isect.mN;
+}
+
+inline varying Vec3f
+getdNdy(const varying Intersection &isect)
+{
+    // mN is already flipped at this point, unflip it if necessary to compute aux normals
+    float sign = isEntering(isect) ? 1.f : -1.f;
+    Vec3f auxNormalY = normalize(isect.mN * sign + isect.mdNds * isect.mdSdy + isect.mdNdt * isect.mdTdy);
+    return (auxNormalY * sign) - isect.mN;
+}
+
+inline varying float
+getEpsilonHint(const varying Intersection &isect)
+{
+    return isect.mEpsilonHint;
+}
+
+inline varying float
+getShadowEpsilonHint(const varying Intersection &isect)
+{
+    return isect.mShadowEpsilonHint;
+}
+
+// Setup what type of path leads to this intersection?
+inline void
+setPathType(varying Intersection * uniform me, varying PathType pathType)
+{
+    Flags_set(&(me->mFlags), ((uint32_t)pathType << sPathTypeOffset) & sPathTypeMask);
+}
+
+inline void
+setUseAdaptNormal(varying Intersection * uniform me, uniform bool useAdaptNormal)
+
+{
+    Flags_set(&(me->mFlags), (uint32_t)INTERSECTION_FLAGS_USE_ADAPT_NORMAL, useAdaptNormal);
+}
+varying Vec3f Intersection_adaptNormal(const varying Intersection &isect, const varying Vec3f &Ns);
+varying Vec3f Intersection_adaptToonNormal(const varying Intersection &isect, const varying Vec3f &Ns);
+
+
+varying bool isProvided(const varying Intersection &me, const uniform int32_t key);
+varying bool isProvided(const varying Intersection &me, const varying int32_t key);
+
+varying bool isdsProvided(const varying Intersection &me, const varying int32_t key);
+varying bool isdtProvided(const varying Intersection &me, const varying int32_t key);
+
+// Return nullptr if attribute is not provided, otherwise return a pointer
+// to the location of the attribute data.  Calling code will need to cast it
+// to the appropriate type.
+const uniform uint8_t * varying getAttributeLocation(const varying Intersection &isect, uniform int32_t key);
+

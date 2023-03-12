@@ -1,0 +1,161 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+#include <moonray/rendering/shading/ispc/Util.isph>
+#include "BsdfCookTorrance.isph"
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+//----------------------------------------------------------------------------
+
+/// @class TransmissionCookTorranceBsdfLobe CookTorrance.isph <rendering/shading/bsdf/CookTorrance.isph>
+/// @brief The Cook-Torrance transmission bsdf using Beckmann Distribution.
+/// Note: This bsdf lobe only works when roughness > 0 and when
+/// iorIncident != iorTransmitted
+struct TransmissionCookTorranceBsdfLobe
+{
+    COOK_TORRANCE_LOBE_BASE;
+    float mNeta;
+    float mEtaR, mEtaG, mEtaB;
+    Color mTint;
+    bool  mAllowDispersion;
+};
+
+/// @brief evaluate a cook torrance lobe
+varying Color
+TransmissionCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                          const varying BsdfSlice &slice,
+                          const Vec3f &wi,
+                          varying float * uniform pdf);
+
+/// @brief sample a cook torrance lobe
+varying Color
+TransmissionCookTorranceBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+/// @brief albedo function
+varying Color
+TransmissionCookTorranceBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+/// @brief differentials function
+void
+TransmissionCookTorranceBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+/// @brief getProperty function
+uniform bool
+TransmissionCookTorranceBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                 uniform BsdfLobeProperty property,
+                                 varying float * uniform dest);
+
+inline void
+TransmissionCookTorranceBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                                      const uniform uint8_t ntab)
+{
+    const varying TransmissionCookTorranceBsdfLobe * uniform me =
+        (const varying TransmissionCookTorranceBsdfLobe * uniform) lobe;
+
+    const varying Color scale = me->mScale;
+    const varying Vec3f N = getN(me->mFrame);
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[TransmissionCookTorranceBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(N.x),
+                                                 BSDF_UTIL_EXTRACT(N.y),
+                                                 BSDF_UTIL_EXTRACT(N.z));
+    BsdfUtil_indent(ntab+1); print("roughness^2: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
+    BsdfUtil_indent(ntab+1); print("tint: % % %\n", BSDF_UTIL_EXTRACT(me->mTint.r),
+                                                    BSDF_UTIL_EXTRACT(me->mTint.g),
+                                                    BSDF_UTIL_EXTRACT(me->mTint.b));
+    BsdfUtil_indent(ntab+1); print("etaI: %\n", BSDF_UTIL_EXTRACT(me->mEtaI));
+    BsdfUtil_indent(ntab+1); print("etaT: %\n", BSDF_UTIL_EXTRACT(me->mEtaT));
+    BsdfUtil_indent(ntab+1); print("allow dispersion: ");
+    if (BSDF_UTIL_EXTRACT((varying uint32_t) me->mAllowDispersion)) {
+        print("true\n");
+    } else {
+        print("false\n");
+    }
+    BsdfUtil_indent(ntab+1); print("etaRGB: % % %\n", BSDF_UTIL_EXTRACT(me->mEtaR),
+                                                      BSDF_UTIL_EXTRACT(me->mEtaG),
+                                                      BSDF_UTIL_EXTRACT(me->mEtaB));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add a Cook-Torrance lobe to a bsdf
+inline void
+TransmissionCookTorranceBsdfLobe_init(
+        varying TransmissionCookTorranceBsdfLobe * uniform lobe,
+        const varying Vec3f &normal,
+        const varying float roughness,
+        const varying float etaI,
+        const varying float etaT,
+        const varying Color tint,
+        const varying float favg,
+        const varying float favgInv,
+        const varying float abbeNumber = 0.0f)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+            /* name = */ BSDF_LOBE_TRANSMISSION_COOK_TORRANCE,
+            /* type = */ BSDF_LOBE_TYPE_TRANSMISSION | BSDF_LOBE_TYPE_GLOSSY,
+            /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+            /* isSpherical = */ false,
+            /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+            /* evalFn = */ TransmissionCookTorranceBsdfLobe_eval,
+            /* sampleFn = */ TransmissionCookTorranceBsdfLobe_sample,
+            /* albedoFn = */ TransmissionCookTorranceBsdfLobe_albedo,
+            /* differentialsFn = */ TransmissionCookTorranceBsdfLobe_differentials,
+            /* getPropertyFn = */ TransmissionCookTorranceBsdfLobe_getProperty,
+            /* showFn = */ TransmissionCookTorranceBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+    lobe->mTint = tint;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    lobe->mInputRoughness = roughness;
+    lobe->mRoughness = lobe->mInputRoughness * lobe->mInputRoughness;
+
+    // TODO: Smaller thresholds trigger nans
+    lobe->mRoughness = max(0.001f, lobe->mRoughness);
+
+    lobe->mInvRoughness = rcp(lobe->mRoughness);
+
+    lobe->mEtaI = etaI;
+    lobe->mEtaT = etaT;
+    lobe->mNeta = lobe->mEtaI * rcp(lobe->mEtaT);
+
+    if (isZero(abbeNumber)) {
+        lobe->mAllowDispersion = false;
+    } else {
+        lobe->mAllowDispersion = true;
+        computeSpectralIOR(etaT,
+                           abbeNumber,
+                           lobe->mEtaR,
+                           lobe->mEtaG,
+                           lobe->mEtaB);
+    }
+
+    // Use a directional differential scale that varies with roughness
+    lobe->mdDFactor = CookTorrance_sdDFactorMin +
+            lobe->mRoughness * CookTorrance_sdDFactorSlope;
+    lobe->mFavg = Color_ctor(favg);
+    lobe->mFavgInv = Color_ctor(favgInv);
+}
+
+
+//----------------------------------------------------------------------------
+

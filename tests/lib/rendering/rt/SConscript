@@ -1,0 +1,49 @@
+Import('env')
+# --------------------------------------------------------------------
+name       = 'rendering_rt'
+sources    = env.DWAGlob('*.cc')
+ref        = ['ref']
+components = [
+    'atomic',
+    'common_math',
+    'embree',
+    'opensubdiv',
+    'render_util',
+    'rendering_rt',
+    'rendering_geom',
+    'rendering_mcrt_common',
+    'rendering_pbr',
+    'rendering_rndr',
+    'scene_rdl2',
+    'tbb'
+]
+
+if env['TYPE_LABEL'] == 'debug':
+    env['CXXFLAGS'].append('-DTSLOG_LEVEL=TSLOG_MSG_DEBUG')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_FILE')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_PID')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_TID')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_TIME')
+
+if 'icc' in env['CC']:
+    env['CXXFLAGS'].append('-wd2203') # warning: cast discards qualifiers from target type
+
+
+# --------------------------------------------------------------------
+ut = env.DWAPdevUnitTest(name, sources, ref, COMPONENTS=components)
+
+# -----------------------------------------------------------------------------
+# Test Dsos
+
+import os.path
+
+def addTestDso(test, dsoPath):
+    dsoName = os.path.basename(dsoPath)
+    dso = env.DWARdl2Dso(env.File(dsoPath + '/' + dsoName + '.so'),
+                         [dsoPath + '/' + dsoName + '.cc'],
+                         RDL2_ATTRIBUTES_SOURCE = dsoPath + '/attributes.cc')
+    env.Depends(test, dso['source'])
+
+
+addTestDso(ut, 'dso/geometry/TestRtGeometry')
+addTestDso(ut, 'dso/material/TestRtMaterial')

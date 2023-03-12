@@ -1,0 +1,239 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "Distribution.hh"
+
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Mat3.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
+
+
+// Keep this in sync with scene_rdl2/lib/scene/rdl2/Light.h
+enum TextureFilterType
+{
+    TEXTURE_FILTER_ENUM
+};
+
+
+//----------------------------------------------------------------------------
+
+struct GuideDistribution1D
+{
+    GUIDE_DISTRIBUTION_1D_MEMBERS;
+};
+
+
+/// Accessors
+inline uniform uint32_t
+GuideDistribution1D_getSize(const uniform GuideDistribution1D * uniform dis)
+{
+    return dis->mSizeCdf;
+}
+
+
+inline varying uint32_t
+GuideDistribution1D_getSize(const uniform GuideDistribution1D * varying dis)
+{
+    return dis->mSizeCdf;
+}
+
+
+inline varying int32_t getGuideIndex(const uniform GuideDistribution1D * uniform dis, varying float r)
+{
+    MNRY_ASSERT(r >= 0.0f  &&  r <= 1.0f);
+    const varying float rj = r * dis->mSizeGuide;
+    varying uint32_t j = (int32_t)rj;
+    j = min(j, dis->mSizeGuide - 1);
+    return dis->mGuide[j];
+}
+
+
+inline varying int32_t getGuideIndex(const uniform GuideDistribution1D * varying dis, varying float r)
+{
+    MNRY_ASSERT(r >= 0.0f  &&  r <= 1.0f);
+    const varying float rj = r * dis->mSizeGuide;
+    varying uint32_t j = (int32_t)rj;
+    j = min(j, dis->mSizeGuide - 1);
+    return dis->mGuide[j];
+}
+
+inline varying int32_t getGuideIndex(const varying GuideDistribution1D * uniform dis, varying float r)
+{
+    MNRY_ASSERT(r >= 0.0f  &&  r <= 1.0f);
+    const varying float rj = r * dis->mSizeGuide;
+    varying uint32_t j = (int32_t)rj;
+    j = min(j, dis->mSizeGuide - 1);
+    return dis->mGuide[j];
+}
+
+
+/// Get pdf of sampling a given segment index
+varying float
+GuideDistribution1D_pdfDiscrete(const uniform GuideDistribution1D * uniform dis, varying uint32_t index);
+varying float
+GuideDistribution1D_pdfDiscrete(const uniform GuideDistribution1D * varying dis, varying uint32_t index);
+
+
+/// Get pdf of sampling a given u value
+varying float
+GuideDistribution1D_pdfContinuous(const uniform GuideDistribution1D * uniform dis, varying float u);
+varying float
+GuideDistribution1D_pdfContinuous(const uniform GuideDistribution1D * varying dis, varying float u);
+
+
+/// Get pdf of sampling a given u value using linear sampling
+varying float
+GuideDistribution1D_pdfLinear(const uniform GuideDistribution1D * uniform dis, varying float u);
+varying float
+GuideDistribution1D_pdfLinear(const uniform GuideDistribution1D * varying dis, varying float u);
+
+
+/// Discrete sampling: returns the index of the segment in the distribution
+/// corresponding to the uniform parameter r in [0,1)
+/// Optionally returns the pdf of sampling this segment of the distribution
+varying uint32_t
+GuideDistribution1D_sampleDiscrete(const uniform GuideDistribution1D * uniform dis,
+        varying float r, varying float * uniform pdf);
+
+
+/// Continuous sampling: returns the continuous variable u in [0,1), with
+/// density proportional to the distribution, that corresponds to the
+/// uniform parameter r in [0,1)
+/// Optionally returns the pdf of sampling the value u
+/// Optionally returns the index of the sampled segment
+varying float
+GuideDistribution1D_sampleContinuous(const uniform GuideDistribution1D * uniform dis,
+        varying float r, varying float * uniform pdf,
+        varying uint32_t * uniform index);
+varying float
+GuideDistribution1D_sampleContinuous(const uniform GuideDistribution1D * varying dis,
+        varying float r, varying float * uniform pdf,
+        varying uint32_t * uniform index);
+
+
+varying float
+GuideDistribution1D_sampleLinear(const uniform GuideDistribution1D * uniform dis,
+        varying float r, varying float * uniform pdf);
+varying float
+GuideDistribution1D_sampleLinear(const uniform GuideDistribution1D * varying dis,
+        varying float r, varying float * uniform pdf);
+
+
+//----------------------------------------------------------------------------
+
+struct Distribution2D
+{
+    DISTRIBUTION_2D_MEMBERS;
+};
+
+
+/// Return the pdf of sampling the given (u, v) value
+
+varying float
+Distribution2D_pdfNearest(const uniform Distribution2D * uniform dis, varying float u, varying float v);
+
+varying float
+Distribution2D_pdfNearest(const uniform Distribution2D * varying dis, varying float u, varying float v);
+
+varying float
+Distribution2D_pdfBilinear(const uniform Distribution2D * uniform dis, varying float u, varying float v);
+
+varying float
+Distribution2D_pdfBilinear(const uniform Distribution2D * varying dis, varying float u, varying float v);
+
+/// Continuous sampling: returns the continuous variable u in [0,1), with
+/// density proportional to the distribution, that corresponds to the
+/// uniform parameter ru in [0,1) (and similarly for v)
+/// Optionally returns the pdf of sampling this segment of the distribution
+void
+Distribution2D_sampleNearest(const uniform Distribution2D * uniform dis, varying float ru, varying float rv,
+                             varying Vec2f * uniform uv, varying float * uniform pdf);
+void
+Distribution2D_sampleNearest(const uniform Distribution2D * varying dis, varying float ru, varying float rv,
+                             varying Vec2f * uniform uv, varying float * uniform pdf);
+void 
+Distribution2D_sampleBilinear(const uniform Distribution2D * uniform dis, varying float ru, varying float rv,
+                              varying Vec2f * uniform uv, varying float * uniform pdf);
+void 
+Distribution2D_sampleBilinear(const uniform Distribution2D * varying dis, varying float ru, varying float rv,
+                              varying Vec2f * uniform uv, varying float * uniform pdf);
+
+//----------------------------------------------------------------------------
+
+struct ImageDistribution
+{
+    IMAGE_DISTRIBUTION_MEMBERS;
+};
+
+
+/// If this returns true then you can use the rest of the API below
+inline uniform bool
+ImageDistribution_isValid(const uniform ImageDistribution * uniform dis)
+{
+    return (dis->mDistribution != nullptr);
+}
+
+
+varying float
+ImageDistribution_pdfNearest(const uniform ImageDistribution * uniform dis,
+                             const varying float u, const varying float v);
+varying float
+ImageDistribution_pdfBilinear(const uniform ImageDistribution * uniform dis,
+                              const varying float u, const varying float v);
+varying float
+ImageDistribution_pdfNearestMipNearest(const uniform ImageDistribution * uniform dis,
+                                       const varying float u, const varying float v, const varying float mipLevel);
+varying float
+ImageDistribution_pdfBilinearMipNearest(const uniform ImageDistribution * uniform dis,
+                                        const varying float u, const varying float v, const varying float mipLevel);
+
+
+void
+ImageDistribution_sampleNearest(const uniform ImageDistribution * const uniform dis,
+                                const varying float ru, const varying float rv, const varying float mipLevel,
+                                varying Vec2f * uniform uv, varying float * uniform pdf);
+void
+ImageDistribution_sampleBilinear(const uniform ImageDistribution * const uniform dis,
+                                 const varying float ru, const varying float rv,
+                                 varying Vec2f * uniform uv, varying float * uniform pdf);
+void
+ImageDistribution_sampleNearestMipNearest(const uniform ImageDistribution * const uniform dis,
+                                          const varying float ru, const varying float rv, const varying float mipLevel,
+                                          varying Vec2f * uniform uv, varying float * uniform pdf);
+void
+ImageDistribution_sampleBilinearMipNearest(const uniform ImageDistribution * const uniform dis,
+                                           const varying float ru, const varying float rv, const varying float mipLevel,
+                                           varying Vec2f * uniform uv, varying float * uniform pdf);
+
+
+/// Return the color in the image at the given uv location
+varying Color
+ImageDistribution_eval(const uniform ImageDistribution * uniform dis,
+                       const varying float u, const varying float v, const varying float mipLevel,
+                       const uniform TextureFilterType textureFilter);
+
+/// Return the pdf of sampling the given (u, v) value
+/// Note: the mapping only affects the weight of the distribution
+/// It's up to the caller to transform the returned pdf wrt. the proper
+/// measure.
+varying float
+ImageDistribution_pdf(const uniform ImageDistribution * uniform dis,
+                      const varying float u, const varying float v, const varying float mipLevel,
+                      const uniform TextureFilterType textureFilter);
+
+/// Continuous sampling: returns the continuous variable u in [0,1), with
+/// density proportional to the distribution, that corresponds to the
+/// uniform parameter r in [0,1)
+/// Optionally returns the pdf of sampling this segment of the distribution
+void
+ImageDistribution_sample(const uniform ImageDistribution * const uniform dis,
+                         const varying float ru, const varying float rv, const varying float mipLevel,
+                         varying Vec2f * uniform uv, varying float * uniform pdf,
+                         const uniform TextureFilterType textureFilter);
+
+//----------------------------------------------------------------------------
+

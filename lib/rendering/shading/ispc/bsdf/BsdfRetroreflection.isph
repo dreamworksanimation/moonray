@@ -1,0 +1,116 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfRetroreflection.isph
+
+#pragma once
+
+#include "Bsdf.isph"
+#include "BsdfUtil.isph"
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+/// @class RetroreflectionBsdfLobe BsdfRetroreflection.isph <rendering/shading/bsdf/BsdfRetroreflection.isph>
+/// @brief retro reflection bsdf lobe
+/// References:
+/// [1] Lafortune et al, ReportCW 1994, "Using the Modified Phong Reflectance Model for Physically Based Rendering"
+/// [2] Walter et al, EGSR 2007, "Microfacet Models for Refraction through Rough Surfaces"
+/// [3] Igehy, Siggraph 1999,  "Tracing Ray Differentials"
+struct RetroreflectionBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    Vec3f mN;
+    float mInputRoughness;
+    float mRoughness;
+    float mdDFactor;
+};
+
+// (Copied from CookTorranceBsdf)
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float Retroreflection_sdDFactorMin = 1.0f;
+static const float Retroreflection_sdDFactorMax = 8.0f;
+static const float Retroreflection_sdDFactorSlope = Retroreflection_sdDFactorMax - Retroreflection_sdDFactorMin;
+
+
+varying Color
+RetroreflectionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                             const varying BsdfSlice &slice,
+                             const Vec3f &wi,
+                             varying float * uniform pdf);
+
+varying Color
+RetroreflectionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                               const varying BsdfSlice &slice,
+                               varying float r1, varying float r2,
+                               varying Vec3f &wi, varying float &pdf);
+
+varying Color
+RetroreflectionBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                               const varying BsdfSlice &slice);
+
+void
+RetroreflectionBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                      const varying Vec3f &wo,
+                                      const varying Vec3f &wi,
+                                      varying float r1, varying float r2,
+                                      const varying Vec3f &dNdx,
+                                      const varying Vec3f &dNdy,
+                                      varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+RetroreflectionBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                    uniform BsdfLobeProperty property,
+                                    varying float * uniform dest);
+
+inline void
+RetroreflectionBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                             const uniform uint8_t ntab)
+{
+    const varying RetroreflectionBsdfLobe * uniform me =
+        (const varying RetroreflectionBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[RetroreflectionBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief initialize a retro reflection lobe
+inline void
+RetroreflectionBsdfLobe_init(varying RetroreflectionBsdfLobe * uniform lobe,
+                             const varying Vec3f &normal,
+                             const varying float roughness)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_RETRO_REFLECTIVE,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (BsdfLobeDifferentialFlags) 0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ RetroreflectionBsdfLobe_eval,
+                  /* sampleFn = */ RetroreflectionBsdfLobe_sample,
+                  /* albedoFn = */ RetroreflectionBsdfLobe_albedo,
+                  /* differentialsFn = */ RetroreflectionBsdfLobe_differentials,
+                  /* getPropertyFn = */ RetroreflectionBsdfLobe_getProperty,
+                  /* showFn = */ RetroreflectionBsdfLobe_show);
+
+    lobe->mN = normal;
+    lobe->mInputRoughness = roughness;
+
+    // Apply roughness squaring to linearize roughness response
+    // See "Physically-Based Shading at Disney" Siggraph course notes.
+    lobe->mRoughness = lobe->mInputRoughness * lobe->mInputRoughness;
+    lobe->mRoughness = clamp(lobe->mRoughness, 0.001f, 0.99f);
+
+    lobe->mdDFactor = Retroreflection_sdDFactorMin + lobe->mRoughness * Retroreflection_sdDFactorSlope;
+
+}
+

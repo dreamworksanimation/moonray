@@ -1,0 +1,236 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+
+inline uniform int
+convertToMask(varying bool activeLanes)
+{
+    return reduce_add(activeLanes ? (1 << programIndex) : 0);
+}
+
+// Works similarly to the "all" reduction except that it only takes active running
+// lanes into account. This idea here is to stuff true into the inactive lanes
+// and put the results of the evaluation into the active lanes. This has the
+// effect of the reduction just taking the active lanes into account.
+inline uniform bool
+allActive(varying bool evalTrueLanes)
+{
+    const uniform int activeLanes = lanemask();
+    return all(evalTrueLanes || (~activeLanes & (1 << programIndex)));
+}
+
+inline uniform int
+getActiveLaneCount()
+{
+    return popcnt(lanemask());
+}
+
+// Variation of getActiveLaneCount which also factors in a per lane mask.
+// A lane is only counted if it's active and if the corresponding mask bit is true.
+inline uniform int
+getActiveLaneCount(uniform int mask)
+{
+    return popcnt(lanemask() & mask);
+}
+
+// Variation of getActiveLaneCount which also factors in a varying bool validity
+// status. A lane is only counted if it's active and if the corresponding validity
+// status is true.
+inline uniform int
+getActiveLaneCount(varying bool valid)
+{
+    return popcnt(lanemask() & convertToMask(valid));
+}
+
+//-----------------------------------------------------------------------------
+
+//
+// Helper functions for dealing with 64-bit addresses.
+//
+
+//
+// Generally we use the intptr_t type to pass 64-bit pointers into ISPC from C++.
+// One exception to this is if an address is contained inside of a structure
+// which undergoes AOS->SOA or SOA->AOS transposition.
+//
+// These transpositions use intrinsic shuffles internally and since shuffles only
+// work on 32-bit words, 64-bit addresses will get split up into 2 32-bit words,
+// each part ending up VLEN words apart in memory. The Address64 struct
+// and helpers are used to reconstruct the contiguous 64-bit address back from
+// the split parts again for use in ISPC code.
+//
+struct Address64
+{
+    // Little endian specific layout, modify for big endian architectures.
+    uint32_t mLow;      // Least significant bits of a 64 bit address.
+    uint32_t mHigh;     // Most significant bits of a 64 bit address.
+};
+
+inline uniform intptr_t
+Address64_get(uniform Address64 &this)
+{
+    return ((((uniform intptr_t)this.mHigh) << 32) | this.mLow);
+}
+
+inline varying intptr_t
+Address64_get(varying Address64 &this)
+{
+    return ((((varying intptr_t)this.mHigh) << 32) | this.mLow);
+}
+
+inline const uniform intptr_t
+Address64_get(const uniform Address64 &this)
+{
+    return ((((uniform intptr_t)this.mHigh) << 32) | this.mLow);
+}
+
+inline const varying intptr_t
+Address64_get(const varying Address64 &this)
+{
+    return ((((varying intptr_t)this.mHigh) << 32) | this.mLow);
+}
+
+inline void
+Address64_clear(uniform Address64 *uniform this)
+{
+    this->mHigh = 0;
+    this->mLow = 0;
+}
+
+inline void
+Address64_clear(varying Address64 *uniform this)
+{
+    this->mHigh = 0;
+    this->mLow = 0;
+}
+
+inline void
+Address64_set(uniform Address64 *uniform this, const uniform intptr_t addr)
+{
+    this->mHigh = (addr >> 32);
+    this->mLow = (addr & 0xffffffff);
+}
+
+inline void
+Address64_set(varying Address64 *uniform this, const varying intptr_t addr)
+{
+    this->mHigh = (addr >> 32);
+    this->mLow = (addr & 0xffffffff);
+}
+
+//-----------------------------------------------------------------------------
+
+//
+// Helper functions for deciphering C++ std::vector types.
+//
+
+struct std_vector
+{
+    uniform intptr_t mBegin;
+    uniform intptr_t mEnd;
+    uniform intptr_t mEndOfStorage;
+};
+
+#if 0
+
+inline uniform uint32_t
+vectorSize(const uniform std_vector *uniform vec, uniform uint32_t sizeOfType)
+{
+    return (vec->mEnd - vec->mBegin) / sizeOfType;
+}
+
+inline varying uint32_t
+vectorSize(const uniform std_vector *varying vec, uniform uint32_t sizeOfType)
+{
+    // @@@ This line generates this warning, but why?
+    //  "Performance Warning: Division with varying integer types is very inefficient."
+    return (vec->mEnd - vec->mBegin) / sizeOfType;
+}
+
+//
+// Vector size specializations for specific type sizes, since vectorized integer
+// division is very slow. E.g. if you know the element size in a vector is 8 bytes
+// long, then it's faster to call vectorSize8(&vec) than vectorSize(&vec, 8).
+//
+#define DEFINE_VECTOR_SIZE_FUNC(sizeOfType, shift)  \
+    inline uniform uint32_t vectorSize##sizeOfType(const uniform std_vector *uniform vec) { return (vec->mEnd - vec->mBegin) >> shift; }   \
+    inline varying uint32_t vectorSize##sizeOfType(const uniform std_vector *varying vec) { return (vec->mEnd - vec->mBegin) >> shift; }
+
+DEFINE_VECTOR_SIZE_FUNC(2, 1);
+DEFINE_VECTOR_SIZE_FUNC(4, 2);
+DEFINE_VECTOR_SIZE_FUNC(8, 3);
+DEFINE_VECTOR_SIZE_FUNC(16, 4);
+DEFINE_VECTOR_SIZE_FUNC(32, 5);
+DEFINE_VECTOR_SIZE_FUNC(64, 6);
+DEFINE_VECTOR_SIZE_FUNC(128, 7);
+
+// Returns the address of the looked up element.
+inline uniform uint8_t *uniform 
+vectorLookup(const uniform std_vector *uniform vec, uniform uint32_t idx, uniform uint32_t sizeOfType)
+{
+    return (uniform uint8_t *uniform)(idx * sizeOfType + vec->mBegin);
+}
+
+// Returns the addresses of the looked up element.
+inline uniform uint8_t *varying
+vectorLookup(const uniform std_vector *uniform vec, varying uint32_t idx, uniform uint32_t sizeOfType)
+{
+    return (uniform uint8_t *varying)(idx * sizeOfType + vec->mBegin);
+}
+
+// Returns the addresses of the looked up element.
+inline uniform uint8_t *varying
+vectorLookup(const uniform std_vector *varying vec, varying uint32_t idx, uniform uint32_t sizeOfType)
+{
+    return (uniform uint8_t *varying)(idx * sizeOfType + vec->mBegin);
+}
+
+#endif
+
+
+//-----------------------------------------------------------------------------
+
+//
+// This class exists to aid fast and safe transposition of AOS to SOA data.
+// - By making this object 32-bit exactly, we can use SIMD intrinsics to do the
+//   transposition directly without needing to write another custom code path.
+// - By being able to store 32 flags in a single 32-bit value, it cuts down on
+//   storage required compared to bools, and hence saves SOA transposition bandwidth.
+// - Bools are ill defined in ISPC so we don't want to be using ISPC structures
+//   with bools, which implies removing them from C++ structures which we want
+//   to transpose.
+//
+struct Flags
+{
+    uint32_t    mBits;
+};
+
+inline void Flags_init(varying Flags *uniform this)                                 { this->mBits = 0; }
+
+inline uint32_t Flags_get(const varying Flags &this, uint32_t flag)                 { return (this.mBits & flag); }
+inline uint32_t Flags_getBits(const varying Flags &this, uint32_t mask)             { return this.mBits & mask; }
+inline uint32_t Flags_getAll(const varying Flags &this)                             { return this.mBits; }
+
+inline void Flags_set(varying Flags *uniform this, uint32_t flag)                   { this->mBits |= flag; }
+inline void Flags_set(varying Flags *uniform this, uint32_t flag, bool on)          { if (on) Flags_set(this, flag); else { this->mBits &= ~flag; } }
+inline void Flags_setBits(varying Flags *uniform this, uint32_t bits, uint32_t mask){ this->mBits = (this->mBits & ~mask) | bits; }
+inline void Flags_setBits(varying Flags *uniform this, uint32_t bits)               { this->mBits = bits; }
+inline void Flags_setAll(varying Flags *uniform this)                               { this->mBits = 0xffffffff; }
+
+inline void Flags_toggle(varying Flags *uniform this, uint32_t flag)                { this->mBits ^= flag; }
+inline void Flags_toggleAll(varying Flags *uniform this)                            { this->mBits = ~this->mBits; }
+
+inline void Flags_clear(varying Flags *uniform this, uint32_t flag)                 { this->mBits &= ~flag; }
+inline void Flags_clearAll(varying Flags *uniform this)                             { this->mBits = 0; }
+
+//-----------------------------------------------------------------------------
+
+extern "C" void CPP_debugPrintThreadID();
+extern "C" void CPP_debugPrintCallstack();
+
+

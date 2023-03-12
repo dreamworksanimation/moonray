@@ -1,0 +1,74 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file UdimTexture.isph
+
+#pragma once
+
+#include <moonray/rendering/shading/ispc/Shading.isph>
+
+#include <moonray/rendering/bvh/shading/ispc/ThreadLocalObjectState.isph>
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+
+typedef uniform intptr_t (*uniform StartAccumulatorFnUdim) (uniform ShadingTLState * uniform tls, uniform uint32_t displacement);
+typedef void (*uniform StopAccumulatorFnUdim) (uniform intptr_t accumulator);
+
+struct UDIM_TEXTURE_StaticData {
+    // Function pointers for accumulator
+    uniform intptr_t mStartAccumulator;
+    uniform intptr_t mStopAccumulator;
+};
+
+struct UDIM_TEXTURE_Data
+{
+    uniform intptr_t                            mShader;
+    uniform int                                 mErrorSampleFail;
+    uniform int                                 mErrorUdimOutOfRangeU;
+    uniform int                                 mErrorUdimOutOfRangeV;
+    uniform int* uniform                        mErrorUdimMissingTexture;
+    uniform intptr_t * uniform                  mTextureHandles;
+    uniform int * uniform                       mWidths;
+    uniform int * uniform                       mHeights;
+    uniform float * uniform                     mPixelAspectRatios;
+    uniform bool                                mIsValid;
+    uniform bool                                mUseDefaultColor;
+    uniform int                                 mNumTextures;
+    uniform Color                               mDefaultColor;
+    uniform Color                               mFatalColor;
+    uniform UDIM_TEXTURE_StaticData* uniform    mUdimTextureStaticDataPtr;
+    uniform intptr_t                            mTextureOptions;
+    uniform bool                                mApplyGamma;
+    uniform bool                                mIs8bit;
+};
+
+// returns -1 if out of range
+int
+UDIM_TEXTURE_compute_udim(
+    const uniform UDIM_TEXTURE_Data * uniform tx,
+    uniform ShadingTLState * uniform  tls,
+    varying Vec2f st
+);
+
+Col4f
+UDIM_TEXTURE_sample(
+    const uniform UDIM_TEXTURE_Data * uniform tx,
+    uniform ShadingTLState * uniform  tls,
+    const varying State& state,
+    varying int udim,
+    varying Vec2f st,
+    varying float (&derivatives)[4]
+);
+
+void
+UDIM_TEXTURE_getDimensions(
+    const uniform UDIM_TEXTURE_Data * uniform tx,
+    varying int udim,
+    varying int& x, 
+    varying int& y);
+
+float
+UDIM_TEXTURE_getPixelAspectRatio(
+    const uniform UDIM_TEXTURE_Data * uniform tx,
+    int udim);
+
+

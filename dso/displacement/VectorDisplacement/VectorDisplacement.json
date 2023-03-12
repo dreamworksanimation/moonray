@@ -1,0 +1,44 @@
+{
+    "name": "VectorDisplacement",
+    "type": "Displacement",
+    "attributes": {
+        "attrVector": {
+            "name": "vector",
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "interface": "INTERFACE_MAP"
+        },
+        "attrFactor": {
+            "name": "factor",
+            "type": "Float",
+            "default": "1.0f"
+        },
+        "attrSourceSpace": {
+            "name": "source_space",
+            "label": "source space",
+            "aliases": [ "source space" ],
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "tangent": "0",
+                "object": "1"
+            },
+            "comment": "The space that the map bound to the vector parameter is in"
+        },
+        "attrTangentSpaceStyle": {
+            "name": "tangent_space_style",
+            "label": "tangent space style",
+            "aliases": [ "tangent space style" ],
+            "type": "Int",
+            "default": "0",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "tnb": "0",
+                "tbn": "1"
+            },
+            "comment": "Controls how RGB maps to Tangent, Normal, and Bi-Normal"
+        }
+    }
+}

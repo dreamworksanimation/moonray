@@ -1,0 +1,3 @@
+Import('env')
+
+env.DWAComponent('oiio', COMPONENTS=['OpenImageIO'], CPPPATH=[env.Dir('#src/include')])

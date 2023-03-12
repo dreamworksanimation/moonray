@@ -1,0 +1,226 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <moonray/rendering/pbr/core/PbrTLState.isph>
+#include <moonray/rendering/pbr/core/Util.isph>
+#include <moonray/rendering/pbr/light/Light.isph>
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfSlice.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+#include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+
+
+struct Arena;
+
+
+//----------------------------------------------------------------------------
+
+/// Additional information per bsdf sample
+/// that is needed for light path event processing 
+struct BsdfSampleLPE {
+    // ideally this would be stored as
+    //
+    // const uniform Light * varying light;
+    //
+    // unfortunately, ispc will not allow us to store
+    // a varying pointer in an exported struct, so
+    // we store it as an intptr_t and rely on the
+    // cast operations below
+    varying intptr_t light;
+};
+
+inline const uniform Light * varying
+BsdfSampleLPE_getLightPtr(const varying BsdfSampleLPE &lp)
+{
+    return (const uniform Light * varying) lp.light;
+}
+
+inline varying intptr_t
+BsdfSampleLPE_setLightPtr(varying BsdfSampleLPE &lp,
+                          const uniform Light * varying light)
+{
+    lp.light = (varying intptr_t) light;
+}
+
+struct BsdfSample {
+    Vec2f sample;
+    float distance;
+    float pdf;
+    Vec3f wi;
+    Color f;
+    Color tDirect;
+    Color tIndirect;
+
+    BsdfSampleLPE lp;
+};
+
+static const uniform float sInvalidBsdfSampleDistance = 0.0f;
+
+inline void BsdfSample_setInvalid(varying BsdfSample * uniform bsmp)
+{  bsmp->distance = sInvalidBsdfSampleDistance;  }
+inline varying bool BsdfSample_isValid(const varying BsdfSample * uniform bsmp)
+{  return bsmp->distance > 0.0f;  }
+inline varying bool BsdfSample_isInvalid(const varying BsdfSample * uniform bsmp)
+{  return bsmp->distance <= 0.0f;  }
+inline varying bool BsdfSample_didHitLight(const varying BsdfSample * uniform bsmp)
+{  return bsmp->distance < sMaxValue;  }
+
+
+///
+/// @struct BsdfSampler BsdfSampler.isph <pbr/integrator/BsdfSampler.isph>
+/// @brief A BsdfSampler object is a helper class used to efficiently sample
+/// multi-lobe bsdfs, using Veach's multi-sample model.
+/// It uses lobe importance sampling, but also helps the integrator to preserve
+/// good stratification of lobe sampling, giving at least one
+/// sample per active lobe, at most one sample per mirror lobe, and a
+/// variable number of samples for other lobes. It also rounds the number of
+/// sample per lobe to a power of two and enforces other sample count
+/// constraints.
+/// This class lets the integrator:
+/// - Setup a maximum number of samples per lobe
+/// - Generate / Iterate over Bsdf lobes and their samples
+///
+struct BsdfSampler
+{
+    varying const Bsdf * uniform mBsdf;
+    varying const BsdfSlice * uniform mSlice;
+    varying int mMaxSamplesPerLobe;
+    varying bool mDoIndirect;
+
+    uniform int mLobeCount;     // number of lobes matching the flags at least on one lane
+    uniform int mSampleCount;   // total number of samples for all lobes in the sampler
+
+    varying int mSampleCountVarying; // total number of samples for each lane
+
+    // Note: This supports up to 256 lobes which should be more than enough!
+    uniform uint8_t * uniform mLobeIndex;
+    uniform uint16_t mLobeToSampleIndex[BSDF_MAX_LOBE];
+
+    // 0 samples if the lobe doesn't match flags on this lane
+    varying int * uniform mLobeSampleCount;
+    varying float * uniform mInvLobeSampleCount;
+};
+
+
+void BsdfSampler_init(varying BsdfSampler * uniform bSampler,
+                      uniform Arena * uniform arena,
+                      const varying Bsdf &bsdf,
+                      const varying BsdfSlice &slice,
+                      varying int maxSamplesPerLobe,
+                      varying bool doIndirect);
+
+
+inline const varying Bsdf * uniform
+BsdfSampler_getBsdf(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mBsdf;
+}
+
+inline varying const BsdfSlice * uniform
+BsdfSampler_getBsdfSlice(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mSlice;
+}
+
+
+/// Returns maximum number of samples per lobe
+inline varying int
+BsdfSampler_getMaxSamplesPerLobe(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mMaxSamplesPerLobe;
+}
+
+/// Returns whether we compute indirect illumination
+inline varying int
+BsdfSampler_getDoIndirect(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mDoIndirect;
+}
+
+/// Returns active lobe count in the sampler. All lobeIndex in this class
+/// are in the range [0..getLobeCount()[
+inline uniform int
+BsdfSampler_getLobeCount(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mLobeCount;
+}
+
+/// Returns const lobe from the Bsdf
+inline const varying BsdfLobe * uniform
+BsdfSampler_getLobe(const varying BsdfSampler * uniform bSampler, uniform int lobeIndex)
+{
+    MNRY_ASSERT(lobeIndex < bSampler->mLobeCount);
+    return Bsdf_getLobe(bSampler->mBsdf, (uniform int)bSampler->mLobeIndex[lobeIndex]);
+}
+
+/// Returns max total number of samples for all lobes in the sampler
+inline uniform int
+BsdfSampler_getSampleCount(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mSampleCount;
+}
+
+/// Returns total number of samples for all lobes in the sampler
+inline varying int
+BsdfSampler_getSampleCountVarying(const varying BsdfSampler * uniform bSampler)
+{
+    return bSampler->mSampleCountVarying;
+}
+
+/// Returns number of samples for the given lobe index
+inline varying int
+BsdfSampler_getLobeSampleCount(const varying BsdfSampler * uniform bSampler,
+            uniform int lobeIndex)
+{
+    MNRY_ASSERT(lobeIndex < bSampler->mLobeCount);
+    return bSampler->mLobeSampleCount[lobeIndex];
+}
+
+inline varying float
+BsdfSampler_getInvLobeSampleCount(const varying BsdfSampler * uniform bSampler,
+        uniform int lobeIndex)
+{
+    MNRY_ASSERT(lobeIndex < bSampler->mLobeCount);
+    return bSampler->mInvLobeSampleCount[lobeIndex];
+}
+
+/// Make sure to call sample iterator getNextSample() between invocations
+/// of sample(). Returns true if the sample is valid and false otherwise
+inline varying bool
+BsdfSampler_sample(uniform PbrTLState *uniform pbrTls,
+        const varying BsdfSampler * uniform bSampler, uniform int lobeIndex,
+        varying float r1, varying float r2, varying BsdfSample &sample)
+{
+    // Get lobe in turn and draw a sample from that lobe
+    const varying BsdfLobe * uniform lobe = BsdfSampler_getLobe(bSampler, lobeIndex);
+
+    sample.sample = Vec2f_ctor(r1, r2);
+    sample.pdf = 0.f;
+    sample.f = BsdfLobe_sample(lobe, *bSampler->mSlice, r1, r2, sample.wi, sample.pdf);
+
+    // Check if sample is invalid
+    bool isValid = isSampleValid(sample.f, sample.pdf);
+
+    // Check surface flag
+    // TODO: BUG ? Should this be called passing in the lobe instead ?
+    BsdfLobeType flags = BsdfSlice_getSurfaceFlags(bSampler->mSlice,
+            *bSampler->mBsdf, sample.wi);
+    isValid &= BsdfLobe_matchesFlags(lobe, flags);
+
+    // Initialize distance, possibly marking sample as invalid
+    sample.distance = (isValid  ?  sMaxValue  :  sInvalidBsdfSampleDistance);
+
+    addToCounter(pbrTls->mStatistics, STATS_BSDF_SAMPLES, getActiveLaneCount(isValid));
+
+    return isValid;
+}
+
+
+//----------------------------------------------------------------------------
+

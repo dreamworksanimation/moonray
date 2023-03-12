@@ -1,0 +1,40 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+#pragma once
+
+// Include this before any other includes!
+#include <scene_rdl2/common/platform/Platform.isph>
+#include "Statistics.hh"
+#include <moonray/rendering/mcrt_common/Util.isph>
+
+struct PbrStatistics
+{
+    PBR_STATISTICS_MEMBERS;
+};
+
+inline void
+incCounter(uniform PbrStatistics &stats, uniform uint32_t counter)
+{
+    MNRY_ASSERT(counter < NUM_STATS_COUNTERS);
+    ++stats.mCounters[counter];
+}
+
+inline void
+addToCounter(uniform PbrStatistics &stats, uniform uint32_t counter, uniform uint32_t count)
+{
+    MNRY_ASSERT(counter < NUM_STATS_COUNTERS);
+    stats.mCounters[counter] += (uniform uint64_t)(count);
+}
+
+inline void
+snapshotLaneUtilization(uniform PbrStatistics &stats, uniform uint32_t counter)
+{
+    MNRY_ASSERT(counter < NUM_STATS_COUNTERS);
+    stats.mCounters[counter] += (uniform uint64_t)(getActiveLaneCount());
+    stats.mCounters[counter + 1] += programCount;
+}
+
+

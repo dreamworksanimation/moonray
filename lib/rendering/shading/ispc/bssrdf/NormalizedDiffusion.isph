@@ -1,0 +1,89 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include "Bssrdf.isph"
+
+#include <scene_rdl2/common/math/ispc/Vec3.isph>
+#include <scene_rdl2/common/math/ispc/Color.isph>
+
+//----------------------------------------------------------------------------
+
+///
+/// @class NormalizedDiffusionBssrdf
+/// @brief Derived class to implement the Normalized Diffusion Bssrdf with importance sampling.
+///
+/// This Bssrdf implements "Normalized Diffusion" approximation as described in:
+/// [1] "Approximate Reflectance Profiles for Efficient Subsurface Scattering",
+///     Burley Christensen, Pixar Technical Memo #15-04 - July, 2014
+///     http://graphics.pixar.com/library/ApproxBSSRDF/paper.pdf
+///
+/// [2] http://www-history.mcs.st-andrews.ac.uk/history/HistTopics/Quadratic_etc_equations.html
+///
+struct NormalizedDiffusionBssrdf
+{
+    BSSRDF_BASE;
+
+    varying Color mAlbedo;    // 'A'  surface albedo
+    varying Color mDmfp;      // 'ld' diffuse mean free path length, aka 'translucency radius'
+    varying Color mD;         // 'd'  shaping parameter
+
+    // Used for local importance sampling
+    varying Color mChannelCdf;
+    varying Color mMaxR;                // per-channel distance at which R(r) < 0.001
+};
+
+
+/// Constructor with standard physical parameters (cross sections in mm-1)
+/// The cross sections are converted to world-units-1 (in render space)
+/// according to the world scale:
+///      world space unit * worldScale = meter
+void
+NormalizedDiffusionBssrdf_init(varying NormalizedDiffusionBssrdf * uniform bssrdf,
+                               const varying Vec3f &N,
+                               const varying Color &albedo,
+                               const varying Color &radius,
+                               const uniform Material *uniform  material,
+                               const uniform intptr_t evalNormalFn);
+
+//----------------------------------------------------------------------------
+
+/// Sampling API:
+
+/// This function returns Rd(r), the diffuse reflectance
+/// The radius r should be in render space
+/// The global flag tells the bssrdf whether this is for local scattering
+/// or global scattering.
+/// Important note: it is the responsibility of the integrator to query
+/// getTransmissionFresnel() and to apply it accordingly. Unlike for Bsdf,
+/// the result of eval() does NOT contain any fresnel term.
+varying Color NormalizedDiffusionBssrdf_eval(const varying Bssrdf * uniform bssrdf,
+                                             varying float r,
+                                             uniform bool global = false);
+
+/// Sample a position around the origin, in the tangent plane as defined by N.
+/// We also return the distance r from the origin for the sampled position.
+/// It's up to the integrator to re-project the sampled points onto the surface.
+/// We return the pdf of sampling dPi with respect to surface area
+/// measure (this is sTwoPi * r away from the radial pdf of sampling r).
+varying float NormalizedDiffusionBssrdf_sampleLocal(const varying Bssrdf * uniform bssrdf,
+                                                    varying float r1, varying float r2,
+                                                    varying Vec3f &dPi,
+                                                    varying float &r);
+
+/// This is only needed for unit-testing and verify that the pdf integrates to 1.
+varying float NormalizedDiffusionBssrdf_pdfLocal(const varying Bssrdf * uniform bssrdf,
+                                                 varying float r);
+
+
+/// For NormalizedDiffusion, albedo is the reflectance
+varying Color NormalizedDiffusionBssrdf_diffuseReflectance(const varying Bssrdf * uniform bssrdf);
+
+uniform bool NormalizedDiffusionBssrdf_getProperty(const varying Bssrdf * uniform bssrdf,
+                                                   uniform SubsurfaceProperty property,
+                                                   varying float * uniform dest);
+
+//----------------------------------------------------------------------------
+

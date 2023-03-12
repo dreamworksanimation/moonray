@@ -1,0 +1,43 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+//
+//
+// Accumulator handles for profiling the render portion of the frame.
+// Not suitable for the update portion of the frame.
+//
+#pragma once
+#include "ProfileAccumulatorHandles.hh"
+
+//
+// Usage:
+// 
+// Include this header:
+// 
+//     #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.isph>
+// 
+// Inside the function you want to profile:
+// 
+//     uniform intptr_t acc = CPP_startOverlappedAccumulator(pbrTls, <OverlappedAccType>);
+// 
+//     ... execute code ...
+// 
+//     CPP_stopOverlappedAccumulator(acc);
+// 
+
+struct PbrTLState;
+
+extern "C" uniform intptr_t
+CPP_startOverlappedAccumulator( uniform PbrTLState *      uniform tls,
+                                uniform OverlappedAccType         type );
+
+extern "C" void
+CPP_pauseOverlappedAccumulator( uniform intptr_t tlAcc );
+
+extern "C" void
+CPP_unpauseOverlappedAccumulator( uniform intptr_t tlAcc );
+
+extern "C" void
+CPP_stopOverlappedAccumulator( uniform intptr_t tlAcc );
+
+

@@ -1,0 +1,117 @@
+{
+    "name": "UsdPreviewSurface",
+    "type": "Material",
+    "attributes": {
+        "attrDiffuseColor" : {
+            "name": "diffuseColor",
+            "comment": "When using metallic workflow this is interpreted as albedo.",
+            "type": "Rgb",
+            "default": "Rgb(0.18f, 0.18f, 0.18f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrEmissiveColor" : {
+            "name": "emissiveColor",
+            "comment": "Emissive component.",
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrUseSpecularWorkflow" : {
+            "name": "useSpecularWorkflow",
+            "comment": "This node can fundamentally operate in two modes : Specular workflow where you provide a texture/value to the 'specularColor' input. Or, Metallic workflow where you provide a texture/value to the 'metallic' input.",
+            "type": "Int",
+            "flags": "FLAGS_ENUMERABLE",
+            "enum": {
+                "Metalness workflow": "0",
+                "Specular workflow": "1"
+            },
+            "default": "0"
+        },
+        "attrSpecularColor" : {
+            "name": "specularColor",
+            "comment": "Specular color to be used. This is the color at 0 incidence. Edge color is assumed white. Transition between the two colors according to Schlick fresnel approximation.",
+            "type": "Rgb",
+            "default": "Rgb(0.0f, 0.0f, 0.0f)",
+            "flags": "FLAGS_BINDABLE",
+            "disable when": "{ useSpecularWorkflow == 'Metalness workflow' }" 
+        },
+        "attrMetallic" : {
+            "name": "metallic",
+            "comment": "Use 1 for metallic surfaces and 0 for non-metallic.  If metallic is 1, then both F0 (reflectivity at 0 degree incidence) and edge F90 reflectivity will simply be the Albedo.  If metallic is 0, then Albedo is ignored in the calculation of F0 and F90; F0 is derived from ior via ( (1-ior)/(1+ior) )^2 and F90 is white. In between, we interpolate.",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE",
+            "disable when": "{ useSpecularWorkflow == 'Specular workflow' }" 
+        },
+        "attrRoughness" : {
+            "name": "roughness",
+            "comment": "Roughness for the specular lobe. The value ranges from 0 to 1, which goes from a perfectly specular surface at 0.0 to maximum roughness of the specular lobe.",
+            "type": "Float",
+            "default": "0.5f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrClearcoat" : {
+            "name": "clearcoat",
+            "comment": "Second specular lobe amount. The color is white.",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrClearcoatRoughness" : {
+            "name": "clearcoatRoughness",
+            "comment": "Roughness for the second specular lobe.",
+            "type": "Float",
+            "default": "0.01f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrOpacity" : {
+            "name": "opacity",
+            "comment": "When opacity is 1.0 then the geometry is fully opaque, if it is smaller than 1.0 then the geometry is translucent, when it is 0 the geometry is transparent. Note that even a fully transparent object still receives lighting as, for example, perfectly clear glass still has a specular response.",
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrOpacityThreshold" : {
+            "name": "opacityThreshold",
+            "comment": "The opacityThreshold input is useful for creating geometric cut-outs based on the opacity input. A value of 0.0 indicates that no masking is applied to the opacity input, while a value greater than 0.0 indicates that rendering of the surface is limited to the areas where the opacity is greater or equal to that value.",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrIor" : {
+            "name": "ior",
+            "comment": "Index of Refraction to be used for translucent objects and objects with specular components, including the clearcoat if clearcoat > 0.",
+            "type": "Float",
+            "default": "1.5f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrNormal": {
+            "name": "normal",
+            "comment": "Expects normal in tangent space [(-1,-1,-1), (1,1,1)]",
+            "type": "Vec3f",
+            "default": "Vec3f(0.0f, 0.0f, 1.0f)",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrDisplacement" : {
+            "name": "displacement",
+            "comment": "Displacement in the direction of the normal.",
+            "type": "Float",
+            "default": "0.0f",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrOcclusion" : {
+            "name": "occlusion",
+            "comment": "Ignored by Moonray",
+            "type": "Float",
+            "default": "1.0f",
+            "flags": "FLAGS_BINDABLE"
+        }
+    },
+    "labels": {
+        "aovDiffuse":               "diffuse",
+        "aovSpecular":              "specular",
+        "aovSpecularTransmission":  "specular transmission",
+        "aovOuterSpecular":         "outer specular"
+    }
+}
+

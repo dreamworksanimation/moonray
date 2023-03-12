@@ -1,0 +1,37 @@
+{
+    "name": "TestMaterial",
+    "type": "Material",
+    "attributes": {
+        "attrColorNonComp": {
+            "name": "color_non_comp",
+            "label": "color non-comp",
+            "aliases": [ "color non-comp" ],
+            "type": "Rgb",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrColor": {
+            "name": "color",
+            "type": "Bool"
+        },
+        "attrColorColor": {
+            "name": "color_color",
+            "label": "color color",
+            "aliases": [ "color color" ],
+            "type": "Rgb",
+            "flags": "FLAGS_BINDABLE"
+        },
+        "attrColorFactor": {
+            "name": "color_factor",
+            "label": "color factor",
+            "aliases": [ "color factor" ],
+            "type": "Float"
+        }
+    },
+    "components": {
+        "Color": {
+            "color": "attrColorColor",
+            "factor": "attrColorFactor",
+            "show": "attrColor"
+        }
+    }
+}

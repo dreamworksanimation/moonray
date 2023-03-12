@@ -1,0 +1,368 @@
+\title{\textbf{MCRT Sampling Strategies and Implementation Notes}}
+\author{
+        \textbf{Eric Tabellion}\\
+        \textit{DreamWorks Animation}
+}
+\date{\today}
+
+\documentclass{article}
+\usepackage{amssymb,amsmath}
+%\usepackage{fullpage}
+\usepackage[top=1in, bottom=1in, left=1in, right=1in]{geometry}
+
+
+%------------------------------------------------------------------------------
+
+\begin{document}
+
+% Try to set a better font
+%\renewcommand{\familydefault}{\sfdefault}
+% Pick a larger font size to make it more readable
+\large
+
+\maketitle
+
+
+%----------------------------------------
+
+\section{Sampling Strategies}\label{Strategies}
+
+Our main problem is to solve the rendering equation by Monte Carlo
+integration:
+
+\begin{equation*}
+L_r(x,\omega_o)  =  \int_{\Omega}  f_r(x,\omega_o,\omega_i)  L_i(x,\omega_i) \
+                   |\cos(\theta_i)|  \  d\omega
+\end{equation*}
+
+We want to use different sampling strategies at each point $x$
+depending on the type of light and Bsdf lobe combination that we
+encounter. In the general case, we want to first partition lights
+from our light-set into one or many disjoint subsets. Then, for each
+light subset, we want to partition the lobes from the Bsdf into one
+or many disjoint lobe subsets (possibly differently for each light
+subset). For each subset combination we then decide to use one of
+the following sampling methods: Bsdf Importance Sampling (BIS),
+Multiple Importance Sampling (MIS) or Light Importance Sampling
+(LIS).
+
+Table \ref{table:Strategies} lists all the combinations (light category
+x bsdf lobe category) with the corresponding sampling method we want
+to use \cite{Colbert:10} \cite{Hery:13} \cite{Pharr:10}
+\cite{Shirley:96}. Each sampling method with its numeric suffix defines
+a specific sampling strategy:
+
+\begin{table}[ht]
+\centering
+\begin{tabular}{c c c c c c}
+\hline\hline
+Light category  &  SSS   &  Wide  &  Medium  &  Narrow  &  Delta  \\ [0.5ex]
+\hline
+Indirect        &  BISS  &  BISI  &  BISI    &  BISI    &  BISI   \\
+Wide            &  MISS  &  MIS2  &  MIS2    &  BIS2    &  BIS1   \\
+Narrow          &  LISS  &  LIS2  &  MIS1    &  BIS2    &  BIS1   \\
+Delta           &  LISS  &  LIS1  &  LIS1    &  LIS1    &  none   \\ [0.5ex]
+\hline
+\end{tabular}
+\caption{Sampling strategies for each combination of light category x bsdf lobe category}
+\label{table:Strategies}
+\end{table}
+
+Based on this table, each sampling strategy defines the
+subset of Bsdf lobes and lights that are used to sample from and
+that contribute to its corresponding estimator. For example, the
+strategy MIS2 will draw samples from the wide and medium lobes category
+as well as from wide lights and only these lobes and lights will contribute
+to its estimator (as defined later in section \ref{Estimators}).
+
+The definition of wide, medium and narrow lobes may seem subjective.
+Each Bsdf lobe will define which category it belongs to, based
+on a threshold on its roughness parameter and on experimentation on
+which sampling method works best. For example, diffuse and very blurry
+glossy lobes will belong to the "wide" category. Almost mirror-like
+lobes will belong to the "narrow" category, etc.
+
+Similarly, lights will belong to either the wide or narrow category
+based on their subtended solid angle from the point $x$ being shaded.
+It is worth noting that both Bsdf lobes and lights will dynamically belong
+to one or another category depending on the point $x$ being shaded (parameters
+such as lobe roughness and light subtended solid angle are functions of $x$).
+
+
+%----------------------------------------
+
+\section{Splitting the Rendering Equation}\label{Splitting}
+
+Let's now define formally how the above partitioning will impact our
+numerical integration scheme. For the sake of clarity, we simplify
+the notation from the rendering equation, by omitting the cosine
+term and other details. We then split the integral into a sum of
+integrals to partition the type of lighting we are integrating:
+
+\begin{align*}
+L_r &= \int f_r  L_i  \\
+    &= \int f_r  L_{indirect}  +  \int f_r  L_{direct}  \\
+    &= \int f_r  L_{indirect}  +  \int f_r  L_{wide}  +  \int f_r  L_{narrow}  +  \int f_r  L_{delta}  \\
+    &= F_{indirect}  +  F_{wide}  +  F_{narrow}  +  F_{delta}
+\end{align*}
+
+Here $L_{indirect}$ is indirect illumination and $L_{direct}$ is
+direct illumination. The latter is decomposed into
+delta-distribution lights $L_{delta}$ (also called CG lights, i.e.
+lights with zero area), physical lights $L_{wide}$ that belong to
+the wide category and physical lights $L_{narrow}$ that belong to
+the narrow category.
+
+We then split some of these integrals further to partition the type
+of Bsdf lobes that are involved in each convolution. We use a
+sampling strategy subscript on the Bsdf, to indicate not only the
+sampling strategy that we use for the corresponding estimator, but
+also  which lobe subset is involved in each integral (referring to table
+\ref{table:Strategies}):
+\begin{align*}
+F_{indirect}  &=  \int f_{BISI}  \  L_{indirect}  \\
+F_{wide}      &=  \int f_{MIS2}  \  L_{wide}  +  \int f_{BIS2}  \  L_{wide}  +  \int f_{BIS1}  \  L_{wide}  \\
+              &=  F_{wide_{MIS2}}  +  F_{wide_{BIS2}}  +  F_{wide_{BIS1}}  \\
+F_{narrow}    &=  \int f_{LIS2}  \  L_{narrow}  +  \int f_{MIS1}  \  L_{narrow}  +  \int f_{BIS2}  \  L_{narrow}  +  \int f_{BIS1}  \  L_{narrow}  \\
+              &=  F_{narrow_{LIS2}}  +  F_{narrow_{MIS1}}  +  F_{narrow_{BIS2}}  +  F_{narrow_{BIS1}}  \\
+F_{delta}     &=  \int f_{LIS1}  \  L_{delta}
+\end{align*}
+
+
+%----------------------------------------
+
+\section{Monte Carlo Estimators}\label{Estimators}
+
+Our Monte Carlo integration approach will consist in sampling and
+evaluating all of these integrals. We now write the estimators that
+we will use to numerically integrate each of them.
+
+In the equations that follow, the light contribution ($L_{sub}$) of
+a Bsdf sample simply means the contribution of the closest light in
+the subset, in the direction of the sample, or zero if the closest
+light is not in the subset or is occluded from the point $x$ by
+geometry. The light contribution of a light sample is the
+contribution of that light sample or zero if it is occluded by
+geometry or any other light.
+
+We use a similar notation as in \cite{Veach:95}. $N_{L_{sub}}$ is
+the number of lights in the subset, $N_{B_{sub}}$ is the number of
+Bsdf lobes in the subset, and ${n_i}$ is the number of samples drawn
+from each light or Bsdf lobe $i$. Finally, $vis()$ is the shadowing
+function.
+
+
+\vspace{.5cm}
+\textbf{Estimators when sampling from the lights:}
+
+\vspace{.2cm}
+\textbf{LIS2:} Narrow lights x wide lobes.
+\begin{equation}
+F_{narrow_{LIS2}} =
+    \sum_{i}^{N_{L_{narrow}}}  \frac{1}{n_i}  \sum_{j}^{n_i}  \sum_{k}^{N_{B_{LIS2}}}
+        \frac{  L_i(X_{i,j}) }  { pdf_{L_i}(X_{i,j}) }
+        f_k(X_{i,j}) . vis(X_{i,j})
+        |\cos\theta_{X_{i,j}}|
+\end{equation}
+
+\textbf{LIS1:} Delta lights x non-delta lobes. The estimator is
+similar to $F_{narrow_{LIS2}}$ aside for the lobe subset involved.
+Since we only take a single sample per delta light and we're dealing
+with delta-functions, we have $pdf_{L_i}(X_i) = 1$. The estimator
+simplifies to:
+\begin{equation}
+F_{delta} =
+    \sum_{i}^{N_{L_{delta}}}  \sum_{k}^{N_{B_{LIS1}}}
+        L_i(X_i) f_k(X_i) . vis(X_i)
+        |\cos\theta_{X_i}|
+\end{equation}
+
+
+\vspace{.5cm}
+\textbf{Estimators when sampling from the Bsdf lobes:}
+
+\vspace{.2cm}
+\textbf{BIS2:} The union of wide and narrow lights x narrow lobes.
+\begin{equation}
+F_{wide_{BIS2}} + F_{narrow_{BIS2}} =
+    \sum_{i}^{N_{B_{BIS2}}}  \frac{1}{n_i}  \sum_{j}^{n_i}
+        \frac{  f_i(X_{i,j}) }  { pdf_{f_i}(X_{i,j}) }
+        L_{wide \bigcup narrow}(X_{i,j}) . vis(X_{i,j})\ 
+        |\cos\theta_{X_{i,j}}|
+\end{equation}
+
+\vspace{.2cm}
+\textbf{BIS1:} The union of wide and narrow lights x delta lobes. The
+estimator is similar to $F_{wide_{BIS2}} + F_{narrow_{BIS2}}$ aside for the
+subsets involved. Since we only take a single sample from each delta
+lobe and we're dealing with delta-functions, we have
+$pdf_{f_{BIS1}}(X_i) = 1$. The estimator simplifies to:
+\begin{equation}
+F_{narrow_{BIS1}} + F_{wide_{BIS1}} =
+    \sum_{i}^{N_{B_{BIS1}}}
+        f_i(X_i) \ 
+        L_{wide \bigcup narrow}(X_i) . vis(X_i)\ 
+        |\cos\theta_{X_i}|
+\end{equation}
+
+\vspace{.2cm}
+\textbf{BISI:} Indirect lighting x all lobes. Note that evaluating
+$L_{indirect}$ requires tracing a ray in the direction of the sample and
+evaluating $L_{indirect}$ recursively. If the ray hits a light source, then
+$L_{indirect}$ evaluates to zero to avoid counting the hit light contribution
+again.
+\begin{equation}
+F_{indirect} =
+    \sum_{i}^{N_{B_{BISI}}}  \frac{1}{n_i}  \sum_{j}^{n_i}
+        \frac{  f_i(X_{i,j}) }  { pdf_{f_i}(X_{i,j}) }
+        L_{indirect}(X_{i,j})
+        |\cos\theta_{X_{i,j}}|
+\end{equation}
+
+
+\vspace{.5cm}
+\textbf{Estimators when sampling from both the Bsdf lobes and the lights:}
+
+\vspace{.2cm}
+\textbf{MIS1:} Narrow lights x medium lobes. We refer the reader
+to \cite{Veach:95}, equation (11) for the combined estimator:
+\begin{align*}
+F_{narrow_{MIS1}}
+    &= \sum_{i}^{N_{B_{MIS1}}}  \frac{1}{n_i}  \sum_{j}^{n_i}
+        w_{f_{i}L_{narrow}}(X_{i,j})
+        \frac{  f_i(X_{i,j}) }  { pdf_{f_i}(X_{i,j}) }
+        L_{narrow}(X_{i,j}) . vis(X_{i,j})  |\cos\theta_{X_{i,j}}|  \\
+    &+ \sum_{i}^{N_{L_{narrow}}}  \frac{1}{n_i}  \sum_{j}^{n_i}  \sum_{k}^{N_{B_{MIS1}}}
+        w_{L_i f_k}(X_{i,j})
+        \frac{ L_i(X_{i,j}) }  { pdf_{L_i}(X_{i,j}) }
+        f_k(X_{i,j}) . vis(X_{i,j})  |\cos\theta_{X_{i,j}}|
+\end{align*}
+The $w_{sub1 sub2}$ can be defined generally using the balance
+heuristic as in \cite{Veach:95}, equation (12) and using the power
+heuristic as defined in equation (14), although the latter has been
+simplified. Since we want to use the power heuristic, we can
+re-write (14) without any simplification and substituting the $c_i$
+by $n_i$ (this is unbiased as long as $n_i > 0$).
+\begin{align*}
+w_{f_{i}L_k}(x)  &=  \frac{ {(n_i * pdf_{f_i}(x))}^\beta }
+    { {(n_i * pdf_{f_i}(x))}^\beta + {(n_k * pdf_{L_k}(x))}^\beta } \\
+w_{L_i f_k}(x)     &=  \frac{ {(n_i * pdf_{L_i}(x))}^\beta }
+    { {(n_i * pdf_{L_i}(x))}^\beta + {(n_k * pdf_{f_k}(x))}^\beta }
+\end{align*}
+
+
+\vspace{.2cm}
+\textbf{MIS2:} Wide lights x Wide and medium lobes. This estimator is the 
+same as the estimator for \textbf{MIS1}, with the following substitutions:
+\begin{align*}
+ & narrow \rightarrow wide \\
+ & MIS1 \rightarrow MIS2
+\end{align*}
+
+
+%----------------------------------------
+
+\section{Sampling Budget}\label{Budget}
+
+Our goal is to take a single set of Bsdf samples and a single set of
+light-set samples and use them to evaluate all the estimators
+given in the previous section that apply in a given situation.
+
+We compute a sample budget for each Bsdf lobe and for each light in
+turn. Initially, this is driven by user-adjustable parameters at the
+scene level. Parameters such as "direct bsdf samples", "indirect
+bsdf samples" and "indirect subsurface samples" will be used to
+derive maximum per lobe sample counts. A scene parameter "light
+samples" and an optional per-light "sampling factor" attribute will
+drive per-light sample budgets.
+
+Then, the following properties may affect the sample budget further:
+lobe type, albedo approximation, roughness, light type, light solid
+angle, light intensity, SIMD width of the hardware, sample
+stratification constraints, random number generator constraints.
+
+\textbf{TODO:} Add more detail on how each of these parameters
+affect the sample budget.
+
+The sample budget will finally be affected by the current path
+throughput. In short, the deeper the light bounce recursion, the
+lower the path throughput and the lower the sample budget will be.
+
+\textbf{TODO:} If we integrate subsurface scattering with indirect
+lighting and we do have a diffuse Bsdf lobe too, we will re-use the
+same samples. Otherwise we will add an additional set of samples
+(with a cosine wweighted distribution) for this purpose.
+
+
+%----------------------------------------
+
+\section{Sample Indexing}\label{Indexing}
+
+We then organize and index the samples according to the light and
+Bsdf lobe partitioning, in a way that allows us to simultaneously
+and efficiently compute all the needed estimators defined in section
+\ref{Estimators}.
+
+\textbf{TODO:} Add sample indexing figure.
+
+
+%----------------------------------------
+
+\section{Algorithm}\label{Algorithm}
+
+\textbf{TODO:} Add integrator algorithm here.
+
+
+%----------------------------------------
+
+\bibliographystyle{abbrv}
+\bibliography{SamplingStrategy}
+
+
+%------------------------------------------------------------------------------
+
+\end{document}
+
+
+%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
+%------------------------------------------------------------------------------
+
+Notes / TODOs:
+--------------
+
+// TODO: Splitting in Veach's thesis calls for having the splitting factor be
+// a function of the magnitude of the estimated contribution of a sample
+// (i.e. function of path throughput, total emitted power for a light, albedo
+// for a bsdf ?) See [Arvo and Kirk 1990]
+
+// TODO: determine a weight alpha for each light, based on estimated light
+// contribution. This is tricky with glossy bsdf's, so set alpha = 1/lightCount
+// for now
+
+- Choose != number of samples for each sampling strategy
+  - Lights:
+    - Per light multiplier or min & max samples ?
+    - Compare with "linear alpha" approach of [13] where alpha = estimate is bsdf * Le * geometry term ignoring visibility
+    - Light culling:
+      - cull luminaires / samples entirely below surface plane
+      - cull further with a spatial structure [13] with Lbright / Ldim light lists in each cell (works only for diffuse)
+  - Bsdf
+    - Per lobe multiplier or min & max samples ?
+    - Cull bsdf samples below the surface
+    - See light-bvh for culling bsdf samples / testing which light they hit (for MIS) in Christophe's course notes
+
+x Will we need a proper lobe sampling implementation for later bounces ?
+  --> go with 1 sample per lobe like we do now and let Russian Roulette do its job
+
+- Compute good LIS / BIS / MIS cutoffs numerically, based on roughness and area light size ?
+
+- Is RIS worth it with SIMD ?
+  - "reduce shadow rays, especially when lots of light samples are needed to resolve high frequency in light EDF"
+  - How does it mesh with MIS ?
+- [12] P. Shirley and C. Wang. Distribution ray tracing: theory and prac- tice. Proceedings of the Third Eurographics Workshop on Rendering,
+Bristol, England, 33\ufffd44 (1992).
+- [13] P. Shirley, C. Wang, and K. Zimmerman. Monte Carlo Techniques
+for Direct Lighting Calculations. ACM Transactions on Graphics, to
+appear.
+

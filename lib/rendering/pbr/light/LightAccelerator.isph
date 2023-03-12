@@ -1,0 +1,90 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include "Light.isph"
+#include "LightAccelerator.hh"
+#include <moonray/rendering/pbr/sampler/SequenceID.isph>
+
+#include <embree3/rtcore.isph>
+#include <embree3/rtcore_ray.isph>
+
+struct LightAccelerator
+{
+    LIGHT_ACCELERATOR_MEMBERS;
+};
+
+
+varying int
+LightAccelerator_intersect(uniform PbrTLState * uniform pbrTls,
+                           const uniform LightAccelerator * uniform acc,
+                           const varying Vec3f &P,
+                           const varying Vec3f &cullingNormal,
+                           const varying Vec3f &wi,
+                           varying float time,
+                           varying float maxDistance,
+                           varying bool includeRayTerminationLights,
+                           const varying int visibilityMask,
+                           varying IntegratorSample1D &samples,
+                           varying int depth,
+                           varying LightIntersection &isect,
+                           varying int &numHits,
+                           const uniform int * uniform lightIdMap);
+
+varying int
+LightAccelerator_intersectBounded(const uniform LightAccelerator * uniform acc,
+                                  const varying Vec3f &P,
+                                  const varying Vec3f &cullingNormal,
+                                  const varying Vec3f &wi,
+                                  varying float time,
+                                  varying float maxDistance,
+                                  varying bool includeRayTerminationLights,
+                                  const varying int visibilityMask,
+                                  varying IntegratorSample1D &samples,
+                                  varying int depth,
+                                  varying LightIntersection &isect,
+                                  varying int &numHits,
+                                  const uniform int * uniform lightIdMap);
+
+varying int
+LightAccelerator_intersectUnbounded(uniform PbrTLState * uniform pbrTls,
+                                    const uniform LightAccelerator * uniform acc,
+                                    const varying Vec3f &P,
+                                    const varying Vec3f &wi,
+                                    varying float time,
+                                    varying float maxDistance,
+                                    varying bool includeRayTerminationLights,
+                                    const varying int visibilityMask,
+                                    varying IntegratorSample1D &samples,
+                                    varying int depth,
+                                    varying LightIntersection &closestIsect,
+                                    varying int &numHits,
+                                    const uniform int * uniform lightIdMap);
+
+inline bool
+LightAccelerator_useAcceleration(const uniform LightAccelerator * uniform acc)
+{ 
+    return acc->mBoundedLightCount >= VECTOR_THRESHOLD_COUNT;
+}
+
+extern "C" void
+CPP_lightIntersect(uniform RTCScene scene, varying RTCRayHit& rayHit,
+                   const varying int* uniform includeRayTerminationLights,
+                   varying float* uniform isectData0,
+                   varying float* uniform isectData1,
+                   varying SequenceID* uniform sequenceID,
+                   varying uint32_t* uniform totalSamples,
+                   varying uint32_t* uniform sampleNumber,
+                   varying int* uniform depth,
+                   varying float* uniform isectDistance,
+                   varying int* uniform numHits,
+                   varying float* uniform pdf,
+                   varying int* uniform primID,
+                   varying int* uniform geomID,
+                   const varying Vec3f* uniform shadingNormal,
+                   const uniform int* uniform lightIdMap);
+

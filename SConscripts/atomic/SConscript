@@ -1,0 +1,7 @@
+Import('env')
+from os import environ
+
+if int(environ['REZ_GCC_MAJOR_VERSION']) >= 6:
+    env.DWAComponent('atomic', LINKFLAGS=['/usr/lib64/libatomic.so.1.0.0'])
+else:
+    env.DWAComponent('atomic')

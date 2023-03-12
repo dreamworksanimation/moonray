@@ -1,0 +1,114 @@
+SceneVariables {
+    ["res"] = 2,
+    ["pixel samples"] = 8,
+    ["light samples"] = 2,
+    ["bsdf samples"] = 2,
+    ["bssrdf samples"] = 1,
+    ["max depth"] = 5,
+    ["max diffuse depth"] = 2,
+    ["max glossy depth"] = 2,
+    ["max mirror depth"] = 3,
+    ["russian roulette threshold"] = 0.0001,
+    ["lights visible in camera"] = true,
+}
+
+Camera("Camera") {
+    ["node xform"] = rotate(90, 1, 0, 0) * translate(0, 0, 0),
+    ["focal"] = 30,
+}
+
+
+------------------------------------------------------------------------------
+
+RdlMeshGeometry("Square") {
+    ["vertex_list"] = {
+        Vec3(-0.5, 0.0, -0.5),
+        Vec3( 0.5, 0.0, -0.5),
+        Vec3( 0.5, 0.0,  0.5),
+        Vec3(-0.5, 0.0,  0.5)
+    },
+    ["normal_list"] = {
+        Vec3(0, 1, 0),
+        Vec3(0, 1, 0),
+        Vec3(0, 1, 0),
+        Vec3(0, 1, 0)
+    },
+    ["uv_list"] = {
+        Vec2(0.0, 0.0),
+        Vec2(1.0, 0.0),
+        Vec2(1.0, 1.0),
+        Vec2(0.0, 1.0)
+    },
+    ["vertices_by_index"] = {0, 1, 2, 3},
+    ["face_vertex_count"] = {4},
+}
+
+
+BaseMaterial("BaseMtl") {
+    ["diffuse color"] = Rgb(1, 1, 1),
+    ["diffuse factor"] = 1,
+    ["specular factor"] = 0,
+}
+
+
+------------------------------------------------------------------------------
+
+EnvLight("EnvLight") {
+    ["on"] = true,
+    ["color"] = Rgb(1, 1, 1),
+    ["intensity"] = 0.05,
+    ["exposure"] = 0,
+    ["texture"] = "",
+}
+
+SphereLight("SphereLight") {
+    ["node xform"] = translate(0, 10, 0),
+    ["on"] = true,
+    ["units"] = 1,
+    ["color"] = Rgb(0.9, 0.1, 0.1),
+    ["intensity"] = 1,
+    ["exposure"] = 2,
+    ["texture"] = "",
+    ["radius"] = 2,
+}
+
+RectLight("RectLight") {
+    ["node xform"] = rotate(-90, 1, 0, 0) * translate(1.5, 8.7, 0),
+    ["on"] = true,
+    ["units"] = 1,
+    ["color"] = Rgb(0.1, 0.9, 0.1),
+    ["intensity"] = 1,
+    ["exposure"] = 4,
+    ["texture"] = "",
+    ["width"] = 2,
+    ["height"] = 2,
+}
+
+DiskLight("DiskLight") {
+    ["node xform"] = rotate(-90, 1, 0, 0) * translate(-1, 8.25, 0),
+    ["on"] = true,
+    ["units"] = 1,
+    ["color"] = Rgb(0.1, 0.1, 0.9),
+    ["intensity"] = 1,
+    ["exposure"] = 4,
+    ["texture"] = "",
+    ["radius"] = 1.5,
+}
+
+LightSet("LightSetA") {
+    EnvLight("EnvLight"),
+    SphereLight("SphereLight"),
+    RectLight("RectLight"),
+    DiskLight("DiskLight"),
+}
+
+
+------------------------------------------------------------------------------
+
+GeometrySet("geometryset") {
+    RdlMeshGeometry("Square"),
+}
+
+Layer("Layer") {
+    {RdlMeshGeometry("Square"),  "", BaseMaterial("BaseMtl"), LightSet("LightSetA")},
+}

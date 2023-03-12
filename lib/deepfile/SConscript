@@ -1,0 +1,65 @@
+Import('env')
+import os
+
+# Name of the library
+libName = 'deepfile'
+
+publicHeaders = [
+    'DcxAPI.h',
+    'DcxChannelAlias.h',
+    'DcxChannelContext.h',
+    'DcxChannelDefs.h',
+    'DcxChannelSet.h',
+    'DcxDeepFlags.h',
+    'DcxDeepImageTile.h',
+    'DcxDeepPixel.h',
+    'DcxDeepTile.h',
+    'DcxImageFormat.h',
+    'DcxPixel.h',
+    'DcxPixelTile.h',
+    'DcxSpMask.h',
+    'version.h'
+]
+
+# grab all to be compiled source files that are used for compiling this library.
+sourceFiles = [
+    'DcxChannelSet.cpp',
+    'DcxDeepImageTile.cpp',
+    'DcxDeepPixel.cpp',
+    'DcxDeepTile.cpp',
+    'DcxImageFormat.cpp',
+    'DcxPixelTile.cpp'
+]
+
+# Rather than using bart to find OpenEXR we're pointing at an explicit
+# library install (see bottom of file)
+components = [
+    'OpenEXR',
+    'IlmImf',
+    'Iex',
+    'Imath',
+    'IlmThread',
+    'Half',
+    'IlmImfUtil'
+]
+env.DWAUseComponents(components)
+
+env.DWAInstallInclude(publicHeaders, 'moonray/deepfile')
+
+# Build and install the SHARED library.
+sharedlibs = env.DWASharedLibrary(libName, sourceFiles)
+sharedinstalls = env.DWAInstallLib(sharedlibs)
+
+# Define the component for this SHARED library.
+env.DWAComponent(
+    libName,
+    COMPONENTS = components,
+    CPPPATH    = [env.Dir('#include')],
+    LIBS       = sharedinstalls
+)
+env.DWAInstallSConscriptStub(
+    libName,
+    COMPONENTS = components,
+    CPPPATH    = [env.Dir('$INSTALL_DIR/include')],
+    LIBS       = sharedinstalls
+)

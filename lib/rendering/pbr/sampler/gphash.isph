@@ -1,0 +1,55 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+#include <scene_rdl2/render/util/BitUtils.isph>
+
+
+// Multiply 2^exponent - 1 by factor
+inline varying uint32_t mersenneMultiply(uniform uint32_t exponent, varying uint32_t factor)
+{
+    varying uint32_t result = factor << exponent;
+    result -= factor;
+    return result;
+}
+
+inline varying uint32_t hashCombine(varying uint32_t seed, varying uint32_t v)
+{
+    return seed ^ (v + 0x9e3779b9u + (seed<<6u) + (seed>>2u));
+}
+
+inline varying uint32_t hashCombine(varying uint32_t seed, uniform uint32_t v)
+{
+    return seed ^ (v + 0x9e3779b9u + (seed<<6u) + (seed>>2u));
+}
+
+// From "Evolving Hash Functions by Means of Genetic Programming" by Estebanez,
+// Hernadez-Castro, and Ribagorda
+inline varying uint32_t gphash(varying uint32_t n, varying uint32_t seed = 65521u)
+{
+    // This seed modification is a departure from the paper to improve cascades
+    // on sequential seed values.
+    seed ^= (0xb994ef91u + (seed<<6u) + (seed>>2u));
+
+    const uniform uint32_t magicNumber = 0x6CF575C5u;
+    varying uint32_t AUX = magicNumber * (seed + n);
+    AUX = rotateRight(AUX, 18u);
+    return magicNumber * AUX;
+}
+
+// From "Evolving Hash Functions by Means of Genetic Programming" by Estebanez,
+// Hernadez-Castro, and Ribagorda
+inline varying uint32_t gphash(varying uint32_t n, uniform uint32_t seed = 65521u)
+{
+    // This seed modification is a departure from the paper to improve cascades
+    // on sequential seed values.
+    seed ^= (0xb994ef91u + (seed<<6u) + (seed>>2u));
+
+    const uniform uint32_t magicNumber = 0x6CF575C5u;
+    varying uint32_t AUX = magicNumber * (seed + n);
+    AUX = rotateRight(AUX, 18u);
+    return magicNumber * AUX;
+}
+

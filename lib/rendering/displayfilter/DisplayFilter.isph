@@ -1,0 +1,42 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file DisplayFilter.isph
+
+#pragma once
+
+#include "InputBuffer.isph"
+#include "DisplayFilterMacros.isph"
+
+#include "DisplayFilterState.hh"
+
+struct DisplayFilterState
+{
+    DISPLAYFILTER_STATE_MEMBERS;
+};
+
+export uniform uint32_t
+DisplayFilterState_hvdValidation(uniform bool verbose)
+{
+    DISPLAYFILTER_STATE_VALIDATION(VLEN);
+}
+
+void
+DisplayFilterState_init(varying DisplayFilterState& state,
+                        varying unsigned int outputPixelX,
+                        varying unsigned int outputPixelY,
+                        varying unsigned int width,
+                        varying unsigned int height)
+{
+    state.mOutputPixelX = outputPixelX;
+    state.mOutputPixelY = outputPixelY;
+    state.mImageWidth = width;
+    state.mImageHeight = height;
+}
+
+varying float DISPLAYFILTER_mixAndMask(varying float mix,
+                                       const uniform InputBuffer const * uniform mask,
+                                       varying unsigned int x,
+                                       varying unsigned int y,
+                                       uniform bool invert);
+

@@ -1,0 +1,18 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_decaylightfilter'
+target = 'DecayLightFilter.so'
+sources = ['DecayLightFilter.cc']
+components = [
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), sources)
+env.DWAInstallRdl2Dso(dso)
+env.DWAComponent(name, COMPONENTS=components)

@@ -1,0 +1,26 @@
+{
+    "attributes": {
+        "attrMask": {
+            "name": "mask",
+            "type": "SceneObject*",
+            "interface": "INTERFACE_RENDEROUTPUT | INTERFACE_DISPLAYFILTER",
+            "comment": "RenderOutput used to mask the output, revealing input1"
+        },
+        "attrInvertMask": {
+            "name": "invert_mask",
+            "type": "Bool",
+            "default": "false",
+            "group": "Advanced",
+            "comment": "Invert the value of the mask"
+        },
+        "attrMix": {
+            "name": "mix",
+            "type": "Float",
+            "default": "1.0f",
+            "min": "0.0f",
+            "max": "1.0f",
+            "group": "Advanced",
+            "comment": "Blend [0,1] between input and output"
+        }
+    }
+}

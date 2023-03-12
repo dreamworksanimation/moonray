@@ -1,0 +1,77 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfFabricVelvet.isph
+#pragma once
+
+#include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
+#include <moonray/rendering/shading/ispc/bsdf/BsdfSlice.isph>
+
+#include <scene_rdl2/common/platform/IspcUtil.isph>
+#include <scene_rdl2/common/math/ispc/ReferenceFrame.isph>
+
+// Derive a directional differential scale that varies according to roughness
+// Experimentally, we found that we want 1.0 when roughness is 0
+// and 8 when it is 1.
+static const float FabricV_sdDFactorMin = 1.0f;
+static const float FabricV_sdDFactorMax = 8.0f;
+static const float FabricV_sdDFactorSlope = FabricV_sdDFactorMax - FabricV_sdDFactorMin;
+
+enum VelvetConstants {
+    VELVET_NORMALIZATION_TABLE_SIZE  = 20
+};
+
+struct FabricVelvetBsdfLobe
+{
+    BSDF_LOBE_BASE;
+    varying ReferenceFrame mFrame;
+    varying float mRoughness;
+    varying float mSpecularExponent;
+    varying Color mColor;
+    varying float mNormalizationFactor;
+    varying float mdDFactor;
+};
+
+varying Color
+FabricVelvetBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                    const varying BsdfSlice &slice,
+                    const Vec3f &wi,
+                    varying float * uniform pdf);
+
+varying Color
+FabricVelvetBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            varying float r1, varying float r2,
+                            varying Vec3f &wi, varying float &pdf);
+
+inline varying Color
+FabricVelvetBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                      const varying BsdfSlice &slice,
+                      varying float r1, varying float r2,
+                      varying Vec3f &wi, varying float &pdf);
+
+varying Color
+FabricVelvetBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice);
+
+void
+FabricVelvetBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                   const varying Vec3f &wo,
+                                   const varying Vec3f &wi,
+                                   varying float r1, varying float r2,
+                                   const varying Vec3f &dNdx,
+                                   const varying Vec3f &dNdy,
+                                   varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+uniform bool
+FabricVelvetBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                 uniform BsdfLobeProperty property,
+                                 varying float * uniform dest);
+
+/// @brief allocate and add a diffuse fabric lobe to a bsdf
+void
+FabricVelvetBsdfLobe_init(varying FabricVelvetBsdfLobe * uniform lobe,
+                          const varying Vec3f &normal,
+                          const varying float roughness,
+                          const varying Color& color);
+

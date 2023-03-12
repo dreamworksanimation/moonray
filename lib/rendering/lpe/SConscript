@@ -1,0 +1,58 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = [
+    'osl/automata.cc',
+    'osl/closure.cc',
+    'osl/lpexp.cc',
+    'osl/lpeparse.cc',
+    'StateMachine.cc',
+    ]
+
+incdir = [env.Dir('#include')]
+
+components = [
+    'oiio',
+    'scene_rdl2'
+    ]
+
+env.DWAUseComponents(components)
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+# ISPC source files
+ispcOutput, header = env.IspcShared([
+        'StateMachine.ispc',
+        ])
+sources += ispcOutput
+
+# --------------------------------------------------------------------------
+
+if 'icc' in env['CC']:
+    env.AppendUnique(CXXFLAGS = [
+        '-wd1599', # declaration hides variable
+        '-wd1684', # conversion from pointer to same-sized integral type
+        ])
+
+env.Append(CPPPATH=incdir)
+env.DWAForceWarningAsError()
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWALinkValidate(name)
+
+# --------------------------------------------------------------------------
+env.DWAComponent(name,
+                 LIBS=target,
+                 CPPPATH = incdir,
+                 COMPONENTS = components)
+env.DWAInstallSConscriptStub(name,
+                             LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)

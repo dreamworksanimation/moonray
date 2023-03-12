@@ -1,0 +1,16 @@
+Import('env')
+# ------------------------------------------
+name       = 'brdf_resample'
+sources    = env.DWAGlob('*.cc')
+components = [
+    'atomic',
+    'rendering_rndr',
+    'render_util',
+    'render_logging',
+    'rendering_shading'
+]
+# ------------------------------------------
+()
+env.DWAUseComponents(components)
+prog = env.DWAProgram(name, sources)
+env.DWAInstallBin(prog)

@@ -1,0 +1,23 @@
+Import('env')
+
+name = 'statistics'
+public_headers = [
+                    'integer_sequence.h',
+                    'Formatters.h',
+                    'Util.h',
+                    'CountingStream.h',
+                    'TableFlags.h',
+                    'StatsTableOutput.h',
+                    'StatsTableOutputInternal.h',
+                    'IOSFlags.h',
+                    'StatsTable.h'
+                 ]
+source = [
+            'StatsTableOutput.cc',
+            'Util.cc'
+         ]
+
+env.DWAInstallInclude(public_headers, 'moonray/statistics')
+target = env.DWASharedLibrary(name, source, NO_VARIANT_NAME=True)
+installed_lib = env.DWAInstallLib(target)
+env.DWAInstallComponent(name, LIBS=installed_lib, CPPPATH=['$INSTALL_DIR/include'])

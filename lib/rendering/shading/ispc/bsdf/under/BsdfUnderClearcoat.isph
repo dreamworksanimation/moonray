@@ -1,0 +1,156 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfUnderClearcoat.isph
+
+#pragma once
+
+#include "BsdfUnder.isph"
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+/// @class UnderClearcoatBsdfLobe BsdfUnder.h <pbr/BsdfUnder.h>
+/// @brief An "under" bsdf lobe adapter, which attenuates the lobe it wraps
+/// according to the clearcoat attenuation color
+struct UnderClearcoatBsdfLobe
+{
+    BSDF_UNDER_LOBE_BASE;
+
+    // Fresnel Object that reverses the IORs for rays exiting Clearcoat
+    const varying Fresnel* uniform mExitingFresnel;
+
+    // IOR etaOutsideMedium/etaInsideMedium
+    float mNeta;
+
+    // When sampling the Under lobe through the Clearcoat interface,
+    // it is very likely to run into situations where the "sampled" vector
+    // from the under lobe results in TIR when exiting the Clearcoat interface and
+    // might have to be discarded. At this point, in lieu of generating another sample
+    // until we find one that exits, or discarding this sample entirely,
+    // we assume that the ray undergoes TIR through the interface, bounces around
+    // multiple times and eventually comes out through the interface in the same
+    // direction. This helps energy conservation and stops the under lobe from
+    // going too dark because of discarded samples.
+    // Note that we disable this option when unit testing the UnderClearcoat interface
+    // to ensure the consistency tests pass for the sample() and eval() functions.
+    bool mPassThroughTIRWhenSampling;
+};
+
+varying Color
+UnderClearcoatBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                            const varying BsdfSlice &slice,
+                            const Vec3f &wi,
+                            varying float * uniform pdf);
+
+varying Color
+UnderClearcoatBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                              const varying BsdfSlice &slice,
+                              varying float r1, varying float r2,
+                              varying Vec3f &wi, varying float &pdf);
+
+varying Color
+UnderClearcoatBsdfLobe_albedo(const varying BsdfLobe * uniform lobe,
+                              const varying BsdfSlice &slice);
+
+void
+UnderClearcoatBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
+                                     const varying Vec3f &wo,
+                                     const varying Vec3f &wi,
+                                     varying float r1, varying float r2,
+                                     const varying Vec3f &dNdx,
+                                     const varying Vec3f &dNdy,
+                                     varying Vec3f &dDdx, varying Vec3f &dDdy);
+
+varying Color
+UnderClearcoatBsdfLobe_computeTransmission(const varying UnderClearcoatBsdfLobe * uniform under,
+                                           float cosThetaR1,
+                                           float cosThetaR2);
+
+uniform bool
+UnderClearcoatBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
+                                   uniform BsdfLobeProperty property,
+                                   varying float * uniform dest);
+
+inline void
+UnderClearcoatBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                            const uniform uint8_t ntab)
+{
+    const varying UnderClearcoatBsdfLobe * uniform me =
+        (const varying UnderClearcoatBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[UnderClearcoatBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfUtil_indent(ntab+1); print("N: % % %\n", BSDF_UTIL_EXTRACT(me->mN.x),
+                                                 BSDF_UTIL_EXTRACT(me->mN.y),
+                                                 BSDF_UTIL_EXTRACT(me->mN.z));
+    BsdfUtil_indent(ntab+1); print("neta: %\n", BSDF_UTIL_EXTRACT(me->mNeta));
+    BsdfUtil_indent(ntab+1); print("thickness: %\n", BSDF_UTIL_EXTRACT(me->mThickness));
+    BsdfUtil_indent(ntab+1); print("attenuation color: % % %\n", BSDF_UTIL_EXTRACT(me->mAttenuationColor.r),
+                                                                 BSDF_UTIL_EXTRACT(me->mAttenuationColor.g),
+                                                                 BSDF_UTIL_EXTRACT(me->mAttenuationColor.b));
+    BsdfUtil_indent(ntab+1); print("pass through TIR when sampling: ");
+    if (me->mPassThroughTIRWhenSampling) {
+        print("true\n");
+    } else {
+        print("false\n");
+    }
+
+
+    BsdfLobe_show(me->mUnder, ntab+1);
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add an under clearcoat lobe to a bsdf
+inline varying BsdfLobe * uniform
+UnderClearcoatBsdfLobe_init(varying UnderClearcoatBsdfLobe * uniform lobe,
+                            const varying BsdfLobe * uniform under,
+                            const varying Vec3f &normal,
+                            const varying Fresnel* uniform exitingFresnel,
+                            const varying float etaI,
+                            const varying float etaT,
+                            const varying float thickness,
+                            const varying Color attenuationColor,
+                            const varying float attenuationWeight,
+                            const uniform bool passthroughTIR = true)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_UNDER_CLEARCOAT,
+                  /* type = */ BsdfLobe_getType(under),
+                  /* differentialFlags = */ BsdfLobe_getDifferentialFlags(under),
+                  /* isSpherical = */ BsdfLobe_getIsSpherical(under),
+                  /* propertyFlags = */ BsdfLobe_getPropertyFlags(under),
+                  /* evalFn = */ UnderClearcoatBsdfLobe_eval,
+                  /* evalFn = */ UnderClearcoatBsdfLobe_sample,
+                  /* evalFn = */ UnderClearcoatBsdfLobe_albedo,
+                  /* evalFn = */ UnderClearcoatBsdfLobe_differentials,
+                  /* getPropertyFn = */ UnderClearcoatBsdfLobe_getProperty,
+                  /* showFn = */ UnderClearcoatBsdfLobe_show);
+
+
+    lobe->mN = normal;
+    lobe->mNeta = etaI * rcp(etaT);
+    lobe->mThickness = thickness;
+    lobe->mAttenuationColor = attenuationColor;
+    lobe->mAttenuationWeight = attenuationWeight;
+
+    lobe->mExitingFresnel = exitingFresnel;
+
+    lobe->mPassThroughTIRWhenSampling = passthroughTIR;
+
+    lobe->mUnder = under;
+    // This lobe needs to have the same mask as the under lobe
+    // but keep track on whether this UnderLobe is active for
+    // whether to evaluate it or not
+    lobe->mUnderLobeMask = lobe->mMask;
+    lobe->mMask = under->mMask;
+}
+

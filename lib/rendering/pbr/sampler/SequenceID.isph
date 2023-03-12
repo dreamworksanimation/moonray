@@ -1,0 +1,652 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include "SamplingPreprocess.h"
+
+#include "gphash.isph"
+#include "Permute.isph"
+#include "Sample.isph"
+#include "Sampling.isph"
+#include <moonray/rendering/pbr/Types.isph>
+
+
+#include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
+
+enum SequenceType
+{
+    SequenceTypeBsdf,
+    SequenceTypeLight,
+    SequenceTypeRussianRouletteBsdf,
+    SequenceTypeRussianRouletteLight,
+    SequenceTypeBssrdfLocal,
+    SequenceTypeBssrdfLocalChannel,
+    SequenceTypeBssrdfLocalBsdf,
+    SequenceTypeBssrdfLocalLight,
+    SequenceTypeBssrdfGlobal,
+    SequenceTypeBssrdfGlobalBsdf,
+    SequenceTypeBssrdfGlobalLight,
+    SequenceTypeVolumeAttenuation,
+    SequenceTypeVolumeScattering,
+    SequenceTypeVolumeEmission,
+    SequenceTypeVolumeDistance,
+    SequenceTypeVolumeEquiAngular,
+    SequenceTypeVolumePhase,
+    SequenceTypeIndexSelection,
+    SequenceTypeNextEventEstimation,
+    SequenceTypeIndirectLighting,
+    SequenceTypeLightFilter,
+    SequenceTypeLightFilter3D
+};
+
+// Sometimes when we sample, we don't know how many samples we will eventually take. If we permute 4 elements at a time,
+// we still get correlation. If we permute 8 elements, we clear up (a lot of) the correlation. This means that we need a
+// multiple of 8 samples to make the distribution "perfect", but we usually generate a lot more than that, and I'm not
+// too bothered if the tail end of the samples aren't as well distributed as they could be.
+// E.g.
+// 0 1 2 3 4 5 6 7 | 8 9 a b c d e f
+// May become
+// 5 3 7 0 1 4 2 6 | a d 9 8 e f b c
+// So every time we take 8 samples, we are just as well distributed as if we hadn't shuffled at all.
+static const uniform uint32_t kDefaultPermutationSize = 8u;
+
+//-----------------------------------------------------------------------------
+
+
+inline varying float
+statelessRNG(varying uint32_t seed, varying uint32_t n)
+{
+    return bitsToFloat(useHighOrderBits(gphash(n, seed)));
+}
+
+//-----------------------------------------------------------------------------
+
+struct SequenceID
+{
+    uint32_t mHash;
+};
+
+inline uniform uint32_t computeHashImpl()
+{
+    // A Mersenne prime. We don't really expect a lot of calls to this level, but a Mersenne prime is probably as
+    // good a choice as any: it's prime, so it will give fairly good strides if used in that fashion, but it's
+    // Mersenne: A smart compiler can optimize any multiplications.
+    return 2147483647u;
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0)
+{
+    const uniform uint32_t mersennePrime7Exp = 19u;
+    const uniform uint32_t mersennePrime8Exp = 31u;
+    const varying uint32_t h = hashCombine(0x31e149a2u, (uint32_t)t0);
+    return mersenneMultiply(mersennePrime8Exp, mersenneMultiply(mersennePrime7Exp, h));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0, varying uint32_t t1)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0, varying uint32_t t1, varying uint32_t t2)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0,
+                                        varying uint32_t t1,
+                                        varying uint32_t t2,
+                                        varying uint32_t t3)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2, t3)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0,
+                                        varying uint32_t t1,
+                                        varying uint32_t t2,
+                                        varying uint32_t t3,
+                                        varying uint32_t t4)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2, t3, t4)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0,
+                                        varying uint32_t t1,
+                                        varying uint32_t t2,
+                                        varying uint32_t t3,
+                                        varying uint32_t t4,
+                                        varying uint32_t t5)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2, t3, t4, t5)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0,
+                                        varying uint32_t t1,
+                                        varying uint32_t t2,
+                                        varying uint32_t t3,
+                                        varying uint32_t t4,
+                                        varying uint32_t t5,
+                                        varying uint32_t t6)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2, t3, t4, t5, t6)), computeHashImpl(t0));
+}
+
+inline varying uint32_t computeHashImpl(varying uint32_t t0,
+                                        varying uint32_t t1,
+                                        varying uint32_t t2,
+                                        varying uint32_t t3,
+                                        varying uint32_t t4,
+                                        varying uint32_t t5,
+                                        varying uint32_t t6,
+                                        varying uint32_t t7)
+{
+    return hashCombine(hashCombine(computeHashImpl(t0), computeHashImpl(t1, t2, t3, t4, t5, t6, t7)), computeHashImpl(t0));
+}
+
+
+inline varying uint32_t computeHash()
+{
+    return computeHashImpl();
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0)
+{
+    // See the notes for the C++ one-argument version of
+    // SequenceID::computeHash. We're mirroring the functionality here. The C++
+    // version uses variadic templates, which, if not for this overload,
+    // concatenates the single argument with itself, leading to a rather poor
+    // distribution.
+    const uniform uint32_t mersennePrime7Exp = 19u;
+    const uniform uint32_t mersennePrime8Exp = 31u;
+    const varying uint32_t h = hashCombine((uint32_t)t0, 0x72407263u);
+    return mersenneMultiply(mersennePrime8Exp, mersenneMultiply(mersennePrime7Exp, h));
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0, varying uint32_t t1)
+{
+    return computeHashImpl(t0, t1);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0, varying uint32_t t1, varying uint32_t t2)
+{
+    return computeHashImpl(t0, t1, t2);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0,
+                                    varying uint32_t t1,
+                                    varying uint32_t t2,
+                                    varying uint32_t t3)
+{
+    return computeHashImpl(t0, t1, t2, t3);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0,
+                                    varying uint32_t t1,
+                                    varying uint32_t t2,
+                                    varying uint32_t t3,
+                                    varying uint32_t t4)
+{
+    return computeHashImpl(t0, t1, t2, t3, t4);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0,
+                                    varying uint32_t t1,
+                                    varying uint32_t t2,
+                                    varying uint32_t t3,
+                                    varying uint32_t t4,
+                                    varying uint32_t t5)
+{
+    return computeHashImpl(t0, t1, t2, t3, t4, t5);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0,
+                                    varying uint32_t t1,
+                                    varying uint32_t t2,
+                                    varying uint32_t t3,
+                                    varying uint32_t t4,
+                                    varying uint32_t t5,
+                                    varying uint32_t t6)
+{
+    return computeHashImpl(t0, t1, t2, t3, t4, t5, t6);
+}
+
+inline varying uint32_t computeHash(varying uint32_t t0,
+                                    varying uint32_t t1,
+                                    varying uint32_t t2,
+                                    varying uint32_t t3,
+                                    varying uint32_t t4,
+                                    varying uint32_t t5,
+                                    varying uint32_t t6,
+                                    varying uint32_t t7)
+{
+    return computeHashImpl(t0, t1, t2, t3, t4, t5, t6, t7);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid)
+{
+    sid.mHash = computeHash();
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid, varying uint32_t t0)
+{
+    sid.mHash = computeHash(t0);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1)
+{
+    sid.mHash = computeHash(t0, t1);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2)
+{
+    sid.mHash = computeHash(t0, t1, t2);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2,
+                varying uint32_t t3)
+{
+    sid.mHash = computeHash(t0, t1, t2, t3);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2,
+                varying uint32_t t3,
+                varying uint32_t t4)
+{
+    sid.mHash = computeHash(t0, t1, t2, t3, t4);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2,
+                varying uint32_t t3,
+                varying uint32_t t4,
+                varying uint32_t t5)
+{
+    sid.mHash = computeHash(t0, t1, t2, t3, t4, t5);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2,
+                varying uint32_t t3,
+                varying uint32_t t4,
+                varying uint32_t t5,
+                varying uint32_t t6)
+{
+    sid.mHash = computeHash(t0, t1, t2, t3, t4, t5, t6);
+}
+
+inline void
+SequenceID_init(varying SequenceID& sid,
+                varying uint32_t t0,
+                varying uint32_t t1,
+                varying uint32_t t2,
+                varying uint32_t t3,
+                varying uint32_t t4,
+                varying uint32_t t5,
+                varying uint32_t t6,
+                varying uint32_t t7)
+{
+    sid.mHash = computeHash(t0, t1, t2, t3, t4, t5, t6, t7);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0)
+{
+    SequenceID_init(sid, t0 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2, varying uint32_t t3)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex,
+                         t3 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2, varying uint32_t t3,
+        varying uint32_t t4)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex,
+                         t3 + programIndex,
+                         t4 + programIndex);
+}
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2, varying uint32_t t3,
+        varying uint32_t t4, varying uint32_t t5)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex,
+                         t3 + programIndex,
+                         t4 + programIndex,
+                         t5 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2, varying uint32_t t3,
+        varying uint32_t t4, varying uint32_t t5, varying uint32_t t6)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex,
+                         t3 + programIndex,
+                         t4 + programIndex,
+                         t5 + programIndex,
+                         t6 + programIndex);
+}
+
+inline void
+SequenceID_init_independent(varying SequenceID& sid, varying uint32_t t0,
+        varying uint32_t t1, varying uint32_t t2, varying uint32_t t3,
+        varying uint32_t t4, varying uint32_t t5, varying uint32_t t6,
+        varying uint32_t t7)
+{
+    SequenceID_init(sid, t0 + programIndex,
+                         t1 + programIndex,
+                         t2 + programIndex,
+                         t3 + programIndex,
+                         t4 + programIndex,
+                         t5 + programIndex,
+                         t6 + programIndex,
+                         t7 + programIndex);
+}
+
+inline varying uint32_t
+SequenceID_getHash(const varying SequenceID& sid, varying uint32_t seed)
+{
+    return gphash(sid.mHash, seed);
+}
+
+//-----------------------------------------------------------------------------
+
+struct IntegratorSample1D
+{
+    uint32_t mTotalSamples;
+    uint32_t mSampleNumber;
+    SequenceID mSequenceID;
+};
+
+struct IntegratorSample2D
+{
+    uint32_t mTotalSamples;
+    uint32_t mSampleNumber;
+    SequenceID mSequenceID;
+};
+
+struct IntegratorSample3D
+{
+    uint32_t mTotalSamples;
+    uint32_t mSampleNumber;
+    SequenceID mSequenceID;
+};
+
+static const uniform int32 sInvalidTotalSamples = sMaxInt32;
+static const uniform int32 sNumDistributionBounces = 3;
+
+
+// Pass SequenceID by value on purpose. ISPC will do copy elision, especially
+// since inline is forced.
+inline void
+IntegratorSample1D_init(varying IntegratorSample1D& is, varying SequenceID sid)
+{
+    is.mTotalSamples = sInvalidTotalSamples;
+    is.mSampleNumber = 0;
+    is.mSequenceID = sid;
+}
+
+inline void
+IntegratorSample1D_init(varying IntegratorSample1D& is, const varying IntegratorSample3D& other)
+{
+    is.mTotalSamples = other.mTotalSamples;
+    is.mSampleNumber = other.mSampleNumber;
+    is.mSequenceID = other.mSequenceID;
+}
+
+// Pass SequenceID by value on purpose. ISPC will do copy elision, especially
+// since inline is forced.
+inline void
+IntegratorSample2D_init(varying IntegratorSample2D& is, varying SequenceID sid)
+{
+    is.mTotalSamples = sInvalidTotalSamples;
+    is.mSampleNumber = 0;
+    is.mSequenceID = sid;
+}
+
+inline void
+IntegratorSample2D_init(varying IntegratorSample2D& is, const varying IntegratorSample3D& other)
+{
+    is.mTotalSamples = other.mTotalSamples;
+    is.mSampleNumber = other.mSampleNumber;
+    is.mSequenceID = other.mSequenceID;
+}
+
+// Pass SequenceID by value on purpose. ISPC will do copy elision, especially
+// since inline is forced.
+inline void
+IntegratorSample3D_init(varying IntegratorSample3D& is, varying SequenceID sid)
+{
+    is.mTotalSamples = sInvalidTotalSamples;
+    is.mSampleNumber = 0;
+    is.mSequenceID = sid;
+}
+
+inline void
+getPseudoRandomSample(const varying IntegratorSample1D& is, varying float& data)
+{
+    data = statelessRNG(SequenceID_getHash(is.mSequenceID, 0x4ac69b65), is.mSampleNumber);
+}
+
+inline void
+getPseudoRandomSample(const varying IntegratorSample2D& is, varying float data[2])
+{
+    data[0] = statelessRNG(SequenceID_getHash(is.mSequenceID, 0xa511e9b3), is.mSampleNumber);
+    data[1] = statelessRNG(SequenceID_getHash(is.mSequenceID, 0x5db034a5), is.mSampleNumber);
+}
+
+inline void
+getPseudoRandomSample(const varying IntegratorSample3D& is, varying float data[3])
+{
+    data[0] = statelessRNG(SequenceID_getHash(is.mSequenceID, 0x84f2747e), is.mSampleNumber);
+    data[1] = statelessRNG(SequenceID_getHash(is.mSequenceID, 0xd6a7dc86), is.mSampleNumber);
+    data[2] = statelessRNG(SequenceID_getHash(is.mSequenceID, 0x570a09f1), is.mSampleNumber);
+}
+
+inline void
+doFill1D(const varying IntegratorSample1D& is,
+         varying float& data,
+         const uniform FrameState& fs)
+{
+#if defined(USE_PARTITIONED_1D)
+    partitioned1D(is, data, fs);
+#elif defined(USE_RANDOM_1D)
+    getPseudoRandomSample(is, data);
+#else
+#error No 1D integrator sampler defined
+#endif
+}
+
+inline void
+fill1D(const varying IntegratorSample1D& is,
+       varying float& data,
+       const uniform FrameState& fs)
+{
+    doFill1D(is, data, fs);
+}
+
+inline void
+fill1D(const varying IntegratorSample1D& is,
+       varying float& data,
+       varying unsigned int32_t totalSamples,
+       const uniform FrameState& fs)
+{
+    doFill1D(is, data, fs);
+}
+
+inline void
+doFill2D(const varying IntegratorSample2D& is,
+       varying float data[2],
+       const uniform FrameState& fs)
+{
+#if defined(USE_PARTITIONED_2D)
+    partitioned2D(is, data[0], data[1], fs);
+#elif defined(USE_RANDOM_2D)
+    getPseudoRandomSample(is, data);
+#else
+#error No 2D integrator sampler defined
+#endif
+}
+
+inline void
+fill2D(const varying IntegratorSample2D& is,
+       varying float data[2],
+       const uniform FrameState& fs)
+{
+    doFill2D(is, data, fs);
+}
+
+inline void
+fill2D(const varying IntegratorSample2D& is,
+       varying float data[2],
+       varying uint32_t totalSamples,
+       const uniform FrameState& fs)
+{
+    doFill2D(is, data, fs);
+}
+
+inline void
+doFill3D(const varying IntegratorSample3D& is,
+       varying float data[3],
+       const uniform FrameState& fs)
+{
+#if defined(USE_RANDOM_3D)
+    getPseudoRandomSample(is, data);
+#else
+    // TODO: Real 3D samples
+    IntegratorSample2D is2D;
+    IntegratorSample1D is1D;
+    IntegratorSample2D_init(is2D, is);
+    IntegratorSample1D_init(is1D, is);
+    fill2D(is2D, data, fs);
+    fill1D(is1D, data[2], fs);
+#endif
+}
+
+inline void
+fill3D(const varying IntegratorSample3D& is,
+       varying float data[3],
+       const uniform FrameState& fs)
+{
+    doFill3D(is, data, fs);
+}
+
+inline void
+fill3D(const varying IntegratorSample3D& is,
+       varying float data[3],
+       varying uint32_t totalSamples,
+       const uniform FrameState& fs)
+{
+    doFill3D(is, data, fs);
+}
+
+inline void
+getSample(varying IntegratorSample1D& is,
+          varying float& data,
+          varying uint32_t depth,
+          const uniform FrameState& fs)
+{
+    if (depth >= sNumDistributionBounces || is.mTotalSamples == 1) {
+        getPseudoRandomSample(is, data);
+    } else if (is.mTotalSamples != sInvalidTotalSamples) {
+        // We know how many samples we're going to be taking.
+        fill1D(is, data, is.mTotalSamples, fs);
+    } else {
+        // We don't know how many samples we're going to be taking.
+        fill1D(is, data, fs);
+    }
+    ++is.mSampleNumber;
+}
+
+inline void
+getSample(varying IntegratorSample2D& is,
+          varying float data[2],
+          varying uint32_t depth,
+          const uniform FrameState& fs)
+{
+    if (depth >= sNumDistributionBounces || is.mTotalSamples == 1) {
+        getPseudoRandomSample(is, data);
+    } else if (is.mTotalSamples != sInvalidTotalSamples) {
+        // We know how many samples we're going to be taking.
+        fill2D(is, data, is.mTotalSamples, fs);
+    } else {
+        // We don't know how many samples we're going to be taking.
+        fill2D(is, data, fs);
+    }
+    ++is.mSampleNumber;
+}
+
+inline void
+getSample(varying IntegratorSample3D& is,
+          varying float data[3],
+          varying uint32_t depth,
+          const uniform FrameState& fs)
+{
+    if (depth >= sNumDistributionBounces || is.mTotalSamples == 1) {
+        getPseudoRandomSample(is, data);
+    } else if (is.mTotalSamples != sInvalidTotalSamples) {
+        // We know how many samples we're going to be taking.
+        fill3D(is, data, is.mTotalSamples, fs);
+    } else {
+        // We don't know how many samples we're going to be taking.
+        fill3D(is, data, fs);
+    }
+    ++is.mSampleNumber;
+}
+

@@ -1,0 +1,7 @@
+##-*-python-*-
+
+Import('env')
+
+env.Tool('ispc_dso', toolpath=[env.Dir('bart').srcnode()])
+
+env.GatherProxies()

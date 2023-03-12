@@ -1,0 +1,38 @@
+Import('env')
+from os import path
+# ------------------------------------------
+name       = 'mcrt_rt_computation'
+libname    = 'mcrt_rt'
+sources    = env.DWAGlob('*.cc')
+incdir     = [str(env.Dir('..').srcnode())]
+components = [
+    'common_util',
+    'common_rec_time',
+    'common_network',
+    'common_webclient_curl',
+    'engine_computation',
+    'generic_message',
+    'geometry_data',
+    'jsoncpp',
+    'render_util',
+    'rendering_rndr',    
+    'json_message',
+    'partial_frame',
+    'h264_frame',
+    'swscale',
+    'telnet_server',
+    'rdl_message',    
+    'rdl_message_lefteye',
+    'rdl_message_righteye',
+    'rendered_frame',    
+    'render_messages',
+    'viewport_message',
+]
+
+env.DWAUseComponents(components)
+lib = env.DWASharedLibrary(libname, sources, NO_VARIANT_NAME=True)
+target = env.DWAInstallDso(lib)
+env.DWAComponent(name, LIBS=[target], CPPPATH=incdir, COMPONENTS=components)
+
+# From breakpad.py, DWAGenerateBreakpadSymbols(path to library, name of library, installed library, env)
+env.DWAGenerateBreakpadSymbols(path.dirname(target[0].abspath), lib, target, env)

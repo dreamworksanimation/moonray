@@ -1,0 +1,48 @@
+{
+    "name": "RaySwitchMaterial",
+    "type": "Material",
+    "attributes": {
+        "attrDefaultMaterial": {
+            "name": "default_material",
+            "label": "default material",
+            "aliases": [ "default material" ],
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL"
+        },
+        "attrCameraRayMaterial": {
+            "name": "camera_ray_material",
+            "label": "camera ray material",
+            "aliases": [ "camera ray material" ],
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL"
+        },
+       "attrIndirectMirrorRayMaterial": {
+            "name": "indirect_mirror_ray_material",
+            "label": "indirect mirror ray material",
+            "aliases": [ "indirect mirror ray material" ],
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL"
+        },
+       "attrIndirectGlossyRayMaterial": {
+            "name": "indirect_glossy_ray_material",
+            "label": "indirect glossy ray material",
+            "aliases": [ "indirect glossy ray material" ],
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL"
+        },
+       "attrIndirectDiffuseRayMaterial": {
+            "name": "indirect_diffuse_ray_material",
+            "label": "indirect diffuse ray material",
+            "aliases": [ "indirect diffuse ray material" ],
+            "type": "SceneObject*",
+            "interface": "INTERFACE_MATERIAL"
+        },
+        "attrCutoutCameraRays": {
+            "name": "cutout_camera_rays",
+            "label": "cutout camera rays",
+            "aliases": [ "cutout camera rays" ],
+            "type": "Bool",
+            "default": "false"
+        }
+    }
+}

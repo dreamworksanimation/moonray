@@ -1,0 +1,9 @@
+Import('env')
+
+env.DWAComponent(
+	'cuda',
+	LIBS = [],	# Currently optix is only pulling in headers.
+	CPPPATH_THIRDPARTY = ['/rel/third_party/cuda/9.2/include'],
+	LIBPATH = ['/rel/third_party/cuda/9.2/lib64']
+)
+

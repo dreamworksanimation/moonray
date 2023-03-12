@@ -1,0 +1,125 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = [
+    'statistics/AthenaCSVStream.cc',
+    'statistics/SocketStream.cc',
+    'adaptive/AdaptiveRegions.cc',
+    'adaptive/AdaptiveRegionTree.cc',
+    'AdaptiveRenderTileInfo.cc',
+    'AdaptiveRenderTilesTable.cc',
+    'AttributeOverrides.cc',
+    'CheckpointController.cc',
+    'CheckpointSigIntHandler.cc',
+    'DebugSamplesRecArray.cc',
+    'DisplayFilterDriver.cc',
+    'Error.cc',
+    'ExrUtils.cc',
+    'Film.cc',
+    'ImageWriteCache.cc',
+    'ImageWriteDriver.cc',
+    'OiioReader.cc',
+    'OiioUtils.cc',
+    'PixelBufferUtils.cc',
+    'PixSampleRuntimeVerify.cc',
+    'ProcKeeper.cc',
+    'RenderContext.cc',
+    'RenderContextConsoleDriver.cc',
+    'RenderDriver.cc',
+    'RenderDriverCheckpointUtil.cc',
+    'RenderDriverSnapshotDelta.cc',
+    'RenderFrame.cc',
+    'RenderFrameCheckpointResume.cc',
+    'RenderFramePasses.cc',
+    'RenderOptions.cc',
+    'RenderOutputDriver.cc',
+    'RenderOutputDriverImplParser.cc',
+    'RenderOutputDriverImplRead.cc',
+    'RenderOutputDriverImplWrite.cc',
+    'RenderOutputWriter.cc',
+    'RenderPrepExecTracker.cc',
+    'RenderProgressEstimation.cc',
+    'RenderStatistics.cc',
+    'RenderTimingRecord.cc',
+    'ResumeHistoryMetaData.cc',
+    'SampleIdBuff.cc',
+    'TileSampleSpecialEvent.cc',
+    'TileScheduler.cc',
+    'TileWorkQueue.cc',
+    'TileWorkQueueRuntimeVerify.cc'
+]
+# assemble public headers
+publicHeaders = [
+    'PixelBufferUtils.h',
+    'RenderContext.h',
+    'RenderPrepExecTracker.h',
+    'RenderProgressEstimation.h',
+    'RenderOptions.h',
+    'RenderOutputDriver.h',
+    'RenderStatistics.h',
+    'TileScheduler.h',
+    'Types.h',
+    'rndr.h'
+]
+statisticsPublicHeaders = [
+    'statistics/ArrasLogStream.h',
+    'statistics/AthenaCSVStream.h',
+]
+
+incdir     = [str(env.Dir('..').srcnode())]
+components = [
+    'common_except',
+    'common_fb_util',
+    'common_grid_util',
+    'common_math',
+    'common_mcrt_util',
+    'common_mcrt_macros',
+    'common_time',
+    'oiio',
+    'openvdb',
+    'render_logging',
+    'render_util',
+    'rendering_bvh_shading',
+    'rendering_displayfilter',
+    'rendering_mcrt_common',
+    'rendering_geom',
+    'rendering_pbr',
+    'rendering_rt',
+    'rendering_shading',
+    'scene_rdl2',
+    'statistics',
+    'tbb',
+    'texturing_sampler',
+    'embree'
+]
+# --------------------------------------------------------------------------
+()
+
+cppdefines = [
+    # This flag is required for TBB to support waiting for workers during terminate()
+    # See RenderContext::terminateAndJoinThreads() for details
+    '__TBB_SUPPORTS_WORKERS_WAITING_IN_TERMINATE',
+    # Set default execution mode. Without this it will default to AUTO
+    ('MOONRAY_EXEC_MODE_DEFAULT', 'SCALAR')
+]
+env.PrependUnique(CPPDEFINES=cppdefines)
+
+if 'gcc' in env['CC']:
+    env.AppendUnique(CXXFLAGS=['-std=c++17'])
+
+env.DWAUseComponents(components)
+lib = env.DWASharedLibrary(name, sources)
+env.DWAInstallInclude(publicHeaders, 'moonray/rendering/rndr')
+env.DWAInstallInclude(statisticsPublicHeaders, 'moonray/rendering/rndr/statistics')
+
+installed_lib = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=installed_lib, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=installed_lib,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

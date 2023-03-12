@@ -1,0 +1,18 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_domemaster3dcamera'
+target = 'DomeMaster3DCamera.so'
+sources = ['DomeMaster3DCamera.cc']
+components = [
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), sources)
+env.DWAInstallRdl2Dso(dso)
+env.DWAComponent(name, COMPONENTS=components)

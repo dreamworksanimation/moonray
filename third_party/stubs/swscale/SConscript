@@ -1,0 +1,13 @@
+Import('env')
+
+env.DWAComponent(
+  'swscale',
+  LIBS = [
+    env.File('/work/rd/arras/third_party/ffmpeg/install/lib/libswscale.so')
+  ],
+  CPPPATH_THIRDPARTY = [
+    '/work/rd/arras/third_party/ffmpeg/install/include/',
+  ],
+  COMPONENTS = [
+  ],
+)

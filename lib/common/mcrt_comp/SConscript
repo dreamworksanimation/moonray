@@ -1,0 +1,28 @@
+Import('env')
+from os import path
+
+# this component exists to provide a place to put code that is
+# shared between the various mcrt computations - it should be
+# thought of as lib code for those computations.  when/if they
+# move, this component should move with it.
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+# currently a header only component
+# sources    = env.DWAGlob('*.cc')
+incdir     = [str(env.Dir('../..').srcnode())]
+components = [
+                'base_frame',
+                'rendering_rndr',
+             ]
+# --------------------------------------------------------------------------
+env.DWAUseComponents(components)
+# uncomment when/if lib has .cc source files
+# env.Prepend (CPPPATH=incdir)
+# lib = env.DWASharedLibrary(name, sources)
+# target = env.DWAInstallLib(lib)
+# env.DWAComponent(name, LIBS=[target], CPPPATH=incdir, COMPONENTS=components)
+env.DWAComponent(name, CPPPATH=incdir, COMPONENTS=components)
+env.DWALinkValidate(name)

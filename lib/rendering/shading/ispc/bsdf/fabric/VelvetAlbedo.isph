@@ -1,0 +1,22 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+///
+///
+
+// Contains the Albedo Tables for BsdfFabricVelvet calculated based on
+// "A Microfacet Based Coupled Specular-Matte BRDF Model
+//  with Importance Sampling" - EGSR'01 - Kelemen et al.
+
+#pragma once
+
+/// Returns the AverageAlbedo for this specific roughness
+float
+VelvetAlbedo_avg(varying float roughness);
+
+/// Returns the Albedo for this specific roughness, cosTheta combo
+float
+VelvetAlbedo_at(varying float cosTheta,
+                varying float roughness);
+
+

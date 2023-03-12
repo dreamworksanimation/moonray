@@ -1,0 +1,97 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+# --------------------------------------------------------------------------
+name       = modName+'_'+libName
+sources    = [
+              'EmbreeAccelerator.cc',
+              'GeomContext.cc',
+              'GeometryManager.cc',
+              'GeometryManagerExecTracker.cc',
+              'IntersectionFilters.cc',
+              'gpu/GPUAccelerator.cc',
+              'gpu/GPUAcceleratorImpl.cc',
+              'gpu/GPUInstance.cc',
+              'gpu/GPUPrimitive.cc',
+              'gpu/GPUPrimitiveGroup.cc',
+              'gpu/GPUUtils.cc',
+             ]
+
+buildTarget = GetOption('target-architecture')
+if not buildTarget:
+    buildTarget = "SSE"
+    
+# SSE 4.1
+if 'SSE' in buildTarget:
+
+
+    sources   += [
+                 ]
+elif 'AVX2' in buildTarget:
+    env['CXXFLAGS'].append('-D__TARGET_AVX2__')      
+    env['CXXFLAGS'].append('-D__AVX2__')      
+    sources   += [
+                 ]       
+elif 'AVX' in buildTarget:
+    env['CXXFLAGS'].append('-D__TARGET_AVX__')
+    env['CXXFLAGS'].append('-D__AVX__')      
+    sources   += [
+                 ]
+
+# We only support building with CUDA in Scons
+env['CXXFLAGS'].append('-DMOONRAY_USE_CUDA')
+
+incdir     = [str(env.Dir('../..').srcnode())]
+components = [
+              'common_mcrt_util',
+              'common_math',
+              'cuda',
+              'embree',
+              'optix',
+              'render_util',
+              'rendering_bvh_shading',
+              'rendering_geom',
+              'rendering_mcrt_common',
+              'rendering_shading',
+              'scene_rdl2',
+              'tbb'
+]
+
+# ------ Optix programs
+
+env.AppendUnique(NVCCFLAGS=[('-arch', 'sm_61'), '--use_fast_math', ('--std', 'c++11')])
+
+env.DWAInstallPtx(env.DWACuToPtx(['gpu/GPUPrograms.cu']))
+
+# --------------------------------------------------------------------------
+
+if env['TYPE_LABEL'] == 'debug':
+    env['CXXFLAGS'].append('-DTSLOG_LEVEL=TSLOG_MSG_DEBUG')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_PID')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_TID')
+    env['CXXFLAGS'].append('-DTSLOG_SHOW_TIME')
+env['CXXFLAGS'].append('-DTSLOG_SHOW_FILE')
+
+# ICC Specific Compiler Flags
+if 'icc' in env['CC']:
+    env['CXXFLAGS'].append('-wd177')
+    env['CXXFLAGS'].append('-wd444')
+    env['CXXFLAGS'].append('-wd1684')
+    env['CXXFLAGS'].append('-wd2203') # warning: cast discards qualifiers from target type
+    env['CXXFLAGS'].append('-wd2960') # The allocated memory may not satisfy the type's requirements (64 bytes)
+    #env['CXXFLAGS'].append('-wd1424') # 
+    env['CXXFLAGS'].append('-wd1711') # assignment to statically allocated variable
+
+# --------------------------------------------------------------------------
+
+env.DWAUseComponents(components)
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=target, CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

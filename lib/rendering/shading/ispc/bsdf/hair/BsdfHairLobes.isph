@@ -1,0 +1,189 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfHair.isph
+
+#pragma once
+
+#include "BsdfHair.isph"
+#include <scene_rdl2/common/platform/Platform.isph>
+
+///
+/// @brief An Energy Conserving Hair Model based on the following papers:
+/// [1] An Energy-conserving Hair Reflectance Model - D'eon et al Sig'11
+/// [2] A Practical and Controllable Hair and Fur Model for Production Path Tracing - Chiang et al EGSR'16
+/// [3] Importance Sampling for Physically-Based Hair Fiber Models, D'eon et al Sig'13
+
+varying float HairBaseBsdfLobe_evalMTerm(const varying HairState& hairState,
+                                         const varying float sinAlpha,
+                                         const varying float cosAlpha,
+                                         const varying float variance);
+varying float HairBaseBsdfLobe_evalNTerm(const varying HairBsdfLobe * uniform lobe,
+                                         const varying HairState& hairState,
+                                         const varying float variance = 0.0f,
+                                         const varying HairBsdfLobeGlintAttrs * uniform glintAttrs = NULL);
+varying float HairBaseBsdfLobe_evalAbsorption(const varying HairState& hairState,
+                                              const varying Color& scale,
+                                              const varying float saturation = 1.0f);
+varying float HairBaseBsdfLobe_evalNTermWithAbsorption(const varying HairBsdfLobe * uniform lobe,
+                                                       const varying HairState& hairState,
+                                                       const varying Color& scale,
+                                                       const varying HairBsdfLobeGlintAttrs * uniform glintAttrs = NULL,
+                                                       const varying float variance = 0.0f,
+                                                       const varying float saturation = 1.0f);
+varying float HairBaseBsdfLobe_evalPhiPdf(const varying HairBsdfLobe * uniform lobe,
+                                          const varying HairState& hairState,
+                                          const varying float variance = 0.0f);
+varying float HairBaseBsdfLobe_samplePhi(const varying float variance,
+                                         const varying float r2,
+                                         const varying float phiO,
+                                         varying float& phiI);
+varying float HairBaseBsdfLobe_evalThetaPdf(const varying HairState& hairState,
+                                            const varying float sinAlpha,
+                                            const varying float cosAlpha,
+                                            const varying float variance);
+varying float HairBaseBsdfLobe_sampleTheta(const varying float sinAlpha,
+                                           const varying float cosAlpha,
+                                           const varying float variance,
+                                           const varying float r1,
+                                           const varying float thetaO,
+                                           varying float& thetaI);
+
+varying Color HairRBsdfLobe_evalFresnelTerm(const varying HairBsdfLobe * uniform lobe,
+                                            const varying HairState& hairState);
+varying Color HairRBsdfLobe_evalAbsorptionTerm(const varying HairState& hairState,
+                                               const varying Color& scale,
+                                               const varying float saturation = 1.0f);
+varying Color HairRBsdfLobe_evalNTermWithAbsorption(const varying HairBsdfLobe * uniform lobe,
+                                                    const varying HairState& hairState,
+                                                    const varying Color& scale,
+                                                    const varying HairBsdfLobeGlintAttrs * uniform glintAttrs = NULL,
+                                                    const varying float variance = 0.0f,
+                                                    const varying float saturation = 1.0f);
+
+varying Color HairTRTBsdfLobe_evalFresnelTerm(const varying HairBsdfLobe * uniform lobe,
+                                              const varying HairState& hairState);
+varying Color HairTRTBsdfLobe_evalAbsorptionTerm(const varying HairState& hairState,
+                                                 const varying Color& scale,
+                                                 const varying float saturation = 1.0f);
+varying Color HairTRTBsdfLobe_samplingWeight(const varying HairState& hairState);
+varying Color HairTRTBsdfLobe_evalNTermWithAbsorption(const varying HairBsdfLobe * uniform lobe,
+                                                      const varying HairState& hairState,
+                                                      const varying Color& scale,
+                                                      const varying HairBsdfLobeGlintAttrs * uniform glintAttrs,
+                                                      const varying float variance = 0.0f,
+                                                      const varying float saturation = 1.0f);
+
+varying Color HairTTBsdfLobe_evalFresnelTerm(const varying HairBsdfLobe * uniform lobe,
+                                             const varying HairState& hairState);
+varying Color HairTTBsdfLobe_evalAbsorptionTerm(const varying HairState& hairState,
+                                                const varying Color& scale,
+                                                const varying float saturation = 1.0f);
+varying Color HairTTBsdfLobe_samplingWeight(const varying HairState& hairState);
+varying float HairTTBsdfLobe_evalPhiPdf(const varying HairBsdfLobe * uniform lobe,
+                                        const varying HairState& hairState,
+                                        const varying float variance);
+varying float HairTTBsdfLobe_samplePhi(const varying float variance,
+                                       const varying float r2,
+                                       const varying float phiO,
+                                       varying float& phiI);
+varying Color HairTTBsdfLobe_evalNTermWithAbsorption(const varying HairBsdfLobe * uniform lobe,
+                                                     const varying HairState& hairState,
+                                                     const varying Color& scale,
+                                                     const varying HairBsdfLobeGlintAttrs * uniform glintAttrs = NULL,
+                                                     const varying float variance = 0.0f,
+                                                     const varying float saturation = 1.0f);
+
+varying Color HairTRRTBsdfLobe_evalFresnelTerm(const varying HairBsdfLobe * uniform lobe,
+                                               const varying HairState& hairState);
+varying Color HairTRRTBsdfLobe_evalAbsorptionTerm(const varying HairState& hairState,
+                                                  const varying Color& scale,
+                                                  const varying float saturation = 1.0f);
+varying float HairTRRTBsdfLobe_evalPhiPdf(const varying HairBsdfLobe * uniform lobe,
+                                          const varying HairState& hairState,
+                                          const varying float variance);
+varying float HairTRRTBsdfLobe_samplePhi(const varying float variance,
+                                         const varying float r2,
+                                         const varying float phiO,
+                                         varying float& phiI);
+varying Color HairTRRTBsdfLobe_evalNTermWithAbsorption(const varying HairBsdfLobe * uniform lobe,
+                                                       const varying HairState& hairState,
+                                                       const varying Color& scale,
+                                                       const varying HairBsdfLobeGlintAttrs * uniform glintAttrs = NULL,
+                                                       const varying float variance = 0.0f,
+                                                       const varying float saturation = 1.0f);
+varying Color HairTRRTBsdfLobe_evalCompensationTerm(const varying Color& f,
+                                                    const varying Color& oneMinusF,
+                                                    const varying Color& T);
+
+void
+HairRBsdfLobe_init(varying HairBsdfLobe * uniform lobe,
+                   const varying Vec3f& hairDir,
+                   const varying Vec2f& hairUV,
+                   const varying float mediumIOR,
+                   const varying float ior,
+                   const varying HairFresnelType fresnelType,
+                   const varying float cuticleLayers,
+                   const varying float longShift,
+                   const varying float longRoughness,
+                   const varying Color &hairTint);
+
+void
+HairTTBsdfLobe_init(varying HairBsdfLobe * uniform lobe,
+                    const varying Vec3f& hairDir,
+                    const varying Vec2f& hairUV,
+                    const varying float mediumIOR,
+                    const varying float ior,
+                    const varying HairFresnelType fresnelType,
+                    const varying float cuticleLayers,
+                    const varying float longShift,
+                    const varying float longRoughness,
+                    const varying float azimRoughness,
+                    const varying Color &hairColor,
+                    const varying Color &hairSigmaA,
+                    const varying Color &hairTint,
+                    const varying float saturation = 1.0f);
+
+void
+HairTRTBsdfLobe_init(varying HairBsdfLobe * uniform lobe,
+                    const varying Vec3f& hairDir,
+                    const varying Vec2f& hairUV,
+                    const varying float mediumIOR,
+                    const varying float ior,
+                    const varying HairFresnelType fresnelType,
+                    const varying float cuticleLayers,
+                    const varying float longShift,
+                    const varying float longRoughness,
+                    const varying Color &hairColor,
+                    const varying Color &hairSigmaA,
+                    const varying Color &hairTint,
+                    const varying bool showGlint,
+                    const varying float glintRoughness,
+                    const varying float glintEccentricity,
+                    const varying float glintSaturation,
+                    const varying float hairRotation,
+                    const varying Vec3f& hairNormal);
+
+void
+HairTRRTBsdfLobe_init(varying HairBsdfLobe * uniform lobe,
+                      const varying Vec3f& hairDir,
+                      const varying Vec2f& hairUV,
+                      const varying float mediumIOR,
+                      const varying float ior,
+                      const varying HairFresnelType fresnelType,
+                      const varying float cuticleLayers,
+                      const varying float longShift,
+                      const varying float longRoughness,
+                      const varying Color &hairColor,
+                      const varying Color &hairSigmaA,
+                      const varying Color &hairTint);
+
+void
+HairBsdfLobe_show(const varying HairBsdfLobe * const uniform me,
+                   const uniform uint8_t ntab);
+
+void
+HairRBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                   const uniform uint8_t ntab);
+
+

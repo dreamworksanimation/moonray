@@ -1,0 +1,40 @@
+Import('env')
+from os import path
+
+modName = path.basename(path.abspath('..'))
+libName = path.basename(path.abspath('.'))
+name    = modName + "_" + libName
+
+# --------------------------------------------------------------------------
+
+# for this option to take affect, it must be added *before* we add the ispc sources.
+env.AppendUnique(ISPCFLAGS = ['--opt=force-aligned-memory'])
+
+components  = ['scene_rdl2', 'shading_ispc']
+env.DWAUseComponents(components)
+
+sources, headers = env.IspcShared(['ispc/Primvar.ispc' ])
+sources     += env.DWAGlob('*.cc')
+public_headers = ['Primvar.h']
+public_ispc_headers = ['ispc/Primvar.isph'] + headers
+incdir = [
+    env.Dir('../../../..').srcnode(),
+    env.Dir('../../').srcnode(),
+    env.Dir('.'),
+    env.Dir('ispc')
+]
+
+# --------------------------------------------------------------------------
+
+env.Append(CPPPATH=incdir)
+env.DWAInstallInclude(public_headers, 'moonray/map/primvar')
+env.DWAInstallInclude(public_ispc_headers, 'moonray/map/primvar/ispc')
+lib = env.DWASharedLibrary(name, sources)
+target = env.DWAInstallLib(lib)
+env.DWAComponent(name, LIBS=[target], CPPPATH=incdir, COMPONENTS=components)
+env.DWAInstallSConscriptStub(name, LIBS=target,
+                             CPPPATH=[env.Dir('$INSTALL_DIR/include'),
+                                      env.Dir('$INSTALL_DIR/include/moonray/map/primvar'),
+                                      env.Dir('$INSTALL_DIR/include/moonray/map/primvar/ispc')],
+                             COMPONENTS=components)
+env.DWALinkValidate(name)

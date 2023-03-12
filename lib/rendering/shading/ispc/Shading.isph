@@ -1,0 +1,365 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file Shading.isph
+/// @brief main interface to the ispc shading library
+
+/**
+ * @mainpage
+ *
+ * @section intro_sec Introduction
+ * This is the ispc shading library for the Moonray core renderer.  The library
+ * provides a framework for developing vectorized shaders in ispc as well as
+ * an interface for use by internal parts of Moonray to initiate shading and
+ * retrieve results.
+ *
+ * @section shader_invocation Shader Invocation Tutorial
+ * Code (such as the renderer) that wishes to invoke shading
+ * should include "EvalShader.isph"
+ * \code
+ * #include <moonray/rendering/shading/ispc/EvalShader.isph>
+ * \endcode
+ *
+ * The rendering/shading/ispc/unittest/TestRender.ispc implements a simple
+ * renderer and provides a good example of how to invoke shading and
+ * retrieve results.  Basically, the problem boils down to filling out
+ * a shading state and then calling 'shadeMaterial'.
+ *
+ * @section shader_dev_tutorial_sec Shader Development Tutorial
+ * ispc shader code should include "Shading.isph"
+ * \code
+ * #include <moonray/rendering/shading/ispc/Shading.isph>
+ * \endcode
+ *
+ * There is a good collection of test shaders in
+ * rendering/shading/ispc/unittest/dso that can be used as examples.
+ *
+ * A simple material shader can be defined with 3 files
+ *
+ * \subsection simple_json Simple.json
+ * \code
+ * {
+ *     "name": "Simple",
+ *     "type": "Material",
+ *     "attributes": {
+ *         "attrDiffuse": {
+ *             "name": "diffuse",
+ *             "type": "Bool"
+ *         },
+ *         "attrDiffuseColor": {
+ *             "name": "diffuse color",
+ *             "type": "Rgb",
+ *             "flags": "FLAGS_BINDABLE"
+ *         },
+ *         "attrDiffuseFactor": {
+ *             "name": "diffuse factor",
+ *             "type": "Float"
+ *         }
+ *     },
+ *     "components": {
+ *         "Diffuse": {
+ *             "color": "attrDiffuseColor",
+ *             "factor": "attrDiffuseFactor",
+ *             "show": "attrDiffuse"
+ *         }
+ *     }
+ * }
+ * \endcode
+ *
+ * \subsection simple_cc Simple.cc
+ * \code
+ * #include <scene_rdl2/scene/rdl2/rdl2.h>
+ * #include "attributes.cc"
+ * #include "Simple_ispc_stubs.h"
+ * 
+ * RDL2_DSO_CLASS_BEGIN(Simple, rdl2::Material)
+ * public:
+ *   Simple(SceneClass const &sceneClass, std::string const &name);
+ *   virtual void update();
+ * RDL2_DSO_CLASS_END(Simple)
+ *
+ *
+ * Simple::Simple(SceneClass const &sceneClass,
+ *                std::string const &name):
+ *    Parent(sceneClass, name)
+ * {
+ *     mShadeFunc = nullptr;
+ *     mShadeFuncv = (rdl2::ShadeFuncv) ispc::Simple_getShadeFunc();
+ * }
+ *
+ * void
+ * Simple::update()
+ * {
+ * }
+ * \endcode
+ *
+ * \subsection simple_ispc Simple.ispc
+ * \code
+ * #include <moonray/rendering/shading/ispc/Shading.isph>
+ * #include "attributes.isph"
+ *
+ * static void
+ * shade(const uniform Material *      uniform  material,
+ *             uniform ShadingTLState *uniform  tls,
+ *       const varying State &                  state,
+ *             varying Closure  *      uniform  closure)
+ * {
+ *     // evaluate Diffuse component
+ *     Color c = evalCompDiffuse(material, tls, state);
+ *
+ *     Closure_addLambertLobe(closure, tls, state, scale, NULL, NULL, state.mN, c);
+ * }
+ *
+ * DEFINE_MATERIAL_SHADER(TestMaterial, shade)
+ *
+ * \endcode
+ *
+ * @section code_gen_sec BaRT, Code Generation
+ *
+ * \subsection codegen Code Generation
+ * The shader framework heavily relies on automatic code generation to simplify
+ * what would otherwise be boilerplate copy-n-paste tasks.  Most of the system
+ * is implemented in the bart_tools/ispc_dso.py file.  The source for the system
+ * is the shader.json file.
+ *
+ * \code
+ * {
+ *     "name": "MyShader"       // name of the shader (required)
+ *     "type": "Map",           // type of the shader "Displacement" | "Map" | "Material" (required)
+ *     "attributes": {          // attribute definitions container (required)
+ *         "attrFoo" {          // ispc/c++ attribute key variable name (required)
+ *             "name": "foo",   // name of attribute (required)
+ *             "type": "",      // type of attr "Float"|"Int"|"Vec2f"|"Vec3f"|"Rgb" (required)
+ *             "default": "",   // default e.g. "1.f", "Rgb(1, 1, 1)", "true" (optional)
+ *             "flags": "",     // any valid rdl2 FLAGS_, e.g. "FLAGS_BINDABLE" (optional)
+ *             "interface": "", // any valid rdl2 INTERFACE_, e.g. "INTERFACE_MAP" (optional)
+ *             "group": ""      // assign attribute to a named group (optional)
+ *             "comment": ""    // descriptive comment for attribute (optional)
+ *             "enum": {        // if attr is an int, we can create a list of valid enumeration values (optional)
+ *                "val name 0": "value0",
+ *                "val name 1": "value1",
+ *                .
+ *                .
+ *                .
+ *             }
+ *         },
+ *         "attrFoo2" {
+ *         .
+ *         .
+ *         .
+ *         }
+ *     },
+ *     "components": {                    // define color component evaluation functions (optional)
+ *         "Foo": {                       // defines evalCompFoo() (required)
+ *             "color": "attrFooColor",   // attr key name of a bindable color component (required)
+ *             "factor": "attrFooFactor", // attr key name of non-bindable float multiplier (required)
+ *             "show": "attrFoo"          // attr key name of boolean on/off attribute (required)
+ *         },
+ *         "Foo2": {
+ *         .
+ *         .
+ *         .
+ *         }
+ *     },
+ *     "normals": {                  // define normal evaluation functions (optional)
+ *         "Foo": {                  // define evalNormalFoo() (required)
+ *             "value": "attrFoo",   // attr key name of a binadable vec3f attribute interpreted as a normal (required)
+ *             "dial": "attrFooDial" // attr key name of a non-bindable float multiplier (required)
+ *          },
+ *          "Foo2": {
+ *          .
+ *          .
+ *          .
+ *          }
+ *     }
+ * }
+ * \endcode
+ *
+ * From the json, attribute keys are generated for both c++ and ispc code.
+ * For c++ these are defined in the auto-generated attributes.cc file.  For
+ * ispc,  the attributes are defined in attributesISPC.cc and declared in
+ * attributes.isph.  For example:
+ *
+ *
+ * \code
+ * // MyShader.json
+ * .
+ * .
+ * .
+ * "attrFoo" {
+ *    "name": "foo",
+ *    "type": "Float",
+ *    "flags": "FLAGS_BINDABLE",
+ *    "default: "0.f"
+ * },
+ * .
+ * .
+ * \endcode
+ * \code
+ * // attributes.cc
+ * .
+ * .
+ * .
+ * rdl2::AttributeKey<Float> attrFoo;
+ * .
+ * .
+ * MyShader_attr::attrFoo = sceneClass.declareAttribute<Float>("foo", 0.0f, FLAGS_BINDABLE);
+ * .
+ * .
+ * \endcode
+ *
+ * \code
+ * // attributesISPC.cc
+ * namespace MyShader_attr { extern rdl2::AttributeKey<Float> attrFoo; }
+ * FloatAttrKeyISPC *attrFoo = (FloatAttrKeyISPC *) &MyShader_attr::attrFoo;
+ * \endcode
+ *
+ * \code
+ * // attributes.isph
+ * .
+ * .
+ * extern uniform FloatAttrKeyISPC * uniform attrFoo;
+ * .
+ * .
+ * \endcode
+ * Note how these definitions allow the same symbol "attrFoo" to be used
+ * identically in both c++ and ispc code - even though they are of different
+ * types in different languages!
+ *
+ *
+ * In addition to the generic get() and eval() functions, attribute specific
+ * functions are produced by the code generator.  For example,
+ *
+ * \code
+ * // attributes.isph
+ * uniform float getAttrFoo(const uniform Material *       uniform obj);
+ * varying float evalAttrFoo(const uniform Material *      uniform obj,
+ *                                 uniform ShadingTLState *uniform tls,
+ *                           const varying State &                 state);
+ * \endcode
+ *
+ * From ispc shader code, these can be called as:
+ * \code
+ * // get the uniform float attribute value (no map binding evaluations)
+ * uniform float ufoo = getAttrFoo(map);
+ *
+ * // get the bound, evaluated value
+ * varying float vfoo = evalAttrFoo(map, tls, state);
+ * \endcode
+ *
+ * The "components" and "normals" section of the json is used to trigger
+ * the generation of more complex color component and normal evaluation functions
+ * For example:
+ *
+ * \code
+ * // attribute specific
+ * varying Vec3f norm = evalNormalInput(material, tls, state);
+ * varying Color c = evalCompDiffuse(material, tls, state);
+ * \endcode
+ *
+ * The attribute keys can be used in calls to "generic" get() and eval()
+ * functions.  For example, given the above defintions
+ *
+ * \code
+ * // get the uniform float attribute value (no map binding evaluations)
+ * uniform float ufoo = getFloat(map, attrFoo);
+ *
+ * // get the bound, evaluated value
+ * varying float vfoo = evalFloat(map, tls, state, attrFoo);
+ *
+ * // evaluate a normal
+ * varying Vec3f norm = evalNormal(material, tls, state, attrInputNormal,
+ * attrInputNormalDial);
+ * varying Color c = evalColorComponent(material, tls, state, attrDiffuse,
+ * attrDiffuseFactor, attrDiffuseColor);
+ * \endcode
+ *
+ * <b> But please avoid the use of the generic get() and eval() functions if
+ * possible. </b> The attribute specific get() and eval() functions typically
+ * shorter and more descriptive. Their use over the generic functions is highly
+ * encouraged.  There is one very important restriction to keep in mind with
+ * these functions however.  <b>The object passed to the attribute specific
+ * get() and eval() functions must be the same object that was passed into the
+ * shader</b>.
+ *
+ * \subsection files_subsec Files
+ * <b>shader/Shader.cc</b> This file is authored by the shader writer.  It
+ * defines the shader's rdl2 class, the shader's scalar shade/sample/displace
+ * method and its update method.  Conceptually it is the "c++ part" of the
+ * shader
+ *
+ * <br><b>shader/Shader.ispc</b> This file is authored by the shader writer.
+ * It contains the ispc shade/sample/displace implementation.
+ *
+ * <br><b>shader/Shader.json</b>  This file is authored by the shader writer.
+ * It contains information used by the code generator to, among other things,
+ * make attribute definitions available to both c++ and ispc code.
+ *
+ * <br><b>bart_tools/ispc_dso.py</b> defines the SCons method "DWAIspcDso".  This
+ * file implements the generation of all needed c++ and ispc code to compile
+ * the shader.
+ *
+ * <br><b>build_dir/.../shader/attributes.cc (auto-generated)</b> is produced
+ * by the build system from the shader.json file.  It contains all the
+ * c++ rdl2 code needed to define the rdl2 class corresponding to the shader.
+ * It is based on the shader.json file.  This file is included by the user's
+ * shader.cc file.  It is also used as the "RDL2_ATTRIBUTES_SOURCE" which is
+ * used when when compiling an rdl2 proxy dso.
+ *
+ * <br><b>build_dir/.../shader/attributesISPC.cc (auto-generated)</b>  This
+ * c++ file defines the ISPC key attributes that are used by ispc shader code
+ * in calls such as <em>evalType(obj, state, attrKey)</em>.  They are
+ * essentially casts of the addresses of the c++ rdl2 attributes defined
+ * by attributes.cc.  This file is compiled into the shader .so, not the proxy.
+ *
+ * <br><b>build_dir/.../shader/attributes.isph (auto-generated)</b>  This
+ * file is included by shader .ispc code.  It declares and defines all needed
+ * attribute retrieval symbols needed by ispc code.  First, it extern
+ * declares the attribute keys themselves that are defined in
+ * attributesISPC.cc.  This enables shader code of the form <em>evalType(obj,
+ * state, attrName)</em> to compile.  Additionally, for each attribute key it defines
+ * get<em>AttrName</em>(obj) and eval<em>AttrName(obj, state)</em>.
+ *
+ * <br><b>install_dir/.../shader.so</b> The rdl2 dso, ready for loading by rdl
+ * scenes.
+ *
+ * <br><b>install_dir/.../shader.so.proxy</b> The rdl2 proxy dso.
+ *
+ * @section Derivatives
+ *
+ * An inspection of the State structure reveals that a "shade point" is not a point at all,
+ * but rather an area.  Intuitively, this area is defined by the width
+ * and height of the ray-beam at the point being processed.  For example, in
+ * the case of a primary ray, it is the pixel area projected onto the
+ * hit point.  The two basis vectors we use when describing this area
+ * are, not surprisingly, 'x' and 'y'.  Within State, we store P, St, dPds, dPdt,
+ * dSdx, dSdy, dTdx, and dTdy.  Although not stored, we can easily compute
+ * dPdx and dPdy via the relationships:
+ * \f$ dPdx = dPds * dSdx + dPdt * dTdx \f$
+ * and
+ * \f$ dPdy = dPds * dSdy + dPdt * dTdy \f$
+ *
+ * There are a couple limitations that may be addressed at some future
+ * point.  First, there is no information stored or derivable regarding dN or
+ * dNg.  Second, when volume rendering is added, we'll probably add a 3rd basis
+ * vector, 'z'.
+ *
+ * @section primitive_attr_sec Primitive Attributes
+ * Support for a subset of the geometry supplied "primitive attributes" is
+ * provided via the getBoolAttribute(), getIntAttribute(), getFloatAttribute(),
+ * getVec2fAttribute(), getVec3fAttribute(), and getColorAttribute() functions.
+ */
+
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include <moonray/rendering/shading/ispc/BsdfBuilder.isph>
+#include <moonray/rendering/shading/ispc/BsdfComponent.isph>
+#include <moonray/rendering/shading/ispc/EvalAttribute.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+#include <moonray/rendering/shading/ispc/ShaderDataAux.isph>
+
+#include <moonray/rendering/bvh/shading/ispc/State.isph>
+#include <moonray/rendering/bvh/shading/ispc/Xform.isph>
+

@@ -1,0 +1,38 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include "Sample.hh"
+
+struct Sample
+{
+    SAMPLE_MEMBERS;
+};
+
+struct Sample3D
+{
+    SAMPLE_3D_MEMBERS;
+};
+
+struct Sample2D
+{
+    SAMPLE_2D_MEMBERS;
+};
+
+inline uniform Sample2D Sample2D_init(uniform float u, uniform float v)
+{
+    uniform Sample2D result;
+    result.u = u;
+    result.v = v;
+    return result;
+}
+
+inline varying Sample2D Sample2D_init(varying float u, varying float v)
+{
+    varying Sample2D result;
+    result.u = u;
+    result.v = v;
+    return result;
+}
+

@@ -1,0 +1,89 @@
+// Copyright 2023 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+/// @file BsdfUnderClearcoatTransmission.isph
+
+#pragma once
+
+#include "BsdfUnderClearcoat.isph"
+#include <moonray/rendering/shading/ispc/bsdf/BsdfUtil.isph>
+#include <moonray/rendering/shading/ispc/ShaderMacros.isph>
+
+// Same struct as UnderClearcoat
+typedef UnderClearcoatBsdfLobe UnderClearcoatTransmissionBsdfLobe;
+
+varying Color
+UnderClearcoatTransmissionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
+                                        const varying BsdfSlice &slice,
+                                        const Vec3f &wi,
+                                        varying float * uniform pdf);
+
+varying Color
+UnderClearcoatTransmissionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
+                                          const varying BsdfSlice &slice,
+                                          varying float r1, varying float r2,
+                                          varying Vec3f &wi, varying float &pdf);
+
+inline void
+UnderClearcoatTransmissionBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
+                                        const uniform uint8_t ntab)
+{
+    const varying UnderClearcoatTransmissionBsdfLobe * uniform me =
+        (const varying UnderClearcoatTransmissionBsdfLobe * uniform) lobe;
+
+    const varying Fresnel * const uniform fresnel = me->mFresnel;
+
+    BsdfUtil_indent(ntab);   print("[UnderClearcoatTransmissionBsdfLobe] mask: %\n", lobe->mMask);
+
+    BsdfUtil_indent(ntab+1); print("scale: % % %\n", BSDF_UTIL_EXTRACT(me->mScale.r),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.g),
+                                                     BSDF_UTIL_EXTRACT(me->mScale.b));
+    BsdfLobe_show(me->mUnder, ntab+1);
+
+    if (fresnel) {
+        Fresnel_show(fresnel, ntab+1);
+    }
+}
+
+/// @brief allocate and add an under clearcoat lobe to a bsdf
+inline varying BsdfLobe * uniform
+UnderClearcoatTransmissionBsdfLobe_init(varying UnderClearcoatTransmissionBsdfLobe * uniform lobe,
+                                        const varying BsdfLobe * uniform under,
+                                        const varying Vec3f &normal,
+                                        const varying Fresnel* uniform exitingFresnel,
+                                        const varying float etaI,
+                                        const varying float etaT,
+                                        const varying float thickness,
+                                        const varying Color attenuationColor,
+                                        const varying float attenuationWeight)
+
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_UNDER_CLEARCOAT,
+                  /* type = */ BsdfLobe_getType(under),
+                  /* differentialFlags = */ BsdfLobe_getDifferentialFlags(under),
+                  /* isSpherical = */ BsdfLobe_getIsSpherical(under),
+                  /* propertyFlags = */ BsdfLobe_getPropertyFlags(under),
+                  /* evalFn = */ UnderClearcoatTransmissionBsdfLobe_eval,
+                  /* evalFn = */ UnderClearcoatTransmissionBsdfLobe_sample,
+                  /* evalFn = */ UnderClearcoatBsdfLobe_albedo,
+                  /* evalFn = */ UnderClearcoatBsdfLobe_differentials,
+                  /* getPropertyFn = */ UnderClearcoatBsdfLobe_getProperty,
+                  /* showFn = */ UnderClearcoatTransmissionBsdfLobe_show);
+
+    lobe->mN = normal;
+    lobe->mNeta = etaI * rcp(etaT);
+    lobe->mThickness = thickness;
+    lobe->mAttenuationColor = attenuationColor;
+    lobe->mAttenuationWeight = attenuationWeight;
+
+    lobe->mExitingFresnel = exitingFresnel;
+
+    lobe->mUnder = under;
+    // This lobe needs to have the same mask as the under lobe
+    // but keep track on whether this UnderLobe is active for
+    // whether to evaluate it or not
+    lobe->mUnderLobeMask = lobe->mMask;
+    lobe->mMask = under->mMask;
+}
+

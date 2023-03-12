@@ -1,0 +1,18 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_cutoutvolume'
+target = 'CutoutVolume.so'
+cc_source = ['CutoutVolume.cc']
+components = [
+    'scene_rdl2'
+]
+
+# ---------------------------------------------------------------
+
+env.DWAForceWarningAsError()
+env.DWAUseComponents(components)
+dso = env.DWARdl2Dso(env.File(target), cc_source)
+env.DWAInstallRdl2Dso(dso)
+env.DWAComponent(name, COMPONENTS=components)

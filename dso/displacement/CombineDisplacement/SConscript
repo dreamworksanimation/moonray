@@ -1,0 +1,22 @@
+Import('env')
+
+# ---------------------------------------------------------------
+
+name = 'dso_combinedisplacement'
+target = 'CombineDisplacement.so'
+cc_source = ['CombineDisplacement.cc']
+ispc_source = ['CombineDisplacement.ispc']
+json_source = ['CombineDisplacement.json']
+components = [
+    'rendering_shading',
+    'scene_rdl2',
+    'shading_ispc',
+    'texturing_sampler'
+]
+
+# ---------------------------------------------------------------
+
+env.DWAUseComponents(components)
+dso = env.DWAIspcDso(env.File(target), cc_source, ispc_source, json_source)
+env.DWAInstallIspcDso(dso)
+env.DWAComponent(name, COMPONENTS=components)
