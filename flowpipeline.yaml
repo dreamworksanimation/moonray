@@ -86,7 +86,6 @@ pipeline-configurations:
       - _submitter_
       - _contributor_
       chat_enabled: false
-      chat_room_webhook_url: https://chat.googleapis.com/v1/spaces/AAAAhg7dAzc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t2d8q2Emc5xqXqOuQm4RKgrbv_JX7ekqFZ-4qfhrutU%3D
       zulip_enabled: false
       zulip_stream: CM DevOps Updates
       zulip_topic: Continuous Integration
@@ -96,7 +95,6 @@ pipeline-configurations:
       - _submitter_
       - _contributor_
       chat_enabled: false
-      chat_room_webhook_url: https://chat.googleapis.com/v1/spaces/AAAAhg7dAzc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=t2d8q2Emc5xqXqOuQm4RKgrbv_JX7ekqFZ-4qfhrutU%3D
       zulip_enabled: false
       zulip_stream: CM DevOps Updates
       zulip_topic: Continuous Integration

@@ -16,7 +16,7 @@ on:
 jobs:
   trigger_CI_plan:
     env:
-      CHATROOM: 'https://chat.googleapis.com/v1/spaces/AAAAhg7dAzc/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=tVVxZYo0NEOoHAoOtPIfugt7-CM_CMS2pHaaOGVOT3Y%3D'
+      CHATROOM: ${{ secrets.TRIGGER_CI_CHATROOM }}
     runs-on: [self-hosted]
     steps:
       - name: Add Dynamic Environment Variable
@@ -37,7 +37,7 @@ jobs:
           git push --force || true
       - name: Report to Chat Room
         run: |
-          curl -X POST -H 'Content-Type: application/json' ${CHATROOM} -d '{"text": "'"${MESSAGE}"'"}'
+          curl -X POST -H 'Content-Type: application/json' --url ${CHATROOM} -d '{"text": "'"${MESSAGE}"'"}'
       - name: Cleanup
         shell: bash
         run: |
