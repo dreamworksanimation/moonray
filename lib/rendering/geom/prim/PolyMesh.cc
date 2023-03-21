@@ -207,7 +207,8 @@ bilinearInterpolate(const Vec2f& uv,
 template <typename T>
 void*
 PolyMesh::getBakedAttributeData(const TypedAttributeKey<T>& key,
-                                size_t& numElements, AttributeRate &newRate) const
+                                size_t& numElements,
+                                AttributeRate &newRate) const
 {
     int vertsPerFace = (mIsTessellated || getBaseFaceType() == MeshIndexType::QUAD) ?
                         sQuadVertexCount : sTriangleVertexCount;
@@ -227,6 +228,20 @@ PolyMesh::getBakedAttributeData(const TypedAttributeKey<T>& key,
         data = tdata;
         for (size_t t = 0; t < timeSamples; t++) {
             tdata[t] = attributes->getConstant(key, t);
+        }
+        break;
+    }
+    case RATE_PART:
+    {
+        numElements = faceCount * timeSamples;
+        T* tdata = new T[numElements];
+        data = tdata;
+        for (size_t f = 0, dstIdx = 0; f < faceCount; f++) {
+            for (size_t t = 0; t < timeSamples; t++) {
+                int baseFaceIdx = mIsTessellated ? mTessellatedToBaseFace[f] : f;
+                int part = mFaceToPart[baseFaceIdx];
+                tdata[dstIdx++] = attributes->getPart(key, part, t);
+            }
         }
         break;
     }
@@ -354,7 +369,8 @@ PolyMesh::getBakedAttributeData(const TypedAttributeKey<T>& key,
 template <>
 void*
 PolyMesh::getBakedAttributeData(const TypedAttributeKey<std::string>& key,
-                                size_t& numElements, AttributeRate &newRate) const
+                                size_t& numElements,
+                                AttributeRate &newRate) const
 {
     int vertsPerFace = (mIsTessellated || getBaseFaceType() == MeshIndexType::QUAD) ?
                         sQuadVertexCount : sTriangleVertexCount;
@@ -374,6 +390,20 @@ PolyMesh::getBakedAttributeData(const TypedAttributeKey<std::string>& key,
         data = tdata;
         for (size_t t = 0; t < timeSamples; t++) {
             tdata[t] = attributes->getConstant(key, t);
+        }
+        break;
+    }
+    case RATE_PART:
+    {
+        numElements = faceCount * timeSamples;
+        std::string* tdata = new std::string[numElements];
+        data = tdata;
+        for (size_t f = 0, dstIdx = 0; f < faceCount; f++) {
+            for (size_t t = 0; t < timeSamples; t++) {
+                int baseFaceIdx = mIsTessellated ? mTessellatedToBaseFace[f] : f;
+                int part = mFaceToPart[baseFaceIdx];
+                tdata[dstIdx++] = attributes->getPart(key, part, t);
+            }
         }
         break;
     }

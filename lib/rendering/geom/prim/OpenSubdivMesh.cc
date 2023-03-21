@@ -2314,7 +2314,9 @@ OpenSubdivMesh::getTessellatedMesh(TessellatedMesh& tessMesh) const
 template <typename T>
 void*
 OpenSubdivMesh::getBakedAttributeData(const TypedAttributeKey<T>& key,
-                                      size_t vertexCount, size_t faceCount, size_t timeSamples,
+                                      size_t vertexCount,
+                                      size_t faceCount,
+                                      size_t timeSamples,
                                       size_t& numElements) const
 {
     Attributes *attributes = getAttributes();
@@ -2333,11 +2335,15 @@ OpenSubdivMesh::getBakedAttributeData(const TypedAttributeKey<T>& key,
     }
     case RATE_PART:
     {
-        numElements = timeSamples;
+        numElements = faceCount * timeSamples;
         T* tdata = new T[numElements];
         data = tdata;
-        for (size_t t = 0; t < timeSamples; t++) {
-            tdata[t] = attributes->getConstant(key, t);
+        for (size_t i = 0, dstIdx = 0; i < faceCount; i++) {
+            for (size_t t = 0; t < timeSamples; t++) {
+                int controlFaceIdx = mTessellatedToControlFace[i];
+                int part = mFaceToPart[controlFaceIdx];
+                tdata[dstIdx++] = attributes->getPart(key, part, t);
+            }
         }
         break;
     }
@@ -2593,8 +2599,10 @@ OpenSubdivMesh::getBakedMesh(BakedMesh& bakedMesh) const
     std::vector<size_t> skippedIndices;
     bakedMesh.mVertexBuffer.resize(bakedMesh.mVertexCount * bakedMesh.mMotionSampleCount);
     size_t actualVertexCount = 0;
+    SubdivisionMesh::IndexBuffer sortedIndices = mTessellatedIndices;
+    std::sort(sortedIndices.begin(), sortedIndices.end());
     for (size_t i = 0, dstIdx = 0; i < bakedMesh.mVertexCount; i++) {
-        if (std::find(mTessellatedIndices.begin(), mTessellatedIndices.end(), i) == mTessellatedIndices.end()) {
+        if (!std::binary_search(sortedIndices.begin(), sortedIndices.end(), i)) {
             // Skip vertices that are not referenced by the index buffer
             skippedIndices.push_back(i);
             continue;
