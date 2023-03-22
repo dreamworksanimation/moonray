@@ -14,7 +14,7 @@ bound by, the terms of the Apache 2.0 License for all contributions made by You 
 employees. Your initial list of designated employees who are authorized to make Contributions  
 shall be as set forth in <ins>Schedule A</ins>. You agree to identify Your initial CLA Manager below and  
 thereafter provide any updates to the identity of your CLA Manager or employees eligible to  
-make Contributions by providing updated lists to moonray-tsc@dreamworks.com.  
+make Contributions by providing updated lists to MoonRay@dreamworks.com.  
 
 You certify that, for all Contributions to the Project made by You or by Your designated  
 employees:  
