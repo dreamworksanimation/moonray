@@ -2442,7 +2442,7 @@ PathIntegrator::transmittanceSubinterval(pbr::TLState *pbrTls,
         }
         scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode, rndVal,
             volumeSampleInfo, t0, time, light);
-        tr = exp(-sigmaT * (t1 - t0));
+        tr = exp(-sigmaT * (t1 - t0) * scaleFactor);
     } else {
         // For now using traditional ray marching approach.
         // Once we have the ability to query averge value on leaf node,
