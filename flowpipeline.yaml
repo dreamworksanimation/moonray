@@ -37,7 +37,7 @@ pipeline-configurations:
 
   release:
     build:
-      rez_args: -b scons
+      rez_args: -b cmake
       resource: EL7_RaTS_build_fast
     test:
       enabled: false
