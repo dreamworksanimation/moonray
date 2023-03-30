@@ -15,6 +15,8 @@
 #include <moonray/rendering/bvh/shading/PrimitiveAttribute.h>
 #include <moonray/rendering/bvh/shading/RootShader.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
+#include <scene_rdl2/common/math/Mat3.h>
+#include <scene_rdl2/common/math/Math.h>
 #include <scene_rdl2/common/math/MathUtil.h>
 #include <scene_rdl2/common/math/ReferenceFrame.h>
 #include <scene_rdl2/render/logging/logging.h>
@@ -24,6 +26,7 @@ namespace geom {
 namespace internal {
 
 using namespace shading;
+using namespace scene_rdl2::math;
 
 TriMesh::TriMesh(size_t estiFaceCount,
         PolygonMesh::FaceVertexCount&& faceVertexCount,
@@ -456,13 +459,154 @@ TriMesh::getNeighborVertices(int baseFaceId, int tessFaceId,
     }
 }
 
+// This function is used to wrap the requested index if it
+// is negative or exceeds the face vertex count
+uint32_t
+loopIndex(int requestedIndex,
+          int fvCount)
+{
+    if (requestedIndex >= 0 && requestedIndex < fvCount) {
+        // Within normal range (0-fvCount)
+        return requestedIndex;
+    } else if (requestedIndex >= fvCount) {
+        // Above fvCount so wrap around to the beginning
+        return requestedIndex % fvCount;
+    } else {
+        // Below fvCount so wrap around to the end
+        return  requestedIndex % fvCount + fvCount;
+    }
+}
+
+// Calculate the unit normal of plane defined by points a, b, and c
+Vec3f
+unitNormal(Vec3f a,
+           Vec3f b,
+           Vec3f c)
+{
+    const float x = Mat3f(1.0f, a.y, a.z,
+                          1.0f, b.y, b.z,
+                          1.0f, c.y, c.z).det();
+
+    const float y = Mat3f(a.x, 1.0f, a.z,
+                          b.x, 1.0f, b.z,
+                          c.x, 1.0f, c.z).det();
+
+    const float z = Mat3f(a.x, a.y, 1.0f,
+                          b.x, b.y, 1.0f,
+                          c.x, c.y, 1.0f).det();
+
+    const float magnitude =
+        scene_rdl2::math::max(sEpsilon,
+                              scene_rdl2::math::sqrt(x*x + y*y + z*z));
+    return Vec3f(x / magnitude,
+                 y / magnitude,
+                 z / magnitude);
+}
+
+float
+calculateConcaveNGonArea(const PolygonMesh::VertexBuffer& vertices,
+                         const PolygonMesh::IndexBuffer& indices,
+                         size_t fvCount,
+                         size_t inputIndexOffset)
+{
+    Vec3f total(0.f);
+    for (size_t i = 0; i < fvCount; ++i) {
+        const size_t index1 = indices[loopIndex(i + 0, fvCount) + inputIndexOffset];
+        const size_t index2 = indices[loopIndex(i + 1, fvCount) + inputIndexOffset];
+        const Vec3f vi1 = vertices(index1, 0);
+        const Vec3f vi2 = vertices(index2, 0);
+        total = total + cross(vi1, vi2);
+    }
+
+    const Vec3f un = unitNormal(vertices(indices[0 + inputIndexOffset], 0),
+                                vertices(indices[1 + inputIndexOffset], 0),
+                                vertices(indices[2 + inputIndexOffset], 0));
+    const float result = dot(total, un);
+    return result / 2.f;
+}
+
+// Calculate an ngon normal from the sum of the cross
+// products of it's adjacent vertices.  If the area of
+// the ngon is negative, this indicates a reverse winding
+// order and we therefore flip the normal.
+Vec3f
+calculateConcaveNGonNormal(const PolygonMesh::VertexBuffer& vertices,
+                           const PolygonMesh::IndexBuffer& indices,
+                           size_t fvCount,
+                           size_t inputIndexOffset)
+{
+    const float area = calculateConcaveNGonArea(vertices,
+                                                indices,
+                                                fvCount,
+                                                inputIndexOffset);
+    Vec3fa sum(0.f, 0.f, 0.f);
+    for (size_t i = 0; i < fvCount; ++i) {
+        const Vec3f va = vertices(indices[i + inputIndexOffset], 0);
+        const Vec3f vb = vertices(indices[loopIndex(i + 1, fvCount) + inputIndexOffset], 0);
+        sum = sum + cross(va, vb);
+    }
+    if (area < 0.f) {
+        sum *= -1.f;
+    }
+    return normalize(sum);
+}
+
+bool
+isPlanar(const PolygonMesh::VertexBuffer& vertices,
+         const PolygonMesh::IndexBuffer& indices,
+         size_t fvCount,
+         size_t inputIndexOffset)
+{
+    // Calculate normal of first 3 points
+    const Vec3f& va = vertices(indices[0 + inputIndexOffset], 0);
+    const Vec3f& vb = vertices(indices[1 + inputIndexOffset], 0);
+    const Vec3f& vc = vertices(indices[2 + inputIndexOffset], 0);
+    const Vec3f N =  cross(va - vb, vc - vb);
+
+    // Check that the other points lie in the plane of the first 3
+    for (size_t i = 3; i < fvCount; ++i) {
+        const Vec3f v = vertices(indices[i + inputIndexOffset], 0);
+        if (!isZero(dot(va - v, N))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool
+pointInTriangle(const Vec3f& N,
+                const Vec3fa& p,
+                const Vec3fa& a,
+                const Vec3fa& b,
+                const Vec3fa& c)
+{
+    // Get barycentric coords
+    const Vec3f v0 = b - a;
+    const Vec3f v1 = c - a;
+    const Vec3f v2 = p - a;
+    const float d00 = dot(v0, v0);
+    const float d01 = dot(v0, v1);
+    const float d11 = dot(v1, v1);
+    const float d20 = dot(v2, v0);
+    const float d21 = dot(v2, v1);
+    const float denom = d00 * d11 - d01 * d01;
+    const float v = (d11 * d20 - d01 * d21) / denom;
+    const float w = (d00 * d21 - d01 * d20) / denom;
+    const float u = 1.0f - v - w;
+
+    // The Point is outside triangle(false) if any
+    // of the coords are less than zero.
+    return u >= 0 && v >= 0 && w >= 0;
+}
+
 void
 TriMesh::splitNGons(size_t outputFaceCount,
-        PolygonMesh::FaceToPartBuffer& faceToPart,
-        const PolygonMesh::FaceVertexCount& faceVertexCount,
-        PolygonMesh::IndexBuffer& indices,
-        LayerAssignmentId& layerAssignmentId,
-        PrimitiveAttributeTable& primitiveAttributeTable)
+                    const PolygonMesh::VertexBuffer& vertices,
+                    PolygonMesh::FaceToPartBuffer& faceToPart,
+                    const PolygonMesh::FaceVertexCount& faceVertexCount,
+                    PolygonMesh::IndexBuffer& indices,
+                    LayerAssignmentId& layerAssignmentId,
+                    PrimitiveAttributeTable& primitiveAttributeTable)
 {
     size_t inputFaceCount = faceVertexCount.size();
     size_t inputIndexCount = indices.size();
@@ -471,6 +615,10 @@ TriMesh::splitNGons(size_t outputFaceCount,
         faceToPart.resize(outputFaceCount);
     }
 
+    // Track original indices for face varying primitive attributes
+    PolygonMesh::IndexBuffer indexRemapping;
+    indexRemapping.resize(sTriangleVertexCount * outputFaceCount);
+
     size_t inputIndexOffset = inputIndexCount;
     size_t outputIndexOffset = indices.size() - 1;
     size_t outputF2POffset = faceToPart.size() - 1;
@@ -478,11 +626,119 @@ TriMesh::splitNGons(size_t outputFaceCount,
     for (int f = inputFaceCount - 1; f >= 0; --f) {
         size_t fvCount = faceVertexCount[f];
         inputIndexOffset -= fvCount;
-        for (size_t v = fvCount; v >= sTriangleVertexCount; --v) {
-            // triangulate a ngon into triangles fan
-            indices[outputIndexOffset--] = indices[inputIndexOffset + v - 1];
-            indices[outputIndexOffset--] = indices[inputIndexOffset + v - 2];
-            indices[outputIndexOffset--] = indices[inputIndexOffset];
+
+        // Check that the polygon has a non zero area and
+        // planar before running the ear clipping algorithm
+        const float area = calculateConcaveNGonArea(vertices,
+                                                    indices,
+                                                    fvCount,
+                                                    inputIndexOffset);
+
+        const bool nonZeroArea = !std::isnan(area) && area >= sEpsilon;
+
+        bool planar = true;
+        if (fvCount > 3 && nonZeroArea) {
+            planar = isPlanar(vertices,
+                              indices,
+                              fvCount,
+                              inputIndexOffset);
+        }
+
+        if (!nonZeroArea || !planar || fvCount == 3) {
+            for (size_t v = fvCount; v >= sTriangleVertexCount; --v) {
+                // triangulate a ngon into triangles fan
+                indexRemapping[outputIndexOffset] = inputIndexOffset + v - 1;
+                indices[outputIndexOffset--] = indices[inputIndexOffset + v - 1];
+                indexRemapping[outputIndexOffset] = inputIndexOffset + v - 2;
+                indices[outputIndexOffset--] = indices[inputIndexOffset + v - 2];
+                indexRemapping[outputIndexOffset] = inputIndexOffset;
+                indices[outputIndexOffset--] = indices[inputIndexOffset];
+                if (faceToPart.size() > 0) {
+                    faceToPart[outputF2POffset--] = faceToPart[f];
+                }
+            }
+        } else {
+            // Ear clipping algorithm for concave ngons
+            // https://en.wikipedia.org/wiki/Polygon_triangulation
+            const Vec3f N = calculateConcaveNGonNormal(vertices,
+                                                       indices,
+                                                       fvCount,
+                                                       inputIndexOffset);
+
+            // Create a list of local indices to keep track
+            // of which vertices have been ear clipped
+            PolygonMesh::IndexBuffer localIndices;
+            localIndices.resize(fvCount);
+            for (uint32_t i = 0; i < fvCount; ++i) {
+                localIndices[i] = i;
+            }
+
+            size_t numRemainingIndices = localIndices.size();
+            while (numRemainingIndices > 3) {
+                for (int i = numRemainingIndices - 1; i >= 0; --i) {
+                    // Triangle vertices in clockwise winding order (b, a, c)
+                    const uint32_t a = localIndices[i];
+                    const uint32_t b = localIndices[loopIndex(i - 1, numRemainingIndices)];
+                    const uint32_t c = localIndices[loopIndex(i + 1, numRemainingIndices)];
+
+                    const Vec3fa& va = vertices(indices[inputIndexOffset + a], 0);
+                    const Vec3fa& vb = vertices(indices[inputIndexOffset + b], 0);
+                    const Vec3fa& vc = vertices(indices[inputIndexOffset + c], 0);
+
+                    // Check vertex for concavity
+                    const Vec3fa vab = vb - va;
+                    const Vec3fa vac = vc - va;
+                    const Vec3fa cp = cross(vac, vab);
+                    if (dot(cp, N) < 0.f) {
+                        continue;
+                    }
+
+                    // Check triangle for interior points
+                    bool hasInteriorPoints = false;
+                    for (size_t j = 0; j < numRemainingIndices; ++j) {
+                        // Skip the points of the current triangle
+                        if (localIndices[j] == a ||
+                            localIndices[j] == b ||
+                            localIndices[j] == c) continue;
+
+                        const uint32_t indexP = indices[localIndices[j] + inputIndexOffset];
+                        const Vec3fa& p = vertices(indexP, 0);
+                        if (pointInTriangle(N, p, vb, va, vc)) {
+                            hasInteriorPoints = true;
+                            break;
+                        }
+                    }
+                    if (hasInteriorPoints) {
+                        continue;
+                    }
+
+                    // Add the triangle in reverse winding order since
+                    // we are iterating from the end of the indices to
+                    // the beginning
+                    indexRemapping[outputIndexOffset] = inputIndexOffset + c;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset + c];
+                    indexRemapping[outputIndexOffset] = inputIndexOffset + a;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset + a];
+                    indexRemapping[outputIndexOffset] = inputIndexOffset + b;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset + b];
+                    if (faceToPart.size() > 0) {
+                        faceToPart[outputF2POffset--] = faceToPart[f];
+                    }
+
+                    // Remove this vertex from the list to check
+                    localIndices.erase(localIndices.begin() + i);
+                    numRemainingIndices -= 1;
+                    break;
+                }
+            }
+
+            // Add the last triangle
+            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[2];
+            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[2]];
+            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[1];
+            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[1]];
+            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[0];
+            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[0]];
             if (faceToPart.size() > 0) {
                 faceToPart[outputF2POffset--] = faceToPart[f];
             }
@@ -517,19 +773,20 @@ TriMesh::splitNGons(size_t outputFaceCount,
                 }
             } else if (rate == RATE_FACE_VARYING) {
                 attribute->resize(sTriangleVertexCount * outputFaceCount);
-                size_t inputIndexOffset = inputIndexCount;
                 size_t outputIndexOffset = indices.size() - 1;
                 for (int f = inputFaceCount - 1; f >= 0; --f) {
                     size_t fvCount = faceVertexCount[f];
                     inputIndexOffset -= fvCount;
                     for (size_t v = fvCount; v >= sTriangleVertexCount; --v) {
-                        // triangulate a ngon into triangles fan
-                        attribute->copyInPlace(inputIndexOffset + v - 1,
-                            outputIndexOffset--);
-                        attribute->copyInPlace(inputIndexOffset + v - 2,
-                            outputIndexOffset--);
-                        attribute->copyInPlace(inputIndexOffset,
-                            outputIndexOffset--);
+                        attribute->copyInPlace(indexRemapping[outputIndexOffset],
+                                               outputIndexOffset);
+                        outputIndexOffset--;
+                        attribute->copyInPlace(indexRemapping[outputIndexOffset],
+                                               outputIndexOffset);
+                        outputIndexOffset--;
+                        attribute->copyInPlace(indexRemapping[outputIndexOffset],
+                                               outputIndexOffset);
+                        outputIndexOffset--;
                     }
                 }
             }

@@ -200,11 +200,12 @@ protected:
     virtual MeshIndexType getBaseFaceType() const = 0;
 
     virtual void splitNGons(size_t outputFaceCount,
-            PolygonMesh::FaceToPartBuffer& faceToPart,
-            const PolygonMesh::FaceVertexCount& faceVertexCount,
-            PolygonMesh::IndexBuffer& indices,
-            LayerAssignmentId& layerAssignmentId,
-            shading::PrimitiveAttributeTable& primitiveAttributeTable) = 0;
+                            const PolygonMesh::VertexBuffer& vertices,
+                            PolygonMesh::FaceToPartBuffer& faceToPart,
+                            const PolygonMesh::FaceVertexCount& faceVertexCount,
+                            PolygonMesh::IndexBuffer& indices,
+                            LayerAssignmentId& layerAssignmentId,
+                            shading::PrimitiveAttributeTable& primitiveAttributeTable) = 0;
 
     virtual void generateIndexBufferAndSurfaceSamples(
             const std::vector<PolyFaceTopology>& quadTopologies,

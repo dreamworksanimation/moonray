@@ -56,9 +56,13 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams)
         sQuadVertexCount : sTriangleVertexCount;
     auto& primitiveAttributeTable = mPolyMeshData->mPrimitiveAttributeTable;
     // make input mesh all quads or all triangles
-    splitNGons(mPolyMeshData->mEstiFaceCount, mFaceToPart,
-        mPolyMeshData->mFaceVertexCount, mIndices,
-        mLayerAssignmentId, primitiveAttributeTable);
+    splitNGons(mPolyMeshData->mEstiFaceCount,
+               mVertices,
+               mFaceToPart,
+               mPolyMeshData->mFaceVertexCount,
+               mIndices,
+               mLayerAssignmentId,
+               primitiveAttributeTable);
 
     MNRY_ASSERT_REQUIRE(!mIndices.empty() &&
         mIndices.size() % baseFaceVertexCount == 0);

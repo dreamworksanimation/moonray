@@ -16,6 +16,7 @@
 #include <moonray/rendering/geom/prim/TriMesh.h>
 #include <moonray/rendering/geom/prim/QuadMesh.h>
 #include <numeric>
+#include <algorithm>
 
 namespace moonray {
 namespace geom {
@@ -51,8 +52,13 @@ PolygonMesh::PolygonMesh(FaceVertexCount&& faceVertexCount,
             [](const size_t& faceCount, size_t curFaceVerts) {
                 return faceCount + ((curFaceVerts - 1) >> 1);
             });
-    // compare the total storage of indices of tessellated mesh
-    if (outputQuadFaceCount * 4 < outputTriFaceCount * 3) {
+
+    const size_t maxFVCount = *std::max_element(faceVertexCount.begin(),
+                                                faceVertexCount.end());
+    // If the maximum face vertex count is more than four we always create a
+    // tri mesh for now since it can deal with concave ngons.   If not, we
+    // create a quad mesh if it will generate less polygons than a trimesh.
+    if (maxFVCount <= 4 && outputQuadFaceCount * 4 < outputTriFaceCount * 3) {
         mImpl = fauxstd::make_unique<Impl>(new internal::QuadMesh(outputQuadFaceCount,
                 std::move(faceVertexCount), std::move(indices), std::move(vertices),
                 std::move(layerAssignmentId), std::move(primitiveAttributeTable)));

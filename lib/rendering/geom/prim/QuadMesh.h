@@ -63,11 +63,12 @@ private:
 
     // quadrangulate input data if there is any non quadrilateral exists
     virtual void splitNGons(size_t outputFaceCount,
-            PolygonMesh::FaceToPartBuffer& faceToPart,
-            const PolygonMesh::FaceVertexCount& faceVertexCount,
-            PolygonMesh::IndexBuffer& indices,
-            LayerAssignmentId& layerAssignmentId,
-            shading::PrimitiveAttributeTable& primitiveAttributeTable) override;
+                            const PolygonMesh::VertexBuffer& vertices,
+                            PolygonMesh::FaceToPartBuffer& faceToPart,
+                            const PolygonMesh::FaceVertexCount& faceVertexCount,
+                            PolygonMesh::IndexBuffer& indices,
+                            LayerAssignmentId& layerAssignmentId,
+                            shading::PrimitiveAttributeTable& primitiveAttributeTable) override;
 
     virtual void generateIndexBufferAndSurfaceSamples(
             const std::vector<PolyFaceTopology>& quadTopologies,

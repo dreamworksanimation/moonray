@@ -423,11 +423,12 @@ QuadMesh::getNeighborVertices(int baseFaceId, int tessFaceId,
 
 void
 QuadMesh::splitNGons(size_t outputFaceCount,
-        PolygonMesh::FaceToPartBuffer& faceToPart,
-        const PolygonMesh::FaceVertexCount& faceVertexCount,
-        PolygonMesh::IndexBuffer& indices,
-        LayerAssignmentId& layerAssignmentId,
-        PrimitiveAttributeTable& primitiveAttributeTable)
+                     const PolygonMesh::VertexBuffer& vertices,
+                     PolygonMesh::FaceToPartBuffer& faceToPart,
+                     const PolygonMesh::FaceVertexCount& faceVertexCount,
+                     PolygonMesh::IndexBuffer& indices,
+                     LayerAssignmentId& layerAssignmentId,
+                     PrimitiveAttributeTable& primitiveAttributeTable)
 {
     size_t inputFaceCount = faceVertexCount.size();
     size_t inputIndexCount = indices.size();
