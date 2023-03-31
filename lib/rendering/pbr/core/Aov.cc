@@ -345,6 +345,7 @@ static void
 addToBundledQueue(pbr::TLState *pbrTls,
                   const AovSchema &aovSchema,
                   int cameraId,
+                  float depth,
                   const uint32_t aovTypeMask,
                   const float *aovValues,
                   bool sparseAovValues,
@@ -405,6 +406,17 @@ addToBundledQueue(pbr::TLState *pbrTls,
                 }
             }
 
+            // Add the depth if indicated
+            if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH ||
+                entry.filter() == AOV_FILTER_CLOSEST) {
+                bundledAov.setAov(aov++, depth);
+                // flush if needed
+                if (aov == BundledAov::MAX_AOV) {
+                    queueBundledAov();
+                    initBundledAov();
+                }
+            }
+
             if (!sparseAovValues) {
                 // advance result now
                 result += nchans * vlen;
@@ -431,6 +443,7 @@ static void
 addToBundledQueue(pbr::TLState *pbrTls,
                   const AovSchema &aovSchema,
                   const uint32_t cameraId[],
+                  const float depth[],
                   const float *aovValues,
                   const uint32_t lane,
                   const uint32_t materialAovLanemasks[],
@@ -503,6 +516,16 @@ addToBundledQueue(pbr::TLState *pbrTls,
                     }
                 }
 
+                // Add the depth if indicated
+                if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH) {
+                    bundledAov.setAov(aov++, depth[lane]);
+                    // flush if needed
+                    if (aov == BundledAov::MAX_AOV) {
+                        queueBundledAov();
+                        initBundledAov();
+                    }
+                }
+
                 // Not sparse, so advance result now
                 result += nchans * VLEN;
             }
@@ -533,7 +556,24 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
 
     const int cameraId = isect.getCameraId();
 
-    addToBundledQueue(pbrTls, aovSchema, cameraId, aovTypeMask, aovValues, true, 0, 1,
+    // Do we need to compute a depth value?
+    float depth = scene_rdl2::math::inf;
+    const FrameState &fs = *pbrTls->mFs;
+    const Scene &scene = *fs.mScene;
+    for (const auto &entry: aovSchema) {
+        if (entry.type() & aovTypeMask) {
+            if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH ||
+                entry.filter() == AOV_FILTER_CLOSEST) {
+                // compute it
+                depth = scene.getCamera(cameraId)->computeZDistance(isect.getP(),
+                                                                    ray.getOrigin(),
+                                                                    ray.getTime());
+                break;
+            }
+        }
+    }
+
+    addToBundledQueue(pbrTls, aovSchema, cameraId, depth, aovTypeMask, aovValues, true, 0, 1,
                       pixel, deepDataHandle, film);
 }
 
@@ -550,7 +590,9 @@ aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
-    addToBundledQueue(pbrTls, aovSchema, cameraId, aovTypeMask, aovValues, true, 0, 1,
+    float depth = scene_rdl2::math::inf; // hard surface depth, not applicable here
+
+    addToBundledQueue(pbrTls, aovSchema, cameraId, depth, aovTypeMask, aovValues, true, 0, 1,
                       pixel, deepDataHandle, film);
 }
 
@@ -2990,14 +3032,28 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
     SCOPED_MEM(arena);
     unsigned int numMaterialAovChannels = 0;
     unsigned int numMaterialAovEntries = 0;
+    bool needsDepth = false;
     for (const auto &entry: aovSchema) {
         if (entry.type() == AOV_TYPE_MATERIAL_AOV) {
             numMaterialAovChannels += entry.numChannels();
             numMaterialAovEntries++;
+            if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH) {
+                needsDepth = true;
+            }
         }
     }
 
     if (!numMaterialAovChannels) return;
+
+    // If we need depth values, compute them now
+    alignas(SIMD_MEMORY_ALIGNMENT) float depth[VLEN];
+    if (needsDepth) {
+        ispc::computeAndStoreDepthFromIsect((intptr_t) &isect,
+                                            (intptr_t) &ray,
+                                            (intptr_t) &scene,
+                                            (intptr_t) getRender2Camera,
+                                            &depth);
+    }
 
     // Allocate a destination buffer large enough to hold results for all our material aovs across all lanes
     float *buffer = arena->allocArray<float>(numMaterialAovChannels * VLEN);
@@ -3032,7 +3088,7 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
     for (unsigned int lane = 0; lane < VLEN; ++lane) {
         if (!(lanemask & (1 << lane))) continue;
         // We need to call a version of addToBundledQueue() that passes the array of per-entry lane masks from above
-        addToBundledQueue(pbrTls, aovSchema, cameraId,
+        addToBundledQueue(pbrTls, aovSchema, cameraId, depth,
                           buffer, lane, materialAovLanemasks, pixel,
                           deepDataHandle, filmIdx);
     }
@@ -4129,4 +4185,3 @@ CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
  
 } // namespace pbr
 } // namespace moonray
-
