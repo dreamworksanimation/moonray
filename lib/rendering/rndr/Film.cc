@@ -337,7 +337,8 @@ Film::init(unsigned w, unsigned h,
            const int numDisplayFilters,
            const scene_rdl2::fb_util::TileExtrapolation *tileExtrapolation,
            const unsigned maxSamplesPerPixel, // for construction of AdaptiveRenderTileTable
-           float targetAdaptiveError
+           float targetAdaptiveError,
+           bool multiPresenceOn
            )
 {
     mTileExtrapolation = tileExtrapolation;
@@ -454,7 +455,7 @@ Film::init(unsigned w, unsigned h,
         if (!mCryptomatteBuf) {
             mCryptomatteBuf = new pbr::CryptomatteBuffer;
         }
-        mCryptomatteBuf->init(w, h, deepIDChannelNames.size());
+        mCryptomatteBuf->init(w, h, deepIDChannelNames.size(), multiPresenceOn);
     } else {
         delete mCryptomatteBuf;
         mCryptomatteBuf = nullptr;
@@ -1030,8 +1031,37 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
             if (br->mCryptomatteDataHandle != pbr::nullHandle) {
                 pbr::CryptomatteData *cryptomatteData =
                             static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(br->mCryptomatteDataHandle, 0));
-                if (cryptomatteData->mHit) {
-                    film.mCryptomatteBuf->addSampleVector(px, py, cryptomatteData->mId, 1.0f);
+
+                if (film.mCryptomatteBuf != nullptr) {
+                    float id = cryptomatteData->mId;
+                    unsigned int depth = cryptomatteData->mPresenceDepth;
+                    scene_rdl2::math::Vec3f position = cryptomatteData->mPosition;
+                    scene_rdl2::math::Vec3f normal = cryptomatteData->mNormal;
+                    scene_rdl2::math::Color4 beauty(br->mRadiance[0], 
+                                                    br->mRadiance[1], 
+                                                    br->mRadiance[2], 
+                                                    br->mRadiance[3]);
+
+                    float presenceInv = cryptomatteData->mPathPixelWeight == 0.f ? 0.f 
+                                                                             : (1.f / cryptomatteData->mPathPixelWeight);
+                    beauty *= presenceInv; // multiply by the reciprocal of presence to remove baked-in presence
+
+                    if (cryptomatteData->mHit && cryptomatteData->mPresenceDepth < 0) {
+                        // non-presence path
+                        if (cryptomatteData->mIsFirstSample) {
+                            // we only want to increment coverage, position, normal, and the normalization factor
+                            // numFragSamples if we're dealing with the first sample for this path. We don't want 
+                            // any data from the subsequent bounces except for the beauty (for GI)
+                            film.mCryptomatteBuf->addSampleVector(px, py, id, 1.f, position, normal, beauty, depth);                    
+                            cryptomatteData->mIsFirstSample = 0;
+                        } else {
+                            film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);
+                        }
+                    } else if (cryptomatteData->mPresenceDepth >= 0) {
+                        beauty.a = 0.f;
+                        // presence path: only add beauty -- the rest of the data is populated in the shadeBundleHandler 
+                        film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);
+                    }
                 }
                 pbrTls->releaseCryptomatteData(br->mCryptomatteDataHandle);
             }

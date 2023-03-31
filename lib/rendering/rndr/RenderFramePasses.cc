@@ -1282,11 +1282,7 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
                 rs->mCryptomatteDataHandle = pbrTls->allocList(sizeof(pbr::CryptomatteData), 1);
                 pbr::CryptomatteData *cryptomatteData =
                             static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
-                cryptomatteData->mRefCount = 1;
-                cryptomatteData->mCryptomatteBuffer = cryptomatteBuffer;
-                cryptomatteData->mPrevPresence = 0;
-                cryptomatteData->mHit = 0;
-                cryptomatteData->mId = 0.f;
+                cryptomatteData->init(cryptomatteBuffer);
             }
 
             // Queue up new primary ray.

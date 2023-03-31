@@ -358,6 +358,10 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         cryptomatteData->mHit = 1;
                     }
 
+                    // add position and normal data
+                    cryptomatteData->mPosition = isect->getP();
+                    cryptomatteData->mNormal = isect->getN();
+
                     // Retrieve the first deep id (if present) for this intersection from the primitive attrs.
                     // At the request of production, cryptomatte currently only supports one deep id associated
                     // with each layer, rather than a generalized vector of ids. So here we are only interested
@@ -696,24 +700,29 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 numPresenceRays = 0;
 
                 for (unsigned i = 0; i < workLoadSize; ++i) {
-                    RayState *parentRay = rayStates[i];
                     shading::Intersection *isect = &isectMemory[i];
 
+                    RayState *rs = rayStates[i];
+                    mcrt_common::RayDifferential *ray = &rs->mRay;
+
+                    unsigned px, py;
+                    uint32ToPixelLocation(rs->mSubpixel.mPixel, &px, &py);
+
                     if (presences[i] < 1.f - scene_rdl2::math::sEpsilon) {
-                        float totalPresence = (1.0f - parentRay->mPathVertex.totalPresence) * presences[i];
+                        float totalPresence = (1.0f - rs->mPathVertex.totalPresence) * presences[i];
                         RayState *presenceRay = presenceRays[numPresenceRays++];
 
                         // Compute ray epsilon
-                        float pathDistance = parentRay->mPathVertex.pathDistance + parentRay->mRay.getEnd();
+                        float pathDistance = rs->mPathVertex.pathDistance + rs->mRay.getEnd();
                         float rayEpsilon = isect->getEpsilonHint();
                         if (rayEpsilon <= 0.0f) {
                             rayEpsilon = sHitEpsilonStart * std::max(pathDistance, 1.0f);
                         }
 
-                        *presenceRay = *parentRay;
+                        *presenceRay = *rs;
 
                         if (totalPresence >= fs.mPresenceThreshold ||
-                            parentRay->mPathVertex.presenceDepth >= fs.mMaxPresenceDepth) {
+                            rs->mPathVertex.presenceDepth >= fs.mMaxPresenceDepth) {
                             // The cleanest way to terminate presence traversal is to make it impossible for the
                             // presence continuation ray to hit any more geometry.  This means we assume empty space
                             // past the last presence intersection, which will set the pixel's alpha to the
@@ -731,11 +740,11 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                             presenceRay->mRay.tfar = scene_rdl2::math::sMaxValue;
                         } else {
                             presenceRay->mRay.tnear = rayEpsilon;
-                            presenceRay->mRay.tfar = parentRay->mRay.getOrigTfar() - parentRay->mRay.tfar;
+                            presenceRay->mRay.tfar = rs->mRay.getOrigTfar() - rs->mRay.tfar;
                         }
 
                         presenceRay->mRay.setOrigTfar(presenceRay->mRay.tfar);
-                        presenceRay->mPathVertex.pathDistance += parentRay->mRay.getEnd();
+                        presenceRay->mPathVertex.pathDistance += rs->mRay.getEnd();
                         presenceRay->mPathVertex.pathPixelWeight *= (1.f - presences[i]);
                         presenceRay->mPathVertex.aovPathPixelWeight *= (1.f - presences[i]);
                         presenceRay->mPathVertex.pathThroughput *= (1.f - presences[i]);
@@ -745,30 +754,44 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         presenceRay->mRay.primID = -1;
                         presenceRay->mRay.instID = -1;
                         presenceRay->mDeepDataHandle = nullHandle;
-                        // Make sure to call "acquireCryptomatteData" here. This will increment the reference count of 
-                        // mCryptomatteDataHandle. Later in this function parentRay gets "deleted" and so
-                        // mCryptomatteDataHandle's reference count will get decremented. If we don't call
-                        // acquireCryptomatteData the data pointed to by the handle will get released too soon and will
-                        // lead to undefined behavior.
-                        presenceRay->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(
-                            parentRay->mCryptomatteDataHandle);
-                        parentRay->mPathVertex.pathPixelWeight *= presences[i];
-                        parentRay->mPathVertex.aovPathPixelWeight *= presences[i];
-                        parentRay->mPathVertex.pathThroughput *= presences[i];
+
+                        rs->mPathVertex.pathPixelWeight *= presences[i];
+                        rs->mPathVertex.aovPathPixelWeight *= presences[i];
+                        rs->mPathVertex.pathThroughput *= presences[i];
+                        
+                        // allocate memory for a new cryptomatte data object for the next presence ray
+                        // this way, we can have consistent cryptomatte data for each path vertex
+                        presenceRay->mCryptomatteDataHandle = pbrTls->allocList(sizeof(pbr::CryptomatteData), 1);
+                        pbr::CryptomatteData *cryptomatteDataNext = static_cast<pbr::CryptomatteData*>
+                                                        (pbrTls->getListItem(presenceRay->mCryptomatteDataHandle, 0));
+                        cryptomatteDataNext->init(nullptr);
 
                         // Add to the cryptomatte if we have a handle to it, and isn't a cutout:
-                        if (!cutout && parentRay->mCryptomatteDataHandle != nullHandle) {
+                        if (!cutout && rs->mCryptomatteDataHandle != nullHandle && ray->getDepth() == 0) {
                             CryptomatteData *cryptomatteData =
-                                static_cast<CryptomatteData*>(pbrTls->getListItem(parentRay->mCryptomatteDataHandle,
+                                static_cast<CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle,
                                                                                   0));
-
-                            unsigned px, py;
-                            uint32ToPixelLocation(parentRay->mSubpixel.mPixel, &px, &py);
-
-                            cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
-                                parentRay->mPathVertex.pathPixelWeight);
+                            // add presence data to cryptomatte -- the only data we don't have at this point is 
+                            // radiance, which we will add to the cryptomatte in the radiance handler
+                            if (cryptomatteData->mCryptomatteBuffer != nullptr) {
+                                scene_rdl2::math::Color4 beauty(0.f, 0.f, 0.f, presences[i]);
+                                cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
+                                                                                    rs->mPathVertex.pathPixelWeight,
+                                                                                    cryptomatteData->mPosition,
+                                                                                    cryptomatteData->mNormal, 
+                                                                                    beauty,
+                                                                                    rs->mPathVertex.presenceDepth);
+                            }
+                            // update cryptomatte info for current presence ray
                             cryptomatteData->mPrevPresence = 1;
                             cryptomatteData->mHit = 0;
+                            cryptomatteData->mPathPixelWeight = rs->mPathVertex.pathPixelWeight;
+                            cryptomatteData->mPresenceDepth = rs->mPathVertex.presenceDepth;
+
+                            // update cryptomatte info for spawned presence ray
+                            cryptomatteDataNext->mPrevPresence = 1;
+                            cryptomatteDataNext->mPathPixelWeight = rs->mPathVertex.pathPixelWeight;
+                            cryptomatteDataNext->mCryptomatteBuffer = cryptomatteData->mCryptomatteBuffer;
                         }
 
                         // LPE
@@ -778,27 +801,35 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                             const FrameState &fs = *pbrTls->mFs;
                             const LightAovs &lightAovs = *fs.mLightAovs;
                             // transition
-                            int lpeStateId = parentRay->mPathVertex.lpeStateId;
+                            int lpeStateId = rs->mPathVertex.lpeStateId;
                             lpeStateId = lightAovs.straightEventTransition(pbrTls, lpeStateId);
                             presenceRay->mPathVertex.lpeStateId = lpeStateId;
                         }
-                    } else if (!cutout && parentRay->mCryptomatteDataHandle != nullHandle) {
+                    } else if (!cutout && rs->mCryptomatteDataHandle != nullHandle && ray->getDepth() == 0) {
                         // Add to the cryptomatte if we came from a presence ray but we no longer hit such a case:
                         CryptomatteData *cryptomatteData =
-                            static_cast<CryptomatteData*>(pbrTls->getListItem(parentRay->mCryptomatteDataHandle,
+                            static_cast<CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle,
                                                                               0));
 
                         if (!cryptomatteData->mPrevPresence) {
                             continue;
                         }
 
-                        unsigned px, py;
-                        uint32ToPixelLocation(parentRay->mSubpixel.mPixel, &px, &py);
-
-                        cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
-                            parentRay->mPathVertex.pathPixelWeight);
+                        // we will add beauty data in the radiance handler
+                        if (cryptomatteData->mCryptomatteBuffer != nullptr) {
+                            scene_rdl2::math::Color4 beauty(0.f, 0.f, 0.f, presences[i]);
+                            cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
+                                                                                rs->mPathVertex.pathPixelWeight,
+                                                                                cryptomatteData->mPosition,
+                                                                                cryptomatteData->mNormal, 
+                                                                                beauty, 
+                                                                                rs->mPathVertex.presenceDepth);
+                        }
+                        // update cryptomatte info for current ray
+                        cryptomatteData->mPresenceDepth = rs->mPathVertex.presenceDepth;
                         cryptomatteData->mPrevPresence = 0;
                         cryptomatteData->mHit = 0;
+                        cryptomatteData->mPathPixelWeight = rs->mPathVertex.pathPixelWeight;
                     }
                 }
 

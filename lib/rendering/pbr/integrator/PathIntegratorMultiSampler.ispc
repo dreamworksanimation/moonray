@@ -61,9 +61,11 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
                             rayState.mTilePassAndFilm,
                             dataPtrHandle,
                             rayState.mDeepDataHandle,
+                            rayState.mCryptomatteDataHandle,
                             occlTestType,
                             assignmentId);
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);
+        PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
 
         // packed_store_active2() "may write one extra element to the output array"
         // according to ISPC documentation https://ispc.github.io/ispc.html.
@@ -667,12 +669,10 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             rayState->mCameraId = parentRayState.mCameraId;
             rayState->mTilePassAndFilm = parentRayState.mTilePassAndFilm;
             rayState->mDeepDataHandle = parentRayState.mDeepDataHandle;
-            // Cryptomatte only records pixel coverage information as seen from the camera; i.e. only primary rays add
-            // to the cryptomatte buffer, so secondary rays don't need to acquire a handle to the cryptomatte data.
-            // (This differs from deep data, which records radiance information, and hence must acquire the deep data
-            // handle even for secondary rays.)
-            rayState->mCryptomatteDataHandle = PBR_nullHandle;
+            // Since cryptomatte records radiance information, its handle actually also needs to be acquired
+            rayState->mCryptomatteDataHandle = parentRayState.mCryptomatteDataHandle;
             PbrTLState_acquireDeepData(pbrTls, rayState->mDeepDataHandle);
+            PbrTLState_acquireCryptomatteData(pbrTls, rayState->mCryptomatteDataHandle);
 
             // Accumulate post scatter extra aovs
             if (!AovSchema_empty(aovSchema)) {

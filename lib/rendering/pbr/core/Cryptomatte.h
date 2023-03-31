@@ -6,6 +6,7 @@
 #include "PbrTLState.h"
 
 #include <scene_rdl2/common/fb_util/PixelBuffer.h>
+#include <scene_rdl2/scene/rdl2/RenderOutput.h>
 
 #include <list>
 #include <tbb/mutex.h>
@@ -51,10 +52,25 @@ private:
     struct Fragment
     {
         float mId;
-        float mCoverage;
+        float mCoverage;                        
+        scene_rdl2::math::Vec3f mPosition;
+        scene_rdl2::math::Vec3f mNormal;
+        scene_rdl2::math::Color4 mBeauty;
+        unsigned mPresenceDepth;
+        unsigned mNumSamples;    // num pixel samples that hit this id -- used to average position/normal data
 
-        Fragment(float id, float coverage)
-        : mId(id), mCoverage(coverage)
+        Fragment(float id, float coverage, 
+                 const scene_rdl2::math::Vec3f& position, 
+                 const scene_rdl2::math::Vec3f& normal, 
+                 const scene_rdl2::math::Color4& beauty, 
+                 unsigned presenceDepth, unsigned numSamples = 1)
+        : mId(id), 
+          mCoverage(coverage),
+          mPosition(position), 
+          mNormal(normal), 
+          mBeauty(beauty), 
+          mPresenceDepth(presenceDepth), 
+          mNumSamples(numSamples)
         {}
     };
 
@@ -68,23 +84,51 @@ public:
     CryptomatteBuffer();
     ~CryptomatteBuffer();
 
-    void init(unsigned width, unsigned height, unsigned numIdChannels);
+    void init(unsigned width, unsigned height, unsigned numIdChannels, bool multiPresenceOn);
 
     void clear();
 
+    // ---------------------------------------- Setters ----------------------------------------------------------------
+    void setFinalized(bool finalized) { mFinalized = finalized; }
+    void setMultiPresenceOn(bool multiPresenceOn) { mMultiPresenceOn = multiPresenceOn; }
+
+    // ---------------------------------------- Getters ----------------------------------------------------------------
     unsigned getWidth()     const { return mWidth; }
     unsigned getHeight()    const { return mHeight; }
+    bool getMultiPresenceOn() const { return mMultiPresenceOn; }
 
-    void addSampleScalar(unsigned x, unsigned y, float id, float weight);
-    void addSampleVector(unsigned x, unsigned y, float id, float weight);
-    void addFragments(unsigned x, unsigned y, const float *data, int numFragments);
+    // -----------------------------------------------------------------------------------------------------------------
+
+    void addSampleScalar(unsigned x, unsigned y, float id, float weight, 
+                         const scene_rdl2::math::Vec3f& position, 
+                         const scene_rdl2::math::Vec3f& normal,
+                         const scene_rdl2::math::Color4& beauty,
+                         unsigned presenceDepth);
+
+    // For details on why we have the incrementSamples parameter, see CryptomatteBuffer.cc::addBeautySampleVector
+    void addSampleVector(unsigned x, unsigned y, float id, float weight,
+                         const scene_rdl2::math::Vec3f& position,
+                         const scene_rdl2::math::Vec3f& normal,
+                         const scene_rdl2::math::Color4& beauty,
+                         unsigned presenceDepth,
+                         bool incrementSamples = true);
+
+    // see CryptomatteBuffer.cc::addBeautySampleVector for info on why this function exists only in vector mode
+    void addBeautySampleVector(unsigned x, unsigned y, float id, const scene_rdl2::math::Color4& beauty, unsigned depth);
 
     void finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned>& samplesCount);
+    void outputFragments(unsigned x, unsigned y, int numLayers, float *dest, const scene_rdl2::rdl2::RenderOutput& ro) const;
+
     void unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsigned>& samplesCount);
-    void setFinalized(bool finalized) { mFinalized = finalized; }
+    void addFragments(unsigned x, unsigned y, 
+                      const scene_rdl2::rdl2::RenderOutput& ro,
+                      const float *idAndCoverageData,
+                      const float *positionData,
+                      const float *normalData,
+                      const float *beautyData,
+                      const float *resumeRenderSupportData);
 
-    void outputFragments(unsigned x, unsigned y, int numLayers, float *dest) const;
-
+    // --------------------------------------------- Print -------------------------------------------------------------
     void printAllPixelEntries() const;
     void printFragments(unsigned x, unsigned y) const;
 
@@ -96,6 +140,8 @@ private:
     unsigned mHeight;
 
     bool mFinalized;
+
+    bool mMultiPresenceOn;
 
 /* The following notes are adapted from the DeepBuffer mutex description.
  *  

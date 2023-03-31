@@ -88,7 +88,8 @@ public:
               const int numDisplayFilters,
               const scene_rdl2::fb_util::TileExtrapolation *tileExtrapolation,
               const unsigned maxSamplesPerPixel,
-              float targetAdaptiveError);
+              float targetAdaptiveError,
+              bool multiPresenceOn);
 
     void cleanUp();
 

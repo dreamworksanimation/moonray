@@ -520,14 +520,22 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             // Clear the cryptomatte buffer ready for loading resume data
             pbr::CryptomatteBuffer *cryptomatteBuf = film.getCryptomatteBuffer();
             cryptomatteBuf->clear();
-            cryptomatteBuf->init(reader.getWidth(), reader.getHeight(), 1);
+            cryptomatteBuf->init(reader.getWidth(), reader.getHeight(), 1, cryptomatteBuf->getMultiPresenceOn());
 
             scene_rdl2::fb_util::Tiler tiler(reader.getWidth(), reader.getHeight());
             reader.crawlAllTiledScanline
                 ([&](const int startX, const int endX, const int pixY, const int nChan,
                      const float *pix) {
                     for (int x = startX; x < endX; ++x) {
-                        cryptomatteBuf->addFragments(x, pixY, pix, nChan / 2);
+                        // get the offsets to the cryptomatte data (the data isn't necessarily contiguous!)
+                        const float *idAndCoverageData       = pix + reader.getPixChanOffset("Cryptomatte00.R");
+                        const float *positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
+                        const float *normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
+                        const float *beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
+                        const float *resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
+
+                        cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, normalData, 
+                                                     beautyData, resumeRenderSupportData);
                         pix += nChan;
                     }
                 });

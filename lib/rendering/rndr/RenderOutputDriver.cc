@@ -1542,6 +1542,8 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
     if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE) {
         char channelName[] = "Cryptomatte00.R";
         int numLayers = ro->getCryptomatteNumLayers();
+        int numFragments = numLayers * 2;
+        
         MNRY_ASSERT_REQUIRE(numLayers < 100);
         for (int layer = 0; layer < numLayers; layer++) {
             sprintf(channelName, "Cryptomatte%02d.R", layer);
@@ -1552,6 +1554,45 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
             chanNames.push_back(channelName);
             sprintf(channelName, "Cryptomatte%02d.A", layer);
             chanNames.push_back(channelName);
+        }
+        // position/normal/beauty data is defined per fragment, not per layer
+        for (int fragment = 0; fragment < numFragments; ++fragment) {
+            if (ro->getCryptomatteOutputPositions()) {
+                sprintf(channelName, "CryptoP%02d.R", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP%02d.G", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP%02d.B", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP%02d.A", fragment);
+                chanNames.push_back(channelName);
+            }
+            if (ro->getCryptomatteOutputNormals()) {
+                sprintf(channelName, "CryptoN%02d.R", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoN%02d.G", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoN%02d.B", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoN%02d.A", fragment);
+                chanNames.push_back(channelName);
+            }
+            if (ro->getCryptomatteOutputBeauty()) {
+                sprintf(channelName, "CryptoB%02d.R", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoB%02d.G", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoB%02d.B", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoB%02d.A", fragment);
+                chanNames.push_back(channelName);
+            }
+            if (ro->getCryptomatteSupportResumeRender()) {
+                sprintf(channelName, "CryptoS%02d.R", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoS%02d.G", fragment);
+                chanNames.push_back(channelName);
+            }
         }
         return;
     }

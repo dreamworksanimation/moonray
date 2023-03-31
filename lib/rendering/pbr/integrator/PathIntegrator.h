@@ -291,7 +291,19 @@ private:
         // intersection results
         bool mHit;
         float mId;
+        scene_rdl2::math::Vec3f mPosition;
+        scene_rdl2::math::Vec3f mNormal;
+        scene_rdl2::math::Color4 mBeauty;
         CryptomatteBuffer* mCryptomatteBuffer;
+
+        void init(CryptomatteBuffer* buffer) {
+            mHit = false;
+            mId = 0.f;
+            mPosition = scene_rdl2::math::Vec3f(0.f);
+            mNormal = scene_rdl2::math::Vec3f(0.f);
+            mBeauty = scene_rdl2::math::Color4(0.f);
+            mCryptomatteBuffer = buffer;
+        }
     };
 
     /// Copy is disabled

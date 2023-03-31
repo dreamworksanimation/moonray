@@ -275,6 +275,18 @@ struct CryptomatteData
     CRYPTOMATTE_DATA_MEMBERS;
 
     static uint32_t hudValidation(bool verbose) { CRYPTOMATTE_DATA_VALIDATION; }
+    void init(CryptomatteBuffer* buffer) {
+        mRefCount = 1;                              // number of "owners" of this data; when 0, data is released
+        mCryptomatteBuffer = buffer;                // cryptomatte buffer
+        mHit = 0;                                   // if zero, hit a presence surface or terminated early
+        mPrevPresence = 0;                          // whether previously on presence path (0 = false, 1 = true)
+        mId = 0;                                    // id for hit
+        mPosition = scene_rdl2::math::Vec3f(0.f);   // position at hit
+        mNormal = scene_rdl2::math::Vec3f(0.f);     // shading normal at hit
+        mPresenceDepth = -1;                        // presence depth, -1 indicates that this isn't a presence path
+        mPathPixelWeight = 1.f;                     // accumulated presence (used to remove presence from beauty) 
+        mIsFirstSample = 1;                         // is this the first sample added for this path? (0 = false, 1 = true)
+    }
 };
 
 

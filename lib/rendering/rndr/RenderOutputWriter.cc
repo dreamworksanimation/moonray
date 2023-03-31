@@ -1391,7 +1391,7 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
         {
             if (mCryptomatteBuffer) {
                 int numLayers = ro->getCryptomatteNumLayers();
-                mCryptomatteBuffer->outputFragments(x, y, numLayers, outPtr);
+                mCryptomatteBuffer->outputFragments(x, y, numLayers, outPtr, *ro);
             }
         }
         break;

@@ -705,6 +705,10 @@ RenderDriver::startFrame(const FrameState &fs)
             if (mFs.mRenderContext->getSceneContext().getResumableOutput()) {
                 filmFlags |= Film::RESUMABLE_OUTPUT;
             }
+            bool cryptomatteMultiPresence = mFs.mRenderContext->getSceneContext()
+                                                      .getSceneVariables()
+                                                      .get(scene_rdl2::rdl2::SceneVariables::sCryptomatteMultiPresence);
+
             mFilms[i].init(w, h,
                            mFs.mViewport,
                            filmFlags,
@@ -720,7 +724,8 @@ RenderDriver::startFrame(const FrameState &fs)
                            mFs.mDisplayFilterCount,
                            &mTileExtrapolation,
                            mFs.mMaxSamplesPerPixel,
-                           mFs.mTargetAdaptiveError);
+                           mFs.mTargetAdaptiveError,
+                           cryptomatteMultiPresence);
         }
 
         updated = true;

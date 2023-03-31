@@ -136,6 +136,7 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
             pbrTls->freeList(occlRay.mDataPtrHandle);
         }
         pbrTls->releaseDeepData(occlRay.mDeepDataHandle);
+        pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
     }
 
     return numRadiancesFilled;
@@ -176,6 +177,7 @@ forceSingleRaysUnoccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOccl
             pbrTls->freeList(occlRay.mDataPtrHandle);
         }
         pbrTls->releaseDeepData(occlRay.mDeepDataHandle);
+        pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
     }
 
     return numEntries;
@@ -285,6 +287,7 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
 
         // we are responsible for freeing data memory
         pbrTls->freeList(occlRay.mDataPtrHandle);
+        pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
     }
     return numRadiancesFilled;
 }

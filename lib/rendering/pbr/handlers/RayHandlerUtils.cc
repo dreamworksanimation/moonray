@@ -111,11 +111,10 @@ fillBundledRadiance(pbr::TLState* pbrTls, BundledRadiance* dst, const BundledOcc
     dst->mPixel = occlRay.mPixel;
     dst->mSubPixelIndex = occlRay.mSubpixelIndex;
     dst->mDeepDataHandle = pbrTls->acquireDeepData(occlRay.mDeepDataHandle);
-    // Cryptomatte only records pixel coverage information as seen from the camera; i.e. only primary rays add to
-    // the cryptomatte buffer, so occlusion rays don't need to acquire a handle to the cryptomatte data. (This
-    // differs from deep data, which records radiance information, and hence must acquire the deep data handle even
-    // for secondary rays.)
-    dst->mCryptomatteDataHandle = nullHandle;
+    // Cryptomatte now records radiance information, which requires the occlusion rays to acquire a handle to the 
+    // cryptomatte data. Before this change to cryptomatte, this would have been a null handle, as we only cared about 
+    // pixel coverage information as seen from the camera.
+    dst->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(occlRay.mCryptomatteDataHandle);
     dst->mTilePassAndFilm = occlRay.mTilePassAndFilm;
     dst->mCameraId = b->mCameraId;
 }

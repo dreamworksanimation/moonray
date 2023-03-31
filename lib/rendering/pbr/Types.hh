@@ -35,27 +35,29 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
     HVD_MEMBER(uint32_t, mDataPtrHandle);                           \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
+    HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
     HVD_MEMBER(uint32_t, mOcclTestType);                            \
     HVD_MEMBER(int32_t,  mShadowReceiverId);                        \
-    HVD_ISPC_PAD(mIspcPad, 44)
+    HVD_ISPC_PAD(mIspcPad, 40)
 
-#define BUNDLED_OCCL_RAY_VALIDATION(vlen)            \
-    HVD_BEGIN_VALIDATION(BundledOcclRay, vlen);      \
-    HVD_VALIDATE(BundledOcclRay, mOrigin);           \
-    HVD_VALIDATE(BundledOcclRay, mDir);              \
-    HVD_VALIDATE(BundledOcclRay, mMinT);             \
-    HVD_VALIDATE(BundledOcclRay, mMaxT);             \
-    HVD_VALIDATE(BundledOcclRay, mTime);             \
-    HVD_VALIDATE(BundledOcclRay, mDepth);            \
-    HVD_VALIDATE(BundledOcclRay, mRadiance);         \
-    HVD_VALIDATE(BundledOcclRay, mPixel);            \
-    HVD_VALIDATE(BundledOcclRay, mSubpixelIndex);    \
-    HVD_VALIDATE(BundledOcclRay, mSequenceID);       \
-    HVD_VALIDATE(BundledOcclRay, mTilePassAndFilm);  \
-    HVD_VALIDATE(BundledOcclRay, mDataPtrHandle);    \
-    HVD_VALIDATE(BundledOcclRay, mDeepDataHandle);   \
-    HVD_VALIDATE(BundledOcclRay, mOcclTestType);     \
-    HVD_VALIDATE(BundledOcclRay, mShadowReceiverId); \
+#define BUNDLED_OCCL_RAY_VALIDATION(vlen)                   \
+    HVD_BEGIN_VALIDATION(BundledOcclRay, vlen);             \
+    HVD_VALIDATE(BundledOcclRay, mOrigin);                  \
+    HVD_VALIDATE(BundledOcclRay, mDir);                     \
+    HVD_VALIDATE(BundledOcclRay, mMinT);                    \
+    HVD_VALIDATE(BundledOcclRay, mMaxT);                    \
+    HVD_VALIDATE(BundledOcclRay, mTime);                    \
+    HVD_VALIDATE(BundledOcclRay, mDepth);                   \
+    HVD_VALIDATE(BundledOcclRay, mRadiance);                \
+    HVD_VALIDATE(BundledOcclRay, mPixel);                   \
+    HVD_VALIDATE(BundledOcclRay, mSubpixelIndex);           \
+    HVD_VALIDATE(BundledOcclRay, mSequenceID);              \
+    HVD_VALIDATE(BundledOcclRay, mTilePassAndFilm);         \
+    HVD_VALIDATE(BundledOcclRay, mDataPtrHandle);           \
+    HVD_VALIDATE(BundledOcclRay, mDeepDataHandle);          \
+    HVD_VALIDATE(BundledOcclRay, mCryptomatteDataHandle);   \
+    HVD_VALIDATE(BundledOcclRay, mOcclTestType);            \
+    HVD_VALIDATE(BundledOcclRay, mShadowReceiverId);        \
     HVD_END_VALIDATION
 
 #define BUNDLED_OCCL_RAY_DATA_MEMBERS                                   \
@@ -173,12 +175,17 @@ enum OcclTestType
     HUD_END_VALIDATION
 
 
-#define CRYPTOMATTE_DATA_MEMBERS                              \
-    HUD_CPP_MEMBER(tbb::atomic<int>, mRefCount, 4);           \
-    HUD_CPP_PTR(pbr::CryptomatteBuffer*, mCryptomatteBuffer); \
-    HUD_MEMBER(uint32_t, mHit);                               \
-    HUD_MEMBER(uint32_t, mPrevPresence);                      \
-    HUD_MEMBER(float, mId)      
+#define CRYPTOMATTE_DATA_MEMBERS                                    \
+    HUD_CPP_MEMBER(tbb::atomic<int>, mRefCount, 4);                 \
+    HUD_CPP_PTR(pbr::CryptomatteBuffer*, mCryptomatteBuffer);       \
+    HUD_MEMBER(uint32_t, mHit);                                     \
+    HUD_MEMBER(uint32_t, mPrevPresence);                            \
+    HUD_MEMBER(float, mId);                                         \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mPosition);  \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mNormal);    \
+    HUD_MEMBER(int32_t, mPresenceDepth);                           \
+    HUD_MEMBER(float, mPathPixelWeight);                            \
+    HUD_MEMBER(uint32_t, mIsFirstSample)                   
 
 #define CRYPTOMATTE_DATA_VALIDATION                     \
     HUD_BEGIN_VALIDATION(CryptomatteData);              \
@@ -187,6 +194,11 @@ enum OcclTestType
     HUD_VALIDATE(CryptomatteData, mHit);                \
     HUD_VALIDATE(CryptomatteData, mPrevPresence);       \
     HUD_VALIDATE(CryptomatteData, mId);                 \
+    HUD_VALIDATE(CryptomatteData, mPosition);           \
+    HUD_VALIDATE(CryptomatteData, mNormal);             \
+    HUD_VALIDATE(CryptomatteData, mPresenceDepth);      \
+    HUD_VALIDATE(CryptomatteData, mPathPixelWeight);    \
+    HUD_VALIDATE(CryptomatteData, mIsFirstSample);      \
     HUD_END_VALIDATION
 
 //
