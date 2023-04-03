@@ -2343,7 +2343,7 @@ PathIntegrator::transmittance(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         volumeRayState.getOriginVolumeId() == geom::internal::VolumeRayState::ORIGIN_VOLUME_INIT) {
         // In this case, we have volume along the ray but ray origin is assumed outside of the volume.
         // So, we set ORIGIN_VOLUME_EMPTY to originVolumeId.
-        volumeRayState.setOriginVolumeId(geom::internal::VolumeRayState::ORIGIN_VOLUME_EMPTY);
+        volumeRayState.setOriginVolumeId(geom::internal::VolumeRayState::ORIGIN_VOLUME_EMPTY, 0.f);
     }
 
     // no volume across this ray

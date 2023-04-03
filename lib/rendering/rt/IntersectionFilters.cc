@@ -38,7 +38,9 @@ originVolumeTest(uint32_t threadIdx,
     bool intersectVoxel =
         vdbVolume->queryIntersections(rayOrg, rayDir, ray.tnear, ray.time, threadIdx, volumeId, tmpVolState,
                                       true);
-    if (!intersectVoxel) {
+    if (!intersectVoxel || tmpVolState.getIntervalCount() == 0) {
+        // It's possible to intersect the volume but have it beyond the tfar distance
+        // of the ray, in which case there are no intervals.
         return false; // no shadow occlusion -> no originVolume.
     }
 
@@ -127,21 +129,22 @@ vdbVolumeIntervalFilter(const RTCFilterFunctionNArguments* args)
                 // In this case, we can safely skip this volume interval for transmittance computation if
                 // ShadowSet attribute has this light (i.e. this volume does not cast a shadow on the ray
                 // origin).
-                //
-                // Current logic sets first found origin volume as the final origin volume.
-                // This means logic potentially has a problem if 2 or more volumes overlapped at the ray
-                // origin point. In this case, we need a clever way to detect which volume should be picked
-                // as the origin volume or what should we do.
-                //
-                if (volumeRayState.getOriginVolumeId() == geom::internal::VolumeRayState::ORIGIN_VOLUME_INIT) {
+
+                float volumeDistance = ray->tfar; // tfar is the intersection distance to the volume's bbox
+                if (volumeRayState.getOriginVolumeId() == geom::internal::VolumeRayState::ORIGIN_VOLUME_INIT ||
+                    (volumeDistance < volumeRayState.getOriginVolumeDistance())) {
+                    // If we have found an origin volume, check the intersection distance to see if this
+                    // one is actually closer.  This fixes an issue where the BVH traversal may not be
+                    // in distance order along the ray and handles the case where multiple volumes
+                    // overlap the origin.
                     if (volumeRayState.getEstimateInScatter()) {
                         if (originVolumeTest(tls->mThreadIdx, volumeId, *ray, vdbVolume)) {
-                            volumeRayState.setOriginVolumeId(volumeId);
+                            volumeRayState.setOriginVolumeId(volumeId, volumeDistance);
                         } else {
                             // not set origin volume for the next vdbVolumeIntervalFilter() call.
                         }
                     } else {
-                        volumeRayState.setOriginVolumeId(geom::internal::VolumeRayState::ORIGIN_VOLUME_EMPTY);
+                        volumeRayState.setOriginVolumeId(geom::internal::VolumeRayState::ORIGIN_VOLUME_EMPTY, 0.f);
                     }
                 }
 

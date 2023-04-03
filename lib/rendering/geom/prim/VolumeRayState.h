@@ -127,8 +127,9 @@ public:
     finline float getTEnd() const { return mTEnd; }
 
 
-    inline void setOriginVolumeId(int id) { mOriginVolumeId = id; }
+    inline void setOriginVolumeId(int id, float distance) { mOriginVolumeId = id; mOriginVolumeDistance = distance; }
     inline int getOriginVolumeId() const { return mOriginVolumeId; }
+    inline float getOriginVolumeDistance() const { return mOriginVolumeDistance; }
 
     inline bool getEstimateInScatter() const { return mEstimateInScatter; }
 
@@ -145,8 +146,12 @@ private:
     // volumeId of ray origin position. 3 possible conditions.
     // ORIGIN_VOLUME_INIT : initial condition. origin volume is not computed yet.
     // ORIGIN_VOLUME_EMPTY : no volume at ray origin
-    // 0 or positive value : volumeId at ray origi position.
+    // 0 or positive value : volumeId at ray origin position.
     int mOriginVolumeId;
+
+    // The distance of the origin volume to the origin.  Used for finding the closest
+    // origin volume during BVH traversal / intersection filters.
+    float mOriginVolumeDistance;
 
     // true  : This is a case when this class is used for PathIntegrator::estimateInScatteringSourceTerm().
     //         i.e. light transmittance computation for volume.
