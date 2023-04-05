@@ -14,7 +14,7 @@ def version():
     """
     Increment the build in the version.
     """
-    _version = '13.6'
+    _version = '13.7'
     from rezbuild import earlybind
     return earlybind.version(this, _version)
 
@@ -67,7 +67,7 @@ requires = [
     'boost',
     'cuda-11.3.0.x',
     'embree-3.12.1.x.16',
-    'mcrt_denoise-2.6',
+    'mcrt_denoise-2.7',
     'mkl',
     'openexr',
     'openimageio-2<2.4',
@@ -75,7 +75,7 @@ requires = [
     'openvdb',
     'optix-7.3.0.x',
     'random123-1.08.3',
-    'scene_rdl2-11.6',
+    'scene_rdl2-11.7',
     'zlib-1.2.8.x.2'
 ]
 
