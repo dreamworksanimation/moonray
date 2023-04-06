@@ -1016,7 +1016,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
         IndirectRadianceType result = computeRadianceRecurse(pbrTls, nextRay, sp, cameraId, nextPv,
             lobe, radianceIndirect, transparencyIndirect,
             vtIndirect, sequenceID, aovs, /* depth = */ nullptr, /* deepParams = */ nullptr,
-            /* cryptomatteParams = */ nullptr, /* ignoreVolumes = */ false, hitVolume);
+            /* cryptomatteParams = */ nullptr, /* refractCryptomatteParams = */ nullptr, /* ignoreVolumes = */ false, hitVolume);
         if (result != NONE) {
             radiance += radianceIndirect;
 

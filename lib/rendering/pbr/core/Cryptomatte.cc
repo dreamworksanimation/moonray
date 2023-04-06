@@ -29,9 +29,11 @@ void CryptomatteBuffer::init(unsigned width, unsigned height, unsigned numIdChan
 
     mWidth = width;
     mHeight = height;
-    mPixelEntries.reserve(width * height);
-    for (size_t iPixel = 0; iPixel < width * height; iPixel++) {
-        mPixelEntries.push_back(PixelEntry());
+    for (int iType = 0; iType < NUM_CRYPTOMATTE_TYPES; iType++) {
+        mPixelEntries[iType].reserve(width * height);
+        for (size_t iPixel = 0; iPixel < width * height; iPixel++) {
+            mPixelEntries[iType].push_back(PixelEntry());
+        }
     }
     mFinalized = false;
     mMultiPresenceOn = multiPresenceOn;
@@ -39,9 +41,11 @@ void CryptomatteBuffer::init(unsigned width, unsigned height, unsigned numIdChan
 
 void CryptomatteBuffer::clear()
 {
-    for (size_t iPixel = 0; iPixel < mWidth * mHeight; iPixel++) {
-        PixelEntry &pixelEntry = mPixelEntries[iPixel];
-        pixelEntry.mFragments.clear();
+    for (int iType = 0; iType < NUM_CRYPTOMATTE_TYPES; iType++) {
+        for (size_t iPixel = 0; iPixel < mWidth * mHeight; iPixel++) {
+            PixelEntry &pixelEntry = mPixelEntries[iType][iPixel];
+            pixelEntry.mFragments.clear();
+        }
     }
     mFinalized = false;
 }
@@ -50,9 +54,10 @@ void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, 
                                         const scene_rdl2::math::Vec3f& position, 
                                         const scene_rdl2::math::Vec3f& normal,
                                         const scene_rdl2::math::Color4& beauty,
-                                        unsigned presenceDepth)
+                                        unsigned presenceDepth,
+                                        int cryptoType)
 {
-    PixelEntry &pixelEntry = mPixelEntries[y * mWidth + x];
+    PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
 
     // Iterate over fragments stored at current pixel and see if we can merge the sample in to any of them
     for (Fragment &fragment : pixelEntry.mFragments) {
@@ -83,7 +88,7 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
     // Lock in case multiple threads want to add samples to this pixel
     tbb::mutex::scoped_lock lock(mPixelMutexes[getMutexIdx(x, y)]);
 
-    PixelEntry &pixelEntry = mPixelEntries[y * mWidth + x];
+    PixelEntry &pixelEntry = mPixelEntries[CRYPTOMATTE_TYPE_REGULAR][y * mWidth + x];
 
     // Iterate over fragments stored at current pixel and see if we can merge the sample in to any of them
     for (Fragment &fragment : pixelEntry.mFragments) {
@@ -125,33 +130,35 @@ void CryptomatteBuffer::finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned
     }
 
     // Sort fragments in each pixel and compute final coverage values
-    for (size_t py = 0; py < mHeight; py++) {
-        for (size_t px = 0; px < mWidth; px++) {
-            // Get number of samples in this pixel
-            const unsigned numSamples = samplesCount.getPixel(px, py);
+    for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
+        for (size_t py = 0; py < mHeight; py++) {
+            for (size_t px = 0; px < mWidth; px++) {
+                // Get number of samples in this pixel
+                const unsigned numSamples = samplesCount.getPixel(px, py);
 
-            if (numSamples > 0) {
-                // Sort fragments by decreasing coverage
-                PixelEntry &pixelEntry = mPixelEntries[py * mWidth + px];
-                // We want ties to be broken deterministically so that we don't get false negatives when running Rats
-                // test when the fragments are added to the pixel entry in different orders.
-                pixelEntry.mFragments.sort([](const Fragment &f0, const Fragment &f1) {
-                    if (f0.mCoverage != f1.mCoverage) {
-                        return f0.mCoverage > f1.mCoverage;
-                    }
-                    return f0.mId > f1.mId;
-                });
+                if (numSamples > 0) {
+                    // Sort fragments by decreasing coverage
+                    PixelEntry &pixelEntry = mPixelEntries[cryptoType][py * mWidth + px];
+                    // We want ties to be broken deterministically so that we don't get false negatives when running Rats
+                    // test when the fragments are added to the pixel entry in different orders.
+                    pixelEntry.mFragments.sort([](const Fragment &f0, const Fragment &f1) {
+                        if (f0.mCoverage != f1.mCoverage) {
+                            return f0.mCoverage > f1.mCoverage;
+                        }
+                        return f0.mId > f1.mId;
+                    });
 
-                // Normalize coverages so that they sum to 1 over the pixel
-                float recipNumSamples = 1.0f / static_cast<float>(numSamples);
-                for (Fragment &fragment : pixelEntry.mFragments) {
-                    fragment.mCoverage *= recipNumSamples;
-                    if (fragment.mNumSamples > 0) {
-                        float recipFragNumSamples = 1.f / static_cast<float>(fragment.mNumSamples);
-                        // take average of position/normal/beauty data over the number of samples taken for the fragment
-                        fragment.mPosition *= recipFragNumSamples;
-                        fragment.mNormal   *= recipFragNumSamples;
-                        fragment.mBeauty   *= recipFragNumSamples;
+                    // Normalize coverages so that they sum to 1 over the pixel
+                    float recipNumSamples = 1.0f / static_cast<float>(numSamples);
+                    for (Fragment &fragment : pixelEntry.mFragments) {
+                        fragment.mCoverage *= recipNumSamples;
+                        if (fragment.mNumSamples > 0) {
+                            float recipFragNumSamples = 1.f / static_cast<float>(fragment.mNumSamples);
+                            // take average of position/normal/beauty data over the number of samples taken for the fragment
+                            fragment.mPosition *= recipFragNumSamples;
+                            fragment.mNormal   *= recipFragNumSamples;
+                            fragment.mBeauty   *= recipFragNumSamples;
+                        }
                     }
                 }
             }
@@ -165,71 +172,73 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
                                         int numLayers, float *dest, 
                                         const scene_rdl2::rdl2::RenderOutput& ro) const
 {
-
     // Clamp numLayers so the output string will contain 2 digits 00-99 (per Cryptomatte spec)
     if (numLayers < 1)   numLayers = 1;
     if (numLayers > 100) numLayers = 100;
 
-    // Output 2 fragments per layer: one pair goes to the R,G channels, the other to the B,A channels.
-    const PixelEntry &pixelEntry = mPixelEntries[y * mWidth + x];
-    int numFragments = 0;
-    for (const Fragment &fragment : pixelEntry.mFragments) {
-        *dest++ = fragment.mId;
-        *dest++ = fragment.mCoverage;
-        // ensure numFragments added to memory isn't larger than max number 
-        // of fragments supported
-        if (++numFragments >= 2 * numLayers) {
-            break;
+    for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
+
+        // Output 2 fragments per layer: one pair goes to the R,G channels, the other to the B,A channels.
+        const PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
+        int numFragments = 0;
+        for (const Fragment &fragment : pixelEntry.mFragments) {
+            *dest++ = fragment.mId;
+            *dest++ = fragment.mCoverage;
+            // ensure numFragments added to memory isn't larger than max number 
+            // of fragments supported
+            if (++numFragments >= 2 * numLayers) {
+                break;
+            }
         }
-    }
 
-    // Supplement requested layers with zeros
-    for ( ; numFragments < 2 * numLayers; numFragments++)
-    {
-        *dest++ = 0.f;
-        *dest++ = 0.f;
-    }
+        // Supplement requested layers with zeros
+        for ( ; numFragments < 2 * numLayers; numFragments++)
+        {
+            *dest++ = 0.f;
+            *dest++ = 0.f;
+        }
 
-    // ------------------ Output extra data (positions, normals, beauty) -------------------------- //
-    if (!ro.cryptomatteHasExtraOutput()) return;
+        // ------------------ Output extra data (positions, normals, beauty) -------------------------- //
+        if (!ro.cryptomatteHasExtraOutput()) continue;
 
-    numFragments = 0;
-    // Output positions, normals, and beauty
-    for (const Fragment &fragment : pixelEntry.mFragments) {
+        numFragments = 0;
+        // Output positions, normals, and beauty
+        for (const Fragment &fragment : pixelEntry.mFragments) {
 
-        if (ro.getCryptomatteOutputPositions()) {
-            *dest++ = fragment.mPosition.x;
-            *dest++ = fragment.mPosition.y;
-            *dest++ = fragment.mPosition.z;
+            if (ro.getCryptomatteOutputPositions()) {
+                *dest++ = fragment.mPosition.x;
+                *dest++ = fragment.mPosition.y;
+                *dest++ = fragment.mPosition.z;
+                *dest++ = 0.0f;
+            }
+            if (ro.getCryptomatteOutputNormals()) {
+                *dest++ = fragment.mNormal.x;
+                *dest++ = fragment.mNormal.y;
+                *dest++ = fragment.mNormal.z;
+                *dest++ = 0.0f;
+            }
+            if (ro.getCryptomatteOutputBeauty()) {
+                *dest++ = fragment.mBeauty.r;
+                *dest++ = fragment.mBeauty.g;
+                *dest++ = fragment.mBeauty.b;
+                *dest++ = fragment.mBeauty.a;
+            }
+            if (ro.getCryptomatteSupportResumeRender()) {
+                // need the following to reconstruct the data during resume/checkpoint rendering
+                *dest++ = fragment.mPresenceDepth;
+                *dest++ = fragment.mNumSamples;
+            }
+
+            // ensure numFragments added to memory isn't larger than max number 
+            // of fragments supported
+            if (++numFragments >= 2 * numLayers) break;
+        }
+
+        unsigned numExtraChannels = ro.getCryptomatteNumExtraChannels();
+        // Supplement the extra data layers with zeros
+        for (int i = numFragments * numExtraChannels ; i < 2 * numLayers * numExtraChannels; ++i) {
             *dest++ = 0.0f;
         }
-        if (ro.getCryptomatteOutputNormals()) {
-            *dest++ = fragment.mNormal.x;
-            *dest++ = fragment.mNormal.y;
-            *dest++ = fragment.mNormal.z;
-            *dest++ = 0.0f;
-        }
-        if (ro.getCryptomatteOutputBeauty()) {
-            *dest++ = fragment.mBeauty.r;
-            *dest++ = fragment.mBeauty.g;
-            *dest++ = fragment.mBeauty.b;
-            *dest++ = fragment.mBeauty.a;
-        }
-        if (ro.getCryptomatteSupportResumeRender()) {
-            // need the following to reconstruct the data during resume/checkpoint rendering
-            *dest++ = fragment.mPresenceDepth;
-            *dest++ = fragment.mNumSamples;
-        }
-
-        // ensure numFragments added to memory isn't larger than max number 
-        // of fragments supported
-        if (++numFragments >= 2 * numLayers) break;
-    }
-
-    unsigned numExtraChannels = ro.getCryptomatteNumExtraChannels();
-    // Supplement the extra data layers with zeros
-    for (int i = numFragments * numExtraChannels ; i < 2 * numLayers * numExtraChannels; ++i) {
-        *dest++ = 0.0f;
     }
 }
 
@@ -241,18 +250,20 @@ void CryptomatteBuffer::unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsign
         return;
     }
 
-    for (size_t py = 0; py < mHeight; py++) {
-        for (size_t px = 0; px < mWidth; px++) {
-            const unsigned numSamples = samplesCount.getPixel(px, py);
-            if (numSamples > 0) {
-                PixelEntry &pixelEntry = mPixelEntries[py * mWidth + px];
-                float numSamplesFloat = static_cast<float>(numSamples);
-                for (Fragment &fragment : pixelEntry.mFragments) {
-                    fragment.mCoverage = fragment.mCoverage * numSamplesFloat;
-                    // multiply by the number of fragment samples to get the accumulated (not averaged) data
-                    fragment.mPosition = fragment.mPosition * fragment.mNumSamples;
-                    fragment.mNormal   = fragment.mNormal   * fragment.mNumSamples;
-                    fragment.mBeauty   = fragment.mBeauty   * fragment.mNumSamples;
+    for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
+        for (size_t py = 0; py < mHeight; py++) {
+            for (size_t px = 0; px < mWidth; px++) {
+                const unsigned numSamples = samplesCount.getPixel(px, py);
+                if (numSamples > 0) {
+                    PixelEntry &pixelEntry = mPixelEntries[cryptoType][py * mWidth + px];
+                    float numSamplesFloat = static_cast<float>(numSamples);
+                    for (Fragment &fragment : pixelEntry.mFragments) {
+                        fragment.mCoverage = fragment.mCoverage * numSamplesFloat;
+                        // multiply by the number of fragment samples to get the accumulated (not averaged) data
+                        fragment.mPosition = fragment.mPosition * fragment.mNumSamples;
+                        fragment.mNormal   = fragment.mNormal   * fragment.mNumSamples;
+                        fragment.mBeauty   = fragment.mBeauty   * fragment.mNumSamples;
+                    }
                 }
             }
         }
@@ -274,38 +285,40 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
     // channels will still exist (we pad the un-filled channels with zeroes)
     int numFragments = ro.getCryptomatteDepth(); 
 
-    PixelEntry &pixelEntry = mPixelEntries[y * mWidth + x];
-    for (int i = 0; i < numFragments; i++) {
-        const float id       = idAndCoverageData[0];
-        const float coverage = idAndCoverageData[1];
-        idAndCoverageData += 2;
+    for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
+        PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
+        for (int i = 0; i < numFragments; i++) {
+            const float id       = idAndCoverageData[0];
+            const float coverage = idAndCoverageData[1];
+            idAndCoverageData += 2;
 
-        // -------------- Reconstruct extra data (positions, normals, beauty) ------------------ //
-        scene_rdl2::math::Vec3f position(0.f);
-        scene_rdl2::math::Vec3f normal(0.f);
-        scene_rdl2::math::Color4 beauty(0.f);
-        unsigned presenceDepth = 0;
-        unsigned numFragSamples = 1;
+            // -------------- Reconstruct extra data (positions, normals, beauty) ------------------ //
+            scene_rdl2::math::Vec3f position(0.f);
+            scene_rdl2::math::Vec3f normal(0.f);
+            scene_rdl2::math::Color4 beauty(0.f);
+            unsigned presenceDepth = 0;
+            unsigned numFragSamples = 1;
 
-        if (ro.getCryptomatteOutputPositions()) { 
-            position = scene_rdl2::math::Vec3f(positionData);
-            positionData += 4;
+            if (ro.getCryptomatteOutputPositions()) {
+                position = scene_rdl2::math::Vec3f(positionData);
+                positionData += 4;
+            }
+            if (ro.getCryptomatteOutputNormals()) {
+                normal = scene_rdl2::math::Vec3f(normalData);
+                normalData += 4;
+            }
+            if (ro.getCryptomatteOutputBeauty()) {
+                beauty = scene_rdl2::math::Color4(beautyData[0], beautyData[1], beautyData[2], beautyData[3]);
+                beautyData += 4;
+            }
+            if (ro.getCryptomatteSupportResumeRender()) {
+                presenceDepth  = static_cast<unsigned>(resumeRenderSupportData[0]);
+                numFragSamples = static_cast<unsigned>(resumeRenderSupportData[1]);
+                resumeRenderSupportData += 2;
+            }
+
+            pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, presenceDepth, numFragSamples));
         }
-        if (ro.getCryptomatteOutputNormals()) {
-            normal = scene_rdl2::math::Vec3f(normalData);
-            normalData += 4;
-        }
-        if (ro.getCryptomatteOutputBeauty()) {
-            beauty = scene_rdl2::math::Color4(beautyData[0], beautyData[1], beautyData[2], beautyData[3]);
-            beautyData += 4;
-        }
-        if (ro.getCryptomatteSupportResumeRender()) {
-            presenceDepth  = static_cast<unsigned>(resumeRenderSupportData[0]);
-            numFragSamples = static_cast<unsigned>(resumeRenderSupportData[1]);
-            resumeRenderSupportData += 2;
-        }
-        
-        pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, presenceDepth, numFragSamples));
     }
 }
 
@@ -314,14 +327,15 @@ void CryptomatteBuffer::printAllPixelEntries() const
 {
     for (size_t py = 0; py < mHeight; py++) {
         for (size_t px = 0; px < mWidth; px++) {
-            printFragments(px, py);
+            printFragments(px, py, CRYPTOMATTE_TYPE_REGULAR);
+            printFragments(px, py, CRYPTOMATTE_TYPE_REFRACTED);
         }
     }
 }
 
-void CryptomatteBuffer::printFragments(unsigned x, unsigned y) const
+void CryptomatteBuffer::printFragments(unsigned x, unsigned y, int cryptoType) const
 {
-    const PixelEntry &pixelEntry = mPixelEntries[y * mWidth + x];
+    const PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
     unsigned numFragments = pixelEntry.mFragments.size();
 
     printf("(%u, %u): %u fragments; ", x, y, numFragments);

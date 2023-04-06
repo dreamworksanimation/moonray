@@ -44,9 +44,28 @@ to almost no size in the EXR).
 
 */
 
+/*
+    Cryptomatte always outputs two sets of data: one for primary/camera rays
+    and another for "refracted" cryptomatte.  The refracted cryptomatte data contains
+    the first surface intersection that isn't considered "refracted".  This skips any
+    surfaces traversed by the primary ray that the camera can see through, allowing for
+    cryptomatte data for surfaces that are e.g. behind glass.
+
+    You must tag "refractive" surfaces (materials) by setting the "invisible refractive cryptomatte"
+    attribute to true on the surface's material.
+
+    The refracted cryptomatte output is written to a separate set of render output channels
+    that are named the same as the regular cryptomatte channels except with "Refract" appended.
+*/
+enum CryptomatteType {
+    CRYPTOMATTE_TYPE_REGULAR,
+    CRYPTOMATTE_TYPE_REFRACTED,
+    NUM_CRYPTOMATTE_TYPES
+};
+
+
 class CryptomatteBuffer
 {
-
 private:
 
     struct Fragment
@@ -103,7 +122,8 @@ public:
                          const scene_rdl2::math::Vec3f& position, 
                          const scene_rdl2::math::Vec3f& normal,
                          const scene_rdl2::math::Color4& beauty,
-                         unsigned presenceDepth);
+                         unsigned presenceDepth,
+                         int cryptoType);
 
     // For details on why we have the incrementSamples parameter, see CryptomatteBuffer.cc::addBeautySampleVector
     void addSampleVector(unsigned x, unsigned y, float id, float weight,
@@ -130,10 +150,12 @@ public:
 
     // --------------------------------------------- Print -------------------------------------------------------------
     void printAllPixelEntries() const;
-    void printFragments(unsigned x, unsigned y) const;
+    void printFragments(unsigned x, unsigned y, int cryptoType) const;
 
 private:
-    std::vector<PixelEntry> mPixelEntries;
+    // Two sets of pixel entries: one for the regular cryptomatte data and one for the refracted
+    //  cryptomatte data.
+    std::vector<PixelEntry> mPixelEntries[NUM_CRYPTOMATTE_TYPES];
 
     // buffer dimensions
     unsigned mWidth;

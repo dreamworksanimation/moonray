@@ -337,7 +337,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
     const shading::Intersection &isect, shading::BsdfLobe::Type indirectFlags,
     const scene_rdl2::rdl2::Material* newPriorityList[4], int newPriorityListCount[4],
     scene_rdl2::math::Color &radiance, unsigned& sequenceID,
-    float *aovs) const
+    float *aovs, CryptomatteParams *refractCryptomatteParams) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
 
@@ -470,10 +470,49 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
             ++sequenceID;
             bool hitVolume;
 
+            // refractive cryptomatte PART B
+
+            // Here we decide whether to continue with refractive cryptomatte with the new
+            //  ray being spawned from the material's bsdf lobe.
+            //
+            // The lobe must be a glossy or mirror transmission lobe.
+            //
+            // We also only pick the first lobe (i == 0) because we only want *one* of the spawned
+            // rays to continue with the refractive cryptomatte.  The lobes are randomly chosen,
+            // so always choosing the first randomly chosen lobe is OK.  If we continued the refractive
+            // cryptomatte for all eligible lobes, we would end up with double/triple/etc counting the
+            // cryptomatte coverage for a pixel.
+            //
+            // We must be on an existing refractive cryptomatte path (refractCryptomatteParams != nullptr).
+            //
+            // The material must also be set to be "invisible refractive cryptomatte".
+            // Materials must be explicitly tagged because just examining the lobe's flags is not 100%
+            // accurate to determine if a material is invisible or not, due to the complexity of our
+            // materials and special cases such as hair that have counterintuitive flags.
+            //
+            // See the other refractive cryptomatte logic in "refractive cryptomatte PART A" that
+            // uses the newRefractCryptomatteParams set up here.
+            bool glossyOrMirrorTransmission =
+                ((lobe->getType() & shading::BsdfLobe::TRANSMISSION) &&
+                 ((lobe->getType() & shading::BsdfLobe::GLOSSY) ||
+                  (lobe->getType() & shading::BsdfLobe::MIRROR)));
+
+            const scene_rdl2::rdl2::Material* material = 
+                isect.getMaterial()->asA<scene_rdl2::rdl2::Material>();
+
+            CryptomatteParams *newRefractCryptomatteParams = 
+                                          (refractCryptomatteParams &&
+                                           i == 0 &&
+                                           glossyOrMirrorTransmission &&
+                                           material->invisibleRefractiveCryptomatte()) ?
+                                           refractCryptomatteParams : nullptr;
+
+
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
                     pbrTls, ray, sp, cameraId,
                     pv, lobe, radianceIndirect, transparencyIndirect,
-                    vtIndirect, sequenceID, aovs, nullptr, nullptr, nullptr, false, hitVolume);
+                    vtIndirect, sequenceID, aovs, nullptr, nullptr, nullptr, 
+                    newRefractCryptomatteParams, false, hitVolume);
 
             if (indirectRadianceType != NONE) {
                 // Accumulate indirect lighting contribution
@@ -514,7 +553,8 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     bool doIndirect, const shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
     int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
     float rayEpsilon, float shadowRayEpsilon,
-    const scene_rdl2::math::Color &ssAov, unsigned &sequenceID, float *aovs) const
+    const scene_rdl2::math::Color &ssAov, unsigned &sequenceID, float *aovs,
+    CryptomatteParams *refractCryptomatteParams) const
 {
     // TODO:
     // A couple things seem out of place with the parameters to function.
@@ -609,7 +649,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
         // Note: This will recurse
         addIndirectOrDirectVisibleContributions(pbrTls, sp, cameraId, pv, bSampler, bsmp,
                 ray, rayEpsilon, shadowRayEpsilon, isect, indirectFlags, newPriorityList, newPriorityListCount,
-                radiance, sequenceID, aovs);
+                radiance, sequenceID, aovs, refractCryptomatteParams);
         checkForNan(radiance, "Direct or indirect contributions", sp, pv, ray,
                 isect);
     } else {
