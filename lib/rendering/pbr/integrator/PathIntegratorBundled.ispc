@@ -130,8 +130,9 @@ fillBundledRadiance(       uniform PbrTLState *     uniform pbrTls,
         dst->mPixel       = rayState.mSubpixel.mPixel;
         dst->mSubPixelIndex = rayState.mSubpixel.mSubpixelIndex;
         dst->mDeepDataHandle = rayState.mDeepDataHandle;
-        dst->mCryptomatteDataHandle = PBR_nullHandle;
+        dst->mCryptomatteDataHandle = rayState.mCryptomatteDataHandle;
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);
+        PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
         dst->mTilePassAndFilm = rayState.mTilePassAndFilm;
         dst->mCameraId = rayState.mCameraId;
 
