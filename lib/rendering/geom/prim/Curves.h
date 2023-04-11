@@ -34,7 +34,8 @@ public:
 
     enum class SubType {
         RAY_FACING,
-        ROUND
+        ROUND,
+        NORMAL_ORIENTED
     };
 
     explicit Curves(Curves::Type type,
@@ -52,7 +53,44 @@ public:
         mSpanCount(0),
         mPrimitiveAttributeTable(std::move(primitiveAttributeTable)),
         mCurvedMotionBlurSampleCount(0)
-    {}
+    {
+        if (mSubType == SubType::NORMAL_ORIENTED) {
+            const shading::PrimitiveAttribute<scene_rdl2::math::Vec3f>& normalAttr =
+                mPrimitiveAttributeTable.getAttribute<scene_rdl2::math::Vec3f>(shading::StandardAttributes::sNormal);
+
+            switch(normalAttr.getRate()) {
+            case shading::AttributeRate::RATE_CONSTANT:
+                for (size_t i = 0; i < mVertexBuffer.size(); ++i) {
+                    mNormalBuffer.push_back(normalAttr[0]);
+                }
+                break;
+            case shading::AttributeRate::RATE_UNIFORM:
+                {
+                    size_t curveIndex = 0;
+                    size_t vCount = mCurvesVertexCount[curveIndex];
+                    for (size_t i = 0; i < mVertexBuffer.size(); ++i) {
+                        if (i == vCount) {
+                            curveIndex++;
+                            vCount += mCurvesVertexCount[curveIndex];
+                        }
+                        mNormalBuffer.push_back(normalAttr[curveIndex]);
+                    }
+                }
+                break;
+            case shading::AttributeRate::RATE_VERTEX:
+            case shading::AttributeRate::RATE_VARYING:
+                for (size_t i = 0; i < mVertexBuffer.size(); ++i) {
+                    mNormalBuffer.push_back(normalAttr[i]);
+                }
+                break;
+            default:
+                // If the rate is not one of the above it should
+                // have been checked for already
+                MNRY_ASSERT(false);
+                break;
+            }
+        }
+    }
 
     /// The "Spans" struct and functions provide a service analogous
     /// to the "TriangleMesh" facilities -- they allow primitives to convey a
@@ -62,6 +100,7 @@ public:
     public:
         std::vector<BufferDesc> mVertexBufferDesc;
         BufferDesc mIndexBufferDesc;
+        BufferDesc mNormalBufferDesc;
         size_t mVertexCount;
         size_t mSpanCount;
     };
@@ -79,10 +118,16 @@ public:
     void getTessellatedSpans(Spans& spans) const
     {
         spans.mSpanCount = getSpanCount();
-        spans.mIndexBufferDesc.mData =
-            static_cast<const void*>(mIndexBuffer.data());
+
+        spans.mIndexBufferDesc.mData = static_cast<const void*>(mIndexBuffer.data());
         spans.mIndexBufferDesc.mOffset = 0;
         spans.mIndexBufferDesc.mStride = sizeof(IndexData);
+
+        if (mSubType == SubType::NORMAL_ORIENTED) {
+            spans.mNormalBufferDesc.mData = static_cast<const void*>(mNormalBuffer.data());;
+            spans.mNormalBufferDesc.mOffset = 0;
+            spans.mNormalBufferDesc.mStride = sizeof(scene_rdl2::math::Vec3f);
+        }
 
         spans.mVertexCount = getVertexCount();
         size_t motionSampleCount = getMotionSamplesCount();
@@ -247,6 +292,7 @@ protected:
     geom::Curves::CurvesVertexCount mCurvesVertexCount;
     geom::Curves::VertexBuffer mVertexBuffer;
     std::vector<IndexData> mIndexBuffer;
+    std::vector<scene_rdl2::math::Vec3f> mNormalBuffer;
     uint32_t mSpanCount;
     shading::PrimitiveAttributeTable mPrimitiveAttributeTable;
     uint32_t mCurvedMotionBlurSampleCount;

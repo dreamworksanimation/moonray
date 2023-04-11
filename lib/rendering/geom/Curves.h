@@ -88,6 +88,7 @@ public:
     {
         RAY_FACING,
         ROUND,
+        NORMAL_ORIENTED,
         UNKNOWN
     };
 

@@ -23,7 +23,6 @@ RDL2_DSO_ATTR_DECLARE
     rdl2::AttributeKey<rdl2::Vec2fVector>  attrUVs;
 
     rdl2::AttributeKey<rdl2::Int>          attrCurvesType;
-    rdl2::AttributeKey<rdl2::Int>          attrCurvesSubType;
 
     // support for arbitrary data. Vector of UserData
     rdl2::AttributeKey<rdl2::SceneObjectVector> attrPrimitiveAttributes;
@@ -120,15 +119,6 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
     sceneClass.setMetadata (attrCurvesType, "comment",
         "Curve interpolation type is linear, bezier, or bspline");
     sceneClass.setGroup("Curves", attrCurvesType);
-
-    attrCurvesSubType =
-        sceneClass.declareAttribute<rdl2::Int>("curve_subtype", 0, rdl2::FLAGS_ENUMERABLE);
-    sceneClass.setMetadata(attrCurvesSubType, "label", "curve subtype");
-    sceneClass.setEnumValue(attrCurvesSubType, 0, "ray_facing");
-    sceneClass.setEnumValue(attrCurvesSubType, 1, "round");
-    sceneClass.setMetadata (attrCurvesSubType, "comment",
-        "Curve subtype is ray facing or round");
-    sceneClass.setGroup("Curves", attrCurvesSubType);
 
     attrPrimitiveAttributes =
         sceneClass.declareAttribute<rdl2::SceneObjectVector>("primitive_attributes", { "primitive attributes" });

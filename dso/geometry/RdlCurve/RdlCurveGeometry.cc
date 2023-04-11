@@ -134,6 +134,9 @@ RdlCurveProcedural::generate(
     case 1:
         subtype = Curves::SubType::ROUND;
         break;
+    case 2:
+        subtype = Curves::SubType::NORMAL_ORIENTED;
+        break;
     default:
         rdlGeometry->warn("Unknown curve subtype, defaulting to ray facing.");
         subtype = Curves::SubType::RAY_FACING;

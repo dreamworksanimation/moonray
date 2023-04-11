@@ -381,6 +381,40 @@ createCurves(Curves::Type type,
         return nullptr;
     }
 
+    if (subtype == geom::Curves::SubType::NORMAL_ORIENTED) {
+        if (!primitiveAttributeTable.hasAttribute(shading::StandardAttributes::sNormal)) {
+            rdlGeometry->error("The curves subtype is set to \"normal_oriented\" but ",
+                               " the curves are missing the required ",
+                               shading::StandardAttributes::sNormal,
+                               " primitive attribute");
+            return nullptr;
+        }
+
+        const shading::PrimitiveAttribute<scene_rdl2::math::Vec3f>& normalAttr =
+            primitiveAttributeTable.getAttribute<scene_rdl2::math::Vec3f>(shading::StandardAttributes::sNormal);
+
+        shading::AttributeRate rate =  normalAttr.getRate();
+        if (rate != shading::AttributeRate::RATE_CONSTANT &&
+            rate != shading::AttributeRate::RATE_UNIFORM &&
+            rate != shading::AttributeRate::RATE_VARYING &&
+            rate != shading::AttributeRate::RATE_VERTEX) {
+
+            rdlGeometry->error("The curves subtype is set to \"normal_oriented\" but ",
+                               " the ", shading::StandardAttributes::sNormal,
+                               " primitive attribute has an invalid rate: ", rate);
+            return nullptr;
+
+        }
+
+        // Linear normal oriented curves are not currently supported in embree.
+        // Use ray facing instead.
+        if (type == Curves::Type::LINEAR) {
+            rdlGeometry->warn("Linear curves do not currently support the normal ",
+                              "oriented style, defaulting to ray facing.");
+            subtype = Curves::SubType::RAY_FACING;
+        }
+    }
+
     if (validateGeometry) {
         if (!validateVertexBuffer3fa(vertices, rdlGeometry)) {
             return nullptr;

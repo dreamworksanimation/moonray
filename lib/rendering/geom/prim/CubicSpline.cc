@@ -126,8 +126,8 @@ CubicSpline::postIntersect(mcrt_common::ThreadLocalState &tls,
             N = cross(dPdt, dPds);
         }
         N.normalize();
-    } else if (mSubType == SubType::ROUND) {
-        // round curves just use the geom normal
+    } else if (mSubType == SubType::ROUND || mSubType == SubType::NORMAL_ORIENTED) {
+        // round and normal oriented curves just use the geom normal
         N = ray.getNg();
         N.normalize();
 

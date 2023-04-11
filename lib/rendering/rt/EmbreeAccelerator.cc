@@ -383,23 +383,21 @@ private:
 
         RTCGeometry rtcGeom;
         if (curvesType == geom::Curves::Type::LINEAR && curvesSubType == geom::Curves::SubType::RAY_FACING) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_FLAT_LINEAR_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_FLAT_LINEAR_CURVE);
         } else if (curvesType == geom::Curves::Type::BEZIER && curvesSubType == geom::Curves::SubType::RAY_FACING) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_FLAT_BEZIER_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_FLAT_BEZIER_CURVE);
         } else if (curvesType == geom::Curves::Type::BSPLINE && curvesSubType == geom::Curves::SubType::RAY_FACING) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_FLAT_BSPLINE_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_FLAT_BSPLINE_CURVE);
         } else if (curvesType == geom::Curves::Type::LINEAR && curvesSubType == geom::Curves::SubType::ROUND) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_ROUND_LINEAR_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_ROUND_LINEAR_CURVE);
         } else if (curvesType == geom::Curves::Type::BEZIER && curvesSubType == geom::Curves::SubType::ROUND) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_ROUND_BEZIER_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_ROUND_BEZIER_CURVE);
         } else if (curvesType == geom::Curves::Type::BSPLINE && curvesSubType == geom::Curves::SubType::ROUND) {
-            rtcGeom = rtcNewGeometry(mDevice,
-                RTC_GEOMETRY_TYPE_ROUND_BSPLINE_CURVE);
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_ROUND_BSPLINE_CURVE);
+        } else if (curvesType == geom::Curves::Type::BEZIER && curvesSubType == geom::Curves::SubType::NORMAL_ORIENTED) {
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_NORMAL_ORIENTED_BEZIER_CURVE);
+        } else if (curvesType == geom::Curves::Type::BSPLINE && curvesSubType == geom::Curves::SubType::NORMAL_ORIENTED) {
+            rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_NORMAL_ORIENTED_BSPLINE_CURVE);
         } else {
             MNRY_ASSERT_REQUIRE(false);
         }
@@ -408,6 +406,7 @@ private:
         size_t mbSteps = spans.mVertexBufferDesc.size();
         rtcSetGeometryTimeStepCount(rtcGeom, mbSteps);
         rtcSetGeometryBuildQuality(rtcGeom, flag);
+
         // Set up span index buffer
         MNRY_ASSERT_REQUIRE(spans.mIndexBufferDesc.mData != nullptr);
         rtcSetSharedGeometryBuffer(rtcGeom, RTC_BUFFER_TYPE_INDEX, 0,
@@ -416,6 +415,7 @@ private:
             spans.mIndexBufferDesc.mOffset,
             spans.mIndexBufferDesc.mStride,
             spans.mSpanCount);
+
         // Set up the control vertex data buffers, one for each motion step
         for (size_t i = 0; i < mbSteps; i++) {
             MNRY_ASSERT_REQUIRE(spans.mVertexBufferDesc[i].mData != nullptr);
@@ -424,6 +424,16 @@ private:
                 const_cast<void*>((const void*)spans.mVertexBufferDesc[i].mData),
                 spans.mVertexBufferDesc[i].mOffset,
                 spans.mVertexBufferDesc[i].mStride,
+                spans.mVertexCount);
+        }
+
+        // Set up the normal data buffer for normal oriented curves
+        if (curvesSubType == geom::Curves::SubType::NORMAL_ORIENTED) {
+            rtcSetSharedGeometryBuffer(rtcGeom, RTC_BUFFER_TYPE_NORMAL, 0,
+                RTC_FORMAT_FLOAT3,
+                const_cast<void*>((const void*)spans.mNormalBufferDesc.mData),
+                spans.mNormalBufferDesc.mOffset,
+                spans.mNormalBufferDesc.mStride,
                 spans.mVertexCount);
         }
 

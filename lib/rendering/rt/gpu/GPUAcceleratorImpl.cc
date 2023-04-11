@@ -75,6 +75,10 @@ public:
         case geom::internal::Curves::SubType::ROUND:
             createRoundCurves(*pCurves, c.getCurvesType());
         break;
+        case geom::internal::Curves::SubType::NORMAL_ORIENTED:
+            mFailed = true;
+            mWhyFailed = "Normal-oriented curves are not supported in XPU mode";
+        break;
         }
     }
 
