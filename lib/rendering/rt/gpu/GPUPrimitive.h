@@ -8,6 +8,7 @@
 
 #include <cuda.h>
 #include <vector>
+#include <array>
 
 namespace moonray {
 namespace rt {

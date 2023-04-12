@@ -6,6 +6,7 @@
 #include <moonray/common/mcrt_util/AlignedElementArray.h>
 
 #include <numeric>
+#include <cstdint>
 
 CPPUNIT_TEST_SUITE_REGISTRATION(TestAlignedElementArray);
 
