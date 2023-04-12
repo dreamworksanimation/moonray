@@ -19,8 +19,8 @@ target_sources(${objLib}
 
 file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(${objLib} PROPERTIES
-    ISPC_HEADER_SUFFIX _ispc_stubs.h
-    ISPC_HEADER_DIRECTORY /${relBinDir}
+    ISPC_HEADER_SUFFIX _ispc_stubs.h
+    ISPC_HEADER_DIRECTORY /${relBinDir}
     ISPC_INSTRUCTION_SETS avx1-i32x8
 )
 
@@ -81,7 +81,7 @@ target_link_libraries(${target} PRIVATE atomic)
 # Build the DSOs needed by the tests
 function(make_test_dso name dir)
     moonray_ispc_dso(${name}
-        SKIP_INSTALL
+        SKIP_INSTALL TEST_DSO
         SOURCE_DIR ${dir}
         DEPENDENCIES
             Moonray::shading_ispc

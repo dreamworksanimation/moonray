@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 moonray_dso_simple(RdlPointGeometry
+    TEST_DSO
     DEPENDENCIES
         Moonray::rendering_geom
         SceneRdl2::render_util
