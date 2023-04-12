@@ -848,7 +848,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
         // Send results through to the integrator...
         fs.mIntegrator->integrateBundledv(pbrTls, shadingTls, workLoadSize, rayStatesSOA,
-                                          isectsSOA, bsdfv, lightList, lightFilterLists, lightAcc);
+                                          isectsSOA, bsdfv, lightList, lightFilterLists, lightAcc, presences);
 
         // For hybrid scalar/vectorized rendering, the scalar ray states may still
         // be accessed during integration, so don't free them until after the

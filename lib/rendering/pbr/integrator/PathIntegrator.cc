@@ -64,7 +64,8 @@ void PathIntegrator_integrateBundled(const moonray::pbr::PathIntegrator *integra
                                      moonray::pbr::RayStatev *rayStates,
                                      const moonray::shading::Intersectionv *isects,
                                      const moonray::shading::Bsdfv *bsdfs,
-                                     const moonray::pbr::LightSet *lightList);
+                                     const moonray::pbr::LightSet *lightList,
+                                     const float *presences);
 }
 
 // using namespace scene_rdl2::math; // can't use this as it breaks openvdb in clang.
@@ -1456,7 +1457,8 @@ PathIntegrator::integrateBundledv(pbr::TLState *pbrTls,
                                   const shading::Bsdfv *bsdfs,
                                   const LightPtrList *lightList,
                                   const LightFilterLists *lightFilterLists,
-                                  const LightAccelerator *lightAcc) const
+                                  const LightAccelerator *lightAcc,
+                                  const float *presences) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_INTEGRATION);
 
@@ -1480,7 +1482,8 @@ PathIntegrator::integrateBundledv(pbr::TLState *pbrTls,
                                           rayStates,
                                           isects,
                                           bsdfs,
-                                          &lightSet);
+                                          &lightSet,
+                                          presences);
     pbrTls->stopIspcAccumulator();
 }
 

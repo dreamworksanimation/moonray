@@ -161,7 +161,8 @@ integrateBundled( const uniform PathIntegrator * uniform this,
                         varying RayState *       uniform rayStates,
                   const varying Intersection *   uniform isects,
                   const varying Bsdf *           uniform bsdfs,
-                  const uniform LightSet *       uniform lightSet)
+                  const uniform LightSet *       uniform lightSet,
+                  const varying float *          uniform presences)
 {
     uniform Arena * uniform arena = pbrTls->mArena;
     uniform uint8_t *uniform memoryBookmark1 = Arena_getPtr(arena);
@@ -187,6 +188,11 @@ integrateBundled( const uniform PathIntegrator * uniform this,
     for (uniform uint32_t i = 0; i < numBlocks; ++i) {
 
         CHECK_CANCELLATION(pbrTls, return);
+
+        // Only the presence continuation ray contributes to the radiance so we can early out here.
+        if (isEqual(presences[i], 0.f)) {
+            continue;
+        }
 
         varying RayState * uniform rs = &rayStates[i];
         const varying RayDifferential &ray = rs->mRay;
@@ -540,12 +546,14 @@ PathIntegrator_integrateBundled( const uniform PathIntegrator *uniform this,
                                  const varying Intersection *  uniform isects,
 #pragma ignore warning(all)
                                  const varying Bsdf *          uniform bsdfs,
-                                 const uniform LightSet *      uniform lightList)
+                                 const uniform LightSet *      uniform lightList,
+#pragma ignore warning(all)
+                                 const varying float *         uniform presences)
 
 {
     MNRY_ASSERT(CPP_isIntegratorAccumulatorRunning(pbrTls));
     MNRY_ASSERT(CPP_isIspcAccumulatorRunning(pbrTls));
 
-    integrateBundled(this, pbrTls, shadingTls, numEntries, rayStates, isects, bsdfs, lightList);
+    integrateBundled(this, pbrTls, shadingTls, numEntries, rayStates, isects, bsdfs, lightList, presences);
 }
 

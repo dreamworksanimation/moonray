@@ -255,7 +255,8 @@ public:
             RayStatev *rayStates, const shading::Intersectionv *isects,
             const shading::Bsdfv *bsdfs, const LightPtrList *lightList,
             const LightFilterLists *lightFilterLists,
-            const LightAccelerator *lightAcc) const;
+            const LightAccelerator *lightAcc,
+            const float *presences) const;
 
     bool getEnableShadowing() const { return mEnableShadowing; }
     bool getEnablePathGuide() const;
