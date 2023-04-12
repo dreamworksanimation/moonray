@@ -17,7 +17,7 @@
 //   this is coming from OpenEXR/half.h...
 #   pragma warning(disable:1572)
 #endif
-#include <OpenEXR/half.h>  // For Pixelh
+#include <Imath/half.h>  // For Pixelh
 
 #include <string.h> // for memset in some compilers
 #include <iostream>
