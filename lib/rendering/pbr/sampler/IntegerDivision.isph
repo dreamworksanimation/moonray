@@ -218,8 +218,8 @@ inline varying uint32 mod3(varying uint32 a)
 
 inline uniform uint32 mod3(uniform uint32 a)
 {
-    a = popcnt((int32)(a ^ 0xaaaaaaaau)) + 23u;
-    a = popcnt((int32)(a ^ 0x2au)) - 3u;
+    a = popcnt((uniform int32)(a ^ 0xaaaaaaaau)) + 23u;
+    a = popcnt((uniform int32)(a ^ 0x2au)) - 3u;
     return a + (((int32)(a) >> 31) & 3); // Signed shift
 }
 

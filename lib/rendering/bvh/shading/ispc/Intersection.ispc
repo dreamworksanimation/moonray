@@ -77,7 +77,7 @@ Intersection_adaptNormal(const varying Intersection &isect, const varying Vec3f 
 varying Vec3f
 Intersection_adaptToonNormal(const varying Intersection &isect, const varying Vec3f &Ns)
 {
-    if (!Flags_get(isect.mFlags, (uint32_t)INTERSECTION_FLAGS_USE_ADAPT_NORMAL)) {
+    if (!Flags_get(isect.mFlags, (uniform uint32_t)INTERSECTION_FLAGS_USE_ADAPT_NORMAL)) {
         return Ns;
     }
     return Intersection_adaptNormal(isect, Ns);

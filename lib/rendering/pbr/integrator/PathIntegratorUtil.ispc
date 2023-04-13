@@ -92,16 +92,16 @@ drawBsdfSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * un
         // Setup sampler sequence
         // We want one shared sequence for depth 0.
         SequenceID_init(bsdfSid, (uint32_t)pv.nonMirrorDepth, sp.mPixel, lobeSeed,
-                (uint32_t)SequenceTypeBsdf, spIndex, sequenceID);
+                (uniform uint32_t)SequenceTypeBsdf, spIndex, sequenceID);
         IntegratorSample2D_init(bsdfSamples, bsdfSid);
 
         if (lightFilterNeedsSamples) {
             SequenceID_init(lightFilterSid, (uint32_t)pv.nonMirrorDepth, sp.mPixel, lobeSeed,
-                    (uint32_t)SequenceTypeLightFilter, spIndex, sequenceID);
+                    (uniform uint32_t)SequenceTypeLightFilter, spIndex, sequenceID);
             IntegratorSample2D_init(lightFilterSamples, lightFilterSid);
 
             SequenceID_init(lightFilter3DSid, (uint32_t)pv.nonMirrorDepth, sp.mPixel, lobeSeed,
-                    (uint32_t)SequenceTypeLightFilter3D, spIndex, sequenceID);
+                    (uniform uint32_t)SequenceTypeLightFilter3D, spIndex, sequenceID);
             IntegratorSample3D_init(lightFilterSamples3D, lightFilter3DSid);
         }
 
@@ -122,7 +122,7 @@ drawBsdfSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * un
 
         // Set up sampler sequence for stochastic light intersection
         SequenceID_init(lightChoiceSid, (uint32_t)pv.nonMirrorDepth, sp.mPixel, lobeSeed,
-                (uint32_t)SequenceTypeBsdf, sp.mSubpixelIndex, sequenceID);
+                (uniform uint32_t)SequenceTypeBsdf, sp.mSubpixelIndex, sequenceID);
         IntegratorSample1D_init(lightChoiceSamples, lightChoiceSid);
 
         // lobeType is used for conditionally including ray termination lights.
@@ -311,18 +311,18 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
         // Setup sampler sequence
         // We want one shared sequence for depth 0.
         SequenceID_init(sid, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                Light_getHash(light), (uint32_t)SequenceTypeLight,
+                Light_getHash(light), (uniform uint32_t)SequenceTypeLight,
                 spIndex, sequenceID);
         IntegratorSample3D_init(lightSamples, sid);
 
         if (lightFilterNeedsSamples) {
             SequenceID_init(sidFilter, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                    Light_getHash(light), (uint32_t)SequenceTypeLightFilter,
+                    Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter,
                     spIndex, sequenceID);
             IntegratorSample2D_init(lightFilterSamples, sidFilter);
 
             SequenceID_init(sidFilter3D, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                    Light_getHash(light), (uint32_t)SequenceTypeLightFilter3D,
+                    Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter3D,
                     spIndex, sequenceID);
             IntegratorSample3D_init(lightFilterSamples3D, sidFilter3D);
         }
@@ -397,7 +397,7 @@ applyRussianRoulette(
     const varying int sampleCountVarying = BsdfSampler_getSampleCountVarying(&bSampler);
     const uniform int sampleCount = BsdfSampler_getSampleCount(&bSampler);
     SequenceID sid;
-    SequenceID_init(sid, sp.mPixel, (uint32_t)SequenceTypeRussianRouletteBsdf,
+    SequenceID_init(sid, sp.mPixel, (uniform uint32_t)SequenceTypeRussianRouletteBsdf,
             (uint32_t)sp.mSubpixelIndex, sequenceID);
     IntegratorSample1D rrSamples;
     IntegratorSample1D_init(rrSamples, sid);
@@ -446,7 +446,7 @@ applyRussianRoulette(
     const varying int sampleCount = LightSetSampler_getSampleCount(&lSampler);
 
     SequenceID sid;
-    SequenceID_init(sid, sp.mPixel, (uint32_t)SequenceTypeRussianRouletteLight,
+    SequenceID_init(sid, sp.mPixel, (uniform uint32_t)SequenceTypeRussianRouletteLight,
             (uint32_t)sp.mSubpixelIndex, sequenceID);
     IntegratorSample1D rrSamples;
     IntegratorSample1D_init(rrSamples, sid);

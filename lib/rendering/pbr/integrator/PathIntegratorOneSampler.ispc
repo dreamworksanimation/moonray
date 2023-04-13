@@ -152,7 +152,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
                 ++currAov;
                 if (currAov < lobesContribution->mMatchedLobeCount) {
                     b = (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, currAov);
-                    BundledOcclRayData_init(b, (uint32_t) (LPE | LIGHT_SAMPLE), rs->mCameraId, light);
+                    BundledOcclRayData_init(b, (uniform uint32_t) (LPE | LIGHT_SAMPLE), rs->mCameraId, light);
                 }
             }
         }

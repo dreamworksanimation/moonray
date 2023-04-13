@@ -87,7 +87,7 @@ AshikhminShirleyGlossyBsdfLobe_init(varying AshikhminShirleyGlossyBsdfLobe * uni
     BsdfLobe_init((varying BsdfLobe * uniform) lobe,
                   /* name = */ BSDF_LOBE_ASHIKHMIN_SHIRLEY,
                   /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
-                  /* differentialFlags = */ (BsdfLobeDifferentialFlags)0,
+                  /* differentialFlags = */ (uniform BsdfLobeDifferentialFlags)0,
                   /* isSpherical = */ false,
                   /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
                   /* evalFn = */ AshikhminShirleyGlossyBsdfLobe_eval,

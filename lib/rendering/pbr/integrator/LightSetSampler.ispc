@@ -47,7 +47,7 @@ LightSetSampler_init(varying LightSetSampler * uniform lSampler,
 
     lSampler->mSampleCount = reduce_max(lightSampleCount) * lightCount;
     lSampler->mInvSampleCount = (lSampler->mSampleCount > 0  ?
-                                 rcp((float)lSampler->mSampleCount)  :  0);
+                                 rcp((uniform float)lSampler->mSampleCount)  :  0);
 }
 
 

@@ -166,7 +166,7 @@ inline void
 setUseAdaptNormal(varying Intersection * uniform me, uniform bool useAdaptNormal)
 
 {
-    Flags_set(&(me->mFlags), (uint32_t)INTERSECTION_FLAGS_USE_ADAPT_NORMAL, useAdaptNormal);
+    Flags_set(&(me->mFlags), (uniform uint32_t)INTERSECTION_FLAGS_USE_ADAPT_NORMAL, useAdaptNormal);
 }
 varying Vec3f Intersection_adaptNormal(const varying Intersection &isect, const varying Vec3f &Ns);
 varying Vec3f Intersection_adaptToonNormal(const varying Intersection &isect, const varying Vec3f &Ns);
