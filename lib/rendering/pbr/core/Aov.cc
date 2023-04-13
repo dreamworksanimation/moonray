@@ -1323,9 +1323,9 @@ computeAlbedo(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.r;
-    *(dest + 1) = result.g;
-    *(dest + 2) = result.b;
+    *dest       += result.r;
+    *(dest + 1) += result.g;
+    *(dest + 2) += result.b;
 }
 
 static void
@@ -1412,9 +1412,9 @@ computeColor(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.r;
-    *(dest + 1) = result.g;
-    *(dest + 2) = result.b;
+    *dest       += result.r;
+    *(dest + 1) += result.g;
+    *(dest + 2) += result.b;
 }
 
 static void
@@ -1448,13 +1448,9 @@ computeEmission(const MaterialAovs::ComputeParams &p, float *dest)
         emission *= p.mPixelWeight;
 
         // pack results
-        *dest       = emission.r;
-        *(dest + 1) = emission.g;
-        *(dest + 2) = emission.b;
-    } else {
-        *dest       = 0;
-        *(dest + 1) = 0;
-        *(dest + 2) = 0;
+        *dest       += emission.r;
+        *(dest + 1) += emission.g;
+        *(dest + 2) += emission.b;
     }
 }
 
@@ -1515,7 +1511,7 @@ computeMatte(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest = result;
+    *dest += result;
 }
 
 static void
@@ -1592,8 +1588,8 @@ computeRoughness(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.x;
-    *(dest + 1) = result.y;
+    *dest       += result.x;
+    *(dest + 1) += result.y;
 }
 
 static inline void
@@ -1668,9 +1664,9 @@ computeNormal(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.x;
-    *(dest + 1) = result.y;
-    *(dest + 2) = result.z;
+    *dest       += result.x;
+    *(dest + 1) += result.y;
+    *(dest + 2) += result.z;
 }
 
 static inline void
@@ -1716,9 +1712,9 @@ computeRadius(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.r;
-    *(dest + 1) = result.g;
-    *(dest + 2) = result.b;
+    *dest       += result.r;
+    *(dest + 1) += result.g;
+    *(dest + 2) += result.b;
 }
 
 static inline void
@@ -1790,9 +1786,9 @@ computeFresnelColor(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.r;
-    *(dest + 1) = result.g;
-    *(dest + 2) = result.b;
+    *dest       += result.r;
+    *(dest + 1) += result.g;
+    *(dest + 2) += result.b;
 }
 
 static void
@@ -1875,7 +1871,7 @@ computeFresnelFactor(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest = result;
+    *dest = +result;
 }
 
 static void
@@ -1956,8 +1952,8 @@ computeFresnelRoughness(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.x;
-    *(dest + 1) = result.y;
+    *dest       += result.x;
+    *(dest + 1) += result.y;
 }
 
 static void
@@ -2032,9 +2028,9 @@ computePbrValidity(const MaterialAovs::ComputeParams &p, float *dest)
     }
 
     // pack results
-    *dest       = result.r;
-    *(dest + 1) = result.g;
-    *(dest + 2) = result.b;
+    *dest       += result.r;
+    *(dest + 1) += result.g;
+    *(dest + 2) += result.b;
 }
 
 static void
