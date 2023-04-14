@@ -59,7 +59,7 @@ pipeline-configurations:
       enabled: true
       resource: EL7_RaTS_build_fast
       post_cmd:
-      rez_args: -b scons
+      rez_args: -b cmake
       postp: /opt/electriccloud/electriccommander/bin/postp
       build_directory: ../build
       parallel_variants: true

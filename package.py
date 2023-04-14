@@ -47,10 +47,7 @@ variants = [
     ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3'],
 ]
 
-conf_rats_variants = [
-    ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2020.3', 'icc-19.0.5.281.x.2', 'amorphous-8', 'openvdb-8', 'python-2.7'],
-    ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2020.3', 'icc-19.0.5.281.x.2', 'amorphous-8', 'openvdb-8', 'python-2.7'],
-]
+conf_rats_variants = variants[0:2]
 
 scons_targets = ['@install_include', '@install', '--no-cache'] + unittestflags
 no_unit_targets = ['@install_include', '@install', '--no-cache']
