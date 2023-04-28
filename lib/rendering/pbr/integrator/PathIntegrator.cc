@@ -602,6 +602,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     float earlyTerminatorPathPixelWeight = pv.pathPixelWeight;
 
     scene_rdl2::math::Color presenceRadiance = scene_rdl2::math::sBlack;
+    float presenceTransparency = 0.f;
     if (presence < 1.f - scene_rdl2::math::sEpsilon) {
 
         // We will record cryptomatte information in this if block if necessary already.
@@ -673,7 +674,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         CryptomatteParams *newCryptomatteParamsPtr = cryptomatteParamsPtr ? &newCryptomatteParams : nullptr;
 
         // Fire continued ray and add in its radiance
-        float presenceTransparency;
         VolumeTransmittance vtPresence;
         unsigned presenceSequenceID = sequenceID;
         bool presenceHitVolume;
@@ -738,7 +738,20 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Termination (did the shader request termination of tracing?)
     if (bsdf->getEarlyTermination()) {
         if (ray.getDepth() == 0) {
-            transparency = reduceTransparency(vt.mTransmittanceAlpha);
+            // We override the previous transparency value when we encounter a cutout.
+            // If there is presence, we need to combine the transparency encountered
+            // during presence continuation/traversal above with the current presence
+            // value.
+            // This is a bit confusing because the presence is for the *cutout*.
+            // e.g. if the cutout has a presence of 1, the transparency value should
+            // be forced to 1 because the cutout is 100% there and completely cuts out.
+            // If the cutout has a presence of 0, the cutout is 0% there and thus has no
+            // effect on the transparency.
+            // Also, the alpha in the render output is 1 - transparency.
+            // We also multiply by the volume's transmittanceAlpha, but that's independent
+            // of presence.
+            transparency = reduceTransparency(vt.mTransmittanceAlpha) *
+                           (presenceTransparency + (1 - presenceTransparency) * presence);
         } else {
             transparency = reduceTransparency(earlyTerminatorPathThroughput);
         }
