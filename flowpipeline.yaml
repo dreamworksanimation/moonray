@@ -7,11 +7,35 @@ pipeline-configurations:
     checkout:
       fresh: true
     build:
-      rez_args: -b scons
+      rez_args: -b cmake
       prepend_release_dir: true
       resource: EL7_RaTS_build_fast
     test:
-      enabled: false
+      enabled: true
+      cmd:
+      - rez-test _packagename_ variant0
+      - rez-test _packagename_ variant1
+      - rez-test _packagename_ variant2
+      - rez-test _packagename_ variant3
+      - rez-test _packagename_ variant4
+      - rez-test _packagename_ variant5
+      - rez-test _packagename_ variant6
+      - rez-test _packagename_ variant7
+      - rez-test _packagename_ variant8
+      ignore_failures: false
+      ignore_failures_email: true
+      resource:
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      - EL7_RaTS_build_fast
+      postp: /opt/electriccloud/electriccommander/bin/postp
+      name_filter: foobar
     release:
       enabled: true
     finalize:

@@ -42,6 +42,7 @@ cmd/client_apps/Android/bin/
 /build
 /build_env
 /install
+/Testing
 html
 latex
 Doxyfile
