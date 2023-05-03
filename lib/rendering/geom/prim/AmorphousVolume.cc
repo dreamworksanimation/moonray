@@ -119,7 +119,9 @@ AmorphousVolume::computeEmissionDistribution(const scene_rdl2::rdl2::VolumeShade
 Color
 AmorphousVolume::evalDensity(mcrt_common::ThreadLocalState* tls,
                              uint32_t volumeId,
-                             const Vec3f& pSample) const
+                             const Vec3f& pSample,
+                             float /*rayVolumeDepth*/,
+                             const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const
 {
     const openvdb::Vec3d p(pSample[0], pSample[1], pSample[2]);
     if (mUseAmorphousSampler) {
@@ -141,7 +143,9 @@ AmorphousVolume::evalVolumeCoefficients(mcrt_common::ThreadLocalState* tls,
                                         Color* extinction,
                                         Color* albedo,
                                         Color* temperature,
-                                        bool highQuality) const
+                                        bool highQuality,
+                                        float /*rayVolumeDepth*/,
+                                        const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const
 {
     const openvdb::Vec3d p(pSample[0], pSample[1], pSample[2]);
     Interpolation mode = highQuality ? mInterpolationMode : Interpolation::POINT;

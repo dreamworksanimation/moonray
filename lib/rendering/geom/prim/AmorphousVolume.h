@@ -36,7 +36,9 @@ public:
 
     virtual scene_rdl2::math::Color evalDensity(mcrt_common::ThreadLocalState* tls,
                                     uint32_t volumeId,
-                                    const Vec3f& pSample) const override;
+                                    const Vec3f& pSample,
+                                    float /*rayVolumeDepth*/,
+                                    const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const override;
 
     virtual void evalVolumeCoefficients(mcrt_common::ThreadLocalState* tls,
                                         uint32_t volumeId,
@@ -44,7 +46,9 @@ public:
                                         scene_rdl2::math::Color* extinction,
                                         scene_rdl2::math::Color* albedo,
                                         scene_rdl2::math::Color* temperature,
-                                        bool highQuality) const override;
+                                        bool highQuality,
+                                        float /*rayVolumeDepth*/,
+                                        const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const override;
 
     virtual scene_rdl2::math::Color evalTemperature(mcrt_common::ThreadLocalState* tls,
                                         uint32_t volumeId,

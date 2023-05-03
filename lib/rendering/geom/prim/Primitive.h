@@ -331,7 +331,9 @@ public:
     // render space for all other primitives.
     virtual scene_rdl2::math::Color evalDensity(mcrt_common::ThreadLocalState* tls,
                                     uint32_t volumeId,
-                                    const Vec3f& pSample) const;
+                                    const Vec3f& pSample,
+                                    const float rayVolumeDepth,
+                                    const scene_rdl2::rdl2::VolumeShader* const volumeShader) const;
 
     // Performs voxel value lookup. VdbVolume can have voxel grids for extinction,
     // albedo, and temperature. Meshes have voxel grids only for extinction.
@@ -341,7 +343,9 @@ public:
                                         scene_rdl2::math::Color* extinction,
                                         scene_rdl2::math::Color* albedo,
                                         scene_rdl2::math::Color* temperature,
-                                        bool highQuality) const;
+                                        bool highQuality,
+                                        const float rayVolumeDepth,
+                                        const scene_rdl2::rdl2::VolumeShader* const volumeShader) const;
 
     virtual scene_rdl2::math::Color evalTemperature(mcrt_common::ThreadLocalState* tls,
                                         uint32_t volumeId,

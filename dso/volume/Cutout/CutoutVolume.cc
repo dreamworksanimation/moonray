@@ -36,19 +36,21 @@ public:
 
     virtual scene_rdl2::math::Color extinct(moonray::shading::TLState *tls,
                                 const moonray::shading::State &state,
-                                const scene_rdl2::math::Color& density) const override
+                                const scene_rdl2::math::Color& density,
+                                float /*rayVolumeDepth*/) const override
     {
         return (mIndirectVolume != nullptr) ?
-            mIndirectVolume->extinct(tls, state, density) :
+            mIndirectVolume->extinct(tls, state, density, /*rayVolumeDepth*/ -1) :
             scene_rdl2::math::Color(0.f, 0.f, 0.f);
     }
 
     virtual scene_rdl2::math::Color albedo(moonray::shading::TLState *tls,
                                const moonray::shading::State &state,
-                               const scene_rdl2::math::Color& density) const override
+                               const scene_rdl2::math::Color& density,
+                               float /*rayVolumeDepth*/) const override
     {
         return (mIndirectVolume != nullptr) ?
-            mIndirectVolume->albedo(tls, state, density) :
+            mIndirectVolume->albedo(tls, state, density, /*rayVolumeDepth*/ -1) :
             scene_rdl2::math::Color(0.f, 0.f, 0.f);
     }
 

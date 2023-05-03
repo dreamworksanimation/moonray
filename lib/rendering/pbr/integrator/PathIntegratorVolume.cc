@@ -570,7 +570,7 @@ evalVolumeShaders(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
         float t, float time, bool enableCutouts,
         scene_rdl2::math::Color* sigmaT, scene_rdl2::math::Color* sigmaS, scene_rdl2::math::Color* sigmaTh,
         scene_rdl2::math::Color* sigmaSh, float* surfaceOpacityThreshold, float* g,
-        scene_rdl2::math::Color* emission, int* volumeIdSampled)
+        scene_rdl2::math::Color* emission, int* volumeIdSampled, float rayVolumeDepth)
 {
     MNRY_ASSERT(volumeRegionsCount > 0);
     const bool highQuality = true;
@@ -634,7 +634,7 @@ evalVolumeShaders(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
         isect.setP(prim->transformVolumeSamplePosition(evalP, time));
         const shading::State state(&isect);
         prim->evalVolumeCoefficients(tls, volumeIds[i], evalP,
-            &extinction, &albedo, temperaturePtr, highQuality);
+            &extinction, &albedo, temperaturePtr, highQuality, rayVolumeDepth, volumeShader);
         scene_rdl2::math::Color sigmaTLocal = extinction;
 
         switch (overlapMode) {
@@ -644,7 +644,7 @@ evalVolumeShaders(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
                 // build a cdf with sigmaT
                 sigmaTSum += sigmaTLocal;
                 cdf[i] = scene_rdl2::math::luminance(sigmaTSum);
-                scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo) * sigmaTLocal);
+                scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo, rayVolumeDepth) * sigmaTLocal);
                 if (!isCutout) {
                     sigmaTs[i] = sigmaTLocal;
                     sigmaThs[i] = scene_rdl2::math::Color(0.f);
@@ -674,7 +674,7 @@ evalVolumeShaders(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
                 const float sigmaTLumLocal = scene_rdl2::math::luminance(sigmaTLocal);
                 if (sigmaTLumLocal > maxSigmaTLum) {
                     maxSigmaTLum = sigmaTLumLocal;
-                    scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo) * sigmaTLocal);
+                    scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo, rayVolumeDepth) * sigmaTLocal);
                     if (!isCutout) {
                         *sigmaT = sigmaTLocal;
                         *sigmaTh = scene_rdl2::math::Color(0.f);
@@ -702,7 +702,7 @@ evalVolumeShaders(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
         case VolumeOverlapMode::SUM:
             // old behavior
             {
-                scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo) * sigmaTLocal);
+                scene_rdl2::math::Color scatter(volumeShader->albedo(shadingTls, state, albedo, rayVolumeDepth) * sigmaTLocal);
 
                 if (!isCutout) {
                     *sigmaT += sigmaTLocal;
@@ -793,7 +793,7 @@ static scene_rdl2::math::Color
 evalSigmaT(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
         VolumeOverlapMode overlapMode, float rndVar,
         const std::vector<geom::internal::VolumeSampleInfo>& volumeSampleInfo,
-        float t, float time, const Light* light)
+        float t, float time, const Light* light, float rayVolumeDepth)
 {
     scene_rdl2::math::Color sigmaT(0.0f);
 
@@ -848,7 +848,9 @@ evalSigmaT(pbr::TLState *pbrTls, int volumeRegionsCount, int* volumeIds,
             auto& volumeRayState = tls->mGeomTls->mVolumeRayState;
             const geom::internal::Primitive* prim = volumeRayState.getCurrentVolumeRegions().getPrimitive(volumeIds[i]);
             const scene_rdl2::math::Vec3f evalP = prim->evalVolumeSamplePosition(tls, volumeIds[i], p, time);
-            scene_rdl2::math::Color density = prim->evalDensity(tls, volumeIds[i], evalP);
+
+            const scene_rdl2::rdl2::VolumeShader* volumeShader = sampleInfo.getShader();
+            scene_rdl2::math::Color density = prim->evalDensity(tls, volumeIds[i], evalP, rayVolumeDepth, volumeShader);
             switch (overlapMode) {
             case VolumeOverlapMode::RND:
                 {
@@ -1143,7 +1145,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                 mVolumeOverlapMode, rndVar, volumeSampleInfo,
                 tFreePath, time, false,
                 &newSigmaT, &newSigmaS, &newSigmaTh, &newSigmaSh,
-                &newSurfaceTransmittance, &newG, nullptr, &volumeIdSampled);
+                &newSurfaceTransmittance, &newG, nullptr, &volumeIdSampled, -1);
             VolumePhase phase(newG * ci);
             sigmaT = luminance(newSigmaT);
             if (scene_rdl2::math::isZero(sigmaT)) {
@@ -1674,8 +1676,9 @@ PathIntegrator::computeEmissiveVolumeIntegralSubInterval(pbr::TLState *pbrTls,
         if (mVolumeOverlapMode == VolumeOverlapMode::RND) {
             trSamples2.getSample(&rndVal, 0);
         }
+        float rayVolumeDepth = t1 - t0; // total distance ray travels through the volume
         scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, trVolumeRegionsCount, trVolumeIds,
-            mVolumeOverlapMode, rndVal, volumeSampleInfo, t0, time, nullptr);
+            mVolumeOverlapMode, rndVal, volumeSampleInfo, t0, time, nullptr, rayVolumeDepth);
         scene_rdl2::math::Color tr = exp(-sigmaT * (t1 - t0));
         // integrate emission * e^{-sigmaT * t) from t0 to t1
         if (sampleEmission) {
@@ -1718,7 +1721,7 @@ PathIntegrator::computeEmissiveVolumeIntegralSubInterval(pbr::TLState *pbrTls,
                 trSamples2.getSample(&rndVal, 0);
             }
             scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, trVolumeRegionsCount, trVolumeIds,
-                mVolumeOverlapMode, rndVal, volumeSampleInfo, t, time, nullptr);
+                mVolumeOverlapMode, rndVal, volumeSampleInfo, t, time, nullptr, -1);
             float delta = t - tStart;
             if (sampleEmission) {
                 const geom::internal::VolumeSampleInfo& sampleInfo =
@@ -1754,7 +1757,7 @@ PathIntegrator::computeEmissiveVolumeIntegralSubInterval(pbr::TLState *pbrTls,
             }
 
             scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, trVolumeRegionsCount, trVolumeIds,
-                mVolumeOverlapMode, rndVal, volumeSampleInfo, t1, time, nullptr);
+                mVolumeOverlapMode, rndVal, volumeSampleInfo, t1, time, nullptr, -1);
             float delta = t1 - tStart;
             if (sampleEmission) {
                 const geom::internal::VolumeSampleInfo& sampleInfo =
@@ -2440,8 +2443,9 @@ PathIntegrator::transmittanceSubinterval(pbr::TLState *pbrTls,
         if (mVolumeOverlapMode == VolumeOverlapMode::RND) {
             trSamples.getSample(&rndVal, 0);
         }
+        float rayVolumeDepth = t1 - t0; // total distance ray travels through the volume
         scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode, rndVal,
-            volumeSampleInfo, t0, time, light);
+            volumeSampleInfo, t0, time, light, rayVolumeDepth);
         tr = exp(-sigmaT * (t1 - t0) * scaleFactor);
     } else {
         // For now using traditional ray marching approach.
@@ -2473,7 +2477,7 @@ PathIntegrator::transmittanceSubinterval(pbr::TLState *pbrTls,
                 trSamples.getSample(&rndVal, 0);
             }
             scene_rdl2::math::Color sigmaT = evalSigmaT(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode,
-                                                        rndVal, volumeSampleInfo, t, time, light);
+                                                        rndVal, volumeSampleInfo, t, time, light, -1);
             tau += sigmaT;
             if (luminance(tau * stepSize * scaleFactor) > tauThreshold) {
                 return scene_rdl2::math::Color(0.0f);
@@ -2559,10 +2563,11 @@ PathIntegrator::decoupledRayMarching(pbr::TLState *pbrTls,
         if (mVolumeOverlapMode == VolumeOverlapMode::RND) {
             trSamples2.getSample(&rndVal, 0);
         }
+        float rayVolumeDepth = t1 - t0; // total distance ray travels through the volume
         evalVolumeShaders(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode, rndVal,
             volumeSampleInfo, t0, time, (depth == 0),
             &sigmaT, &sigmaS, &sigmaTh, &sigmaSh,
-            &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled);
+            &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled, rayVolumeDepth);
         int assignmentId = volumeRayState.getAssignmentId(volumeIdSampled);
         volumeProperties[marchingStepsCount++] = VolumeProperties(
             sigmaT, sigmaS, sigmaTh, sigmaSh, vt.mTransmittanceE, vt.mTransmittanceH,
@@ -2619,7 +2624,7 @@ PathIntegrator::decoupledRayMarching(pbr::TLState *pbrTls,
             evalVolumeShaders(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode, rndVal,
                 volumeSampleInfo, t, time, (depth == 0),
                 &sigmaT, &sigmaS, &sigmaTh, &sigmaSh,
-                &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled);
+                &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled, -1);
             float delta = t - tStart;
             int assignmentId = volumeRayState.getAssignmentId(volumeIdSampled);
             volumeProperties[marchingStepsCount++] = VolumeProperties(
@@ -2693,7 +2698,7 @@ PathIntegrator::decoupledRayMarching(pbr::TLState *pbrTls,
             evalVolumeShaders(pbrTls, volumeRegionsCount, volumeIds, mVolumeOverlapMode, rndVal,
                 volumeSampleInfo, t1, time, (depth == 0),
                 &sigmaT, &sigmaS, &sigmaTh, &sigmaSh,
-                &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled);
+                &surfaceOpacityThreshold, &g, emissions, &volumeIdSampled, -1);
             float delta = t1 - tStart;
             if (sampleEmission) {
                 if (mVolumeOverlapMode == VolumeOverlapMode::SUM) {

@@ -673,7 +673,8 @@ VdbVolume::sampleBakedDensity(mcrt_common::ThreadLocalState* tls,
 Color
 VdbVolume::evalDensity(mcrt_common::ThreadLocalState* tls,
                        uint32_t volumeId,
-                       const Vec3f& pSample) const
+                       const Vec3f& pSample, float /*rayVolumeDepth*/,
+                       const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const
 {
     const openvdb::Vec3d p(pSample[0], pSample[1], pSample[2]);
     const Color density = Color(mDensitySampler.eval(tls, volumeId, p, Interpolation::POINT));
@@ -687,7 +688,9 @@ VdbVolume::evalVolumeCoefficients(mcrt_common::ThreadLocalState* tls,
                                   Color* extinction,
                                   Color* albedo,
                                   Color* temperature,
-                                  bool highQuality) const
+                                  bool highQuality,
+                                  float /*rayVolumeDepth*/,
+                                  const scene_rdl2::rdl2::VolumeShader* const /*volumeShader*/) const
 {
     const openvdb::Vec3d p(pSample[0], pSample[1], pSample[2]);
     Interpolation mode = highQuality ? mInterpolationMode : Interpolation::POINT;
@@ -1331,7 +1334,9 @@ VdbVolume::bakeVolumeShaderDensityMap(const scene_rdl2::rdl2::VolumeShader* volu
         // If no map binding, don't bake. Store uniform color instead.
         shading::Intersection isect;
         shading::TLState *tls = mcrt_common::getFrameUpdateTLS()->mShadingTls.get();
-        mDensityColor = volumeShader->extinct(tls, shading::State(&isect), scene_rdl2::math::Color(1.f));
+        mDensityColor = volumeShader->extinct(tls, shading::State(&isect), 
+                                              scene_rdl2::math::Color(1.f), 
+                                              /*rayVolumeDepth*/ -1);
         return;
     }
 
@@ -1390,7 +1395,9 @@ VdbVolume::bakeVolumeShaderDensityMap(const scene_rdl2::rdl2::VolumeShader* volu
             shading::Intersection isect;
             isect.setP(scene_rdl2::math::transformPoint(primToRender, p));
             shading::TLState *tls = mcrt_common::getFrameUpdateTLS()->mShadingTls.get();
-            const scene_rdl2::math::Color result = volumeShader->extinct(tls, shading::State(&isect), scene_rdl2::math::Color(1.0f));
+            const scene_rdl2::math::Color result = volumeShader->extinct(tls, shading::State(&isect), 
+                                                                         scene_rdl2::math::Color(1.0f), 
+                                                                         /*rayVolumeDepth*/ -1);
             // set result to new grid
             it.setValue(openvdb::Vec3f(result.r, result.g, result.b));
         }

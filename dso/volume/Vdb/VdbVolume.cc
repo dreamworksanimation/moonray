@@ -26,7 +26,8 @@ public:
 
     virtual scene_rdl2::math::Color extinct(moonray::shading::TLState *tls,
                                 const moonray::shading::State &state,
-                                const scene_rdl2::math::Color& density) const override
+                                const scene_rdl2::math::Color& density,
+                                float /*rayVolumeDepth*/) const override
     {
         scene_rdl2::math::Color result = density * evalColor(this, attrExtinctionGainMult, tls, state);
         // Map shader can produce negative values. An extinction value cannot be negative.
@@ -36,7 +37,8 @@ public:
 
     virtual scene_rdl2::math::Color albedo(moonray::shading::TLState *tls,
                                const moonray::shading::State &state,
-                               const scene_rdl2::math::Color& density) const override
+                               const scene_rdl2::math::Color& density,
+                               float /*rayVolumeDepth*/) const override
     {
         scene_rdl2::math::Color result = density * evalColor(this, attrAlbedoMult, tls, state);
         // Map shader can produce negative values. An albedo value cannot be negative.
