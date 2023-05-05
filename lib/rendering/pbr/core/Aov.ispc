@@ -1028,13 +1028,13 @@ computeRadius(const varying Bsdf * uniform bsdf,
         if (isActive(bssrdf) &&
             labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
             Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS)) {
-            Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS, (varying float *) &result);
+            Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS, (varying float * uniform) &result);
         }
         const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
         if (isActive(vs) &&
             labelMatch(aovDecodeLabel(VolumeSubsurface_getLabel(vs)), entryLabelIndices) &&
             VolumeSubsurface_hasProperty(vs, SUBSURFACE_PROPERTY_RADIUS)) {
-            VolumeSubsurface_getProperty(vs, SUBSURFACE_PROPERTY_RADIUS, (varying float *) &result);
+            VolumeSubsurface_getProperty(vs, SUBSURFACE_PROPERTY_RADIUS, (varying float * uniform) &result);
         }
         // apply pixel weight
         result = applyPixelWeight(result, pixelWeight);

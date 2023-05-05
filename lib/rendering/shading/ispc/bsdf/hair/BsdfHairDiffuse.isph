@@ -307,7 +307,7 @@ HairDiffuseBsdfLobe_init(varying HairDiffuseBsdfLobe * uniform lobe,
     BsdfLobe_init((varying BsdfLobe * uniform) lobe,
                   /* name = */ BSDF_LOBE_HAIR_DIFFUSE,
                   /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_DIFFUSE,
-                  /* differentialFlags = */ (BsdfLobeDifferentialFlags) 0,
+                  /* differentialFlags = */ (uniform BsdfLobeDifferentialFlags) 0,
                   /* isSpherical = */ true,
                   /* propertyFlags = */
                   BSDF_LOBE_PROPERTY_ROUGHNESS | BSDF_LOBE_PROPERTY_NORMAL |

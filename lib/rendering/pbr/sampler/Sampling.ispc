@@ -181,7 +181,7 @@ export void PBR_correlatedMultiJitter2D(uniform unsigned int arraySize,
                                         uniform unsigned int startSampleN,
                                         uniform unsigned int scramble)
 {
-    const uniform int m = sqrt((float)totalSamples);
+    const uniform int m = sqrt((uniform float)totalSamples);
     const uniform int n = (totalSamples + m - 1) / m;
 
     // The permutation function can hang if the value to permute is larger than

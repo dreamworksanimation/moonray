@@ -71,7 +71,6 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
     sceneClass.setMetadata(attrRadius, "label", "radius list");
     sceneClass.setMetadata(attrRadius, "comment", "List of per point radius values");
     sceneClass.setGroup("Points", attrRadius);
-
     attrPartList =
         sceneClass.declareAttribute<rdl2::StringVector>("part_list", {}, { "part list" });
     sceneClass.setMetadata(attrPartList, "label", "part list");

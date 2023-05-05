@@ -640,8 +640,8 @@ Closure_addIridescenceBsdfLobe(varying Closure * uniform closure,
 
     IridescenceBsdfLobe_init(
             (varying IridescenceBsdfLobe * uniform) lobe, arena, normal, iridescence,
-            (SHADING_IridescenceColorMode)0 /* color control */, primary, secondary, flipHue,
-            (ColorRampControlSpace)0 /* ramp interpolation mode */, 0 /* num points*/,
+            (uniform SHADING_IridescenceColorMode)0 /* color control */, primary, secondary, flipHue,
+            (uniform ColorRampControlSpace)0 /* ramp interpolation mode */, 0 /* num points*/,
             NULL /* positions */, NULL /* interpolators */, NULL /* colors */,
             thickness, exponent, iridescenceAt0, iridescenceAt90);
 

@@ -511,7 +511,7 @@ evalFloat(const uniform Material *       uniform sceneObject,
           const varying State &                  state,
           const uniform FloatAttrKey *   uniform keyIn)
 {
-    return evalFloat((const SceneObject *) sceneObject, tls, state, keyIn);
+    return evalFloat((const SceneObject * uniform) sceneObject, tls, state, keyIn);
 }
 inline float
 evalFloat(const uniform Map *            uniform sceneObject,

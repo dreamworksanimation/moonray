@@ -600,7 +600,7 @@ MeshLight_eval(const uniform Light * uniform li,
 
 #ifdef SHADING_BRACKET_TIMING_ENABLED
             const uniform int64 end = getInclusiveTime(light->mMapShader, tls);
-            subtractTimeInChild((const SceneObject *)light->mMapShader, tls, start, end);
+            subtractTimeInChild((const SceneObject * uniform)light->mMapShader, tls, start, end);
 #endif
             radiance = radiance * result;
         }
