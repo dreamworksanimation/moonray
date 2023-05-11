@@ -110,7 +110,8 @@ DistantLight_intersect(const uniform Light * uniform li,
 varying bool
 DistantLight_sample(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time, const varying Vec3f &r,
-        varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint)
+        varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint, 
+        varying bool &isValidForVisAov)
 {
     const uniform DistantLight * uniform light = (const uniform DistantLight * uniform)li;
 
@@ -120,6 +121,7 @@ DistantLight_sample(const uniform Light * uniform li,
     wi = neg(DistantLight_localToGlobal(light, sample, time));
 
     if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
+        isValidForVisAov = true;
         return false;
     }
 

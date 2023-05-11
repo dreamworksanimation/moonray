@@ -377,7 +377,8 @@ MeshLight_sample(const uniform Light * uniform li,
                  const varying Vec3f &r,
                  varying Vec3f &wi,
                  varying LightIntersection &isect,
-                 varying float rayDirFootprint)
+                 varying float rayDirFootprint,
+                 varying bool &isValidForVisAov)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform MeshLight * uniform light = (const uniform MeshLight * uniform)li;
@@ -517,6 +518,7 @@ MeshLight_sample(const uniform Light * uniform li,
 
     // light is on other side of shading point
     if (isValidCullingNormal(cullingNormal) && dot(cullingNormal, wi) < sEpsilon) {
+        isValidForVisAov = true;
         return false;
     }
 

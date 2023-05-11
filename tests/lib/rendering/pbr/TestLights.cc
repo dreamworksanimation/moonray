@@ -137,7 +137,7 @@ testLightRadiance(const Vec3f &p, const Vec3f &n, const LightTester *lightTester
                 Vec3f wi;
                 LightIntersection isect;
                 const Vec3f r(r0, r1, 0.f);
-                if (light->sample(p, nullptr, 0.f, r, wi, isect, 0.0f)) {
+                if (light->sample(p, nullptr, 0.f, r, wi, isect, 0.0f, nullptr)) {
 
                     float pdf;                    
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
@@ -348,7 +348,7 @@ testLightPDF(const Vec3f &p, const Vec3f &n, const LightTester *lightTester,
                 Vec3f wi;
                 LightIntersection isect;
                 const Vec3f r(r0, r1, 0.f);
-                if (light->sample(p, nullptr, 0.f, r, wi, isect, 0.0f)) {
+                if (light->sample(p, nullptr, 0.f, r, wi, isect, 0.0f, nullptr)) {
 
                     float pdf;
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
@@ -550,7 +550,7 @@ testLightCanIlluminate(const Vec3f &, const Vec3f &, const LightTester *lightTes
                 Vec3f wi;
                 LightIntersection isect;
                 const Vec3f r(r0, r1, r2);
-                if (light->sample(p, &n, 0.f, r, wi, isect, 0.0f)) {
+                if (light->sample(p, &n, 0.f, r, wi, isect, 0.0f, nullptr)) {
 
                     float pdf;
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
@@ -674,7 +674,7 @@ testLightIntersection(const Vec3f &p, const Vec3f &n, const LightTester *lightTe
                 Vec3f wi;
                 LightIntersection refIsect;
                 const Vec3f r(r0, r1, 0.f);
-                if (light->sample(p, nullptr, 0.f, r, wi, refIsect, 0.0f)) {
+                if (light->sample(p, nullptr, 0.f, r, wi, refIsect, 0.0f, nullptr)) {
                     LightIntersection testIsect;
                     if (light->intersect(p, nullptr, wi, 0.f, refIsect.distance + 1.f, testIsect)) {
 
@@ -728,7 +728,7 @@ testLightIntersection(const Vec3f &p, const Vec3f &n, const LightTester *lightTe
                         if (asserted) {
 #ifdef DEBUG
                             // Set your breakpoint here!
-                            light->sample(p, nullptr, 0.f, r, wi, refIsect, 0.0f);
+                            light->sample(p, nullptr, 0.f, r, wi, refIsect, 0.0f, nullptr);
                             light->intersect(p, nullptr, wi, 0.f, refIsect.distance + 1.f, testIsect);
 #endif
                             return;

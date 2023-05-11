@@ -139,7 +139,7 @@ PathIntegrator::estimateInScatteringSourceTerm(pbr::TLState *pbrTls, const mcrt_
     LightIntersection lIsect;
     scene_rdl2::math::Vec3f lWi;
     // TODO: replace the 0.0f with a proper footprint value? (We currently have no RayDifferential available)
-    if (light->sample(scatterPoint, nullptr, ray.getTime(), ul, lWi, lIsect, 0.0f)) {
+    if (light->sample(scatterPoint, nullptr, ray.getTime(), ul, lWi, lIsect, 0.0f, /*validForVisAovPtr*/ nullptr)) {
         float pdfLight;
         // TODO: replace the 0.0f with a proper footprint value? (We currently have no RayDifferential available)
         scene_rdl2::math::Color Li = light->eval(pbrTls->mTopLevelTls,

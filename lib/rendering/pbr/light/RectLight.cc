@@ -377,8 +377,8 @@ RectLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float time
 }
 
 bool
-RectLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-        Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
+RectLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+                      Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
 {
     MNRY_ASSERT(mOn);
 
@@ -459,6 +459,7 @@ RectLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
     }
     wi *= rcp(isect.distance);
     if (n  &&  dot(*n, wi) < sEpsilon) {
+        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

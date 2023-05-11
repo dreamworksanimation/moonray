@@ -268,8 +268,8 @@ DistantLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float t
 }
 
 bool
-DistantLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                     Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
+DistantLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+                         Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
 {
     MNRY_ASSERT(mOn);
 
@@ -277,6 +277,7 @@ DistantLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
     wi = -localToGlobal(sample, time);
 
     if (n  &&  dot(*n, wi) < sEpsilon) {
+        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

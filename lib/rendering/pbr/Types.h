@@ -118,8 +118,6 @@ struct BundledOcclRayData
     static uint32_t hudValidation(bool verbose) { BUNDLED_OCCL_RAY_DATA_VALIDATION; }
 };
 
-MNRY_STATIC_ASSERT(sizeof(BundledOcclRayData) == 40);
-
 struct CACHE_ALIGN BundledOcclRay
 {
     // Inline helpers to make a BundledOcclRay look like a pbr::Ray from an

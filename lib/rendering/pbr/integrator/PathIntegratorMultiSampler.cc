@@ -93,7 +93,9 @@ PathIntegrator::addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
         const FrameState &fs = *pbrTls->mFs;
         const AovSchema &aovSchema = *fs.mAovSchema;
         const LightAovs &lightAovs = *fs.mLightAovs;
-        // transition
+        // lpe state transition, where the event is based off of the bsdf lobe type (or light) and
+        // the lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+        // see StateMachine::isValid)
         int lpeStateId = pv.lpeStateId;
         lpeStateId = lightAovs.scatterEventTransition(pbrTls,
             lpeStateId, bSampler.getBsdf(), lobe);
@@ -151,13 +153,77 @@ PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
     }
 }
 
+void PathIntegrator::addInvalidLightSamplesToVisibilityAov(float *aovs, const LightSample &sample, pbr::TLState *pbrTls, 
+        const mcrt_common::RayDifferential &parentRay, const shading::Intersection &isect, float rayEpsilon, 
+        float shadowRayEpsilon, const Light *light, int lpeId, const LightSetSampler &lSampler, int cameraId, 
+        const scene_rdl2::math::Vec3f *cullingNormal, Subpixel const& sp, unsigned& sequenceID) const 
+{
+    // the light sample could contribute to the visibility aov, 
+    // regardless of whether it is marked "invalid" for the beauty
+    if (aovs && sample.isValidForVisAov()) {
+        EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+
+        const FrameState &fs = *pbrTls->mFs;
+        const bool hasUnoccludedFlag = fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded); 
+        const AovSchema &aovSchema = *fs.mAovSchema;
+
+        // the culling normal will be zero if light culling is off -- which means no self-intersection test
+        // (see light->sample for similar logic)
+        bool selfIntersects = cullingNormal ? scene_rdl2::math::isZero(dot(*cullingNormal, sample.wi)) : false;
+
+        /// --- Create shadow ray ---------------------------------------------------
+        const scene_rdl2::math::Vec3f &P = parentRay.getOrigin();
+        float time = parentRay.getTime();
+        int rayDepth = parentRay.getDepth() + 1;
+        float presence = 0.0f;
+        int32_t assignmentId = isect.getLayerAssignmentId(); 
+        float tfar = sample.vis.distance * sHitEpsilonEnd;
+        mcrt_common::Ray shadowRay(P, sample.wi, rayEpsilon, tfar, time, rayDepth);
+        /// -------------------------------------------------------------------------
+
+        bool isOccluded = isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId);
+        isOccluded = isOccluded || selfIntersects;
+            
+        // Add light sample to the visibility aov based on whether it's occluded or not
+        bool addVisibility = true;
+        for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
+            if (!sample.lp.lobe[l]) continue;
+            const shading::BsdfLobe &lobe = *sample.lp.lobe[l];
+            const LightAovs &lightAovs = *fs.mLightAovs;
+
+            int lpeStateId = lpeId;
+            // lpe state transition, where the event is based off of the bsdf lobe type and the 
+            // lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+            // see StateMachine::isValid)
+            lpeStateId = lightAovs.scatterEventTransition(pbrTls, lpeStateId, lSampler.getBsdf(), lobe);
+
+            // lpe state transition, where the event is a light event
+            lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
+
+            if ((lightAovs.hasVisibilityEntries() || hasUnoccludedFlag) && addVisibility) {
+                float trEpsilon = scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon);
+                mcrt_common::Ray trRay(P, sample.wi, trEpsilon, tfar, time, rayDepth);
+                scene_rdl2::math::Color tr = transmittance(pbrTls, trRay, 
+                                                           sp.mPixel, sp.mSubpixelIndex, 
+                                                           sequenceID, light);
+                float visibilityValue = isOccluded ? 0.0f : reduceTransparency(tr) * (1.0f - presence);
+
+                if (aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                                           scene_rdl2::math::Vec2f(visibilityValue, 1.0f), lpeStateId, aovs)) {
+                    addVisibility = false;
+                }
+            }
+        } // end forloop
+    }
+}
+
 void
 PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         Subpixel const& sp, int cameraId, const PathVertex &pv,
         const LightSetSampler &lSampler, const LightSample *lsmp,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-        const shading::Intersection &isect) const
+        const shading::Intersection &isect, const scene_rdl2::math::Vec3f *cullingNormal) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
     // Trace light sample shadow rays
@@ -176,7 +242,12 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         }
 
         for (int i = 0; i < lightSampleCount; ++i, ++s) {
+            
             if (lsmp[s].isInvalid()) {
+                // handle light samples that might be "invalid" for the beauty to the vis aov
+                addInvalidLightSamplesToVisibilityAov(aovs, lsmp[s], pbrTls, parentRay, isect, rayEpsilon, 
+                                                      shadowRayEpsilon, light, pv.lpeStateId, lSampler,
+                                                      cameraId, cullingNormal, sp, sequenceID);
                 continue;
             }
             scene_rdl2::math::Color lightT = lsmp[s].t;
@@ -220,17 +291,19 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                     // If there is no visibility AOV and if we don't have unoccluded flags, then we don't need to bother
                     // with accumulating these values here.
                     if (lightAovs.hasVisibilityEntries() || hasUnoccludedFlag) {
-
                         const AovSchema &aovSchema = *fs.mAovSchema;
                         const Light *light = lSampler.getLight(lightIndex);
                         bool addVisibility = true;
                         for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
-                            if (!lsmp[s].lp.lobe[l]) continue;
+                            // if the lobe doesn't exist or the lobe DOES exist but is invalid, skip aov calcs
+                            if (!lsmp[s].lp.lobe[l] || !lsmp[s].lp.valid[l]) continue;
 
                             const shading::BsdfLobe &lobe = *lsmp[s].lp.lobe[l];
                             const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[s].lp.t[l];
                             int lpeStateId = pv.lpeStateId;
-                            // transition
+                            // lpe state transition, where the event is based off of the bsdf lobe type and the 
+                            // lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+                            // see StateMachine::isValid)
                             lpeStateId = lightAovs.scatterEventTransition(pbrTls,
                                 lpeStateId, lSampler.getBsdf(), lobe);
                             lpeStateId = lightAovs.lightEventTransition(pbrTls,
@@ -270,12 +343,16 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                     const Light *light = lSampler.getLight(lightIndex);
                     bool addVisibility = true;
                     for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
-                        if (!lsmp[s].lp.lobe[l]) continue;
+                        // if the lobe doesn't exist or the lobe DOES exist but is invalid, skip aov calcs
+                        if (!lsmp[s].lp.lobe[l] || !lsmp[s].lp.valid[l]) continue;
+
                         const shading::BsdfLobe &lobe = *lsmp[s].lp.lobe[l];
                         const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[s].lp.t[l];
                         const scene_rdl2::math::Color &lobeVal = tr * lsmp[s].lp.t[l] * (1.0f - presence);
                         const shading::Bsdf &bsdf = lSampler.getBsdf();
-                        // transition
+                        // lpe state transition, where the event is based off of the bsdf lobe type (or light) and
+                        // the lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+                        // see StateMachine::isValid)
                         int lpeStateId = pv.lpeStateId;
                         lpeStateId = lightAovs.scatterEventTransition(pbrTls,
                             lpeStateId, bsdf, lobe);
@@ -433,7 +510,9 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 const LightAovs &lightAovs = *fs.mLightAovs;
                 const shading::Bsdf &bsdf = bSampler.getBsdf();
 
-                // transition
+                // lpe state transition, where the event is based off of the bsdf lobe type and
+                // the lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+                // see StateMachine::isValid)
                 pv.lpeStateId = lightAovs.scatterEventTransition(pbrTls, parentPv.lpeStateId, bsdf, *lobe);
 
                 // Accumulate post scatter extra aovs
@@ -533,7 +612,9 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 const AovSchema &aovSchema = *fs.mAovSchema;
                 const LightAovs &lightAovs = *fs.mLightAovs;
                 if (fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded)) {
-                    // transition
+                    // lpe state transition, where the event is a light event and
+                    // the lpeStateId is the next state (aovs are only updated if the state matches the lpe --
+                    // see StateMachine::isValid)
                     int lpeStateId = pv.lpeStateId;
                     lpeStateId = lightAovs.lightEventTransition(pbrTls,
                         lpeStateId, bsmp[s].lp.light);
@@ -659,7 +740,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
         checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
     }
     addDirectVisibleLightSampleContributions(pbrTls, sp, cameraId, pv, lSampler, lsmp, ray,
-            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
+            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect, cullingNormal);
     checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
 
     return radiance;

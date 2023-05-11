@@ -41,7 +41,8 @@ testLightRadiance(const uniform Vec3f &p, const uniform Vec3f &n,
 
             Vec3f wi;
             LightIntersection isect;
-            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, isect, 0.0f)) {
+            bool validForVisAov = false;
+            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, isect, 0.0f, validForVisAov)) {
 
                 float pdf;                
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
@@ -101,7 +102,8 @@ testLightPdf(const uniform Vec3f &p, const uniform Vec3f &n,
 
             Vec3f wi;
             LightIntersection isect;
-            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, isect, 0.0f)) {
+            bool validForVisAov = false;
+            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, isect, 0.0f, validForVisAov)) {
 
                 float pdf;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
@@ -169,7 +171,8 @@ testLightCanIlluminate(const uniform Light * uniform light,
 
             Vec3f wi;
             LightIntersection isect;
-            if (Light_sample(light, p, n, 0.f, r, wi, isect, 0.0f)) {
+            bool validForVisAov = false;
+            if (Light_sample(light, p, n, 0.f, r, wi, isect, 0.0f, validForVisAov)) {
 
                 float pdf;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
@@ -229,7 +232,8 @@ testLightIntersection(const uniform Light * uniform light,
 
             Vec3f wi;
             LightIntersection refIsect;
-            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, refIsect, 0.0f)) {
+            bool validForVisAov = false;
+            if (Light_sample(light, pv, cullingNormal, 0.f, r, wi, refIsect, 0.0f, validForVisAov)) {
 
                 LightIntersection testIsect;
                 if (Light_intersect(light, pv, cullingNormal, wi, 0.f, refIsect.distance + 1.0f, testIsect)) {
@@ -287,7 +291,8 @@ testLightIntersection(const uniform Light * uniform light,
                     if (asserted) {
 #ifdef DEBUG
                         // Set your breakpoint here!
-                        Light_sample(light, pv, cullingNormal, 0.f, r, wi, refIsect, 0.0f);
+                        bool validForVisAov = false;
+                        Light_sample(light, pv, cullingNormal, 0.f, r, wi, refIsect, 0.0f, validForVisAov);
                         Light_intersect(light, pv, cullingNormal, wi, 0.f, refIsect.distance + 1.0f, testIsect);
 #endif
                         success = false;

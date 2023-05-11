@@ -159,7 +159,7 @@ EnvLight_getMipLevel(const uniform Light * uniform li, varying float rayDirFootp
 varying bool
 EnvLight_sample(const uniform Light * uniform li, const varying Vec3f &p, const varying Vec3f &cullingNormal,
                 varying float time, const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect,
-                varying float rayDirFootprint)
+                varying float rayDirFootprint, varying bool &isValidForVisAov)
 {
     const uniform EnvLight * uniform light = (const uniform EnvLight * uniform)li;
 
@@ -192,6 +192,7 @@ EnvLight_sample(const uniform Light * uniform li, const varying Vec3f &p, const 
     }
 
     if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
+        isValidForVisAov = true;
         return false;
     }
 

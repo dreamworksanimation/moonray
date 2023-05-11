@@ -145,7 +145,8 @@ CylinderLight_intersect(const uniform Light * uniform li,
 varying bool
 CylinderLight_sample(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint)
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint,
+        varying bool &isValidForVisAov)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform CylinderLight * uniform light = (const uniform CylinderLight * uniform)li;
@@ -174,6 +175,7 @@ CylinderLight_sample(const uniform Light * uniform li,
     }
     wi = wi * rcp(isect.distance);
     if (isValidCullingNormal(cullingNormal) && dot(cullingNormal, wi) < sEpsilon) {
+        isValidForVisAov = true;
         return false;
     }
 

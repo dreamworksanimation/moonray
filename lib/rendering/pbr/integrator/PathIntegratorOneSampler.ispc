@@ -241,8 +241,9 @@ oneSamplerDirectLight(const uniform PathIntegrator * uniform this,
     Vec3f wi;
     const RayDifferential &ray = rs->mRay;
     const varying Vec3f rVec = Vec3f_ctor(r[0], r[1], r[2]);
+    bool isValidForVisAov = false;
     if (!Light_sample(light, getP(isect), cullingNormal, Ray_getTime(ray), rVec, wi, lightIsect,
-                      Ray_getDirFootprint(ray))) {
+                      Ray_getDirFootprint(ray), isValidForVisAov)) {
         return;
     }
 

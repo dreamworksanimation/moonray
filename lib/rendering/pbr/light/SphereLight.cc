@@ -315,8 +315,8 @@ SphereLight::intersect(const Vec3f &p, const Vec3f *n,  const Vec3f &wi, float t
 
 
 bool
-SphereLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                    Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
+SphereLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+                        Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
 {
     MNRY_ASSERT(mOn);
 
@@ -379,6 +379,7 @@ SphereLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
 
         wi = rayDir / t;
         if (n  &&  dot(*n, wi) < sEpsilon) {
+            if (validForVisAov) *validForVisAov = true;
             return false;
         }
 

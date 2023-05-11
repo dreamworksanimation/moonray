@@ -60,8 +60,6 @@ public:
     virtual scene_rdl2::math::BBox3f getBounds() const override;
     virtual bool intersect(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, const scene_rdl2::math::Vec3f &wi, float time,
             float maxDistance, LightIntersection &isect) const override;
-    virtual bool sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time, const scene_rdl2::math::Vec3f& r,
-            scene_rdl2::math::Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const override;
     virtual scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, const scene_rdl2::math::Vec3f &p,
             const LightFilterRandomValues& filterR, float time, const LightIntersection &isect, bool fromCamera,
             const LightFilterList *lightFilterList, float rayDirFootprint, float *pdf = nullptr) const override;
@@ -69,6 +67,10 @@ public:
 
 private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
+
+    bool sampleImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time, 
+                    const scene_rdl2::math::Vec3f& r, scene_rdl2::math::Vec3f &wi, LightIntersection &isect, 
+                    float rayDirFootprint, bool* validForVisAov) const override;
 
     /// Copy is disabled
     DiskLight(const DiskLight &other);

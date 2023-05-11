@@ -128,7 +128,8 @@ typedef varying bool (* uniform LightIntersectFn)(
 typedef varying bool (* uniform LightSampleFn)(
         const uniform Light * uniform light,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint);
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint,
+        varying bool &isValidForVisAov);
 
 typedef varying Color (* uniform LightEvalFn)(
         const uniform Light * uniform light, uniform ShadingTLState * uniform tls,
@@ -460,11 +461,12 @@ Light_intersect(const uniform Light * uniform light,
 inline varying bool
 Light_sample(const uniform Light * uniform light,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint)
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint, 
+        varying bool &isValidForVisAov)
 {
     MNRY_ASSERT(light->mSampleFn != 0);
     LightSampleFn sampleFn = (LightSampleFn)light->mSampleFn;
-    return sampleFn(light, p, cullingNormal, time, r, wi, isect, rayDirFootprint);
+    return sampleFn(light, p, cullingNormal, time, r, wi, isect, rayDirFootprint, isValidForVisAov);
 }
 
 /// Evaluate the light's emitted radiance from the intersection position

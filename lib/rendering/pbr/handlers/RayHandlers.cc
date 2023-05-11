@@ -83,6 +83,30 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
             isOccluded = accel->occluded(rtRay);
         }
 
+        // handle rays that have been marked "invalid", but that still need to be handled in the vis aov
+        if (occlRay.mDataPtrHandle != nullHandle) {
+            const BundledOcclRayData* occlRayData = static_cast<BundledOcclRayData *>(
+                                                    pbrTls->getListItem(occlRay.mDataPtrHandle, 0));
+            const bool isValidForVisAov = occlRayData->mIsValidForVisAov;
+            if (isValidForVisAov) {
+                EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+                const int numItems = pbrTls->getNumListItems(occlRay.mDataPtrHandle);
+                // has the light sample already been marked as occluded? 
+                const bool lsmpIsOccluded = occlRayData->mIsOccluded;
+                
+                if ((lsmpIsOccluded || isOccluded) && !disableShadowing) {
+                    accumVisibilityAovsOccluded(pbrTls, occlRay, fs, numItems);
+                } else {
+                    scene_rdl2::math::Color tr = getTransmittance(pbrTls, occlRay);
+                    accumVisibilityAovs(pbrTls, occlRay, fs, numItems, reduceTransparency(tr));
+                }
+                pbrTls->freeList(occlRay.mDataPtrHandle);
+                pbrTls->releaseDeepData(occlRay.mDeepDataHandle);
+                pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
+                continue;
+            }
+        }
+
         if (!isOccluded || disableShadowing) {
             // At this point, we know that the ray is not occluded, but we still need to
             // apply volume transmittance to the final radiance value.
@@ -235,7 +259,7 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
     const bool disableShadowing = !fs.mIntegrator->getEnableShadowing();
     unsigned int numRadiancesFilled = 0;
     for (unsigned int i = 0; i < numEntries; ++i) {
-        BundledOcclRay &occlRay = *entries[i];
+        BundledOcclRay &occlRay = *entries[i]; 
         MNRY_ASSERT(occlRay.isValid());
         // we always have the data block here
         const BundledOcclRayData *b = static_cast<BundledOcclRayData *>(
@@ -251,6 +275,19 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
                               b->mRayEpsilon,
                               fs.mMaxPresenceDepth,
                               presence);
+        
+        // handle rays that have been marked "invalid", but that still need to be handled in the vis aov
+        if (b->mIsValidForVisAov) {
+            EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+            const int numItems = pbrTls->getNumListItems(occlRay.mDataPtrHandle);
+
+            scene_rdl2::math::Color tr = getTransmittance(pbrTls, occlRay);
+            accumVisibilityAovs(pbrTls, occlRay, fs, numItems, reduceTransparency((1.f - presence) * tr));
+
+            pbrTls->freeList(occlRay.mDataPtrHandle);
+            pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
+            continue;
+        }
 
         // At this point, we know that the ray is not occluded, but we still need to
         // apply volume transmittance to the final radiance value.

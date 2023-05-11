@@ -150,27 +150,6 @@ public:
                            const scene_rdl2::math::Vec3f &wi, float time,
                            float maxDistance, LightIntersection &isect) const = 0;
 
-    /// Sample a position on the light and return true if the sample can
-    /// contribute radiance to the point p, and false otherwise (i.e. if the
-    /// light sample is facing away from point p or if the light was unable to
-    /// draw a sample).
-    ///
-    /// When it returns true, the method also returns the direction wi from
-    /// the point p on the surface, to the sampled position as well as the
-    /// resulting light intersection.
-    ///
-    /// The n parameter (also optional as in canIlluminate) defines the
-    /// hemisphere of directions that can be seen from point p. If non-null,
-    /// Lights can test that the sampled direction is within that hemisphere
-    /// and return true / false to respectively accept / cull the sample.
-    ///
-    /// This result assumes visibility: occlusion is only tested later if the
-    /// contribution is actually significant.
-    /// TODO: later we may need a 3D sample value and a component in the
-    /// intersection, when dealing with geometry lights.
-    virtual bool sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time,
-                        const scene_rdl2::math::Vec3f& r,
-                        scene_rdl2::math::Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const = 0;
 
     /// Evaluate the light's emitted radiance from the intersection position
     /// in the direction -wi (make sure to pass-in the same wi that was passed-in
@@ -242,6 +221,15 @@ public:
                            : mSidedness == LIGHT_SIDEDNESS_REVERSE;
     }
 
+    // public wrapper for sampleImpl
+    bool sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time,
+                const scene_rdl2::math::Vec3f& r, scene_rdl2::math::Vec3f &wi, LightIntersection &isect, 
+                float rayDirFootprint, bool* validForVisAov) const 
+    { 
+        if (validForVisAov) *validForVisAov = false;
+        return sampleImpl(p, n, time, r, wi, isect, rayDirFootprint, validForVisAov); 
+    }
+
 protected:
 
     /// Derived classes should call this method in their update() function.
@@ -277,6 +265,28 @@ private:
 
     scene_rdl2::math::Vec3f lerpPosition(float time) const;
     scene_rdl2::math::Vec3f slerpDirection(float time) const;
+
+    /// Sample a position on the light and return true if the sample can
+    /// contribute radiance to the point p, and false otherwise (i.e. if the
+    /// light sample is facing away from point p or if the light was unable to
+    /// draw a sample).
+    ///
+    /// When it returns true, the method also returns the direction wi from
+    /// the point p on the surface, to the sampled position as well as the
+    /// resulting light intersection.
+    ///
+    /// The n parameter (also optional as in canIlluminate) defines the
+    /// hemisphere of directions that can be seen from point p. If non-null,
+    /// Lights can test that the sampled direction is within that hemisphere
+    /// and return true / false to respectively accept / cull the sample.
+    ///
+    /// This result assumes visibility: occlusion is only tested later if the
+    /// contribution is actually significant.
+    /// TODO: later we may need a 3D sample value and a component in the
+    /// intersection, when dealing with geometry lights.
+    virtual bool sampleImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time,
+                            const scene_rdl2::math::Vec3f& r, scene_rdl2::math::Vec3f &wi, LightIntersection &isect, 
+                            float rayDirFootprint, bool* validForVisAov) const = 0;
 };
 
 
