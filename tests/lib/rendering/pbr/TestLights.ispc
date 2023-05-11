@@ -291,7 +291,6 @@ testLightIntersection(const uniform Light * uniform light,
                     if (asserted) {
 #ifdef DEBUG
                         // Set your breakpoint here!
-                        bool validForVisAov = false;
                         Light_sample(light, pv, cullingNormal, 0.f, r, wi, refIsect, 0.0f, validForVisAov);
                         Light_intersect(light, pv, cullingNormal, wi, 0.f, refIsect.distance + 1.0f, testIsect);
 #endif
