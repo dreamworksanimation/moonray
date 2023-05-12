@@ -566,7 +566,7 @@ isPlanar(const PolygonMesh::VertexBuffer& vertices,
     // Check that the other points lie in the plane of the first 3
     for (size_t i = 3; i < fvCount; ++i) {
         const Vec3f v = vertices(indices[i + inputIndexOffset], 0);
-        if (!isZero(dot(va - v, N))) {
+        if (!isZero(dot(normalize(va - v), N))) {
             return false;
         }
     }
@@ -658,6 +658,10 @@ TriMesh::splitNGons(size_t outputFaceCount,
                 }
             }
         } else {
+            PolygonMesh::IndexBuffer indexRemappingCopy = indexRemapping;
+            size_t outputIndexOffsetCopy = outputIndexOffset;
+            size_t outputF2POffsetCopy = outputF2POffset;
+
             // Ear clipping algorithm for concave ngons
             // https://en.wikipedia.org/wiki/Polygon_triangulation
             const Vec3f N = calculateConcaveNGonNormal(vertices,
@@ -674,7 +678,9 @@ TriMesh::splitNGons(size_t outputFaceCount,
             }
 
             size_t numRemainingIndices = localIndices.size();
+            bool success;
             while (numRemainingIndices > 3) {
+                success = false;
                 for (int i = numRemainingIndices - 1; i >= 0; --i) {
                     // Triangle vertices in clockwise winding order (b, a, c)
                     const uint32_t a = localIndices[i];
@@ -728,19 +734,44 @@ TriMesh::splitNGons(size_t outputFaceCount,
                     // Remove this vertex from the list to check
                     localIndices.erase(localIndices.begin() + i);
                     numRemainingIndices -= 1;
+                    success = true;
+                    break;
+                }
+
+                if (!success) {
+                    indexRemapping = indexRemappingCopy;
+                    outputIndexOffset = outputIndexOffsetCopy;
+                    outputF2POffset = outputF2POffsetCopy;
+                    success = false;
                     break;
                 }
             }
 
-            // Add the last triangle
-            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[2];
-            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[2]];
-            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[1];
-            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[1]];
-            indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[0];
-            indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[0]];
-            if (faceToPart.size() > 0) {
-                faceToPart[outputF2POffset--] = faceToPart[f];
+            if (success) {
+                // Add the last triangle
+                indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[2];
+                indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[2]];
+                indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[1];
+                indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[1]];
+                indexRemapping[outputIndexOffset] = inputIndexOffset + localIndices[0];
+                indices[outputIndexOffset--] = indices[inputIndexOffset + localIndices[0]];
+                if (faceToPart.size() > 0) {
+                    faceToPart[outputF2POffset--] = faceToPart[f];
+                }
+            } else {
+                // Revert to triangle fan
+                for (size_t v = fvCount; v >= sTriangleVertexCount; --v) {
+                    // triangulate a ngon into triangles fan
+                    indexRemapping[outputIndexOffset] = inputIndexOffset + v - 1;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset + v - 1];
+                    indexRemapping[outputIndexOffset] = inputIndexOffset + v - 2;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset + v - 2];
+                    indexRemapping[outputIndexOffset] = inputIndexOffset;
+                    indices[outputIndexOffset--] = indices[inputIndexOffset];
+                    if (faceToPart.size() > 0) {
+                        faceToPart[outputF2POffset--] = faceToPart[f];
+                    }
+                }
             }
         }
     }
