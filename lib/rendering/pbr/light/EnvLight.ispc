@@ -191,13 +191,13 @@ EnvLight_sample(const uniform Light * uniform li, const varying Vec3f &p, const 
         wi = sampleSphereUniform(r.x, r.y);
     }
 
+    isect.N = neg(wi);
+    isect.distance = sEnvLightDistance;
+    
     if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
         isValidForVisAov = true;
         return false;
     }
-
-    isect.N = neg(wi);
-    isect.distance = sEnvLightDistance;
 
     return true;
 }

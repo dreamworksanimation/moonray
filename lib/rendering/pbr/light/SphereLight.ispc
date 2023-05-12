@@ -284,6 +284,7 @@ SphereLight_sample(const uniform Light * uniform li,
 
         wi = rayDir / t;
         if (isValidCullingNormal(cullingNormal) && dot(cullingNormal, wi) < sEpsilon) {
+            isect.distance = t;
             isValidForVisAov = true;
             return false;
         }

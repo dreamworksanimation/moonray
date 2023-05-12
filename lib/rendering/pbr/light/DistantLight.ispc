@@ -120,14 +120,14 @@ DistantLight_sample(const uniform Light * uniform li,
     Vec3f sample = sampleLocalSphericalCapUniform2(r.x, r.y, light->mVersineThetaMax);
     wi = neg(DistantLight_localToGlobal(light, sample, time));
 
+    isect.N = neg(wi);
+    isect.distance = sDistantLightDistance;
+    isect.uv = Vec2f_ctor(0.0f);
+
     if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
         isValidForVisAov = true;
         return false;
     }
-
-    isect.N = neg(wi);
-    isect.distance = sDistantLightDistance;
-    isect.uv = Vec2f_ctor(0.0f);
 
     return true;
 }

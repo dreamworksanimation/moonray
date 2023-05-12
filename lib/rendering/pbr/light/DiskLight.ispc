@@ -356,15 +356,17 @@ DiskLight_sample(const uniform Light * uniform li,
 
     // Compute wi and d
     wi = renderHit - p;
-    if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
-        isValidForVisAov = true;
-        return false;
-    }
+
     isect.distance = length(wi);
     if (isect.distance < sEpsilon) {
         return false;
     }
     wi = wi * rcp(isect.distance);
+    
+    if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
+        isValidForVisAov = true;
+        return false;
+    }
 
     // We will only reach this far if p is on the illuminated side of the light's plane (either side, for 2-sided).
     // The light's mDirection is its local z-axis, which is only guaranteed to concide with the normal for lights

@@ -284,16 +284,16 @@ SpotLight_sample_uniform(const uniform Light * uniform li,
     Vec3f lensPosLocal = {lensCoords.x, lensCoords.y, 0.0f};
     Vec3f lensPosRender = LocalParamLight_xformPointLocal2Render(lpl, lensPosLocal, time);
     wi = lensPosRender - p;
+
+    isect.distance = length(wi);
+    isect.N = Light_getDirection(li, time);
+
+    wi = wi / isect.distance;
  
     if (isValidCullingNormal(n)  &&  dot(n, wi) <= 0.0f) {
         isValidForVisAov = true;
         return false;
     }
-    
-    isect.distance = length(wi);
-    isect.N = Light_getDirection(li, time);
-
-    wi = wi / isect.distance;
 
     return true;
 }
