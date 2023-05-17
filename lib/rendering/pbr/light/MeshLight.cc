@@ -1675,6 +1675,11 @@ MeshLight::sampleImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::
         float area013 = length(normal013);
         float area231 = length(normal231);
         float areaSum = area013 + area231;
+
+        if (areaSum == 0) {
+            return false;
+        }
+        
         float rSplit = area013 / areaSum;
 
         scene_rdl2::math::Vec3f p1;
