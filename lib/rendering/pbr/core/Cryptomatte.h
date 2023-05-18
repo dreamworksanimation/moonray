@@ -75,6 +75,9 @@ private:
         scene_rdl2::math::Vec3f mPosition;
         scene_rdl2::math::Vec3f mNormal;
         scene_rdl2::math::Color4 mBeauty;
+        scene_rdl2::math::Vec3f mRefP;
+        scene_rdl2::math::Vec3f mRefN;
+        scene_rdl2::math::Vec2f mUV;
         unsigned mPresenceDepth;
         unsigned mNumSamples;    // num pixel samples that hit this id -- used to average position/normal data
 
@@ -82,12 +85,18 @@ private:
                  const scene_rdl2::math::Vec3f& position, 
                  const scene_rdl2::math::Vec3f& normal, 
                  const scene_rdl2::math::Color4& beauty, 
+                 const scene_rdl2::math::Vec3f refP,
+                 const scene_rdl2::math::Vec3f refN,
+                 const scene_rdl2::math::Vec2f uv,
                  unsigned presenceDepth, unsigned numSamples = 1)
         : mId(id), 
           mCoverage(coverage),
           mPosition(position), 
           mNormal(normal), 
-          mBeauty(beauty), 
+          mBeauty(beauty),
+          mRefP(refP),
+          mRefN(refN),
+          mUV(uv),
           mPresenceDepth(presenceDepth), 
           mNumSamples(numSamples)
         {}
@@ -122,6 +131,9 @@ public:
                          const scene_rdl2::math::Vec3f& position, 
                          const scene_rdl2::math::Vec3f& normal,
                          const scene_rdl2::math::Color4& beauty,
+                         const scene_rdl2::math::Vec3f refP,
+                         const scene_rdl2::math::Vec3f refN,
+                         const scene_rdl2::math::Vec2f uv,
                          unsigned presenceDepth,
                          int cryptoType);
 
@@ -130,6 +142,9 @@ public:
                          const scene_rdl2::math::Vec3f& position,
                          const scene_rdl2::math::Vec3f& normal,
                          const scene_rdl2::math::Color4& beauty,
+                         const scene_rdl2::math::Vec3f refP,
+                         const scene_rdl2::math::Vec3f refN,
+                         const scene_rdl2::math::Vec2f uv,
                          unsigned presenceDepth,
                          bool incrementSamples = true);
 
@@ -146,6 +161,9 @@ public:
                       const float *positionData,
                       const float *normalData,
                       const float *beautyData,
+                      const float *refPData,
+                      const float *refNData,
+                      const float *uvData,
                       const float *resumeRenderSupportData);
 
     // --------------------------------------------- Print -------------------------------------------------------------

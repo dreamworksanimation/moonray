@@ -88,6 +88,7 @@ void BundledOcclRay_init(varying BundledOcclRay * uniform this,
                          varying uint32_t dataPtrHandle,
                          varying uint32_t deepDataHandle,
                          varying uint32_t cryptomatteDataHandle,
+                         varying uint32_t cryptomatteDataHandle2,
                          varying uint32_t occlTestType,
                          const varying int32_t shadowReceiverId);
 
@@ -111,3 +112,7 @@ struct CryptomatteData
     CRYPTOMATTE_DATA_MEMBERS;
 };
 
+struct CryptomatteData2
+{
+    CRYPTOMATTE_DATA_MEMBERS_2;
+};

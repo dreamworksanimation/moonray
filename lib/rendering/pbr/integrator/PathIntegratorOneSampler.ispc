@@ -174,6 +174,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
     const float rayTime = Ray_getTime(ray);
     PbrTLState_acquireDeepData(pbrTls, rs->mDeepDataHandle);
     PbrTLState_acquireCryptomatteData(pbrTls, rs->mCryptomatteDataHandle);
+    PbrTLState_acquireCryptomatteData2(pbrTls, rs->mCryptomatteDataHandle2);
     const varying Subpixel &sp = rs->mSubpixel;
     int32_t assignmentId = isect.mLayerAssignmentId;
     BundledOcclRay_init(&shadowRay,
@@ -191,6 +192,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
                         data,
                         rs->mDeepDataHandle,
                         rs->mCryptomatteDataHandle,
+                        rs->mCryptomatteDataHandle2,
                         occlTestType,
                         assignmentId);
     // packed_store_active2() "may write one extra element to the output array"
@@ -1133,8 +1135,10 @@ computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
         nextRayState.mTilePassAndFilm = rs->mTilePassAndFilm;
         nextRayState.mDeepDataHandle = rs->mDeepDataHandle;
         nextRayState.mCryptomatteDataHandle = rs->mCryptomatteDataHandle;
+        nextRayState.mCryptomatteDataHandle2 = rs->mCryptomatteDataHandle2;
         PbrTLState_acquireDeepData(pbrTls, nextRayState.mDeepDataHandle);
         PbrTLState_acquireCryptomatteData(pbrTls, nextRayState.mCryptomatteDataHandle);
+        PbrTLState_acquireCryptomatteData2(pbrTls, nextRayState.mCryptomatteDataHandle2);
 
         // Accumulate post scatter extra aovs
         if (LightAovs_hasEntries(lightAovs)) {

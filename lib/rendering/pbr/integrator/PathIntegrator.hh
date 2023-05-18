@@ -48,7 +48,10 @@
     HUD_MEMBER(int, mDeepMaxLayers);                       \
     HUD_MEMBER(float, mDeepLayerBias);                     \
     HUD_CPP_MEMBER(std::vector<int>, mDeepIDAttrIdxs, 24); \
-    HUD_CPP_MEMBER(PathGuide, mPathGuide, 8) 
+    HUD_MEMBER(int, mCryptoUVAttrIdx);                     \
+    HUD_MEMBER(int, mPad);                                 \
+    HUD_CPP_MEMBER(PathGuide, mPathGuide, 8)
+                
 
 #define PATH_INTEGRATOR_VALIDATION                                 \
     HUD_BEGIN_VALIDATION(PathIntegrator);                          \
@@ -86,6 +89,8 @@
     HUD_VALIDATE(PathIntegrator, mDeepMaxLayers);                  \
     HUD_VALIDATE(PathIntegrator, mDeepLayerBias);                  \
     HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
+    HUD_VALIDATE(PathIntegrator, mCryptoUVAttrIdx);                \
+    HUD_VALIDATE(PathIntegrator, mPad);                            \
     HUD_VALIDATE(PathIntegrator, mPathGuide);                      \
     HUD_END_VALIDATION
 

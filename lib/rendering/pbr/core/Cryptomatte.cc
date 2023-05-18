@@ -54,6 +54,9 @@ void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, 
                                         const scene_rdl2::math::Vec3f& position, 
                                         const scene_rdl2::math::Vec3f& normal,
                                         const scene_rdl2::math::Color4& beauty,
+                                        const scene_rdl2::math::Vec3f refP,
+                                        const scene_rdl2::math::Vec3f refN,
+                                        const scene_rdl2::math::Vec2f uv,
                                         unsigned presenceDepth,
                                         int cryptoType)
 {
@@ -69,19 +72,26 @@ void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, 
             fragment.mPosition += position;
             fragment.mNormal += normal;
             fragment.mBeauty += beauty;
+            fragment.mRefP += refP;
+            fragment.mRefN += refN;
+            fragment.mUV += uv;
             fragment.mNumSamples++;
             return;
         }
     }
 
     // No match, so add a new fragment.
-    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, presenceDepth));
+    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, 
+                                             refP, refN, uv, presenceDepth));
 }
 
 void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, float weight, 
                                         const scene_rdl2::math::Vec3f& position,
                                         const scene_rdl2::math::Vec3f& normal,
                                         const scene_rdl2::math::Color4& beauty,
+                                        const scene_rdl2::math::Vec3f refP,
+                                        const scene_rdl2::math::Vec3f refN,
+                                        const scene_rdl2::math::Vec2f uv,
                                         unsigned presenceDepth,
                                         bool incrementSamples)
 {
@@ -100,13 +110,17 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
             fragment.mPosition += position;
             fragment.mNormal += normal;
             fragment.mBeauty += beauty;
+            fragment.mRefP += refP;
+            fragment.mRefN += refN;
+            fragment.mUV += uv;
             if (incrementSamples) fragment.mNumSamples++;
             return;
         }
     }
 
     // No match, so add a new fragment.
-    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, presenceDepth));
+    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, 
+                                             refP, refN, uv, presenceDepth));
 }
 
 void CryptomatteBuffer::addBeautySampleVector(unsigned x, unsigned y, 
@@ -120,7 +134,9 @@ void CryptomatteBuffer::addBeautySampleVector(unsigned x, unsigned y,
     // number of samples (which we use to average position/normal data) because we already added this fragment in 
     // shadeBundleHandler, and this is basically an addendum, where we add no new position/normal data. We pass in false
     // to the incrementSamples parameter in order to suppress this incrementation 
-    addSampleVector(x, y, id, 0.f, scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), beauty, depth, false);
+    addSampleVector(x, y, id, 0.f, scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), beauty,
+                    scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec2f(0.f),
+                    depth, false);
 }
 
 void CryptomatteBuffer::finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned>& samplesCount) 
@@ -158,6 +174,9 @@ void CryptomatteBuffer::finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned
                             fragment.mPosition *= recipFragNumSamples;
                             fragment.mNormal   *= recipFragNumSamples;
                             fragment.mBeauty   *= recipFragNumSamples;
+                            fragment.mRefP     *= recipFragNumSamples;
+                            fragment.mRefN     *= recipFragNumSamples;
+                            fragment.mUV       *= recipFragNumSamples;
                         }
                     }
                 }
@@ -223,6 +242,22 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
                 *dest++ = fragment.mBeauty.b;
                 *dest++ = fragment.mBeauty.a;
             }
+            if (ro.getCryptomatteOutputRefP()) {
+                *dest++ = fragment.mRefP.x;
+                *dest++ = fragment.mRefP.y;
+                *dest++ = fragment.mRefP.z;
+                *dest++ = 0.0f;
+            }
+            if (ro.getCryptomatteOutputRefN()) {
+                *dest++ = fragment.mRefN.x;
+                *dest++ = fragment.mRefN.y;
+                *dest++ = fragment.mRefN.z;
+                *dest++ = 0.0f;
+            }
+            if (ro.getCryptomatteOutputUV()) {
+                *dest++ = fragment.mUV.x;
+                *dest++ = fragment.mUV.y;
+            }
             if (ro.getCryptomatteSupportResumeRender()) {
                 // need the following to reconstruct the data during resume/checkpoint rendering
                 *dest++ = fragment.mPresenceDepth;
@@ -263,6 +298,9 @@ void CryptomatteBuffer::unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsign
                         fragment.mPosition = fragment.mPosition * fragment.mNumSamples;
                         fragment.mNormal   = fragment.mNormal   * fragment.mNumSamples;
                         fragment.mBeauty   = fragment.mBeauty   * fragment.mNumSamples;
+                        fragment.mRefP     = fragment.mRefP     * fragment.mNumSamples;
+                        fragment.mRefN     = fragment.mRefN     * fragment.mNumSamples;
+                        fragment.mUV       = fragment.mUV       * static_cast<float>(fragment.mNumSamples);
                     }
                 }
             }
@@ -278,6 +316,9 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
                                      const float *positionData,
                                      const float *normalData,
                                      const float *beautyData,
+                                     const float *refPData,
+                                     const float *refNData,
+                                     const float *uvData,
                                      const float *resumeRenderSupportData)
 {
     // The number of fragments will always equal the cryptomatte depth when we reconstruct the data. The cryptomatte 
@@ -296,6 +337,9 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
             scene_rdl2::math::Vec3f position(0.f);
             scene_rdl2::math::Vec3f normal(0.f);
             scene_rdl2::math::Color4 beauty(0.f);
+            scene_rdl2::math::Vec3f refP(0.f);
+            scene_rdl2::math::Vec3f refN(0.f);
+            scene_rdl2::math::Vec2f uv(0.f);
             unsigned presenceDepth = 0;
             unsigned numFragSamples = 1;
 
@@ -311,13 +355,27 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
                 beauty = scene_rdl2::math::Color4(beautyData[0], beautyData[1], beautyData[2], beautyData[3]);
                 beautyData += 4;
             }
+            if (ro.getCryptomatteOutputRefP()) {
+                refP = scene_rdl2::math::Vec3f(refPData);
+                refPData += 4;
+            }
+            if (ro.getCryptomatteOutputRefN()) {
+                refN = scene_rdl2::math::Vec3f(refNData);
+                refNData += 4;
+            }
+            if (ro.getCryptomatteOutputUV()) {
+                uv = scene_rdl2::math::Vec2f(uvData);
+                uvData += 2;
+            }
             if (ro.getCryptomatteSupportResumeRender()) {
                 presenceDepth  = static_cast<unsigned>(resumeRenderSupportData[0]);
                 numFragSamples = static_cast<unsigned>(resumeRenderSupportData[1]);
                 resumeRenderSupportData += 2;
             }
 
-            pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, presenceDepth, numFragSamples));
+            pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, 
+                                                     refP, refN, uv,
+                                                     presenceDepth, numFragSamples));
         }
     }
 }
@@ -347,6 +405,9 @@ void CryptomatteBuffer::printFragments(unsigned x, unsigned y, int cryptoType) c
         printf("Position = (%g, %g, %g), ", fragment.mPosition.x, fragment.mPosition.y, fragment.mPosition.z);
         printf("Normal = (%g, %g, %g), ", fragment.mNormal.x, fragment.mNormal.y, fragment.mNormal.z);
         printf("Beauty = (%g, %g, %g, %g), ", fragment.mBeauty.r, fragment.mBeauty.g, fragment.mBeauty.b, fragment.mBeauty.a);
+        printf("RefP = (%g, %g, %g), ", fragment.mRefP.x, fragment.mRefP.y, fragment.mRefP.z);
+        printf("RefN = (%g, %g, %g), ", fragment.mRefN.x, fragment.mRefN.y, fragment.mRefN.z);
+        printf("UV = (%g, %g), ", fragment.mUV.x, fragment.mUV.y);
         printf("PresenceDepth = %u, ", fragment.mPresenceDepth);
         printf("# Frag Samples = %u", fragment.mNumSamples);
         printf("\n");

@@ -161,6 +161,7 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
         }
         pbrTls->releaseDeepData(occlRay.mDeepDataHandle);
         pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
+        pbrTls->releaseCryptomatteData2(occlRay.mCryptomatteDataHandle2);
     }
 
     return numRadiancesFilled;
@@ -202,6 +203,7 @@ forceSingleRaysUnoccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOccl
         }
         pbrTls->releaseDeepData(occlRay.mDeepDataHandle);
         pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
+        pbrTls->releaseCryptomatteData2(occlRay.mCryptomatteDataHandle2);
     }
 
     return numEntries;
@@ -325,6 +327,7 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
         // we are responsible for freeing data memory
         pbrTls->freeList(occlRay.mDataPtrHandle);
         pbrTls->releaseCryptomatteData(occlRay.mCryptomatteDataHandle);
+        pbrTls->releaseCryptomatteData2(occlRay.mCryptomatteDataHandle2);
     }
     return numRadiancesFilled;
 }
@@ -481,6 +484,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     rad.mSubPixelIndex = rs.mSubpixel.mSubpixelIndex;
                     rad.mDeepDataHandle = pbrTls->acquireDeepData(rs.mDeepDataHandle);
                     rad.mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs.mCryptomatteDataHandle);
+                    rad.mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs.mCryptomatteDataHandle2);
                     rad.mTilePassAndFilm = rs.mTilePassAndFilm;
                     rad.mCameraId = rs.mCameraId;
                     pbrTls->addRadianceQueueEntries(1, &rad);
@@ -608,6 +612,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 rad->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
                 rad->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 rad->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
+                rad->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
                 rad->mTilePassAndFilm = rs->mTilePassAndFilm;
                 rad->mCameraId = rs->mCameraId;
 
