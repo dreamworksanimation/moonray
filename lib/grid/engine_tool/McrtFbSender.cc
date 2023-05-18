@@ -12,20 +12,10 @@
 #include <scene_rdl2/common/fb_util/PixelBufferUtilsGamma8bit.h>
 #include <scene_rdl2/common/fb_util/SparseTiledPixelBuffer.h>
 #include <scene_rdl2/common/grid_util/PackTiles.h>
+#include <scene_rdl2/common/grid_util/ProgressiveFrameBufferName.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 
 #include <fstream>
-
-namespace {
-    const std::string AOV_BEAUTY = "beauty";
-    const std::string AOV_DEPTH  = "depth";
-
-    const std::string AOV_HEATMAP   = "__heatMap__";
-    const std::string AOV_WEIGHT    = "__weight__";
-    const std::string AOV_BEAUTYODD = "__beautyOdd__";
-
-    const std::string AUXINFO_NAME = "auxInfo";
-}
 
 namespace moonray {
 namespace engine_tool {
@@ -473,8 +463,10 @@ McrtFbSender::addBeautyToProgressiveFrame(const bool directToClient,
     */
 
     {
-        func(makeSharedPtr(duplicateWorkData()), dataSize,
-             AOV_BEAUTY.c_str(), ImgEncodingType::ENCODING_UNKNOWN);
+        func(makeSharedPtr(duplicateWorkData()),
+             dataSize,
+             scene_rdl2::grid_util::ProgressiveFrameBufferName::Beauty,
+             ImgEncodingType::ENCODING_UNKNOWN);
     }
     mLatencyLog.enq(scene_rdl2::grid_util::LatencyItem::Key::ADDBUFFER_END_BEAUTY);
     mLatencyLog.addDataSize(dataSize);
@@ -505,7 +497,10 @@ McrtFbSender::addPixelInfoToProgressiveFrame(MessageAddBuffFunc func)
     }
     mLatencyLog.enq(scene_rdl2::grid_util::LatencyItem::Key::ENCODE_END_PIXELINFO);
     {
-        func(makeSharedPtr(duplicateWorkData()), dataSize, AOV_DEPTH.c_str(), ImgEncodingType::ENCODING_UNKNOWN);
+        func(makeSharedPtr(duplicateWorkData()),
+             dataSize,
+             scene_rdl2::grid_util::ProgressiveFrameBufferName::PixelInfo,
+             ImgEncodingType::ENCODING_UNKNOWN);
     }
     mLatencyLog.enq(scene_rdl2::grid_util::LatencyItem::Key::ADDBUFFER_END_PIXELINFO);
     mLatencyLog.addDataSize(dataSize);
@@ -537,7 +532,7 @@ McrtFbSender::addHeatMapToProgressiveFrame(const bool directToClient, MessageAdd
         if (mHeatMapId >= 0) {
             buffName = mRenderOutputName[mHeatMapId].c_str();
         } else {
-            buffName = AOV_HEATMAP.c_str();   // just in case
+            buffName = scene_rdl2::grid_util::ProgressiveFrameBufferName::HeatMapDefault;
         }
         func(makeSharedPtr(duplicateWorkData()), dataSize, buffName, ImgEncodingType::ENCODING_UNKNOWN);
     }
@@ -571,7 +566,7 @@ McrtFbSender::addWeightBufferToProgressiveFrame(MessageAddBuffFunc func)
         if (mWeightBufferId >= 0) {
             buffName = mRenderOutputName[mWeightBufferId].c_str();
         } else {
-            buffName = AOV_WEIGHT.c_str();   // just in case
+            buffName = scene_rdl2::grid_util::ProgressiveFrameBufferName::WeightDefault;
         }
         func(makeSharedPtr(duplicateWorkData()), dataSize, buffName, ImgEncodingType::ENCODING_UNKNOWN);
     }
@@ -613,7 +608,9 @@ McrtFbSender::addRenderBufferOddToProgressiveFrame(const bool directToClient,
     mLatencyLog.enq(scene_rdl2::grid_util::LatencyItem::Key::ENCODE_END_BEAUTYODD);
     {
         func(makeSharedPtr(duplicateWorkData()),
-             dataSize, AOV_BEAUTYODD.c_str(), ImgEncodingType::ENCODING_UNKNOWN);
+             dataSize,
+             scene_rdl2::grid_util::ProgressiveFrameBufferName::RenderBufferOdd,
+             ImgEncodingType::ENCODING_UNKNOWN);
     }
     mLatencyLog.enq(scene_rdl2::grid_util::LatencyItem::Key::ADDBUFFER_END_BEAUTYODD);
     mLatencyLog.addDataSize(dataSize);
@@ -732,7 +729,9 @@ McrtFbSender::addAuxInfoToProgressiveFrame(const std::vector<std::string> &infoD
     size_t dataSize = cEnq.finalize();
 
     func(makeSharedPtr(duplicateWorkData()),
-         dataSize, AUXINFO_NAME.c_str(), ImgEncodingType::ENCODING_UNKNOWN);
+         dataSize,
+         scene_rdl2::grid_util::ProgressiveFrameBufferName::AuxInfo,
+         ImgEncodingType::ENCODING_UNKNOWN);
 }
 
 //------------------------------------------------------------------------------
@@ -763,7 +762,10 @@ McrtFbSender::addLatencyLog(MessageAddBuffFunc func)
     }
     */
 
-    func(makeSharedPtr(duplicateWorkData()), dataSize, "latencyLog", ImgEncodingType::ENCODING_UNKNOWN);
+    func(makeSharedPtr(duplicateWorkData()),
+         dataSize,
+         scene_rdl2::grid_util::ProgressiveFrameBufferName::LatencyLog,
+         ImgEncodingType::ENCODING_UNKNOWN);
 }
 
 std::string    
