@@ -287,19 +287,6 @@ struct CryptomatteData
     }
 };
 
-struct CryptomatteData2
-{
-    CRYPTOMATTE_DATA_MEMBERS_2;
-
-    static uint32_t hudValidation(bool verbose) { CRYPTOMATTE_DATA_VALIDATION_2; }
-    void init() {
-        mRefCount = 1;                              // number of "owners" of this data; when 0, data is released
-        mRefP = scene_rdl2::math::Vec3f(0.f);       // refP at hit
-        mRefN = scene_rdl2::math::Vec3f(0.f);       // refN at hit
-        mUV = scene_rdl2::math::Vec2f(0.f);         // UV at hit
-    }
-};
-
 
 finline void
 uint32ToPixelLocation(uint32_t val, unsigned *px, unsigned *py)

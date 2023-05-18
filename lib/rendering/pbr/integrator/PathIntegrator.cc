@@ -225,14 +225,6 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
         mDeepIDAttrIdxs.push_back(deepIDAttrKey.getIndex());
     }
 
-    scene_rdl2::rdl2::String cryptoUVAttributeName = vars.get(scene_rdl2::rdl2::SceneVariables::sCryptoUVAttributeName);
-    if (!cryptoUVAttributeName.empty()) {
-        shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(cryptoUVAttributeName);
-        mCryptoUVAttrIdx = cryptoUVAttrKey.getIndex();
-    } else {
-        mCryptoUVAttrIdx = shading::StandardAttributes::sSurfaceST;
-    }
-
     // initialize path guiding
     mPathGuide.startFrame(fs.mEmbreeAccel->getBounds(), vars);
 }
@@ -412,28 +404,17 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     // Set the cryptomatte information
     float cryptoId = 0.f;
-    scene_rdl2::math::Vec2f cryptoUV = isect.getSt();
-    if (hitGeom && (cryptomatteParamsPtr || refractCryptomatteParamsPtr)) {
-        if (mDeepIDAttrIdxs.size() != 0) {
-            // Get the cryptomatte ID if we need it and it's specified
-            shading::TypedAttributeKey<float> deepIDAttrKey(mDeepIDAttrIdxs[0]);
-            if (isect.isProvided(deepIDAttrKey)) {
-                cryptoId = isect.getAttribute<float>(deepIDAttrKey);
-            }
-        }
-        shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(mCryptoUVAttrIdx);
-        if (isect.isProvided(cryptoUVAttrKey)) {
-            cryptoUV = isect.getAttribute<scene_rdl2::rdl2::Vec2f>(cryptoUVAttrKey);
+    if (hitGeom && (cryptomatteParamsPtr || refractCryptomatteParamsPtr) && mDeepIDAttrIdxs.size() != 0) {
+        // Get the cryptomatte ID if we need it and it's specified
+        shading::TypedAttributeKey<float> deepIDAttrKey(mDeepIDAttrIdxs[0]);
+        if (isect.isProvided(deepIDAttrKey)) {
+            cryptoId = isect.getAttribute<float>(deepIDAttrKey);
         }
     }
     if (hitGeom && cryptomatteParamsPtr) {
         cryptomatteParamsPtr->mHit = true;
         cryptomatteParamsPtr->mPosition = isect.getP();
         cryptomatteParamsPtr->mNormal = isect.getN();
-        shading::State sstate(&isect);
-        sstate.getRefP(cryptomatteParamsPtr->mRefP);
-        sstate.getRefN(cryptomatteParamsPtr->mRefN);
-        cryptomatteParamsPtr->mUV = cryptoUV;
         cryptomatteParamsPtr->mId = cryptoId;
     }
 
@@ -715,9 +696,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                                                                  newCryptomatteParamsPtr->mPosition,
                                                                                  newCryptomatteParamsPtr->mNormal,
                                                                                  newCryptomatteParamsPtr->mBeauty,
-                                                                                 newCryptomatteParamsPtr->mRefP,
-                                                                                 newCryptomatteParamsPtr->mRefN,
-                                                                                 newCryptomatteParamsPtr->mUV,
                                                                                  newPv.presenceDepth,
                                                                                  moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
         }
@@ -741,10 +719,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             refractCryptomatteParamsPtr->mHit = true;
             refractCryptomatteParamsPtr->mPosition = isect.getP();
             refractCryptomatteParamsPtr->mNormal = isect.getN();
-            shading::State sstate(&isect);
-            sstate.getRefP(refractCryptomatteParamsPtr->mRefP);
-            sstate.getRefN(refractCryptomatteParamsPtr->mRefN);
-            refractCryptomatteParamsPtr->mUV = cryptoUV;
             refractCryptomatteParamsPtr->mId = cryptoId;
         }
     }
@@ -989,9 +963,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                                                           cryptomatteParamsPtr->mPosition, 
                                                                           cryptomatteParamsPtr->mNormal,
                                                                           scene_rdl2::math::Color4(cryptoBeauty),
-                                                                          cryptomatteParamsPtr->mRefP,
-                                                                          cryptomatteParamsPtr->mRefN,
-                                                                          cryptomatteParamsPtr->mUV,
                                                                           pv.presenceDepth,
                                                                           moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
     } else if (cryptomatteParamsPtr) {
@@ -1364,9 +1335,6 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                                                            cryptomatteParams.mPosition, 
                                                            cryptomatteParams.mNormal,
                                                            scene_rdl2::math::Color4(radiance),
-                                                           cryptomatteParams.mRefP,
-                                                           cryptomatteParams.mRefN,
-                                                           cryptomatteParams.mUV,
                                                            pv.presenceDepth,
                                                            moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
     }
@@ -1377,9 +1345,6 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                                                            refractCryptomatteParams.mPosition, 
                                                            refractCryptomatteParams.mNormal,
                                                            scene_rdl2::math::Color4(radiance),
-                                                           refractCryptomatteParams.mRefP,
-                                                           refractCryptomatteParams.mRefN,
-                                                           refractCryptomatteParams.mUV,
                                                            pv.presenceDepth,
                                                            moonray::pbr::CRYPTOMATTE_TYPE_REFRACTED);
     }

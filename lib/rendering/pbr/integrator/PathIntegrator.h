@@ -265,8 +265,6 @@ public:
     int getDeepMaxLayers() const { return mDeepMaxLayers; }
     float getDeepLayerBias() const { return mDeepLayerBias; }
 
-    int getCryptoUVAttrIdx() const { return mCryptoUVAttrIdx; }
-
     // HUD validation.
     static uint32_t hudValidation(bool verbose) { PATH_INTEGRATOR_VALIDATION; }
 
@@ -297,9 +295,6 @@ private:
         scene_rdl2::math::Vec3f mPosition;
         scene_rdl2::math::Vec3f mNormal;
         scene_rdl2::math::Color4 mBeauty;
-        scene_rdl2::math::Vec3f mRefP;
-        scene_rdl2::math::Vec3f mRefN;
-        scene_rdl2::math::Vec2f mUV;
         CryptomatteBuffer* mCryptomatteBuffer;
 
         void init(CryptomatteBuffer* buffer) {
@@ -308,9 +303,6 @@ private:
             mPosition = scene_rdl2::math::Vec3f(0.f);
             mNormal = scene_rdl2::math::Vec3f(0.f);
             mBeauty = scene_rdl2::math::Color4(0.f);
-            mRefP = scene_rdl2::math::Vec3f(0.f);
-            mRefN = scene_rdl2::math::Vec3f(0.f);
-            mUV = scene_rdl2::math::Vec2f(0.f);
             mCryptomatteBuffer = buffer;
         }
     };
