@@ -99,6 +99,7 @@
     HVD_PTR(HVD_NAMESPACE(shading, Intersection) *, mAOSIsect);             \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                                  \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                           \
+    HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                          \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolRad);            \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolTr);             \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolTh);             \
@@ -106,7 +107,7 @@
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolTm);             \
     HVD_MEMBER(uint32_t, mVolHit);                                          \
     HVD_MEMBER(float, mVolumeSurfaceT);                                     \
-    HVD_ISPC_PAD(mPad, 52)
+    HVD_ISPC_PAD(mPad, 48)
 
 
 #define RAY_STATE_VALIDATION(vlen)                                          \
@@ -121,6 +122,7 @@
     HVD_VALIDATE(RayState, mAOSIsect);                                      \
     HVD_VALIDATE(RayState, mDeepDataHandle);                                \
     HVD_VALIDATE(RayState, mCryptomatteDataHandle);                         \
+    HVD_VALIDATE(RayState, mCryptomatteDataHandle2);                        \
     HVD_VALIDATE(RayState, mVolRad);                                        \
     HVD_VALIDATE(RayState, mVolTr);                                         \
     HVD_VALIDATE(RayState, mVolTh);                                         \

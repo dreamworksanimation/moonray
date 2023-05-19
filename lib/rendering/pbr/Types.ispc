@@ -54,6 +54,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
                     varying uint32_t dataPtrHandle,
                     varying uint32_t deepDataHandle,
                     varying uint32_t cryptomatteDataHandle,
+                    varying uint32_t cryptomatteDataHandle2,
                     varying uint32_t occlTestType,
                     const varying int32_t shadowReceiverId)
 {
@@ -71,6 +72,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
     this->mDataPtrHandle = dataPtrHandle;
     this->mDeepDataHandle = deepDataHandle;
     this->mCryptomatteDataHandle = cryptomatteDataHandle;
+    this->mCryptomatteDataHandle2 = cryptomatteDataHandle2;
     this->mOcclTestType = occlTestType;
     this->mShadowReceiverId = shadowReceiverId;
 }

@@ -1031,6 +1031,8 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
             if (br->mCryptomatteDataHandle != pbr::nullHandle) {
                 pbr::CryptomatteData *cryptomatteData =
                             static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(br->mCryptomatteDataHandle, 0));
+                pbr::CryptomatteData2 *cryptomatteData2 =
+                            static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(br->mCryptomatteDataHandle2, 0));
 
                 if (film.mCryptomatteBuf != nullptr) {
                     float id = cryptomatteData->mId;
@@ -1041,6 +1043,9 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                                                     br->mRadiance[1], 
                                                     br->mRadiance[2], 
                                                     br->mRadiance[3]);
+                    scene_rdl2::math::Vec3f refP = cryptomatteData2->mRefP;
+                    scene_rdl2::math::Vec3f refN = cryptomatteData2->mRefN;
+                    scene_rdl2::math::Vec2f uv = cryptomatteData2->mUV;
 
                     float presenceInv = cryptomatteData->mPathPixelWeight == 0.f ? 0.f 
                                                                              : (1.f / cryptomatteData->mPathPixelWeight);
@@ -1052,7 +1057,8 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                             // we only want to increment coverage, position, normal, and the normalization factor
                             // numFragSamples if we're dealing with the first sample for this path. We don't want 
                             // any data from the subsequent bounces except for the beauty (for GI)
-                            film.mCryptomatteBuf->addSampleVector(px, py, id, 1.f, position, normal, beauty, depth);                    
+                            film.mCryptomatteBuf->addSampleVector(px, py, id, 1.f, position, normal, beauty,
+                                                                  refP, refN, uv, depth);                    
                             cryptomatteData->mIsFirstSample = 0;
                         } else {
                             film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);
@@ -1064,6 +1070,7 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                     }
                 }
                 pbrTls->releaseCryptomatteData(br->mCryptomatteDataHandle);
+                pbrTls->releaseCryptomatteData2(br->mCryptomatteDataHandle2);
             }
 
         } while (entryIdx != numEntries && currPixel == entries[entryIdx]->mPixel);

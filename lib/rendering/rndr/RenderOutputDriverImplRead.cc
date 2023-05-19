@@ -532,10 +532,13 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
                         const float *positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
                         const float *normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
                         const float *beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
+                        const float *refPData                = pix + reader.getPixChanOffset("CryptoRefP00.R");
+                        const float *refNData                = pix + reader.getPixChanOffset("CryptoRefN00.R");
+                        const float *uvData                  = pix + reader.getPixChanOffset("CryptoUV00.U");
                         const float *resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
 
                         cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, normalData, 
-                                                     beautyData, resumeRenderSupportData);
+                                                     beautyData, refPData, refNData, uvData, resumeRenderSupportData);
                         pix += nChan;
                     }
                 });
