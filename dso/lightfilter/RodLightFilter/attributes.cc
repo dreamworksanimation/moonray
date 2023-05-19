@@ -60,46 +60,47 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
 
     sceneClass.setMetadata(attrRampInterpolationTypes,  "label", "ramp_interpolation_types");
     sceneClass.setMetadata(attrRampInterpolationTypes, "comment",
-        "None: 0 | Linear: 1 | Exponential Up: 2 | Exponential Down: 3 | Smooth: 4 | Catmull Rom: 5 | Monotone Cubic: 6");
+        "0 means None. 1 means Linear. 2 means Exponential. 3 means Exponential Down. 4 means Smooth. "
+        "5 means Catmull Rom. 6 means Monotone Cubic.");
 
     sceneClass.setMetadata(attrNodeXform, "comment",
-                           "transform of the filter");
+                           "Transform of the filter.");
     sceneClass.setMetadata(attrWidth,     "comment",
-                           "width of the base box (before radius and edge)");
+                           "Width of the base box (before radius and edge).");
     sceneClass.setMetadata(attrDepth,     "comment",
-                           "depth of the base box (before radius and edge)");
+                           "Depth of the base box (before radius and edge).");
     sceneClass.setMetadata(attrHeight,    "comment",
-                           "height of the base box (before radius and edge)");
+                           "Height of the base box (before radius and edge).");
     sceneClass.setMetadata(attrRadius,    "comment",
-                           "radius by which to expand the base box into a "
-                           "rounded box");
+                           "Radius by which to expand the base box into a "
+                           "rounded box.");
     sceneClass.setMetadata(attrEdge, "comment",
-                           "size of transition zone from the "
-                           "rounded box to the outside");
+                           "Size of transition zone from the "
+                           "rounded box to the outside.");
     sceneClass.setMetadata(attrColor,   "comment",
-                           "filter color. Scales the light within the volume. "
-                           "For each color channel, 0=full shadow, 1=no shadow");
-    sceneClass.setMetadata(attrIntensity, "comment", "scalar for multiplying the color. "
-                           "0=black 1=color");
-    sceneClass.setMetadata(attrDensity, "comment", "fades the filter effect. "
-                           "0=no effect (like having no filter), 1=full effect");
-    sceneClass.setMetadata(attrInvert,    "comment", "swap application of "
-                           "filter from inside the volume to outside");
+                           "Filter color. Scales the light within the volume. "
+                           "For each color channel: 0 means full shadow, 1 means no shadow.");
+    sceneClass.setMetadata(attrIntensity, "comment", "Scalar for multiplying the color. "
+                           "0 means black, 1 means no change.");
+    sceneClass.setMetadata(attrDensity, "comment", "Fades the filter effect. "
+                           "0 means no effect (like having no filter). 1 means full effect.");
+    sceneClass.setMetadata(attrInvert,    "comment", "Swap application of "
+                           "filter from inside the volume to outside.");
                            
-    sceneClass.setMetadata(attrRampIn,    "comment", "input distance for ramp control");    
+    sceneClass.setMetadata(attrRampIn,    "comment", "Input distance for ramp control.");
     sceneClass.setMetadata(attrRampIn, "label", "input distance for ramp control");
     sceneClass.setMetadata(attrRampIn, "structure_name", "ramp");
     sceneClass.setMetadata(attrRampIn, "structure_path", "positions");
     sceneClass.setMetadata(attrRampIn, "structure_type", "ramp_float");
 
-    sceneClass.setMetadata(attrRampOut,   "comment", "remapped distances for ramp control");
+    sceneClass.setMetadata(attrRampOut,   "comment", "Remapped distances for ramp control.");
     sceneClass.setMetadata(attrRampOut, "label", "remapped distances for ramp control");
     sceneClass.setMetadata(attrRampOut, "structure_name", "ramp");
     sceneClass.setMetadata(attrRampOut, "structure_path", "values");
     sceneClass.setMetadata(attrRampOut, "structure_type", "ramp_float");  
 
-    sceneClass.setMetadata(attrRampInterpolationTypes,   "comment", "interpolation types"
-                            " for ramp control");                            
+    sceneClass.setMetadata(attrRampInterpolationTypes,   "comment", "Interpolation types"
+                            " for ramp control.");
     sceneClass.setMetadata(attrRampInterpolationTypes, "label", "interpolation types");
     sceneClass.setMetadata(attrRampInterpolationTypes, "structure_name", "ramp");
     sceneClass.setMetadata(attrRampInterpolationTypes, "structure_path", "interpolation_types");

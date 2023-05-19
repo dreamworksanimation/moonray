@@ -35,29 +35,31 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
 
     attrNodeXform = sceneClass.declareAttribute<rdl2::Mat4d>("node_xform", rdl2::FLAGS_BLURRABLE, rdl2::INTERFACE_GENERIC);
     sceneClass.setMetadata(attrNodeXform, "label", "node xform");
-    sceneClass.setMetadata(attrNodeXform, "comment", "transform of the filter");
+    sceneClass.setMetadata(attrNodeXform, "comment", "The transform of the filter.");
 
     attrProjectorType = sceneClass.declareAttribute<rdl2::Int>("projector_type", 0, rdl2::FLAGS_ENUMERABLE);
     sceneClass.setMetadata(attrProjectorType, "label", "projector type");
     sceneClass.setEnumValue(attrProjectorType, 0, "perspective");
     sceneClass.setEnumValue(attrProjectorType, 1, "orthographic");
     sceneClass.setMetadata(attrProjectorType, "comment",
-        "projection type used to map points to the flap opening. perspective has a focal point, while orthographic does not.");
+        "The projection type used to map points to the flap opening. Perspective has a focal point, "
+        "while orthographic does not.");
 
     attrProjectorFocalDist = sceneClass.declareAttribute<rdl2::Float>("projector_focal_distance", 30.0f);
     sceneClass.setMetadata(attrProjectorFocalDist, "label", "projector focal distance");
-    sceneClass.setMetadata(attrProjectorFocalDist, "comment", "distance of the flap opening from the projector origin. Ignored for orthographic projection");
+    sceneClass.setMetadata(attrProjectorFocalDist, "comment", "The distance of the flap opening from the "
+        "projector origin. Ignored for orthographic projection.");
     sceneClass.setMetadata(attrProjectorFocalDist, "disable when", "{ mode == 'analytical' }");
     sceneClass.setMetadata(attrProjectorFocalDist, "min", "0.0");
     sceneClass.setMetadata(attrProjectorFocalDist, "max", "100.0");
 
     attrProjectorWidth = sceneClass.declareAttribute<rdl2::Float>("projector_width", 1.0f);
     sceneClass.setMetadata(attrProjectorWidth, "label", "width of the flap opening");
-    sceneClass.setMetadata(attrProjectorWidth, "comment", "width of the frustum at distance 1.0");
+    sceneClass.setMetadata(attrProjectorWidth, "comment", "The width of the frustum at distance 1.0.");
 
     attrProjectorHeight = sceneClass.declareAttribute<rdl2::Float>("projector_height", 1.0);
     sceneClass.setMetadata(attrProjectorHeight, "label", "height of the flap opening");
-    sceneClass.setMetadata(attrProjectorHeight, "comment", "height of the frustum at distance 1.0");
+    sceneClass.setMetadata(attrProjectorHeight, "comment", "The height of the frustum at distance 1.0.");
 
     attrPreBarnMode = sceneClass.declareAttribute<rdl2::Int>(
         "pre_barn_mode", 2, rdl2::FLAGS_ENUMERABLE);
@@ -66,80 +68,84 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setEnumValue(attrPreBarnMode, 1, "white");
     sceneClass.setEnumValue(attrPreBarnMode, 2, "default");
     sceneClass.setMetadata(attrPreBarnMode, "comment",
-        "force region before the pre_barn_distance to be fully filtered (black), not filtered at all (white), or treated the same as elsewhere (default)");
+        "Force the region before the pre_barn_distance to be fully filtered (black), not filtered at all (white), "
+        "or treated the same as elsewhere (default).");
 
     attrPreBarnDist = sceneClass.declareAttribute<rdl2::Float>("pre_barn_distance", 0.5f);
     sceneClass.setMetadata(attrPreBarnDist, "min", "0.0");
-    sceneClass.setMetadata(attrPreBarnDist, "comment", "distance from the BarnDoorLightFilter that the pre_barn_mode control takes effect");
+    sceneClass.setMetadata(attrPreBarnDist, "comment", "The distance from the BarnDoorLightFilter that the "
+        "pre_barn_mode control takes effect.");
 
     attrEdgeScaleTop = sceneClass.declareAttribute<rdl2::Float>("edge_scale_top", 1.0f);
     sceneClass.setMetadata(attrEdgeScaleTop, "label", "edge scale top");
-    sceneClass.setMetadata(attrEdgeScaleTop, "comment", "scale factor for top edge");
+    sceneClass.setMetadata(attrEdgeScaleTop, "comment", "The scale factor for the top edge.");
 
     attrEdgeScaleBottom = sceneClass.declareAttribute<rdl2::Float>("edge_scale_bottom", 1.0f);
     sceneClass.setMetadata(attrEdgeScaleBottom, "label", "edge scale bottom");
-    sceneClass.setMetadata(attrEdgeScaleBottom, "comment", "scale factor for bottom edge");
+    sceneClass.setMetadata(attrEdgeScaleBottom, "comment", "The scale factor for the bottom edge.");
 
     attrEdgeScaleLeft = sceneClass.declareAttribute<rdl2::Float>("edge_scale_left", 1.0f);
     sceneClass.setMetadata(attrEdgeScaleLeft, "label", "edge scale left");
-    sceneClass.setMetadata(attrEdgeScaleLeft, "comment", "scale factor for left edge");
+    sceneClass.setMetadata(attrEdgeScaleLeft, "comment", "The scale factor for the left edge.");
 
     attrEdgeScaleRight = sceneClass.declareAttribute<rdl2::Float>("edge_scale_right", 1.0f);
     sceneClass.setMetadata(attrEdgeScaleRight, "label", "edge scale right");
-    sceneClass.setMetadata(attrEdgeScaleRight, "comment", "scale factor for right edge");
+    sceneClass.setMetadata(attrEdgeScaleRight, "comment", "The scale factor for the right edge.");
 
     attrDensity = sceneClass.declareAttribute<rdl2::Float>("density", 1.0f);
     sceneClass.setMetadata(attrDensity, "min", "0.0");
     sceneClass.setMetadata(attrDensity, "max", "1.0");
-    sceneClass.setMetadata(attrDensity, "comment", "fades the filter effect. "
-        "0=no effect (like having no filter), 1=full effect");
+    sceneClass.setMetadata(attrDensity, "comment", "Fades the filter effect. "
+        "0 means no effect (like having no filter), and 1 means full effect.");
 
     attrInvert = sceneClass.declareAttribute<rdl2::Bool>("invert", false);
     sceneClass.setMetadata(attrInvert, "comment",
-        "swap application of filter from inside the Barn Door to outside");
+        "Swap application of the filter from inside the Barn Door to outside.");
 
     attrRadius = sceneClass.declareAttribute<rdl2::Float>("radius", 0.f);
     sceneClass.setMetadata(attrRadius, "min", "0.0");
     sceneClass.setMetadata(attrRadius, "max", "1.0");
     sceneClass.setMetadata(attrRadius, "comment",
-        "radius by which to convert the base box shape into a rounded box, as a proportion of half the width (or height, whichever is smaller)");
+        "The radius by which to convert the base box shape into a rounded box, as a proportion of half "
+        "the width (or height, whichever is smaller).");
 
     attrEdge = sceneClass.declareAttribute<rdl2::Float>("edge", 0.f);
     sceneClass.setMetadata(attrEdge, "min", "0.0");
     sceneClass.setMetadata(attrEdge, "comment",
-        "size of transition zone from the rounded box to the outside, as a proportion of width (or height, whichever is smaller)");
+        "The size of the transition zone from the rounded box to the outside, as a proportion of width "
+        "(or height, whichever is smaller).");
 
     attrMode = sceneClass.declareAttribute<rdl2::Int>("mode", 0, rdl2::FLAGS_ENUMERABLE);
     sceneClass.setEnumValue(attrMode, 0, "analytical");
     sceneClass.setEnumValue(attrMode, 1, "physical");
     sceneClass.setMetadata(attrMode, "comment",
-        "analytical mode allows light to shading points that project to the flap opening."
-        "physical mode allows light whose direction goes through the flap opening.");
+        "Analytical mode allows light to shading points that project to the flap opening. "
+        "Physical mode allows light whose direction goes through the flap opening.");
 
     // Users felt physical mode was confusing when the filter was unattached to the light,
     // so this is a UI hint to disable it.
     sceneClass.setMetadata(attrMode, "disable when", "{ use_light_xform == 0 }");
 
     attrSizeTop = sceneClass.declareAttribute<rdl2::Float>("size_top", 0.f);
-    sceneClass.setMetadata(attrSizeTop, "comment", "additional size on top edge");
+    sceneClass.setMetadata(attrSizeTop, "comment", "Additional size on the top edge.");
 
     attrSizeBottom = sceneClass.declareAttribute<rdl2::Float>("size_bottom", 0.f);
-    sceneClass.setMetadata(attrSizeBottom, "comment", "additional size on bottom edge");
+    sceneClass.setMetadata(attrSizeBottom, "comment", "Additional size on the bottom edge.");
 
     attrSizeLeft = sceneClass.declareAttribute<rdl2::Float>("size_left", 0.f);
-    sceneClass.setMetadata(attrSizeLeft, "comment", "additional size on left edge");
+    sceneClass.setMetadata(attrSizeLeft, "comment", "Additional size on the left edge.");
 
     attrSizeRight = sceneClass.declareAttribute<rdl2::Float>("size_right", 0.f);
-    sceneClass.setMetadata(attrSizeRight, "comment", "additional size on right edge");
+    sceneClass.setMetadata(attrSizeRight, "comment", "Additional size on the right edge.");
 
     attrUseLightXform = sceneClass.declareAttribute<rdl2::Bool>("use_light_xform", true);
     sceneClass.setMetadata(attrUseLightXform, "label", "use light xform");
     sceneClass.setMetadata(attrUseLightXform, "comment",
-        "attach to the light (in the -Z direction) and ignore node_xform");
+        "Attach the filter to the light (in the -Z direction) and ignore node_xform.");
 
     attrRotation = sceneClass.declareAttribute<rdl2::Float>("rotation", 0.0f);
     sceneClass.setMetadata(attrRotation, "comment",
-        "angle to rotate the Barn Door counter-clockwise as seen from the light, in degrees");
+        "The angle to rotate the Barn Door counter-clockwise as seen from the light, in degrees.");
     sceneClass.setMetadata(attrRotation, "min", "-180.0");
     sceneClass.setMetadata(attrRotation, "max", "180.0");
 
@@ -148,7 +154,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setMetadata(attrColor, "label", "color");
     sceneClass.setMetadata(attrColor, "comment",
                            "Color within the Barn Door lit region. "
-                           "For each color channel, 0=full shadow, 1=no shadow");
+                           "For each color channel 0 is full shadow and 1 is no shadow.");
 
     sceneClass.setGroup("Properties", attrNodeXform);
     sceneClass.setGroup("Properties", attrProjectorType);
