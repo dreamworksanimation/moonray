@@ -306,6 +306,23 @@ getAssignmentId(const scene_rdl2::rdl2::Layer* layer,
                 const std::string& partName, 
                 int& assignmentId);
 
+/// @brief an util function to check that all explicit shading attributes (normal, dPds, and dPDt) are present
+/// @param pat primitive attribute table to check
+/// @param geometry rdl2 Geometry to use for printing errors
+/// @return whether all of the explicit shading attribute are present
+bool
+validateExplicitShading(const shading::PrimitiveAttributeTable& pat,
+                        const scene_rdl2::rdl2::Geometry* rdlGeometry);
+
+/// @brief a function that adds the sExplicitShading primitive attribute if the required explicit shading attributes are present
+/// @param pat primitive attribute table to check and add sExplicitShading to
+/// @param geometry rdl2 Geometry to use for printing errors
+/// @return whether the sExplicitShading attribute was added or not
+bool
+addExplicitShading(const scene_rdl2::rdl2::Geometry* rdlGeometry,
+                   shading::PrimitiveAttributeTable& pat);
+
+
 
 } // namespace geom
 } // namespace moonray

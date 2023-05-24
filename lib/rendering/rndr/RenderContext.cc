@@ -2165,11 +2165,12 @@ RenderContext::buildPrimitiveAttributeTables(
         moonray::shading::AttributeKeySet requiredKeys;
         moonray::shading::AttributeKeySet optionalKeys;
 
-        // Always add the following attributes for point rendering via instancing
+        // Always add the following attributes for explicit shading via instancing
         optionalKeys.insert(shading::StandardAttributes::sNormal);
         optionalKeys.insert(shading::StandardAttributes::sdPds);
         optionalKeys.insert(shading::StandardAttributes::sdPdt);
         optionalKeys.insert(shading::StandardAttributes::sUv);
+        optionalKeys.insert(shading::StandardAttributes::sExplicitShading);
 
         scene_rdl2::rdl2::ConstSceneObjectSet b;
         s->getBindingTransitiveClosure(b);

@@ -195,13 +195,11 @@ QuadMesh::setRequiredAttributes(int primId, float time, float u, float v,
         vertexW[0], vertexW[1], vertexW[2], vertexW[3]);
     intersection.setRequiredAttributes(interpolator);
 
-    if (primitiveAttributes->isSupported(StandardAttributes::sNormal)) {
-        Vec3f N;
-        interpolator.interpolate(StandardAttributes::sNormal,
-            reinterpret_cast<char*>(&N));
-        N.normalize();
-        intersection.setN(N);
-    }
+    // Add an interpolated N, dPds, and dPdt to the intersection
+    // if they exist in the primitive attribute table
+    setExplicitAttributes<MeshInterpolator>(interpolator,
+                                            *primitiveAttributes,
+                                            intersection);
 }
 
 void
@@ -212,14 +210,6 @@ QuadMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
     int primId = ray.primID;
     int tessFaceId = primId;
     int baseFaceId = getBaseFaceId(tessFaceId);
-    int assignmentId = getFaceAssignmentId(tessFaceId);
-    intersection.setLayerAssignments(assignmentId, pRdlLayer);
-
-    const auto& material =
-        intersection.getMaterial()->get<shading::RootShader>();
-    const AttributeTable *table = material.getAttributeTable();
-    intersection.setTable(&tls.mArena, table);
-    overrideInstanceAttrs(ray, intersection);
 
     // barycentric coordinate
     float u = ray.u;
@@ -232,69 +222,94 @@ QuadMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
         w = -w;
     }
 
-    setRequiredAttributes(primId, ray.time, u, v, w, isFirst, intersection);
+    const int assignmentId = getFaceAssignmentId(tessFaceId);
+    intersection.setLayerAssignments(assignmentId, pRdlLayer);
 
+    const AttributeTable *table =
+        intersection.getMaterial()->get<shading::RootShader>().getAttributeTable();
+    intersection.setTable(&tls.mArena, table);
     const Attributes* primitiveAttributes = getAttributes();
-    Vec3f Ng, N, dPds, dPdt;
-    Vec2f St;
-    Ng = normalize(ray.getNg());
-    // shading normal
-    if (primitiveAttributes->isSupported(StandardAttributes::sNormal)) {
-        N = intersection.getN();
-    } else {
-        N = Ng;
-    }
 
-    Vec2f st1, st2, st3;
-    getQuadST(baseFaceId, tessFaceId, st1, st2, st3, isFirst);
-    St = w * st1 + u * st2 + v * st3;
+    setRequiredAttributes(primId,
+                          ray.time,
+                          u, v, w,
+                          isFirst,
+                          intersection);
 
     uint32_t isecId1, isecId2, isecId3;
     intersection.getIds(isecId1, isecId2, isecId3);
-    if (isMotionBlurOn()) {
-        float t = ray.time;
-        const Vec3f& p10 = mVertices(isecId1, 0);
-        const Vec3f& p20 = mVertices(isecId2, 0);
-        const Vec3f& p30 = mVertices(isecId3, 0);
-        // form a ReferenceFrame and use its tangent/binormal as dpds dpdt
-        // if we fail to calculate the st partial derivatives
-        Vec3f dp0[2];
-        if (!computeTrianglePartialDerivatives(
-                p10, p20, p30, st1, st2, st3, dp0)) {
-            scene_rdl2::math::ReferenceFrame frame(N);
-            dp0[0] = frame.getX();
-            dp0[1] = frame.getY();
+
+    overrideInstanceAttrs(ray, intersection);
+
+    // The St value is read from the explicit "surface_st" primitive
+    // attribute if it exists.
+    Vec2f st1, st2, st3;
+    getQuadST(baseFaceId, tessFaceId, st1, st2, st3, isFirst);
+    const Vec2f St = w * st1 + u * st2 + v * st3;
+
+    const Vec3f Ng = normalize(ray.getNg());
+
+    Vec3f N, dPds, dPdt;
+    const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
+                                                             intersection,
+                                                             N, dPds, dPdt);
+
+    if (!hasExplicitAttributes) {
+        if (primitiveAttributes->isSupported(StandardAttributes::sNormal)) {
+            N = intersection.getN();
+        } else {
+            N = Ng;
         }
-        const Vec3f& p11 = mVertices(isecId1, 1);
-        const Vec3f& p21 = mVertices(isecId2, 1);
-        const Vec3f& p31 = mVertices(isecId3, 1);
-        Vec3f dp1[2];
-        if (!computeTrianglePartialDerivatives(
-                p11, p21, p31, st1, st2, st3, dp1)) {
-            scene_rdl2::math::ReferenceFrame frame(N);
-            dp1[0] = frame.getX();
-            dp1[1] = frame.getY();
+        if (isMotionBlurOn()) {
+            float t = ray.time;
+            const Vec3f& p10 = mVertices(isecId1, 0);
+            const Vec3f& p20 = mVertices(isecId2, 0);
+            const Vec3f& p30 = mVertices(isecId3, 0);
+            // form a ReferenceFrame and use its tangent/binormal as dpds dpdt
+            // if we fail to calculate the st partial derivatives
+            Vec3f dp0[2];
+            if (!computeTrianglePartialDerivatives(
+                    p10, p20, p30, st1, st2, st3, dp0)) {
+                scene_rdl2::math::ReferenceFrame frame(N);
+                dp0[0] = frame.getX();
+                dp0[1] = frame.getY();
+            }
+            const Vec3f& p11 = mVertices(isecId1, 1);
+            const Vec3f& p21 = mVertices(isecId2, 1);
+            const Vec3f& p31 = mVertices(isecId3, 1);
+            Vec3f dp1[2];
+            if (!computeTrianglePartialDerivatives(
+                    p11, p21, p31, st1, st2, st3, dp1)) {
+                scene_rdl2::math::ReferenceFrame frame(N);
+                dp1[0] = frame.getX();
+                dp1[1] = frame.getY();
+            }
+            dPds = (1.0f - t) * dp0[0] + t * dp1[0];
+            dPdt = (1.0f - t) * dp0[1] + t * dp1[1];
+        } else {
+            const Vec3f& p1 = mVertices(isecId1);
+            const Vec3f& p2 = mVertices(isecId2);
+            const Vec3f& p3 = mVertices(isecId3);
+            // form a ReferenceFrame and use its tangent/binormal as dpds dpdt
+            // if we fail to calculate the st partial derivatives
+            Vec3f dp[2];
+            if (!computeTrianglePartialDerivatives(
+                    p1, p2, p3, st1, st2, st3, dp)) {
+                scene_rdl2::math::ReferenceFrame frame(N);
+                dp[0] = frame.getX();
+                dp[1] = frame.getY();
+            }
+            dPds = dp[0];
+            dPdt = dp[1];
         }
-        dPds = (1.0f - t) * dp0[0] + t * dp1[0];
-        dPdt = (1.0f - t) * dp0[1] + t * dp1[1];
-    } else {
-        const Vec3f& p1 = mVertices(isecId1);
-        const Vec3f& p2 = mVertices(isecId2);
-        const Vec3f& p3 = mVertices(isecId3);
-        // form a ReferenceFrame and use its tangent/binormal as dpds dpdt
-        // if we fail to calculate the st partial derivatives
-        Vec3f dp[2];
-        if (!computeTrianglePartialDerivatives(
-                p1, p2, p3, st1, st2, st3, dp)) {
-            scene_rdl2::math::ReferenceFrame frame(N);
-            dp[0] = frame.getX();
-            dp[1] = frame.getY();
-        }
-        dPds = dp[0];
-        dPdt = dp[1];
     }
 
-    intersection.setDifferentialGeometry(Ng, N, St, dPds, dPdt, true);
+    intersection.setDifferentialGeometry(Ng,
+                                         N,
+                                         St,
+                                         dPds,
+                                         dPdt,
+                                         true); // has derivatives
 
     // calculate dfds/dfdt for primitive attributes that request differential
     if (table->requestDerivatives()) {

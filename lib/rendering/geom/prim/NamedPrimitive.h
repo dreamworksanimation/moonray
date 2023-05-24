@@ -140,6 +140,69 @@ public:
     virtual int getIntersectionAssignmentId(int primID) const = 0;
 
 protected:
+
+    template<typename InterpolatorType>
+    static void setExplicitAttributes(const InterpolatorType& interpolator,
+                                      const shading::Attributes& primitiveAttributes,
+                                      shading::Intersection& intersection)
+    {
+        if (primitiveAttributes.isSupported(shading::StandardAttributes::sNormal)) {
+            scene_rdl2::math::Vec3f N;
+            interpolator.interpolate(shading::StandardAttributes::sNormal,
+                reinterpret_cast<char*>(&N));
+            N = N.normalize();
+            intersection.setAttribute(shading::StandardAttributes::sNormal, N);
+            intersection.setN(N);
+        }
+
+        if (primitiveAttributes.isSupported(shading::StandardAttributes::sdPds)) {
+            scene_rdl2::math::Vec3f dPds;
+            interpolator.interpolate(shading::StandardAttributes::sdPds,
+                reinterpret_cast<char*>(&dPds));
+            intersection.setAttribute(shading::StandardAttributes::sdPds, dPds);
+        }
+
+        if (primitiveAttributes.isSupported(shading::StandardAttributes::sdPdt)) {
+            Vec3f dPdt;
+            interpolator.interpolate(shading::StandardAttributes::sdPdt,
+                reinterpret_cast<char*>(&dPdt));
+            intersection.setAttribute(shading::StandardAttributes::sdPdt, dPdt);
+        }
+    }
+
+    static bool getExplicitAttributes(const shading::Attributes& primitiveAttributes,
+                                      const shading::Intersection& intersection,
+                                      scene_rdl2::math::Vec3f& N,
+                                      scene_rdl2::math::Vec3f& dPds,
+                                      scene_rdl2::math::Vec3f& dPdt)
+    {
+        if (!primitiveAttributes.isSupported(shading::StandardAttributes::sExplicitShading) &&
+            !intersection.isProvided(shading::StandardAttributes::sExplicitShading)) {
+            return false;
+        }
+
+        bool hasExplicitNormal = false;
+        if (intersection.isProvided(shading::StandardAttributes::sNormal)) {
+            N = intersection.getAttribute<Vec3f>(shading::StandardAttributes::sNormal);
+            N = normalize(N);
+            hasExplicitNormal = true;
+        }
+
+        bool hasExplicitDPds = false;
+        if (intersection.isProvided(shading::StandardAttributes::sdPds)) {
+            dPds = intersection.getAttribute<Vec3f>(shading::StandardAttributes::sdPds);
+            hasExplicitDPds = true;
+        }
+
+        bool hasExplicitDPdt = false;
+        if (intersection.isProvided(shading::StandardAttributes::sdPdt)) {
+            dPdt = intersection.getAttribute<Vec3f>(shading::StandardAttributes::sdPdt);
+            hasExplicitDPdt = true;
+        }
+
+        return hasExplicitNormal && hasExplicitDPds && hasExplicitDPdt;
+    }
+
     std::unique_ptr<shading::Attributes> mAttributes;
     std::string mName;
     LayerAssignmentId mLayerAssignmentId;

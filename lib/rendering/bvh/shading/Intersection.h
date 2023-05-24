@@ -352,9 +352,16 @@ public:
             return;
         }
         fillInstanceAttributes(instanceAttributes,
-            getTable()->getRequiredAttributes());
+                               getTable()->getRequiredAttributes());
         fillInstanceAttributes(instanceAttributes,
-            getTable()->getOptionalAttributes());
+                               getTable()->getOptionalAttributes());
+
+        // Explicitly override attributes used for explicit shading
+        fillInstanceAttributes(instanceAttributes,
+                               { StandardAttributes::sExplicitShading,
+                                 StandardAttributes::sNormal,
+                                 StandardAttributes::sdPds,
+                                 StandardAttributes::sdPdt });
     }
 
     /// This must be called after all calls to setInstanceAttributesOverride()

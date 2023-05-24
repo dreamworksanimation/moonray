@@ -893,9 +893,13 @@ PolyMesh::initAttributesAndDisplace(const scene_rdl2::rdl2::Layer *pRdlLayer,
     setAttributes(Attributes::interleave(primitiveAttributeTable,
         mPartCount, baseFaceCount, varyingsCount,
         faceVaryingsCount, verticesCount));
+
     getAttributes()->transformAttributes(mPolyMeshData->mXforms,
-        mPolyMeshData->mShutterOpenDelta, mPolyMeshData->mShutterCloseDelta,
-        {{StandardAttributes::sNormal, Vec3Type::NORMAL}});
+                                         mPolyMeshData->mShutterOpenDelta,
+                                         mPolyMeshData->mShutterCloseDelta,
+                                         {{StandardAttributes::sNormal, Vec3Type::NORMAL},
+                                         {StandardAttributes::sdPds, Vec3Type::VECTOR},
+                                         {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
 
     if (calculateSmoothNormal) {
         setupRecomputeVertexNormals(!realtimeMode);

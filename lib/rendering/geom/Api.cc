@@ -770,6 +770,45 @@ getAssignmentId(const scene_rdl2::rdl2::Layer* layer, const scene_rdl2::rdl2::Ge
          layer->lookupVolumeShader(assignmentId) != nullptr);
 }
 
+bool
+validateExplicitShading(const shading::PrimitiveAttributeTable& pat,
+                        const scene_rdl2::rdl2::Geometry* rdlGeometry)
+{
+    bool hasExplicitAttributes = true;
+
+    if (!pat.hasAttribute(shading::StandardAttributes::sNormal)) {
+        rdlGeometry->error("Missing normal explicit shading primitive attribute");
+        hasExplicitAttributes = false;
+    }
+    if (!pat.hasAttribute(shading::StandardAttributes::sdPds)) {
+        rdlGeometry->error("Missing dPds explicit shading primitive attribute");
+        hasExplicitAttributes = false;
+    }
+    if (!pat.hasAttribute(shading::StandardAttributes::sdPdt)) {
+        rdlGeometry->error("Missing dPdt explicit shading primitive attribute ");
+        hasExplicitAttributes = false;
+    }
+
+    return hasExplicitAttributes;
+}
+
+bool
+addExplicitShading(const scene_rdl2::rdl2::Geometry* rdlGeometry,
+                   shading::PrimitiveAttributeTable& pat)
+{
+    if (validateExplicitShading(pat,
+                                rdlGeometry)) {
+        std::vector<bool> data = { true };
+        pat.addAttribute(shading::StandardAttributes::sExplicitShading,
+                         shading::AttributeRate::RATE_CONSTANT,
+                         std::move(data));
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
 } // namespace geom
 } // namespace moonray
 

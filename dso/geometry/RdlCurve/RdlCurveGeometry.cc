@@ -384,60 +384,75 @@ RdlCurveProcedural::generate(
         rdlCurveGeometry, rdlLayer, vertexCounts.size());
 
     // primitive attributes
-    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame = static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(
-        rdlCurveGeometry->get(attrPrimitiveAttributeFrame));
+    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame =
+        static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(rdlCurveGeometry->get(attrPrimitiveAttributeFrame));
+
     bool useFirstFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::SECOND_MOTION_STEP);
     bool useSecondFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::FIRST_MOTION_STEP);
-    moonray::geom::processArbitraryData(rdlCurveGeometry, attrPrimitiveAttributes, primitiveAttributeTable,
-                               rates, useFirstFrame, useSecondFrame);
+
+    moonray::geom::processArbitraryData(rdlCurveGeometry,
+                                        attrPrimitiveAttributes,
+                                        primitiveAttributeTable,
+                                        rates,
+                                        useFirstFrame,
+                                        useSecondFrame);
 
     // try to add UVs if we haven't already
     if (!primitiveAttributeTable.hasAttribute(shading::StandardAttributes::sUv)) {
         const rdl2::Vec2fVector& stList = rdlGeometry->get(attrUVs);
         if (!stList.empty()) {
-            rdl2::Vec3fVector uvList;
-            for (const rdl2::Vec2f& st : stList) {
-                uvList.emplace_back(st.x, st.y, 0.0f);
-            }
-            primitiveAttributeTable.addAttribute(
-                shading::StandardAttributes::sUv,
-                pickRate(rdlGeometry, getName(rdlGeometry, attrUVs), uvList.size(), rates),
-                std::move(uvList));
+            primitiveAttributeTable.addAttribute(shading::StandardAttributes::sUv,
+                                                 pickRate(rdlGeometry,
+                                                          getName(rdlGeometry, attrUVs),
+                                                          stList.size(),
+                                                          rates),
+                                                 std::move(static_cast<std::vector<scene_rdl2::math::Vec2f>>(stList)));
         }
+    }
+
+    // Add explicit shading primitive attribute if explicit shading is enabled
+    if (rdlGeometry->get(attrExplicitShading) &&
+        !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
+        return;
     }
 
     // Check the validity of the curves data and
     // print out any error messages
     std::string errorMessage;
-    Primitive::DataValidness dataValid =
-    Curves::checkPrimitiveData(type, subtype, tessellationRate, vertexCounts, vertices,
-            primitiveAttributeTable, &errorMessage);
+    Primitive::DataValidness dataValid = Curves::checkPrimitiveData(type,
+                                                                    subtype,
+                                                                    tessellationRate,
+                                                                    vertexCounts,
+                                                                    vertices,
+                                                                    primitiveAttributeTable,
+                                                                    &errorMessage);
+
     if (dataValid != Primitive::DataValidness::VALID) {
         rdlGeometry->error(errorMessage);
         return;
     }
 
-    std::unique_ptr<Curves> primitive = createCurves(
-                type,
-                subtype,
-                tessellationRate,
-                std::move(vertexCounts),
-                std::move(vertices),
-                LayerAssignmentId(std::move(layerAssignmentId)),
-                std::move(primitiveAttributeTable));
+    std::unique_ptr<Curves> primitive = createCurves(type,
+                                                     subtype,
+                                                     tessellationRate,
+                                                     std::move(vertexCounts),
+                                                     std::move(vertices),
+                                                     LayerAssignmentId(std::move(layerAssignmentId)),
+                                                     std::move(primitiveAttributeTable));
 
     if (primitive) {
         primitive->setCurvedMotionBlurSampleCount(rdlCurveGeometry->get(attrCurvedMotionBlurSampleCount));
 
         // may need to convert the primitive to instance to handle
         // rotation motion blur
-        std::unique_ptr<Primitive> p = convertForMotionBlur(
-            generateContext, std::move(primitive),
-            (rdlCurveGeometry->get(attrUseRotationMotionBlur) &&
-            parent2render.size() > 1));
+        std::unique_ptr<Primitive> p =
+            convertForMotionBlur(generateContext,
+                                 std::move(primitive),
+                                 (rdlCurveGeometry->get(attrUseRotationMotionBlur) && parent2render.size() > 1));
 
         addPrimitive(std::move(p),
-            generateContext.getMotionBlurParams(), parent2render);
+                     generateContext.getMotionBlurParams(),
+                     parent2render);
     }
 }
 

@@ -70,6 +70,7 @@ protected:
                             const InstanceMethod instanceMethod,
                             bool useRefXforms,
                             bool useRefAttrs,
+                            bool explicitShading,
                             const int instanceLevel,
                             const scene_rdl2::rdl2::Vec3fVector& velocities,
                             const float evaluationFrame,

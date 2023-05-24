@@ -2050,8 +2050,11 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
         mControlMeshData->mFaceVertexCount, controlVertexCount));
 
     getAttributes()->transformAttributes(mControlMeshData->mXforms,
-        mControlMeshData->mShutterOpenDelta, mControlMeshData->mShutterCloseDelta,
-        {{StandardAttributes::sNormal, Vec3Type::NORMAL}});
+                                         mControlMeshData->mShutterOpenDelta,
+                                         mControlMeshData->mShutterCloseDelta,
+                                         {{StandardAttributes::sNormal, Vec3Type::NORMAL},
+                                         {StandardAttributes::sdPds, Vec3Type::VECTOR},
+                                         {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
  
     // reverse normals reverses orientation and negates normals
     if (mIsNormalReversed ^ mIsOrientationReversed) {
@@ -2883,10 +2886,11 @@ OpenSubdivMesh::setRequiredAttributes(int primId, float time, float u, float v,
 
     // If the control mesh data doesn't have face->part mapping,
     // just assume part = 0
-    int partId = (mFaceToPart.size() > 0) ? mFaceToPart[controlFaceId] : 0;
+    const int partId = (mFaceToPart.size() > 0) ? mFaceToPart[controlFaceId] : 0;
 
     // primitive attributes interpolation
-    MeshInterpolator interpolator(getAttributes(), time, partId,
+    const Attributes* primitiveAttributes = getAttributes();
+    MeshInterpolator interpolator(primitiveAttributes, time, partId,
         controlFaceId, id1, id2, id3, id4, wq[0], wq[1], wq[2], wq[3],
         primId, id1, id2, id3, id4, wq[0], wq[1], wq[2], wq[3]);
     intersection.setRequiredAttributes(interpolator);
@@ -2894,6 +2898,12 @@ OpenSubdivMesh::setRequiredAttributes(int primId, float time, float u, float v,
     // constant/uniform/varying/vertex are handled by setRequiredAttributes
     mFaceVaryingAttributes->fillAttributes(intersection, primId,
         wq[0], wq[1], wq[2], wq[3]);
+
+    // Add an interpolated N, dPds, and dPdt to the intersection
+    // if they exist in the primitive attribute table
+    setExplicitAttributes<MeshInterpolator>(interpolator,
+                                            *primitiveAttributes,
+                                            intersection);
 }
 
 void
@@ -2903,13 +2913,6 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
 {
     int primId = ray.primID;
     int controlFaceId = mTessellatedToControlFace[primId];
-    int assignmentId = getControlFaceAssignmentId(controlFaceId);
-    intersection.setLayerAssignments(assignmentId, pRdlLayer);
-    const auto& material =
-        intersection.getMaterial()->get<shading::RootShader>();
-    const AttributeTable* table = material.getAttributeTable();
-    intersection.setTable(&tls.mArena, table);
-    overrideInstanceAttrs(ray, intersection);
 
     // barycentric coordinate
     float u = ray.u;
@@ -2922,52 +2925,80 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
         w = -w;
     }
 
-    setRequiredAttributes(primId, ray.time, u, v, w, isFirst, intersection);
+    const int assignmentId = getControlFaceAssignmentId(controlFaceId);
+    intersection.setLayerAssignments(assignmentId, pRdlLayer);
+
+    const AttributeTable *table =
+        intersection.getMaterial()->get<shading::RootShader>().getAttributeTable();
+    intersection.setTable(&tls.mArena, table);
+    const Attributes* primitiveAttributes = getAttributes();
+
+    setRequiredAttributes(primId,
+                          ray.time,
+                          u, v, w,
+                          isFirst,
+                          intersection);
 
     uint32_t isecId1, isecId2, isecId3;
     intersection.getIds(isecId1, isecId2, isecId3);
 
-    Vec3f Ng = normalize(ray.getNg());
+    overrideInstanceAttrs(ray, intersection);
+
+    // The St value is read from the explicit "surface_st" primitive
+    // attribute on the control mesh if it exists.  The mSurfaceSt
+    // member stores the tesselated value.
     Vec2f St = w * mSurfaceSt(isecId1) +
-        u * mSurfaceSt(isecId2) +
-        v * mSurfaceSt(isecId3);
-    if (isMotionBlurOn()) {
-        const float i0PlusT = ray.time * static_cast<float>(getMotionSamplesCount() - 1);
-        const int i0 = static_cast<int>(std::floor(i0PlusT));
-        const int i1 = i0 + 1;
-        const float t = i0PlusT - static_cast<float>(i0);
-        // shading normal
-        Vec3f N0 = lerp(mSurfaceNormal(isecId1, i0), mSurfaceNormal(isecId1, i1), t);
-        Vec3f N1 = lerp(mSurfaceNormal(isecId2, i0), mSurfaceNormal(isecId2, i1), t);
-        Vec3f N2 = lerp(mSurfaceNormal(isecId3, i0), mSurfaceNormal(isecId3, i1), t);
-        Vec3f N = normalize(w * N0 + u * N1 + v * N2);
-        // dpds
-        Vec3f dPds0 = lerp(mSurfaceDpds(isecId1, i0), mSurfaceDpds(isecId1, i1), t);
-        Vec3f dPds1 = lerp(mSurfaceDpds(isecId2, i0), mSurfaceDpds(isecId2, i1), t);
-        Vec3f dPds2 = lerp(mSurfaceDpds(isecId3, i0), mSurfaceDpds(isecId3, i1), t);
-        Vec3f dPds = w * dPds0 + u * dPds1 + v * dPds2;
-        // dpdt
-        Vec3f dPdt0 = lerp(mSurfaceDpdt(isecId1, i0), mSurfaceDpdt(isecId1, i1), t);
-        Vec3f dPdt1 = lerp(mSurfaceDpdt(isecId2, i0), mSurfaceDpdt(isecId2, i1), t);
-        Vec3f dPdt2 = lerp(mSurfaceDpdt(isecId3, i0), mSurfaceDpdt(isecId3, i1), t);
-        Vec3f dPdt = w * dPdt0 + u * dPdt1 + v * dPdt2;
-        intersection.setDifferentialGeometry(Ng, N, St, dPds, dPdt, true);
-    } else {
-        // shading normal
-        Vec3f N = normalize(
-            w * mSurfaceNormal(isecId1) +
-            u * mSurfaceNormal(isecId2) +
-            v * mSurfaceNormal(isecId3));
-        // dpds
-        Vec3f dPds = w * mSurfaceDpds(isecId1) +
-            u * mSurfaceDpds(isecId2) +
-            v * mSurfaceDpds(isecId3);
-        // dpdt
-        Vec3f dPdt = w * mSurfaceDpdt(isecId1) +
-            u * mSurfaceDpdt(isecId2) +
-            v * mSurfaceDpdt(isecId3);
-        intersection.setDifferentialGeometry(Ng, N, St, dPds, dPdt, true);
+               u * mSurfaceSt(isecId2) +
+               v * mSurfaceSt(isecId3);
+
+    const Vec3f Ng = normalize(ray.getNg());
+
+    Vec3f N, dPds, dPdt;
+    const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
+                                                             intersection,
+                                                             N, dPds, dPdt);
+
+    if (!hasExplicitAttributes) {
+        if (isMotionBlurOn()) {
+            const float i0PlusT = ray.time * static_cast<float>(getMotionSamplesCount() - 1);
+            const int i0 = static_cast<int>(std::floor(i0PlusT));
+            const int i1 = i0 + 1;
+            const float t = i0PlusT - static_cast<float>(i0);
+
+            Vec3f N0 = lerp(mSurfaceNormal(isecId1, i0), mSurfaceNormal(isecId1, i1), t);
+            Vec3f N1 = lerp(mSurfaceNormal(isecId2, i0), mSurfaceNormal(isecId2, i1), t);
+            Vec3f N2 = lerp(mSurfaceNormal(isecId3, i0), mSurfaceNormal(isecId3, i1), t);
+            N = normalize(w * N0 + u * N1 + v * N2);
+
+            Vec3f dPds0 = lerp(mSurfaceDpds(isecId1, i0), mSurfaceDpds(isecId1, i1), t);
+            Vec3f dPds1 = lerp(mSurfaceDpds(isecId2, i0), mSurfaceDpds(isecId2, i1), t);
+            Vec3f dPds2 = lerp(mSurfaceDpds(isecId3, i0), mSurfaceDpds(isecId3, i1), t);
+            dPds = w * dPds0 + u * dPds1 + v * dPds2;
+
+            Vec3f dPdt0 = lerp(mSurfaceDpdt(isecId1, i0), mSurfaceDpdt(isecId1, i1), t);
+            Vec3f dPdt1 = lerp(mSurfaceDpdt(isecId2, i0), mSurfaceDpdt(isecId2, i1), t);
+            Vec3f dPdt2 = lerp(mSurfaceDpdt(isecId3, i0), mSurfaceDpdt(isecId3, i1), t);
+            dPdt = w * dPdt0 + u * dPdt1 + v * dPdt2;
+        } else {
+            N = normalize(w * mSurfaceNormal(isecId1) +
+                          u * mSurfaceNormal(isecId2) +
+                          v * mSurfaceNormal(isecId3));
+
+            dPds = w * mSurfaceDpds(isecId1) +
+                u * mSurfaceDpds(isecId2) +
+                v * mSurfaceDpds(isecId3);
+            dPdt = w * mSurfaceDpdt(isecId1) +
+                u * mSurfaceDpdt(isecId2) +
+                v * mSurfaceDpdt(isecId3);
+        }
     }
+
+    intersection.setDifferentialGeometry(Ng,
+                                         N,
+                                         St,
+                                         dPds,
+                                         dPdt,
+                                         true); // has derivatives
 
     const scene_rdl2::rdl2::Geometry* geometry = intersection.getGeometryObject();
     MNRY_ASSERT(geometry != nullptr);

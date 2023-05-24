@@ -24,6 +24,7 @@ RDL2_DSO_ATTR_DECLARE
     scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> attrUseRotationMotionBlur;
     scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> attrUseReferenceXforms;
     scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> attrUseReferenceAttributes;
+    DECLARE_COMMON_EXPLICIT_SHADING_ATTRIBUTES
 
 RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::Geometry)
 
@@ -144,6 +145,8 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::Geometry)
     sceneClass.setMetadata(attrUseReferenceAttributes, "label", "use reference attributes");
     sceneClass.setMetadata(attrUseReferenceAttributes, "comment", "Use the geometry attributes of the reference (prototype) instead of the ones on the InstanceGeometry.   Currently only works for shadow_ray_epsilon");
     sceneClass.setGroup("Instancing", attrUseReferenceAttributes);
+
+    DEFINE_COMMON_EXPLICIT_SHADING_ATTRIBUTES
 
 RDL2_DSO_ATTR_END
 

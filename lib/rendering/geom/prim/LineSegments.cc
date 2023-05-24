@@ -128,23 +128,12 @@ LineSegments::postIntersect(mcrt_common::ThreadLocalState &tls,
         const scene_rdl2::rdl2::Layer* layer, const mcrt_common::Ray& ray,
         Intersection& intersection) const
 {
-    int spanId = ray.primID;
+    const int spanId = ray.primID;
     const IndexData& index = mIndexBuffer[spanId];
     const uint32_t chain = index.mChain;
-
-    int assignmentId =
-        mLayerAssignmentId.getType() == LayerAssignmentId::Type::CONSTANT ?
-        mLayerAssignmentId.getConstId() :
-        mLayerAssignmentId.getVaryingId()[chain];
-    intersection.setLayerAssignments(assignmentId, layer);
-
-    const AttributeTable *table =
-        intersection.getMaterial()->get<shading::Material>().getAttributeTable();
-    intersection.setTable(&tls.mArena, table);
-
     const uint32_t vertexOffset = index.mVertex;
-    intersection.setIds(vertexOffset, 0, 0);
-    overrideInstanceAttrs(ray, intersection);
+    const uint32_t spansInChain = mCurvesVertexCount[chain] - 1;
+    const uint32_t indexInChain = index.mSpan;
 
     Vec3fa cv[2];
     if (!isMotionBlurOn()) {
@@ -163,65 +152,95 @@ LineSegments::postIntersect(mcrt_common::ThreadLocalState &tls,
                 mVertexBuffer(vertexOffset + 1, 1) * w1;
     }
 
-    Vec3f Ng, N, dPds, dPdt;
+    const int assignmentId =
+        mLayerAssignmentId.getType() == LayerAssignmentId::Type::CONSTANT ?
+        mLayerAssignmentId.getConstId() :
+        mLayerAssignmentId.getVaryingId()[chain];
+    intersection.setLayerAssignments(assignmentId, layer);
+
+    const AttributeTable *table =
+        intersection.getMaterial()->get<shading::Material>().getAttributeTable();
+    intersection.setTable(&tls.mArena, table);
+    intersection.setIds(vertexOffset, 0, 0);
+    const Attributes* primitiveAttributes = getAttributes();
+
+    // Set the required attributes
+    LineSegmentsInterpolator interpolator(primitiveAttributes,
+                                          ray.time,
+                                          chain,
+                                          ray.u,
+                                          vertexOffset);
+
+    intersection.setRequiredAttributes(interpolator);
+
+    // Add an interpolated N, dPds, and dPdt to the intersection
+    // if they exist in the primitive attribute table
+    setExplicitAttributes<LineSegmentsInterpolator>(interpolator,
+                                                    *primitiveAttributes,
+                                                    intersection);
+
+    overrideInstanceAttrs(ray, intersection);
+
+    // The St value is read from the explicit "uv" primitive
+    // attribute if it exists.
     Vec2f St;
-    // Partial with respect to S is simply the tangent vector
-    dPds = cv[1] - cv[0];
-
-    // We now render curves as ray-aligned flat ribbons.
-    // Use the flipped ray direction to compute the normal.  But, this may be an
-    // instance, so we need to transform the ray direction into the local
-    // space.  It gets transformed back to render space later on.
-    // Note that it looks like we should be using r2l to get from render to
-    // local space, but recall that when transforming normals we use the transpose
-    // of the inverse, which is l2r transposed.  The transformNormal() function
-    // takes the inverse of the transform (l2r) and applies the transpose.
-    const Vec3f flippedRayDir = ray.isInstanceHit() ?
-        normalize(transformNormal(ray.ext.l2r, -ray.dir)) :
-        normalize(-ray.dir);
-
-    // Lacking much better options, we'll construct dPdt wrt the other two
-    // components of the ostensibly orthonormal frame we have
-    dPdt = cross(dPds, flippedRayDir);
-    if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
-        // Degened dPds or dPdt. The reason can be either clustered cv points
-        // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
-        N = flippedRayDir;
-        scene_rdl2::math::ReferenceFrame frame(N);
-        dPds = frame.getX();
-        dPdt = frame.getY();
+    if (primitiveAttributes->isSupported(shading::StandardAttributes::sUv)) {
+        interpolator.interpolate(shading::StandardAttributes::sUv,
+            reinterpret_cast<char*>(&St));
     } else {
-        // Cross the partials to get the normal
-        N = cross(dPdt, dPds);
-    }
-    N.normalize();
-    // Geometric normal equals shading normal for a line segment
-    Ng = N;
-
-    const uint32_t spansInChain = mCurvesVertexCount[chain] - 1;
-    const float stSpanRange = 1.0f / spansInChain;
-    const uint32_t indexInChain = index.mSpan;
-    Vec3f uv;
-    const Attributes* attributes = getAttributes();
-    if (intersection.isProvided(StandardAttributes::sUv)) {
-        uv = intersection.getAttribute<Vec3f>(StandardAttributes::sUv);
-        St.x = uv.x;
-        St.y = uv.y;
-    } else if (getAttribute<Vec3f>(attributes,
-                                   StandardAttributes::sUv,
-                                   uv,
-                                   ray.primID,
-                                   vertexOffset)) {
-        St.x = uv.x;
-        St.y = uv.y;
-    } else {
-        const float stStart = stSpanRange * indexInChain;
-        St[0] = stStart + ray.u * stSpanRange;
+        const float stSpanRange = 1.0f / spansInChain;
+        const float ststart = stSpanRange * indexInChain;
+        St[0] = ststart + ray.u * stSpanRange;
         // ray.v is in (-1,1) so we need to remap to (0,1)
         St[1] = ray.v * 0.5f + 0.5f;
     }
 
-    intersection.setDifferentialGeometry(Ng, N, St, dPds, dPdt, true);
+    Vec3f N, dPds, dPdt;
+    const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
+                                                             intersection,
+                                                             N, dPds, dPdt);
+
+    if (!hasExplicitAttributes) {
+        // Partial with respect to S is simply the tangent vector
+        dPds = cv[1] - cv[0];
+
+        // We now render curves as ray-aligned flat ribbons.
+        // Use the flipped ray direction to compute the normal.  But, this may be an
+        // instance, so we need to transform the ray direction into the local
+        // space.  It gets transformed back to render space later on.
+        // Note that it looks like we should be using r2l to get from render to
+        // local space, but recall that when transforming normals we use the transpose
+        // of the inverse, which is l2r transposed.  The transformNormal() function
+        // takes the inverse of the transform (l2r) and applies the transpose.
+        const Vec3f flippedRayDir = ray.isInstanceHit() ?
+                                    normalize(transformNormal(ray.ext.l2r, -ray.dir)) :
+                                    normalize(-ray.dir);
+
+        // Lacking much better options, we'll construct dPdt wrt the other two
+        // components of the ostensibly orthonormal frame we have
+        dPdt = cross(dPds, flippedRayDir);
+        if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
+            // Degened dPds or dPdt. The reason can be either clustered cv points
+            // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
+            N = flippedRayDir;
+            scene_rdl2::math::ReferenceFrame frame(N);
+            dPds = frame.getX();
+            dPdt = frame.getY();
+        } else {
+            // Cross the partials to get the normal
+            N = cross(dPdt, dPds);
+        }
+        N = N.normalize();
+    }
+
+    // Geometric normal equals shading normal for a line segment
+    intersection.setDifferentialGeometry(N, // geometric normal
+                                         N, // shading normal
+                                         St,
+                                         dPds,
+                                         dPdt,
+                                         true, // has derivatives
+                                         hasExplicitAttributes);
 
     const scene_rdl2::rdl2::Geometry* geometry = intersection.getGeometryObject();
     MNRY_ASSERT(geometry != nullptr);
@@ -235,18 +254,17 @@ LineSegments::postIntersect(mcrt_common::ThreadLocalState &tls,
         intersection.setEpsilonHint( geometry->getRayEpsilon() );
     }
 
-    LineSegmentsInterpolator interpolator(getAttributes(), ray.time, chain,
-        ray.u, vertexOffset);
-    intersection.setRequiredAttributes(interpolator);
-
     // calculate dfds/dfdt for primitive attributes that request differential
     if (table->requestDerivatives()) {
         // ds = stSpanRange -> 1 / ds = 1 / stSpanRange = spansInChain
-        computeAttributesDerivatives(table, (float)spansInChain,
-            vertexOffset, ray.time, intersection);
+        computeAttributesDerivatives(table,
+                                     static_cast<float>(spansInChain),
+                                     vertexOffset,
+                                     ray.time,
+                                     intersection);
     }
 
-    // for wireframe AOV/shaders
+    // For wireframe AOV/shaders
     if (table->requests(StandardAttributes::sNumPolyVertices)) {
         intersection.setAttribute(StandardAttributes::sNumPolyVertices, 2);
     }
@@ -258,8 +276,9 @@ LineSegments::postIntersect(mcrt_common::ThreadLocalState &tls,
         if (table->requests(StandardAttributes::sPolyVertices[iVert])) {
             // may need to move the vertices to render space
             // for instancing object since they are ray traced in local space
-            const Vec3f v = ray.isInstanceHit() ? transformPoint(ray.ext.l2r, cv[iVert].asVec3f())
-                                                : cv[iVert].asVec3f();
+            const Vec3f v = ray.isInstanceHit() ?
+                            transformPoint(ray.ext.l2r, cv[iVert].asVec3f()) :
+                            cv[iVert].asVec3f();
             intersection.setAttribute(StandardAttributes::sPolyVertices[iVert], v);
         }
     }

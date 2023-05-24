@@ -133,6 +133,7 @@ InstanceProceduralLeaf::instanceWithXforms(const GenerateContext& generateContex
                                            const InstanceMethod instanceMethod,
                                            bool useRefXforms,
                                            bool useRefAttrs,
+                                           bool explicitShading,
                                            const int instanceLevel,
                                            const scene_rdl2::rdl2::Vec3fVector& velocities,
                                            const float evaluationFrame,
@@ -390,7 +391,7 @@ InstanceProceduralLeaf::instanceWithXforms(const GenerateContext& generateContex
             }
             if (addInstanceObjectTransformAttribute) {
                 primitiveAttributeTable.addAttribute(
-                    moonray::shading::StandardAttributes::sInstanceObjectTransform,
+                    shading::StandardAttributes::sInstanceObjectTransform,
                     shading::RATE_CONSTANT,
                     { nodeXform });
             }
@@ -399,10 +400,17 @@ InstanceProceduralLeaf::instanceWithXforms(const GenerateContext& generateContex
                 // MOONRAY-4313 - Propagate common geometry attributes to instanced primitives
                 std::vector<float> shadowRayEpsilon = { shadowRayEpsilons[index] };
                 primitiveAttributeTable.addAttribute(
-                    moonray::shading::StandardAttributes::sShadowRayEpsilon,
+                    shading::StandardAttributes::sShadowRayEpsilon,
                     shading::RATE_CONSTANT,
                     std::move(shadowRayEpsilon));
             }
+
+            // Add explicit shading primitive attribute if explicit shading is enabled
+            if (explicitShading &&
+                !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
+                return;
+            }
+
             for (const auto& kv : attrMap) {
                 const auto& key = kv.first;
                 const void* values = kv.second;

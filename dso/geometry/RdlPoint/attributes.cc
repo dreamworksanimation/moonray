@@ -26,6 +26,7 @@ RDL2_DSO_ATTR_DECLARE
     rdl2::AttributeKey<rdl2::SceneObjectVector> attrPrimitiveAttributes;
 
     DECLARE_COMMON_MOTION_BLUR_ATTRIBUTES
+    DECLARE_COMMON_EXPLICIT_SHADING_ATTRIBUTES
 
 RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
 
@@ -99,6 +100,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
     sceneClass.setGroup("User Data", attrPrimitiveAttributes);
 
     DEFINE_COMMON_MOTION_BLUR_ATTRIBUTES
+    DEFINE_COMMON_EXPLICIT_SHADING_ATTRIBUTES
 
 RDL2_DSO_ATTR_END
 

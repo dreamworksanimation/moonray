@@ -53,22 +53,12 @@ CubicSpline::postIntersect(mcrt_common::ThreadLocalState &tls,
         const scene_rdl2::rdl2::Layer* layer, const mcrt_common::Ray& ray,
         shading::Intersection& intersection) const
 {
-    int spanId = ray.primID;
+    const int spanId = ray.primID;
     const IndexData& index = mIndexBuffer[spanId];
     const uint32_t chain = index.mChain;
-
-    int assignmentId =
-        mLayerAssignmentId.getType() == LayerAssignmentId::Type::CONSTANT ?
-        mLayerAssignmentId.getConstId() :
-        mLayerAssignmentId.getVaryingId()[chain];
-    intersection.setLayerAssignments(assignmentId, layer);
-
-    const AttributeTable *table =
-        intersection.getMaterial()->get<shading::RootShader>().getAttributeTable();
-    intersection.setTable(&tls.mArena, table);
-    overrideInstanceAttrs(ray, intersection);
-
     const uint32_t vertexOffset = index.mVertex;
+    const uint32_t spansInChain = getSpansInChain(chain);
+    const uint32_t indexInChain = index.mSpan;
 
     Vec3fa cv[4];
     if (!isMotionBlurOn()) {
@@ -81,123 +71,154 @@ CubicSpline::postIntersect(mcrt_common::ThreadLocalState &tls,
         // only support two time samples for motionblur at this moment
         MNRY_ASSERT(getMotionSamplesCount() == 2);
         float wt = ray.time;
-        cv[0] = lerp(mVertexBuffer(vertexOffset + 0, 0), mVertexBuffer(vertexOffset + 0, 1), wt);
-
-        cv[1] = lerp(mVertexBuffer(vertexOffset + 1, 0), mVertexBuffer(vertexOffset + 1, 1), wt);
-
-        cv[2] = lerp(mVertexBuffer(vertexOffset + 2, 0), mVertexBuffer(vertexOffset + 2, 1), wt);
-
-        cv[3] = lerp(mVertexBuffer(vertexOffset + 3, 0), mVertexBuffer(vertexOffset + 3, 1), wt);
+        cv[0] = lerp(mVertexBuffer(vertexOffset + 0, 0),
+                     mVertexBuffer(vertexOffset + 0, 1), ray.time);
+        cv[1] = lerp(mVertexBuffer(vertexOffset + 1, 0),
+                     mVertexBuffer(vertexOffset + 1, 1), ray.time);
+        cv[2] = lerp(mVertexBuffer(vertexOffset + 2, 0),
+                     mVertexBuffer(vertexOffset + 2, 1), ray.time);
+        cv[3] = lerp(mVertexBuffer(vertexOffset + 3, 0),
+                     mVertexBuffer(vertexOffset + 3, 1), ray.time);
     }
 
-    Vec3f Ng, N, dPds, dPdt;
+    const int assignmentId =
+        mLayerAssignmentId.getType() == LayerAssignmentId::Type::CONSTANT ?
+        mLayerAssignmentId.getConstId() :
+        mLayerAssignmentId.getVaryingId()[chain];
+    intersection.setLayerAssignments(assignmentId, layer);
+
+    const AttributeTable *table =
+        intersection.getMaterial()->get<shading::RootShader>().getAttributeTable();
+    intersection.setTable(&tls.mArena, table);
+    intersection.setIds(vertexOffset, 0, 0);
+    const Attributes* primitiveAttributes = getAttributes();
+
+    float w0, w1, w2, w3;
+    evalWeights(ray.u, w0, w1, w2, w3);
+    const int varyingOffset = chain + spanId;
+    CubicSplineInterpolator interpolator(primitiveAttributes,
+                                         ray.time,
+                                         chain,
+                                         varyingOffset,
+                                         indexInChain,
+                                         ray.u,
+                                         vertexOffset,
+                                         w0, w1, w2, w3);
+    intersection.setRequiredAttributes(interpolator);
+
+    // Add an interpolated N, dPds, and dPdt to the intersection
+    // if they exist in the primitive attribute table
+    setExplicitAttributes<CubicSplineInterpolator>(interpolator,
+                                                   *primitiveAttributes,
+                                                   intersection);
+
+    overrideInstanceAttrs(ray, intersection);
+
+    // The St value is read from the explicit "uv" primitive
+    // attribute if it exists.
     Vec2f St;
-
-    // Partial with respect to S is easy enough -- its the tangent vector
-    // TODO: This isn't varying with R down the curve in the direction of
-    //       the tangent vector, which it should.  We should slope down by R'.
-    dPds = evalCubicDeriv(ray.u, cv[0], cv[1], cv[2], cv[3]);
-
-    if (mSubType == SubType::RAY_FACING) {
-        // Use the flipped ray direction to compute the normal. But, this may be an
-        // instance, so we need to transform the ray direction into the local
-        // space.  It gets transformed back to render space later on.
-        // Note that it looks like we should be using r2l to get from render to
-        // local space, but recall that when transforming normals we use the transpose
-        // of the inverse, which is l2r transposed.  The transformNormal() function
-        // uses the inverse of the transform (l2r) and applies the transpose.
-        const Vec3f flippedRayDir = ray.isInstanceHit() ?
-            normalize(transformNormal(ray.ext.l2r, -ray.dir)) :
-            normalize(-ray.dir);
-
-        // Lacking much better options, we'll construct dPdt wrt the other two
-        // components of the ostensibly orthonormal frame we have
-        dPdt = cross(dPds, flippedRayDir);
-
-        if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
-            // Degened dPds or dPdt. The reason can be either clustered cv points
-            // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
-            N = flippedRayDir;
-            scene_rdl2::math::ReferenceFrame frame(N);
-            dPds = frame.getX();
-            dPdt = frame.getY();
-        } else {
-            // Cross the partials to get the normal
-            N = cross(dPdt, dPds);
-        }
-        N.normalize();
-    } else if (mSubType == SubType::ROUND || mSubType == SubType::NORMAL_ORIENTED) {
-        // round and normal oriented curves just use the geom normal
-        N = ray.getNg();
-        N.normalize();
-
-        dPdt = cross(dPds, N);
-        if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
-            // Degened dPds or dPdt. The reason can be either clustered cv points
-            // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
-            scene_rdl2::math::ReferenceFrame frame(N);
-            dPds = frame.getX();
-            dPdt = frame.getY();
-        }
-    }
-
-    // Geometric normal equals shading normal for a cubic spline
-    Ng = N;
-
-    const uint32_t spansInChain = getSpansInChain(chain);
-    const float stSpanRange = 1.0f / spansInChain;
-    const uint32_t indexInChain = index.mSpan;
-    Vec3f uv;
-    const Attributes* attributes = getAttributes();
-    if (intersection.isProvided(StandardAttributes::sUv)) {
-        uv = intersection.getAttribute<Vec3f>(StandardAttributes::sUv);
-        St.x = uv.x;
-        St.y = uv.y;
-    } else if (getAttribute<Vec3f>(attributes,
-                                   StandardAttributes::sUv,
-                                   uv,
-                                   ray.primID,
-                                   vertexOffset)) {
-        St.x = uv.x;
-        St.y = uv.y;
+    if (primitiveAttributes->isSupported(shading::StandardAttributes::sUv)) {
+        interpolator.interpolate(shading::StandardAttributes::sUv,
+            reinterpret_cast<char*>(&St));
     } else {
-        const float stStart = stSpanRange * indexInChain;
-        St[0] = stStart + ray.u * stSpanRange;
+        const float stSpanRange = 1.0f / spansInChain;
+        const float ststart = stSpanRange * indexInChain;
+        St[0] = ststart + ray.u * stSpanRange;
         // ray.v is in (-1,1) so we need to remap to (0,1)
         St[1] = ray.v * 0.5f + 0.5f;
     }
 
-    intersection.setDifferentialGeometry(Ng, N, St, dPds, dPdt, true);
+    Vec3f N, dPds, dPdt;
+    const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
+                                                             intersection,
+                                                             N, dPds, dPdt);
 
-    float w0, w1, w2, w3;
-    evalWeights(ray.u, w0, w1, w2, w3);
+    if (!hasExplicitAttributes) {
+        // Partial with respect to S is easy enough -- its the tangent vector
+        // TODO: This isn't varying with R down the curve in the direction of
+        //       the tangent vector, which it should.  We should slope down by R'.
+        dPds = evalCubicDeriv(ray.u, cv[0], cv[1], cv[2], cv[3]);
+
+        if (mSubType == SubType::RAY_FACING) {
+            // Use the flipped ray direction to compute the normal. But, this may be an
+            // instance, so we need to transform the ray direction into the local
+            // space.  It gets transformed back to render space later on.
+            // Note that it looks like we should be using r2l to get from render to
+            // local space, but recall that when transforming normals we use the transpose
+            // of the inverse, which is l2r transposed.  The transformNormal() function
+            // uses the inverse of the transform (l2r) and applies the transpose.
+            const Vec3f flippedRayDir = ray.isInstanceHit() ?
+                                        normalize(transformNormal(ray.ext.l2r, -ray.dir)) :
+                                        normalize(-ray.dir);
+
+            // Lacking much better options, we'll construct dPdt wrt the other two
+            // components of the ostensibly orthonormal frame we have
+            dPdt = cross(dPds, flippedRayDir);
+            if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
+                // Degened dPds or dPdt. The reason can be either clustered cv points
+                // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
+                N = flippedRayDir;
+                scene_rdl2::math::ReferenceFrame frame(N);
+                dPds = frame.getX();
+                dPdt = frame.getY();
+            } else {
+                // Cross the partials to get the normal
+                N = cross(dPdt, dPds);
+            }
+            N = N.normalize();
+        } else if (mSubType == SubType::ROUND || mSubType == SubType::NORMAL_ORIENTED) {
+            // round curves just use the geom normal
+            N = ray.getNg();
+            N = N.normalize();
+
+            dPdt = cross(dPds, N);
+            if (unlikely(lengthSqr(dPdt) < scene_rdl2::math::sEpsilon)) {
+                // Degened dPds or dPdt. The reason can be either clustered cv points
+                // or ray direction is parallel to dPds. Use ReferenceFrame as fallback
+                scene_rdl2::math::ReferenceFrame frame(N);
+                dPds = frame.getX();
+                dPdt = frame.getY();
+            }
+        }
+    }
+
+    // Geometric normal equals shading normal for a cubic spline
+    intersection.setDifferentialGeometry(N, // geometric normal
+                                         N, // shading normal
+                                         St,
+                                         dPds,
+                                         dPdt,
+                                         true, // has derivatives
+                                         hasExplicitAttributes);
+
 
     const scene_rdl2::rdl2::Geometry* geometry = intersection.getGeometryObject();
     MNRY_ASSERT(geometry != nullptr);
     if (geometry->getRayEpsilon() <= 0.0f) {
-        // Use the 1.5 times the curve radius as the next ray epsilon hint.
-        // This lets shadow and continuation rays escape
-        // the intersected hair, instead of self-intersecting.
+        // Use 1.5 times the curve radius as the next ray epsilon hint.
+        // This lets shadow and continuation rays escape the intersected
+        // hair, instead of self-intersecting.
         float curveRadius = w0 * cv[0].w + w1 * cv[1].w + w2 * cv[2].w + w3 * cv[3].w;
-        intersection.setEpsilonHint( 1.5 * curveRadius );
+        intersection.setEpsilonHint(1.5f * curveRadius);
     } else {
-        intersection.setEpsilonHint( geometry->getRayEpsilon() );
+        intersection.setEpsilonHint(geometry->getRayEpsilon());
     }
-
-    int varyingOffset = chain + spanId;
-    CubicSplineInterpolator interpolator(getAttributes(), ray.time, chain,
-        varyingOffset, indexInChain, ray.u, vertexOffset, w0, w1, w2, w3);
-    intersection.setRequiredAttributes(interpolator);
 
     // calculate dfds/dfdt for primitive attributes that request derivatives
     if (table->requestDerivatives()) {
         // ds = stSpanRange -> 1 / ds = 1 / stSpanRange = spansInChain
-        computeAttributesDerivatives(table, ray.u, (float)spansInChain,
-            chain, varyingOffset, indexInChain, vertexOffset,
-            ray.time, intersection);
+        computeAttributesDerivatives(table,
+                                     ray.u,
+                                     static_cast<float>(spansInChain),
+                                     chain,
+                                     varyingOffset,
+                                     indexInChain,
+                                     vertexOffset,
+                                     ray.time,
+                                     intersection);
     }
 
-    // "polygon" vertices
+    // For wireframe AOV/shaders
     if (table->requests(StandardAttributes::sNumPolyVertices)) {
         intersection.setAttribute(StandardAttributes::sNumPolyVertices, 4);
     }
@@ -209,8 +230,9 @@ CubicSpline::postIntersect(mcrt_common::ThreadLocalState &tls,
         if (table->requests(StandardAttributes::sPolyVertices[iVert])) {
             // may need to move the vertices to render space
             // for instancing object since they are ray traced in local space
-            const Vec3f v = ray.isInstanceHit() ? transformPoint(ray.ext.l2r, cv[iVert].asVec3f())
-                                                : cv[iVert].asVec3f();
+            const Vec3f v = ray.isInstanceHit() ?
+                            transformPoint(ray.ext.l2r, cv[iVert].asVec3f()) :
+                            cv[iVert].asVec3f();
             intersection.setAttribute(StandardAttributes::sPolyVertices[iVert], v);
         }
     }

@@ -21,6 +21,8 @@
 namespace moonray {
 namespace geom {
 
+using namespace moonray::shading;
+
 struct Curves::Impl
 {
     Impl(internal::Curves* curves,
@@ -44,7 +46,7 @@ Curves::Curves(Type type,
                CurvesVertexCount&& curvesVertexCount,
                VertexBuffer&& vertices,
                LayerAssignmentId&& layerAssignmentId,
-               shading::PrimitiveAttributeTable&& primitiveAttributeTable)
+               PrimitiveAttributeTable&& primitiveAttributeTable)
 {
     if (type == Type::LINEAR) {
         mImpl = fauxstd::make_unique<Impl>(new internal::LineSegments(
@@ -160,7 +162,7 @@ static Primitive::DataValidness
 checkLineSegmentsData(
         const Curves::CurvesVertexCount& curvesVertexCount,
         const Curves::VertexBuffer& vertices,
-        const shading::PrimitiveAttributeTable& primitiveAttributeTable,
+        const PrimitiveAttributeTable& primitiveAttributeTable,
         std::string* message)
 {
     size_t curvesCount = curvesVertexCount.size();
@@ -197,7 +199,7 @@ static Primitive::DataValidness
 checkCubicCurvesData(
         const Curves::CurvesVertexCount& curvesVertexCount,
         const Curves::VertexBuffer& vertices,
-        const shading::PrimitiveAttributeTable& primitiveAttributeTable,
+        const PrimitiveAttributeTable& primitiveAttributeTable,
         const Curves::Type type,
         const int tessellationRate,
         std::string* message)
@@ -268,7 +270,7 @@ Curves::checkPrimitiveData(Type type,
         int tessellationRate,
         const CurvesVertexCount& curvesVertexCount,
         const VertexBuffer& vertices,
-        const shading::PrimitiveAttributeTable& primitiveAttributeTable,
+        const PrimitiveAttributeTable& primitiveAttributeTable,
         std::string* message)
 {
     Primitive::DataValidness result;
@@ -298,22 +300,27 @@ Curves::checkPrimitiveData(Type type,
 void
 Curves::transformPrimitive(
         const MotionBlurParams& motionBlurParams,
-        const shading::XformSamples& prim2render)
+        const XformSamples& prim2render)
 {
     size_t motionSamplesCount = getMotionSamplesCount();
-    shading::XformSamples p2r = prim2render;
+    XformSamples p2r = prim2render;
     if (motionSamplesCount > 1 && prim2render.size() == 1) {
         p2r.resize(motionSamplesCount, prim2render[0]);
     }
 
-    const shading::PrimitiveAttributeTable* primAttrTab = mImpl->mCurves->getPrimitiveAttributeTable();
+    const PrimitiveAttributeTable* primAttrTab = mImpl->mCurves->getPrimitiveAttributeTable();
     transformVertexBuffer(mImpl->mCurves->getVertexBuffer(), p2r, motionBlurParams,
                           mImpl->mCurves->getMotionBlurType(), mImpl->mCurves->getCurvedMotionBlurSampleCount(),
                           primAttrTab);
 
     float shutterOpenDelta, shutterCloseDelta;
     motionBlurParams.getMotionBlurDelta(shutterOpenDelta, shutterCloseDelta);
-    mImpl->mCurves->getAttributes()->transformAttributes(p2r, shutterOpenDelta, shutterCloseDelta, {});
+    mImpl->mCurves->getAttributes()->transformAttributes(p2r,
+                                                         shutterOpenDelta,
+                                                         shutterCloseDelta,
+                                                         {{StandardAttributes::sNormal, Vec3Type::NORMAL},
+                                                         {StandardAttributes::sdPds, Vec3Type::VECTOR},
+                                                         {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
 }
 
 internal::Primitive*

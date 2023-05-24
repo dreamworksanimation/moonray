@@ -141,7 +141,7 @@ public:
     };
 
     // Standard attributes
-    static TypedAttributeKey<scene_rdl2::math::Vec3f> sUv;
+    static TypedAttributeKey<scene_rdl2::math::Vec2f> sUv;
     // hair coordinates for the point closest to it on the surface geo
     static TypedAttributeKey<scene_rdl2::math::Vec2f> sClosestSurfaceST;
     // hair coordinates for the root of the hair fiber on surface geo
@@ -150,6 +150,7 @@ public:
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sRefP;
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sRefN;
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sdPds;
+    static TypedAttributeKey<scene_rdl2::math::Vec3f> sRefdPds;
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sdPdt;
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sVelocity;      // primitive specified velocity attribute
     static TypedAttributeKey<scene_rdl2::math::Vec3f> sP0;            // P at first time step
@@ -175,6 +176,7 @@ public:
     static TypedAttributeKey<int> sPolyVertexType; // PolyVertexType
     static TypedAttributeKey<int> sId;
     static TypedAttributeKey<bool> sReversedNormals;
+    static TypedAttributeKey<bool> sExplicitShading;
 };
 
 /// @class AttributeKeyHash
@@ -412,7 +414,7 @@ StandardAttributes::init()
     // program startup time
 #pragma warning push
 #pragma warning disable 1711
-    sUv = TypedAttributeKey<scene_rdl2::math::Vec3f>("uv");
+    sUv = TypedAttributeKey<scene_rdl2::math::Vec2f>("uv");
     sClosestSurfaceST = TypedAttributeKey<scene_rdl2::math::Vec2f>("closest_surface_uv");
     sSurfaceST = TypedAttributeKey<scene_rdl2::math::Vec2f>("surface_st");
     sInstanceObjectTransform = TypedAttributeKey<scene_rdl2::math::Mat4f>("instance_object_transform");
@@ -426,6 +428,7 @@ StandardAttributes::init()
     sNormal = TypedAttributeKey<scene_rdl2::math::Vec3f>("normal");
     sRefP = TypedAttributeKey<scene_rdl2::math::Vec3f>("ref_P", true); // Request derivatives
     sRefN = TypedAttributeKey<scene_rdl2::math::Vec3f>("ref_N", true); // Request derivatives
+    sRefdPds = TypedAttributeKey<scene_rdl2::math::Vec3f>("ref_dPds");
     sdPds = TypedAttributeKey<scene_rdl2::math::Vec3f>("dPds");
     sdPdt = TypedAttributeKey<scene_rdl2::math::Vec3f>("dPdt");
     sVelocity = TypedAttributeKey<scene_rdl2::math::Vec3f>("velocity");
@@ -440,6 +443,7 @@ StandardAttributes::init()
     sNumPolyVertices = TypedAttributeKey<int>("numpolyvertices");
     sPolyVertexType = TypedAttributeKey<int>("polyvertex_type");
     sReversedNormals = TypedAttributeKey<bool>("reversed_normals");
+    sExplicitShading = TypedAttributeKey<bool>("explicit_shading");
     sId = TypedAttributeKey<int>("id");
 #pragma warning pop
 }

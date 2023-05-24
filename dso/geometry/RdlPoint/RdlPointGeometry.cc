@@ -283,32 +283,48 @@ RdlPointProcedural::generate(
     }
 
     // layer assignments
-    LayerAssignmentId layerAssignmentId = createPerPointAssignmentId(
-        rdlPointGeometry, rdlLayer, vertCount);
+    LayerAssignmentId layerAssignmentId = createPerPointAssignmentId(rdlPointGeometry,
+                                                                     rdlLayer,
+                                                                     vertCount);
 
     // primitive attributes
-    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame = static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(
-        rdlPointGeometry->get(attrPrimitiveAttributeFrame));
+    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame =
+        static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(rdlPointGeometry->get(attrPrimitiveAttributeFrame));
+
     bool useFirstFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::SECOND_MOTION_STEP);
     bool useSecondFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::FIRST_MOTION_STEP);
-    moonray::geom::processArbitraryData(rdlPointGeometry, attrPrimitiveAttributes, primitiveAttributeTable,
-                               rates, useFirstFrame, useSecondFrame);
+
+    moonray::geom::processArbitraryData(rdlPointGeometry,
+                                        attrPrimitiveAttributes,
+                                        primitiveAttributeTable,
+                                        rates,
+                                        useFirstFrame,
+                                        useSecondFrame);
+
+    // Add explicit shading primitive attribute if explicit shading is enabled
+    if (rdlGeometry->get(attrExplicitShading) &&
+        !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
+        return;
+    }
     
-    std::unique_ptr<Points> primitive = createPoints(
-        std::move(vertices), std::move(radius), std::move(layerAssignmentId),
-        std::move(primitiveAttributeTable));
+    std::unique_ptr<Points> primitive = createPoints(std::move(vertices),
+                                                     std::move(radius),
+                                                     std::move(layerAssignmentId),
+                                                     std::move(primitiveAttributeTable));
 
     if (primitive) {
         primitive->setCurvedMotionBlurSampleCount(rdlPointGeometry->get(attrCurvedMotionBlurSampleCount));
 
         // may need to convert the primitive to instance to handle
         // rotation motion blur
-        std::unique_ptr<Primitive> p = convertForMotionBlur(
-            generateContext, std::move(primitive),
-            (rdlPointGeometry->get(attrUseRotationMotionBlur) &&
-            parent2render.size() > 1));
+        std::unique_ptr<Primitive> p =
+            convertForMotionBlur(generateContext,
+                                 std::move(primitive),
+                                 (rdlPointGeometry->get(attrUseRotationMotionBlur) && parent2render.size() > 1));
+
         addPrimitive(std::move(p),
-            generateContext.getMotionBlurParams(), parent2render);
+                     generateContext.getMotionBlurParams(),
+                     parent2render);
     }
 }
 

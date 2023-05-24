@@ -108,94 +108,59 @@ Points::postIntersect(mcrt_common::ThreadLocalState& tls,
         mLayerAssignmentId.getVaryingId()[ray.primID];
     intersection.setLayerAssignments(assignmentId, pRdlLayer);
 
-    const scene_rdl2::rdl2::Material* material = intersection.getMaterial();
     const AttributeTable *table =
-        material->get<shading::RootShader>().getAttributeTable();
+        intersection.getMaterial()->get<shading::RootShader>().getAttributeTable();
     intersection.setTable(&tls.mArena, table);
     intersection.setIds(ray.primID, 0, 0);
+    const Attributes* primitiveAttributes = getAttributes();
+
+    PointsInterpolator interpolator(primitiveAttributes,
+                                    ray.time,
+                                    ray.primID);
+
+    intersection.setRequiredAttributes(interpolator);
+
+    // Add an interpolated N, dPds, and dPdt to the intersection
+    // if they exist in the primitive attribute table
+    setExplicitAttributes<PointsInterpolator>(interpolator,
+                                              *primitiveAttributes,
+                                              intersection);
+
     overrideInstanceAttrs(ray, intersection);
-    const Attributes* attributes = getAttributes();
 
-    // For each of the attributes below we first check the
-    // intersection since it may have been set from the
-    // instancer points which should override any local
-    // attributes.
-    Vec3f uv;
-    Vec2f st(1.0f, 1.0f);
-    if (intersection.isProvided(StandardAttributes::sUv)) {
-        uv = intersection.getAttribute<Vec3f>(StandardAttributes::sUv);
-        st.x = uv.x;
-        st.y = uv.y;
-    } else if (getAttribute<Vec3f>(attributes,
-                                   StandardAttributes::sUv,
-                                   uv,
-                                   ray.primID)) {
-        st.x = uv.x;
-        st.y = uv.y;
+    // The St value is read from the explicit "uv" primitive
+    // attribute if it exists.
+    Vec2f St(1.0f, 1.0f);
+    if (primitiveAttributes->isSupported(shading::StandardAttributes::sUv)) {
+        interpolator.interpolate(shading::StandardAttributes::sUv,
+            reinterpret_cast<char*>(&St));
     }
 
-    Vec3f Ng = normalize(ray.Ng);
-    bool hasNormal;
-    if (intersection.isProvided(StandardAttributes::sNormal)) {
-        Ng = intersection.getAttribute<Vec3f>(StandardAttributes::sNormal);
-        Ng = normalize(Ng);
-        hasNormal = true;
-    } else {
-        hasNormal = getAttribute<Vec3f>(attributes,
-                                        StandardAttributes::sNormal,
-                                        Ng,
-                                        ray.primID);
-        if (hasNormal) {
-            Ng = normalize(Ng);
-        }
+    Vec3f N, dPds, dPdt;
+    const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
+                                                             intersection,
+                                                             N, dPds, dPdt);
+
+    if (!hasExplicitAttributes) {
+        N = normalize(ray.getNg());
     }
 
-    Vec3f dPds = scene_rdl2::math::zero;
-    bool hasDPds;
-    if (intersection.isProvided(StandardAttributes::sdPds)) {
-        dPds = intersection.getAttribute<Vec3f>(StandardAttributes::sdPds);
-        hasDPds = true;
-    } else {
-        hasDPds = getAttribute<Vec3f>(attributes,
-                                      StandardAttributes::sdPds,
-                                      dPds,
-                                      ray.primID);
-    }
-
-    Vec3f dPdt = scene_rdl2::math::zero;
-    bool hasDPdt;
-    if (intersection.isProvided(StandardAttributes::sdPdt)) {
-        dPdt = intersection.getAttribute<Vec3f>(StandardAttributes::sdPdt);
-        hasDPdt = true;
-    } else {
-        hasDPdt = getAttribute<Vec3f>(attributes,
-                                      StandardAttributes::sdPdt,
-                                      dPdt,
-                                      ray.primID);
-    }
-
-    const bool hasDerivatives = hasDPds && hasDPdt;
-    const bool isFlatPoint = hasNormal && hasDerivatives;
-    
     // The geometric and shading normal use the value of the StandardAttribute
     // if available and that means the point is not being treated as a real sphere.
     // The "P" is on the surface of the sphere, but the "Ng" is the normal of a
     // disk, so it's a weird hybrid geometry. This is ok because points are supposed
     // to be small in the scene, so any inconsistency should not be noticeable.
-    intersection.setDifferentialGeometry(Ng, // geometric normal
-                                         Ng, // shading normal
-                                         st,
+    intersection.setDifferentialGeometry(N, // geometric normal
+                                         N, // shading normal
+                                         St,
                                          dPds,
                                          dPdt,
-                                         hasDerivatives,
-                                         isFlatPoint);
-
-    PointsInterpolator interpolator(getAttributes(), ray.time, ray.primID);
-    intersection.setRequiredAttributes(interpolator);
+                                         hasExplicitAttributes, // If it has explicit attributes it has derivatives
+                                         hasExplicitAttributes);
 
     const scene_rdl2::rdl2::Geometry* geometry = intersection.getGeometryObject();
     MNRY_ASSERT(geometry != nullptr);
-    intersection.setEpsilonHint( geometry->getRayEpsilon() );
+    intersection.setEpsilonHint(geometry->getRayEpsilon());
 
     // wireframe AOV is blank
     if (table->requests(StandardAttributes::sNumPolyVertices)) {

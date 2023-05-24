@@ -16,7 +16,7 @@ std::vector<int8_t> AttributeKey::sHasDerivatives;
 std::map<std::pair<std::string, AttributeType>, int> AttributeKey::sTable;
 int AttributeKey::sNumKeys = 0;
 
-TypedAttributeKey<math::Vec3f> StandardAttributes::sUv;
+TypedAttributeKey<math::Vec2f> StandardAttributes::sUv;
 TypedAttributeKey<math::Vec2f> StandardAttributes::sClosestSurfaceST;
 TypedAttributeKey<math::Vec2f> StandardAttributes::sSurfaceST;
 TypedAttributeKey<math::Mat4f> StandardAttributes::sInstanceObjectTransform;
@@ -31,6 +31,7 @@ TypedAttributeKey<math::Vec3f> StandardAttributes::sNormal;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sRefP;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sRefN;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sdPds;
+TypedAttributeKey<math::Vec3f> StandardAttributes::sRefdPds;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sdPdt;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sVelocity;
 TypedAttributeKey<math::Vec3f> StandardAttributes::sP0;
@@ -41,6 +42,7 @@ TypedAttributeKey<int> StandardAttributes::sNumPolyVertices;
 TypedAttributeKey<int> StandardAttributes::sPolyVertexType;
 TypedAttributeKey<int> StandardAttributes::sId;
 TypedAttributeKey<bool> StandardAttributes::sReversedNormals;
+TypedAttributeKey<bool> StandardAttributes::sExplicitShading;
 
 } // namespace shading
 } // namespace rendering

@@ -448,18 +448,33 @@ RdlMeshProcedural::createSubdMesh(
     }
 
     // get arbitrary data
-    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame = static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(
-            rdlMeshGeometry->get(attrPrimitiveAttributeFrame));
+    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame =
+        static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(rdlMeshGeometry->get(attrPrimitiveAttributeFrame));
+
     bool useFirstFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::SECOND_MOTION_STEP);
     bool useSecondFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::FIRST_MOTION_STEP);
-    moonray::geom::processArbitraryData(rdlMeshGeometry, attrPrimitiveAttributes, primitiveAttributeTable,
-                               rates, useFirstFrame, useSecondFrame);
+
+    moonray::geom::processArbitraryData(rdlMeshGeometry,
+                                        attrPrimitiveAttributes,
+                                        primitiveAttributeTable,
+                                        rates,
+                                        useFirstFrame,
+                                        useSecondFrame);
+
+    // Add explicit shading primitive attribute if explicit shading is enabled
+    if (rdlGeometry->get(attrExplicitShading) &&
+        !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
+        return nullptr;
+    }
 
     // build the primitive
-    std::unique_ptr<SubdivisionMesh> primitive = createSubdivisionMesh(
-        scheme, std::move(faceVertexCount), std::move(indices),
-        std::move(vertices), std::move(layerAssignmentId),
-        std::move(primitiveAttributeTable));
+    std::unique_ptr<SubdivisionMesh> primitive =
+        createSubdivisionMesh(scheme,
+                              std::move(faceVertexCount),
+                              std::move(indices),
+                              std::move(vertices),
+                              std::move(layerAssignmentId),
+                              std::move(primitiveAttributeTable));
 
     // set optional subdivision interpolation properties
     SubdivisionMesh::BoundaryInterpolation subdBoundary =
@@ -587,15 +602,31 @@ RdlMeshProcedural::createPolyMesh(
     float adaptiveError = rdlMeshGeometry->get(attrAdaptiveError);
 
     // get arbitrary data
-    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame = static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(
-        rdlMeshGeometry->get(attrPrimitiveAttributeFrame));
+    scene_rdl2::rdl2::PrimitiveAttributeFrame primitiveAttributeFrame =
+        static_cast<scene_rdl2::rdl2::PrimitiveAttributeFrame>(rdlMeshGeometry->get(attrPrimitiveAttributeFrame));
+
     bool useFirstFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::SECOND_MOTION_STEP);
     bool useSecondFrame = (primitiveAttributeFrame != scene_rdl2::rdl2::PrimitiveAttributeFrame::FIRST_MOTION_STEP);
-    moonray::geom::processArbitraryData(rdlMeshGeometry, attrPrimitiveAttributes, primitiveAttributeTable,
-                               rates, useFirstFrame, useSecondFrame);
 
-    removeUnassignedFaces(rdlLayer, layerAssignmentId, faceToPart,
-        faceVertexCount, indices, &primitiveAttributeTable);
+    moonray::geom::processArbitraryData(rdlMeshGeometry,
+                                        attrPrimitiveAttributes,
+                                        primitiveAttributeTable,
+                                        rates,
+                                        useFirstFrame,
+                                        useSecondFrame);
+
+    // Add explicit shading primitive attribute if explicit shading is enabled
+    if (rdlGeometry->get(attrExplicitShading) &&
+        !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
+        return nullptr;
+    }
+
+    removeUnassignedFaces(rdlLayer,
+                          layerAssignmentId,
+                          faceToPart,
+                          faceVertexCount,
+                          indices,
+                          &primitiveAttributeTable);
     
     // check if mesh is still valid
     if (faceVertexCount.empty() || indices.empty()) {
@@ -605,10 +636,12 @@ RdlMeshProcedural::createPolyMesh(
     }
 
     // build the primitive
-    std::unique_ptr<PolygonMesh> primitive = createPolygonMesh(
-        std::move(faceVertexCount), std::move(indices),
-        std::move(vertices), std::move(layerAssignmentId),
-        std::move(primitiveAttributeTable));
+    std::unique_ptr<PolygonMesh> primitive =
+        createPolygonMesh(std::move(faceVertexCount),
+                                    std::move(indices),
+                                    std::move(vertices),
+                                    std::move(layerAssignmentId),
+                                    std::move(primitiveAttributeTable));
 
     // set additional primitive attributes
     primitive->setMeshResolution(meshResolution);

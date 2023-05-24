@@ -77,6 +77,7 @@ public:
                            static_cast<InstanceMethod>(instanceGeometry->get(attrInstanceMethod)),
                            instanceGeometry->get(attrUseReferenceXforms),
                            instanceGeometry->get(attrUseReferenceAttributes),
+                           instanceGeometry->get(attrExplicitShading),
                            instanceGeometry->get(attrInstanceLevel),
                            instanceGeometry->get(attrVelocities),
                            instanceGeometry->get(attrEvaluationFrame),
