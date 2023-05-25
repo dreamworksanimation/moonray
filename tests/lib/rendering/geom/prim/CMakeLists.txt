@@ -53,4 +53,4 @@ moonray_dso_simple(rendering_geom_prim_TestMaterial
 )
 
 add_test(NAME ${target} COMMAND ${target})
-set_tests_properties(${target} PROPERTIES LABELS "Moonray")
+set_tests_properties(${target} PROPERTIES LABELS "unit")

@@ -132,4 +132,4 @@ target_compile_definitions(${target}
 # ---------------------------------------------------
 
 add_test(NAME ${target} COMMAND ${target})
-set_tests_properties(${target} PROPERTIES LABELS "Moonray;LongRunning")
+set_tests_properties(${target} PROPERTIES LABELS "unit")
