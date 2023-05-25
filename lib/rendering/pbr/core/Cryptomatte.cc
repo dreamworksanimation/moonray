@@ -197,6 +197,12 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
 
     for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
 
+        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteEnableRefract()) {
+            // Don't output the refracted cryptomatte channels to the render output if it doesn't
+            // want them.
+            continue;
+        }
+
         // Output 2 fragments per layer: one pair goes to the R,G channels, the other to the B,A channels.
         const PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
         int numFragments = 0;
@@ -327,6 +333,13 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
     int numFragments = ro.getCryptomatteDepth(); 
 
     for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
+
+        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteEnableRefract()) {
+            // Don't input the refracted cryptomatte channels to the render output if it doesn't
+            // want them.
+            continue;
+        }
+
         PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
         for (int i = 0; i < numFragments; i++) {
             const float id       = idAndCoverageData[0];
