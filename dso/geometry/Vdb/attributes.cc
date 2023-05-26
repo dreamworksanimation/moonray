@@ -21,7 +21,8 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
     attrModel = sceneClass.declareAttribute<rdl2::String>(
         "model", "", rdl2::FLAGS_FILENAME);
     sceneClass.setMetadata(attrModel, "comment",
-        "filename that points to a VDB file");
+        "The VDB file to load");
+    sceneClass.setGroup("VDB", attrModel);
 
     // different interpolation mode in vdb
     attrInterpolation = sceneClass.declareAttribute<rdl2::Int>(
@@ -30,7 +31,8 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
     sceneClass.setEnumValue(attrInterpolation, 1, "linear");
     sceneClass.setEnumValue(attrInterpolation, 2, "quadratic");
     sceneClass.setMetadata(attrInterpolation, "comment",
-        "the voxel interpolation to use when sampling the volume data");
+        "Voxel interpolation to use when sampling the volume data");
+    sceneClass.setGroup("VDB", attrInterpolation);
 
     attrDensityGrid = sceneClass.declareAttribute<rdl2::String>(
         "density_grid", "density");
@@ -41,6 +43,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
         "If a vdb file has multiple grids with the same name, "
         "you may use a suffix index to pick which grid to load, e.g. "
         "\"density[3]\". The index must be in [] brackets.");
+    sceneClass.setGroup("VDB", attrDensityGrid);
 
     attrEmissionGrid = sceneClass.declareAttribute<rdl2::String>(
         "emission_grid", "");
@@ -51,6 +54,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
         "If a vdb file has multiple grids with the same name, "
         "you may use a suffix index to pick which grid to load, e.g. "
         "\"emission[3]\". The index must be in [] brackets.");
+    sceneClass.setGroup("VDB", attrEmissionGrid);
 
     attrVelocityGrid = sceneClass.declareAttribute<rdl2::String>(
         "velocity_grid", "", {"velocity grid"});
@@ -64,6 +68,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
         "you may use a suffix index to pick which grid to load, e.g. "
         "\"v[3]\". The index must be in [] brackets. The index "
         "can be different from the index on the \"density_grid\".");
+    sceneClass.setGroup("Motion Blur", attrVelocityGrid);
 
     attrVelocityScale = sceneClass.declareAttribute<rdl2::Float>(
         "velocity_scale", 1.0f, {"velocity scale"});
@@ -71,6 +76,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
     sceneClass.setMetadata(attrVelocityScale, "comment",
         "A scale factor for the velocity field. "
         "A value of 0 disables motion blur.");
+    sceneClass.setGroup("Motion Blur", attrVelocityScale);
 
     attrVelocitySampleRate = sceneClass.declareAttribute<rdl2::Float>(
         "velocity_sample_rate", 0.2f, {"velocity sample rate"});
@@ -80,6 +86,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
         "the relative scale of input velocity grid resolution. "
         "Lower value has lower memory overhead and lower fidelity of "
         "motion blur effect, which is sometimes desired for artistic reasons");
+    sceneClass.setGroup("Motion Blur", attrVelocitySampleRate);
 
     attrEmissionSampleRate = sceneClass.declareAttribute<rdl2::Float>(
         "emission_sample_rate", 1.0f, {"emission sample rate"});
@@ -89,6 +96,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry)
         "the relative scale of input emission grid resolution. "
         "Lower value has lower memory overhead and faster render time, "
         "with the cost of lower fidelity of emission shape and illumination");
+    sceneClass.setGroup("VDB", attrEmissionSampleRate);
 
 
 RDL2_DSO_ATTR_END

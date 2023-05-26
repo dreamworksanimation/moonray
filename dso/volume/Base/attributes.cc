@@ -112,7 +112,7 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         scene_rdl2::rdl2::SceneObjectInterface::INTERFACE_GENERIC);
     sceneClass.setMetadata(attrAnisotropy, "comment",
         "Value in the interval [-1,1] that defines how foward (1) or "
-        "backward (-1) scattering the volume is. 0.0 is isotropic.");
+        "backward (-1) scattering the volume is.  A value of 0.0 indicates an isotropic volume.");
 
     sceneClass.setGroup("Scattering Properties", attrAnisotropy);
     sceneClass.setGroup("Scattering Properties", attrAlbedoColor);
@@ -154,8 +154,8 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         scene_rdl2::rdl2::SceneObjectInterface::INTERFACE_GENERIC, { "attenuation intensity" });
     sceneClass.setMetadata(attrAttenuationIntensity, "label", "attenuation intensity");
     sceneClass.setMetadata(attrAttenuationIntensity, "comment",
-        "the rate at which the intensity of a ray traversing a volume is lost. "
-        "The attenuation (extinction) coefficient is technically the product of "
+        "The rate at which the light traversing a volume is attenuated. "
+        "The attenuation (extinction) coefficient is the product of "
         "attenuation_color, attenuation_intensity, and attenuation_factor");
     
     // attenuation_factor
@@ -165,10 +165,9 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "attenuation factor" });
     sceneClass.setMetadata(attrAttenuationFactor, "label", "attenuation factor");
     sceneClass.setMetadata(attrAttenuationFactor, "comment",
-        "An additional factor to scale the attenuation. This attribute behaves "
-        "identically to attenuation_intensity - it is provided simply as an "
-        "extra way to control attenuation, typically during lighting. Surfacing"
-        " should generally avoid setting this.");
+        "Identical in behavior to attenuation_intensity but provided as a second means "
+        " to control attenuation, intended for use during lighting as a per-shot or "
+        " per-sequence adjustment.");
 
     // match_diffuse
     attrMatchAlbedo = sceneClass.declareAttribute<scene_rdl2::rdl2::Bool>("match_diffuse", false, {});
@@ -259,10 +258,9 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "emission intensity" });
     sceneClass.setMetadata(attrEmissionIntensity, "label", "emission intensity");
     sceneClass.setMetadata(attrEmissionIntensity, "comment",
-        "the rate at which a volume emits light at a given point. "
-        "Technically the product of emission color and intensity is "
+        "The rate at which a volume emits light at a given point.  The product of emission color and intensity is "
         "the emission coefficient.");
-    sceneClass.setGroup("Emission Properties", attrEmissionIntensity);
+    sceneClass.setGroup("Volume", attrEmissionIntensity);
 
     attrEmissionColor = sceneClass.declareAttribute<scene_rdl2::rdl2::Rgb>(
         "emission_color", scene_rdl2::rdl2::Rgb(0.0f, 0.0f, 0.0f),
@@ -270,10 +268,9 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "emission color" });
     sceneClass.setMetadata(attrEmissionColor, "label", "emission color");
     sceneClass.setMetadata(attrEmissionColor, "comment",
-        "a color to tint (multiply to) the emission "
-        "Technically the product of emision color and intensity is "
+        "A color multiplier for the emission.  The product of emission color and intensity is "
         "the emission coefficient");
-    sceneClass.setGroup("Emission Properties", attrEmissionColor);
+    sceneClass.setGroup("Volume", attrEmissionColor);
 
 
     // ---------------------------------------- DENSITY ATTRIBUTES -----------------------------------------------------

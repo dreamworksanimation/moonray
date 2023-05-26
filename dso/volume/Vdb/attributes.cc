@@ -18,8 +18,8 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "opacity gain mult" });
     sceneClass.setMetadata(attrExtinctionGainMult, "label", "opacity gain mult");
     sceneClass.setMetadata(attrExtinctionGainMult, "comment",
-        "A multiplier further applied to the opacity gain.");
-    sceneClass.setGroup("Optical Properties", attrExtinctionGainMult);
+        "A multiplier applied to the volume density");
+    sceneClass.setGroup("Volume", attrExtinctionGainMult);
 
     attrAlbedoMult = sceneClass.declareAttribute<scene_rdl2::rdl2::Rgb>(
         "color_mult", scene_rdl2::rdl2::Rgb(1.0f, 1.0f, 1.0f),
@@ -27,8 +27,8 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "color mult" });
     sceneClass.setMetadata(attrAlbedoMult, "label", "color mult");
     sceneClass.setMetadata(attrAlbedoMult, "comment",
-        "A multiplier further applied to the color.");
-    sceneClass.setGroup("Optical Properties", attrAlbedoMult);
+        "The albedo of the volume");
+    sceneClass.setGroup("Volume", attrAlbedoMult);
     
     attrIncandGainMult = sceneClass.declareAttribute<scene_rdl2::rdl2::Rgb>(
         "incandescence_gain_mult", scene_rdl2::rdl2::Rgb(1.0f, 1.0f, 1.0f),
@@ -36,16 +36,16 @@ RDL2_DSO_ATTR_DEFINE(scene_rdl2::rdl2::VolumeShader)
         { "incandescence gain mult" });
     sceneClass.setMetadata(attrIncandGainMult, "label", "incandescence gain mult");
     sceneClass.setMetadata(attrIncandGainMult, "comment",
-        "A multiplier further applied to the incandescence gain.");
-    sceneClass.setGroup("Optical Properties", attrIncandGainMult);
+        "A multiplier applied to the volume emission");
+    sceneClass.setGroup("Volume", attrIncandGainMult);
 
     attrAnisotropy = sceneClass.declareAttribute<scene_rdl2::rdl2::Float>(
         "anisotropy", 0.0f,
         scene_rdl2::rdl2::AttributeFlags::FLAGS_BINDABLE, scene_rdl2::rdl2::SceneObjectInterface::INTERFACE_GENERIC);
     sceneClass.setMetadata(attrAnisotropy, "comment",
         "Value in the interval [-1,1] that defines how foward (1) or "
-        "backward (-1) scattering the volume is. 0.0 is isotropic.");
-    sceneClass.setGroup("Optical Properties", attrAnisotropy);
+        "backward (-1) scattering the volume is.  A value of 0.0 indicates an isotropic volume.");
+    sceneClass.setGroup("Volume", attrAnisotropy);
                                                         
 RDL2_DSO_ATTR_END
 
