@@ -13,7 +13,6 @@
 #include <moonray/rendering/bvh/shading/ThreadLocalObjectState.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
-#include <scene_rdl2/render/util/stdmemory.h>
 
 #include <OpenImageIO/texture.h>
 
@@ -139,7 +138,7 @@ public:
 
     bool
     update(scene_rdl2::rdl2::Shader *shader,
-           scene_rdl2::logging::LogEventRegistry& logEventRegistry,
+           scene_rdl2::logging::LogEventRegistry<scene_rdl2::rdl2::Shader>& logEventRegistry,
            const std::string &filename,
            ispc::TEXTURE_GammaMode gammaMode,
            WrapType wrapS,
@@ -414,8 +413,7 @@ private:
     void
         logEvent(const shading::TLState *tls, int error) const
         {
-            int threadIndex = mcrt_common::getThreadIdx(tls);
-            mShader->getThreadLocalObjectState()[threadIndex].mLogs.log(error);
+            scene_rdl2::rdl2::Shader::getLogEventRegistry().log(mShader, error);
         }
 
     bool
@@ -504,7 +502,7 @@ private:
     prepareUdimTextureHandles(const std::string &filename,
                               const std::size_t uDimPos,
                               const int maxVdim,
-                              scene_rdl2::logging::LogEventRegistry& logEventRegistry,
+                              scene_rdl2::logging::LogEventRegistry<scene_rdl2::rdl2::Shader>& logEventRegistry,
                               std::string &errorMsg,
                               ispc::TEXTURE_GammaMode gammaMode,
                               bool& applyGamma)
@@ -565,7 +563,7 @@ private:
     bool
     prepareUdimTextureHandles(const std::vector<std::string> &filenameList,
                               const std::vector<int> &udimList,
-                              scene_rdl2::logging::LogEventRegistry& logEventRegistry,
+                              scene_rdl2::logging::LogEventRegistry<scene_rdl2::rdl2::Shader>& logEventRegistry,
                               std::string &errorMsg,
                               ispc::TEXTURE_GammaMode gammaMode,
                               bool& applyGamma)
@@ -612,10 +610,10 @@ private:
     ispc::UDIM_TEXTURE_Data mIspc;
 
     scene_rdl2::rdl2::Shader *mShader;
-    int mErrorUdimOutOfRangeU;  // integer log event
-    int mErrorUdimOutOfRangeV;  // integer log event
-    std::vector<int> mErrorUdimMissingTexture; // integer log event per udim tile
-    int mErrorSampleFail;       // integer log event
+    scene_rdl2::logging::LogEvent mErrorUdimOutOfRangeU;  // integer log event
+    scene_rdl2::logging::LogEvent mErrorUdimOutOfRangeV;  // integer log event
+    std::vector<scene_rdl2::logging::LogEvent> mErrorUdimMissingTexture; // integer log event per udim tile
+    scene_rdl2::logging::LogEvent mErrorSampleFail;       // integer log event
     std::vector<texture::TextureHandle*> mTextureHandles;
     texture::TextureOptions mTextureOpt[QualityCount];
     std::vector<std::unique_ptr<texture::TextureOptions>> mTextureOptions;
@@ -655,7 +653,7 @@ UdimTexture::~UdimTexture()
 
 bool
 UdimTexture::update(scene_rdl2::rdl2::Shader *shader,
-                    scene_rdl2::logging::LogEventRegistry& logEventRegistry,
+                    scene_rdl2::logging::LogEventRegistry<scene_rdl2::rdl2::Shader>& logEventRegistry,
                     const std::string &filename,
                     ispc::TEXTURE_GammaMode gammaMode,
                     WrapType wrapS,
@@ -744,7 +742,6 @@ void CPP_oiioUdimTexture(const ispc::UDIM_TEXTURE_Data *tx,
     }
 
     scene_rdl2::rdl2::Shader *shader = reinterpret_cast<scene_rdl2::rdl2::Shader *>(tx->mShader);
-    int threadIndex = mcrt_common::getThreadIdx(tls);
 
     const texture::TextureHandle *textureHandle = (udim >= tx->mNumTextures) ? 
         nullptr :
@@ -761,9 +758,9 @@ void CPP_oiioUdimTexture(const ispc::UDIM_TEXTURE_Data *tx,
             return;
         } else {
             if (udim >= tx->mNumTextures) {
-                shader->getThreadLocalObjectState()[threadIndex].mLogs.log(tx->mErrorUdimOutOfRangeV);
+                scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, tx->mErrorUdimOutOfRangeV);
             } else {
-                shader->getThreadLocalObjectState()[threadIndex].mLogs.log(tx->mErrorUdimMissingTexture[udim]);
+                scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, tx->mErrorUdimMissingTexture[udim]);
             }
             result[0] = tx->mFatalColor.r;
             result[1] = tx->mFatalColor.g;
@@ -805,7 +802,7 @@ void CPP_oiioUdimTexture(const ispc::UDIM_TEXTURE_Data *tx,
             // don't gamma the alpha channel
         }
     } else {
-        shader->getThreadLocalObjectState()[threadIndex].mLogs.log(tx->mErrorSampleFail);
+        scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, tx->mErrorSampleFail);
         result[0] = result[1] = result[2] = result[3] = 0.f;
     }
 }

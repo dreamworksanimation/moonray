@@ -26,7 +26,7 @@ public:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
 
     CookieLightFilter() : mMapShader(nullptr) {}
-    CookieLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter);
+    explicit CookieLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter);
 
     virtual ~CookieLightFilter() override {}
 

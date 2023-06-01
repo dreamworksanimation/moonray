@@ -17,8 +17,7 @@ namespace shading {
 void
 logEvent(const scene_rdl2::rdl2::Shader *shader, const shading::TLState *tls, scene_rdl2::logging::LogEvent event)
 {
-    int threadIndex = mcrt_common::getThreadIdx(tls);
-    shader->getThreadLocalObjectState()[threadIndex].mLogs.log(event);
+    scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, event);
 }
 
 } // namespace shading 
