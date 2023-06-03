@@ -21,7 +21,7 @@ public:
     ~UdimTexture();
 
     bool update(scene_rdl2::rdl2::Shader *shader,
-                scene_rdl2::logging::LogEventRegistry<scene_rdl2::rdl2::Shader>& logEventRegistry,
+                scene_rdl2::logging::LogEventRegistry& logEventRegistry,
                 const std::string &filename,
                 ispc::TEXTURE_GammaMode gammaMode,
                 WrapType wrapS,

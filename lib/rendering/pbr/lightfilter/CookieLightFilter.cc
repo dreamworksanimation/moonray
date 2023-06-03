@@ -471,9 +471,7 @@ CookieLightFilter::sampleMapShader(mcrt_common::ThreadLocalState* tls,
                             0, 0);
 
     Color result;
-    MNRY_ASSERT(mMapShader);
-    const rdl2::Map* const map = reinterpret_cast<const rdl2::Map*>(mMapShader);
-    MNRY_ASSERT(map);
+    const rdl2::Map * map = reinterpret_cast<const rdl2::Map *>(mMapShader);
     map->sample(tls->mShadingTls.get(), shading::State(&isect), &result);
     return result;
 }
