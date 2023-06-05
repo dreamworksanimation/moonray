@@ -203,8 +203,7 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
 
             scene_rdl2::math::Vec3f wi;
             LightIntersection sampleIsect;
-            if (!light->sample(isect.getP(), normalPtr, ray.getTime(), r, wi, sampleIsect, ray.getDirFootprint(),
-                               /*validForVisAovPtr*/ nullptr)) {
+            if (!light->sample(isect.getP(), normalPtr, ray.getTime(), r, wi, sampleIsect, ray.getDirFootprint())) {
                 continue;
             }
 

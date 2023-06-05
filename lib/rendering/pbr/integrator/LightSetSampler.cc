@@ -72,13 +72,8 @@ LightSetSampler::sampleIntersectAndEval(mcrt_common::ThreadLocalState* tls,
 {
     // Draw a sample from light
     LightIntersection isect;
-    // this variable will be set to "true" if sample is marked "invalid" due to self-occlusion
-    bool validForVisAov = false;
-    if (!light->sample(P, N, time, r, sample.wi, isect, rayDirFootprint, &validForVisAov)) {
-        sample.distance = isect.distance;
-        // even if light sample is "invalid" (due to self-intersection, pdf=0, etc), 
-        // it should often still contribute to the visibility aov.
-        sample.setInvalid(validForVisAov);
+    if (!light->sample(P, N, time, r, sample.wi, isect, rayDirFootprint)) {
+        sample.setInvalid();
         return;
     }
     sample.distance = isect.distance;
@@ -87,7 +82,7 @@ LightSetSampler::sampleIntersectAndEval(mcrt_common::ThreadLocalState* tls,
     sample.Li = light->eval(tls, sample.wi, P, filterR, time, isect, false, lightFilterList, rayDirFootprint,
                             &sample.pdf);
     if (isSampleInvalid(sample.Li, sample.pdf)) {
-        sample.setInvalid(validForVisAov);
+        sample.setInvalid();
     }
 }
 

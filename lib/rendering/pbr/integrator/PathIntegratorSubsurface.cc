@@ -189,7 +189,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             scene_rdl2::math::Vec3f wi;
             LightIntersection lightIsect;
             if (!light->sample(P, &N, parentRay.getTime(), lightSample,
-                wi, lightIsect, parentRay.getDirFootprint(), /*validForVisAovPtr*/ nullptr)) {
+                wi, lightIsect, parentRay.getDirFootprint())) {
                 continue;
             }
 

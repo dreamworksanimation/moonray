@@ -333,19 +333,13 @@ integrateLightSetSample(const LightSetSampler &lSampler,
     MNRY_ASSERT(lobeCount > 0);
 
     // initialize lpe member, setting each lobe entry to a null value
-    for (unsigned k = 0; k < shading::Bsdf::maxLobes; ++k) {
-        lsmp.lp.lobe[k] = nullptr;
-        lsmp.lp.valid[k] = true;
-    } 
+    for (unsigned k = 0; k < shading::Bsdf::maxLobes; ++k) lsmp.lp.lobe[k] = nullptr;
 
-    bool validForVisAov = false;
     for (int k = 0; k < lobeCount; ++k) {
         const shading::BsdfLobe* const lobe = bSampler.getLobe(k);
         // TODO: Should we still go through MIS calculations if
         //  !lobe->matchesFlags(flags)
         if (!lobe->matchesFlags(flags)) {
-            lsmp.lp.lobe[k] = lobe;
-            lsmp.lp.valid[k] = false;
             continue;
         }
 
@@ -353,8 +347,6 @@ integrateLightSetSample(const LightSetSampler &lSampler,
         int lobeMask = lobeTypeToRayMask(lobe->getType());
         const Light* light = lSampler.getLight(lightIndex);
         if (!(lobeMask & light->getVisibilityMask())) {
-            lsmp.lp.lobe[k] = lobe;
-            lsmp.lp.valid[k] = false;
             continue;
         }
 
@@ -378,10 +370,6 @@ integrateLightSetSample(const LightSetSampler &lSampler,
             f = lobe->eval(slice, lsmp.wi, &pdf);
         }
         if (isSampleInvalid(f, pdf)) {
-            // pdf == 0 does not affect the visibility -- we still need to handle this light sample in the vis aov
-            lsmp.lp.lobe[k] = lobe; // needed for vis aov calcs
-            lsmp.lp.valid[k] = false; // specifies the lobe is not valid for purposes other than the vis aov calc
-            validForVisAov = true; 
             continue;
         }
 
@@ -406,7 +394,7 @@ integrateLightSetSample(const LightSetSampler &lSampler,
     }
 
     if (isInvalid) {
-        lsmp.setInvalid(validForVisAov);
+        lsmp.setInvalid();
     }
 }
 
@@ -440,7 +428,7 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
         // natural ends to light paths. Exclusion is done by invalidating all the light's samples.
         if (light->getIsRayTerminator()) {
             for (int i = 0; i < lightSampleCount; ++i, ++s) {
-                lsmp[s].setInvalid(/*validForVisAov*/ false);
+                lsmp[s].setInvalid();
             }
             continue;
         }
@@ -508,9 +496,8 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
                                             light, lightFilterList,
                                             P, N, lightFilterSample, time, lightSample,
                                             lsmp[s], rayDirFootprint);
-            // if light sample is "invalid", it might still need to be processed for the 
-            // visibility aov (if marked isValidForVisAov)
-            if (lsmp[s].isInvalid() && !lsmp[s].isValidForVisAov()) {
+
+            if (lsmp[s].isInvalid()) {
                 continue;
             }
 
@@ -602,7 +589,7 @@ applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
             float sample[1];
             rrSamples.getSample(sample, pv.nonMirrorDepth);
             if (sample[0] > continueProbability) {
-                lsmp[s].setInvalid(/*validForVisAov*/ false);
+                lsmp[s].setInvalid();
             } else {
                 const float continueProbabilityInv = scene_rdl2::math::rcp(continueProbability);
                 lsmp[s].t *= continueProbabilityInv;

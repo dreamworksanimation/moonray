@@ -419,8 +419,8 @@ SpotLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float time
 // TODO: sample uniformly over the intersection between the 2 disks (lens, focal plane)
 // TODO: put back the texture importance sampling and combine results using MIS
 bool
-SpotLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                      Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
+SpotLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+                  Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
 {
     MNRY_ASSERT(mOn);
 
@@ -466,7 +466,6 @@ SpotLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r
     wi = lensPosRender - p;
 
     if (n  &&  dot(*n, wi) <= 0.0f) {
-        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

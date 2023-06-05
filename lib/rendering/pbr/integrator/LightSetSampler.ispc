@@ -64,16 +64,10 @@ LightSetSampler_sampleIntersectAndEval(
 {
     // Draw a sample from light
     LightIntersection isect;
-    
-    // this variable will be set to "true" if sample is marked "invalid" due to self-occlusion
-    varying bool isValidForVisAov = false;
     // TODO: We compute the pdf in there but don't return it. Instead we compute
     // it again in eval()
-    if (!Light_sample(light, P, cullingNormal, time, r, sample.wi, isect, rayDirFootprint, isValidForVisAov)) {
-        sample.distance = isect.distance;
-        // even if light sample is "invalid" (due to self-intersection, pdf=0, etc), 
-        // it should contribute to the visibility aov.
-        LightSample_setInvalid(&sample, isValidForVisAov);
+    if (!Light_sample(light, P, cullingNormal, time, r, sample.wi, isect, rayDirFootprint)) {
+        LightSample_setInvalid(&sample);
         return;
     }
 
@@ -85,7 +79,7 @@ LightSetSampler_sampleIntersectAndEval(
     sample.Li = Light_eval(light, tls, sample.wi, P, filterR, time, isect, false, lightFilterList, rayDirFootprint,
                            &sample.pdf);
     if (isSampleInvalid(sample.Li, sample.pdf)) {
-        LightSample_setInvalid(&sample, isValidForVisAov);
+        LightSample_setInvalid(&sample);
     }
 }
 

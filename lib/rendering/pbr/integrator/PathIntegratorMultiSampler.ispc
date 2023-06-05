@@ -38,16 +38,15 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
              const varying RayState &                rayState,
                    varying uint32_t                  dataPtrHandle,
                    varying OcclTestType              occlTestType,
-             const varying int32_t                   assignmentId,
-             const varying bool                      sampleIsValidForVisAov)
+             const varying int32_t                   assignmentId)
 {
     uniform uint32_t numNewEntries = 0;
-    // This matches the behavior of the scalar codepath.
 
-    if ((sampleIsValidForVisAov && maxT > minT) || 
-        (!sampleIsValidForVisAov && !isBlack(radiance) && maxT > minT)) {
+    // This matches the behavior of the scalar codepath.
+    if (!isBlack(radiance) && maxT > minT) {
 
         MNRY_ASSERT(isNormalized(dir));
+
         BundledOcclRay_init(dst,
                             parentRay.org,
                             dir,
@@ -74,6 +73,7 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
         // according to ISPC documentation https://ispc.github.io/ispc.html.
         // Please make sure that 1 extra element was allocated for the output array.
         numNewEntries = packed_store_active2(dstIndices, indices);
+
         snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_FILL_OCCL_RAY);
 
     } else {
@@ -114,9 +114,7 @@ prepareOcclusionTestRays(
               uniform uint32_t *        uniform dstPresenceShadowsRayIndices,
               uniform uint32_t &                numPresenceShadowsRays,
               varying OcclTestType &            occlTestType,
-        const varying Intersection &            isect,
-        const varying bool                      sampleIsValidForVisAov,
-        const varying bool                      sampleIsOccludedForVisAov)
+              const varying Intersection &      isect)
 {
     // Presence handling code for direct lighting
     // The shadow ray will be submitted to its own
@@ -143,9 +141,6 @@ prepareOcclusionTestRays(
     rayEpsilon = max(rayEpsilon, shadowRayEpsilon);
     float maxT;
 
-    b->mIsOccluded = sampleIsOccludedForVisAov;
-    b->mIsValidForVisAov = sampleIsValidForVisAov;
-
     // if falloff enabled, don't shorten ray -- instead, use color interpolation (more expensive)
     float clearRadius = light->mClearRadiusFalloffDistance > 0.f ? 0.f : light->mClearRadius;
 
@@ -169,7 +164,7 @@ prepareOcclusionTestRays(
             srcRayIndices,
             parentRay, wi,
             rayEpsilon, maxT,
-            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId, sampleIsValidForVisAov);
+            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId);
     } else {
         // pass in light for shadow linking purpose
         b->mLight = light;
@@ -179,7 +174,7 @@ prepareOcclusionTestRays(
             srcRayIndices,
             parentRay, wi,
             rayEpsilon, maxT,
-            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId, sampleIsValidForVisAov);
+            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId);
     }
 }
 
@@ -261,8 +256,7 @@ addDirectVisibleBsdfLobeSampleContributionBundled( const uniform PathIntegrator 
         rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->tDirect, currSamp->distance, bundledOcclRayData,
         srcOcclRayIndices, dstOcclRays, dstOcclRayIndices, numOcclRays,
         presenceShadowsRays, dstPresenceShadowsRayIndices,
-        numPresenceShadowsRays, occlTestType, isect, 
-        /*sampleIsValidForVisAov*/ false, /*sampleIsOccludedForVisAov*/ false);
+        numPresenceShadowsRays, occlTestType, isect);
 }
 
 
@@ -321,8 +315,7 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                                                        varying BundledOcclRay * uniform presenceShadowsRays,
                                                        uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
                                                        uniform uint32_t &               numPresenceShadowsRays,
-                                                 const varying Intersection &           isect,
-                                                 const varying Vec3f &                  cullingNormal)
+                                                       const varying Intersection &     isect)
 {
     MNRY_ASSERT(CPP_isIntegratorAccumulatorRunning(pbrTls));
 
@@ -344,10 +337,11 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
         }
 
         for (uniform int is = 0; is < lightSampleCount; s++, is++) {
+
             varying LightSample *uniform currSamp = &lsmp[s];
 
-            if (LightSample_isValid(currSamp) || LightSample_isValidForVisAov(currSamp)) {
-                
+            if (LightSample_isValid(currSamp)) {
+
                 // Only trace up to the lsmp[s].distance. It is set to the distance to
                 // the intersected light in this direction, if any.
                 snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_ADD_DIRECT_VISIBLE_LIGHTING);
@@ -366,8 +360,10 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
 
                     // LightSample contains up to BSDF_MAX_LOBE
                     for (uniform int i = 0; i < BSDF_MAX_LOBE; ++i) {
-                        if ((LightSample_isValid(currSamp)          && isActive(lp.lobe[i]) && lp.valid[i]) || 
-                            (LightSample_isValidForVisAov(currSamp) && isActive(lp.lobe[i]))) {
+                        if (!isActive(lp.lobe[i])) {
+                            lpeStateId[i] = -1;
+                            continue;
+                        }
 
                         const varying BsdfLobe &lobe = *lp.lobe[i];
                         const varying Bsdf &bsdf = *LightSetSampler_getBsdf(&lSampler);
@@ -384,9 +380,6 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                         if (lpeStateId[i] < 0) continue;
 
                         ++numItems;
-                        } else {
-                            lpeStateId[i] = -1;
-                        }
                     }
 
                     if (numItems > 0) {
@@ -414,25 +407,16 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                     }
                 }
 
-                bool visAovSampleIsOccluded = false;
-                float distance = currSamp->distance;
-                if (LightSample_isValidForVisAov(currSamp)) {
-                    visAovSampleIsOccluded = isValidCullingNormal(cullingNormal) && 
-                                             dot(cullingNormal, currSamp->wi) < sEpsilon;
-                    distance = currSamp->vis.distance;
-                    currSamp->t = sBlack;
-                }
-
                 varying OcclTestType occlTestType = STANDARD;
                 prepareOcclusionTestRays(pbrTls, light, rayState, parentRay,
-                    rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->t, distance,
+                    rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->t, currSamp->distance,
                     data, srcRayIndices,
                     &dstOcclRays[s], dstOcclRayIndices,
                     numOcclRays,
                     &presenceShadowsRays[s], dstPresenceShadowsRayIndices,
-                    numPresenceShadowsRays, occlTestType, isect, LightSample_isValidForVisAov(currSamp), 
-                    visAovSampleIsOccluded);
-            }       
+                    numPresenceShadowsRays, occlTestType, isect);
+            }
+
             // TODO: Ray debugging.
 
             unmasked {
@@ -874,8 +858,7 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
                                                     presenceShadowsRays + bsdfSampleCount,
                                                     presenceShadowsRayIndices,
                                                     numPresenceShadowsRaysFilled,
-                                                    isect,
-                                                    cullingNormal);
+                                                    isect);
 
     MNRY_ASSERT(numOcclRaysFilled <= numOcclRaysToAlloc * VLEN);
 

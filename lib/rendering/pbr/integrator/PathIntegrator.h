@@ -338,7 +338,7 @@ private:
             const LightSetSampler &lSampler, const LightSample *lsmp,
             const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-            const shading::Intersection &isect, const scene_rdl2::math::Vec3f *cullingNormal) const;
+            const shading::Intersection &isect) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
             const Subpixel &sp, int cameraId,
@@ -537,16 +537,6 @@ private:
             int pixelX, int pixelY, int subpixelIndex, int pixelSamples,
             const Sample& sample, mcrt_common::RayDifferential &ray,
             Subpixel &sp, PathVertex &pv) const;
-
-    // Add the light samples we've labeled "invalid" to the visibility aov. Currently, there are two types of invalid
-    // light samples that we handle for the visibility aov:
-    //    1. Samples marked "invalid" due to self-intersection (i.e. dot(isect normal, light sample wi) < epsilon)
-    //    2. Samples marked "invalid" because f == black or pdf == 0
-    void addInvalidLightSamplesToVisibilityAov(float *aovs, const LightSample &sample, pbr::TLState *pbrTls, 
-                const mcrt_common::RayDifferential &parentRay, const shading::Intersection &isect,
-                float rayEpsilon, float shadowRayEpsilon, const Light *light, int lpeId, 
-                const LightSetSampler &lSampler, int cameraId, const scene_rdl2::math::Vec3f* cullingNormal, 
-                Subpixel const& sp, unsigned& sequenceID) const;
 
     // Utility function handling occlusion/presence shadow ray query based on whether light has presence shadow enabled.
     // Return true when the ray is completely occluded

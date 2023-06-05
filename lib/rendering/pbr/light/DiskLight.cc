@@ -386,8 +386,8 @@ DiskLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float time
 }
 
 bool
-DiskLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                      Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
+DiskLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+        Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
 {
     MNRY_ASSERT(mOn);
 
@@ -503,7 +503,6 @@ DiskLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r
     // Compute wi and d
     wi = renderHit - p;
     if (n  &&  dot(*n, wi) < sEpsilon) {
-        if (validForVisAov) *validForVisAov = true;
         return false;
     }
     isect.distance = length(wi);

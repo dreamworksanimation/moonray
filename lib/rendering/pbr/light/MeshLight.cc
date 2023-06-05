@@ -1600,9 +1600,8 @@ MeshLight::intersect(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::V
 }
 
 bool
-MeshLight::sampleImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time, 
-                      const scene_rdl2::math::Vec3f& r, scene_rdl2::math::Vec3f &wi, LightIntersection &isect, 
-                      float rayDirFootprint, bool* validForVisAov) const
+MeshLight::sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time, const scene_rdl2::math::Vec3f& r,
+    scene_rdl2::math::Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
 {
     MNRY_ASSERT(mOn);
 
@@ -1738,7 +1737,6 @@ MeshLight::sampleImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::
 
     // light is on other side of shading point
     if (n && dot(*n, wi) < scene_rdl2::math::sEpsilon) {
-        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

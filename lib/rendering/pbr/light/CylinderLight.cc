@@ -336,8 +336,8 @@ CylinderLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float 
 
 
 bool
-CylinderLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                          Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
+CylinderLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+        Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
 {
     MNRY_ASSERT(mOn);
 
@@ -363,7 +363,6 @@ CylinderLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3
     }
     wi *= rcp(isect.distance);
     if (n  &&  dot(*n, wi) < sEpsilon) {
-        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

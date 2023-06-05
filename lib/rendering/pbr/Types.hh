@@ -68,9 +68,7 @@ enum OcclTestType
     HUD_MEMBER(int, mLpeStateId);                                       \
     HUD_MEMBER(float, mRayEpsilon);                                     \
     HUD_MEMBER(float, mCameraId);                                       \
-    HUD_PTR(const Light *, mLight);                                     \
-    HUD_MEMBER(bool, mIsOccluded);                                      \
-    HUD_MEMBER(bool, mIsValidForVisAov)
+    HUD_PTR(const Light *, mLight)
 
 #define BUNDLED_OCCL_RAY_DATA_VALIDATION                \
     HUD_BEGIN_VALIDATION(BundledOcclRayData);           \
@@ -80,8 +78,6 @@ enum OcclTestType
     HUD_VALIDATE(BundledOcclRayData, mRayEpsilon);      \
     HUD_VALIDATE(BundledOcclRayData, mCameraId);        \
     HUD_VALIDATE(BundledOcclRayData, mLight);           \
-    HUD_VALIDATE(BundledOcclRayData, mIsOccluded);      \
-    HUD_VALIDATE(BundledOcclRayData, mIsValidForVisAov);\
     HUD_END_VALIDATION
 
 //

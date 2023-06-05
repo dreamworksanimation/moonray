@@ -234,8 +234,7 @@ SpotLight_intersect(const uniform Light * uniform li,
 varying bool
 SpotLight_sample_uniform(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &n, varying float time,
-        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint,
-        varying bool &isValidForVisAov)
+        const varying Vec3f &r, varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform SpotLight * uniform light = (const uniform SpotLight * uniform)li;
@@ -284,16 +283,15 @@ SpotLight_sample_uniform(const uniform Light * uniform li,
     Vec3f lensPosLocal = {lensCoords.x, lensCoords.y, 0.0f};
     Vec3f lensPosRender = LocalParamLight_xformPointLocal2Render(lpl, lensPosLocal, time);
     wi = lensPosRender - p;
-
+ 
+    if (isValidCullingNormal(n)  &&  dot(n, wi) <= 0.0f) {
+        return false;
+    }
+    
     isect.distance = length(wi);
     isect.N = Light_getDirection(li, time);
 
     wi = wi / isect.distance;
- 
-    if (isValidCullingNormal(n)  &&  dot(n, wi) <= 0.0f) {
-        isValidForVisAov = true;
-        return false;
-    }
 
     return true;
 }

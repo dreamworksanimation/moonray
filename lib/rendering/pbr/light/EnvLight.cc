@@ -257,8 +257,8 @@ EnvLight::intersect(const Vec3f &p, const Vec3f *n, const Vec3f &wi, float time,
 }
 
 bool
-EnvLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
-                     Vec3f &wi, LightIntersection &isect, float rayDirFootprint, bool* validForVisAov) const
+EnvLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
+                 Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const
 {
     MNRY_ASSERT(mOn);
 
@@ -285,7 +285,6 @@ EnvLight::sampleImpl(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
     }
 
     if (n  &&  dot(*n, wi) < sEpsilon) {
-        if (validForVisAov) *validForVisAov = true;
         return false;
     }
 

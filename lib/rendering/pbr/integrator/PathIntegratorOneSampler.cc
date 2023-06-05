@@ -139,8 +139,7 @@ PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
     LightIntersection lightIsect;
     scene_rdl2::math::Vec3f wi;
     const scene_rdl2::math::Vec3f rLight(r[0], r[1], r[2]); // first 3 samples used for light sampling
-    if (!light->sample(isect.getP(), cullingNormal, ray.getTime(), rLight, wi, lightIsect, ray.getDirFootprint(), 
-                       /*validForVisAovPtr*/ nullptr)) {
+    if (!light->sample(isect.getP(), cullingNormal, ray.getTime(), rLight, wi, lightIsect, ray.getDirFootprint())) {
         return scene_rdl2::math::sBlack;
     }
 

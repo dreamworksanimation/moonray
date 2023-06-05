@@ -16,22 +16,12 @@ struct Arena;
 
 //----------------------------------------------------------------------------
 
-struct LightSampleLPE 
-{
+struct LightSampleLPE {
     Color t[BSDF_MAX_LOBE];
     const varying BsdfLobe * uniform lobe[BSDF_MAX_LOBE];
-    bool valid[BSDF_MAX_LOBE];
 };
 
-// Additional information needed to calculate the 
-// visibility AOV ratio
-struct VisibilityAovInfo 
-{
-    float distance;
-};
-
-struct LightSample 
-{
+struct LightSample {
     Vec3f wi;
     float distance;
     float pdf;
@@ -39,24 +29,17 @@ struct LightSample
     Color t;
 
     LightSampleLPE lp;
-    VisibilityAovInfo vis;
 };
 
 static const uniform float sInvalidLightSampleDistance = 0.0f;
 
-inline void LightSample_setInvalid(varying LightSample * uniform lsmp, varying bool isValidForVisAov) 
-{   
-    if (lsmp->distance != sInvalidLightSampleDistance) { 
-        if (isValidForVisAov) { lsmp->vis.distance = lsmp->distance; }
-        else { lsmp->vis.distance = sInvalidLightSampleDistance; }
-    }
-    lsmp->distance = sInvalidLightSampleDistance;  
-}
-inline varying bool LightSample_isValidForVisAov(const varying LightSample * uniform lsmp) { 
-    return lsmp->vis.distance > 0.0f; 
-}
-inline varying bool LightSample_isValid(const varying LightSample * uniform lsmp) {  return lsmp->distance > 0.0f;  }
-inline varying bool LightSample_isInvalid(const varying LightSample * uniform lsmp) {  return lsmp->distance <= 0.0f;  }
+inline void LightSample_setInvalid(varying LightSample * uniform lsmp)
+{  lsmp->distance = sInvalidLightSampleDistance;  }
+inline varying bool LightSample_isValid(const varying LightSample * uniform lsmp)
+{  return lsmp->distance > 0.0f;  }
+inline varying bool LightSample_isInvalid(const varying LightSample * uniform lsmp)
+{  return lsmp->distance <= 0.0f;  }
+
 
 //----------------------------------------------------------------------------
 

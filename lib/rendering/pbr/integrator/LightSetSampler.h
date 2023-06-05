@@ -33,22 +33,12 @@ namespace pbr {
 
 /// Additional information per light sample
 /// that is needed for light path event processing
-struct LightSampleLPE 
-{
+struct LightSampleLPE {
     scene_rdl2::math::Color t[shading::Bsdf::maxLobes];
     const shading::BsdfLobe *lobe[shading::Bsdf::maxLobes];
-    bool valid[shading::Bsdf::maxLobes];
 };
 
-// Additional information needed to calculate the 
-// visibility AOV ratio
-struct VisibilityAovInfo 
-{
-    float distance;
-};
-
-struct LightSample 
-{
+struct LightSample {
     scene_rdl2::math::Vec3f wi;
     float distance;
     float pdf;
@@ -56,19 +46,12 @@ struct LightSample
     scene_rdl2::math::Color t;
 
     LightSampleLPE lp;
-    VisibilityAovInfo vis;
 
     static constexpr float sInvalidDistance = 0.0f;
 
-    finline void setInvalid(bool validForVisAov) {  
-                                                  if (distance != sInvalidDistance) { 
-                                                    vis.distance = validForVisAov ? distance : sInvalidDistance; 
-                                                  }
-                                                  distance = sInvalidDistance;
-                                               }
-    finline bool isValidForVisAov() const      {  return vis.distance > 0.0f; }
-    finline bool isValid() const               {  return distance > 0.0f;  }
-    finline bool isInvalid() const             {  return distance <= 0.0f;  }
+    finline void setInvalid()       {  distance = sInvalidDistance;  }
+    finline bool isValid() const    {  return distance > 0.0f;  }
+    finline bool isInvalid() const  {  return distance <= 0.0f;  }
 };
 
 ///
