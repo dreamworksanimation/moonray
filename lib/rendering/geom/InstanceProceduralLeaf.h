@@ -26,14 +26,6 @@ enum class InstanceMethod {
     XFORMS = 2
 };
 
-static const shading::TypedAttributeKey<scene_rdl2::math::Mat4f> sInstanceLevelKeys[] = {
-    shading::StandardAttributes::sInstanceTransformLevel0,
-    shading::StandardAttributes::sInstanceTransformLevel1,
-    shading::StandardAttributes::sInstanceTransformLevel2,
-    shading::StandardAttributes::sInstanceTransformLevel3,
-    shading::StandardAttributes::sInstanceTransformLevel4
-};
-
 bool
 getReferenceData(const scene_rdl2::rdl2::Geometry& rdlGeometry,
                  const scene_rdl2::rdl2::SceneObjectVector& references,

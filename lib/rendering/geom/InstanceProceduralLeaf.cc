@@ -215,9 +215,18 @@ InstanceProceduralLeaf::instanceWithXforms(const GenerateContext& generateContex
         // primitive attributes
         std::unordered_map<shading::AttributeKey, const void*, shading::AttributeKeyHash> attrMap;
 
+        static const shading::TypedAttributeKey<scene_rdl2::math::Mat4f> instanceLevelKeys[] = {
+            shading::StandardAttributes::sInstanceTransformLevel0,
+            shading::StandardAttributes::sInstanceTransformLevel1,
+            shading::StandardAttributes::sInstanceTransformLevel2,
+            shading::StandardAttributes::sInstanceTransformLevel3,
+            shading::StandardAttributes::sInstanceTransformLevel4
+        };
+
+
         bool addInstanceTransformAttribute = false;
         shading::TypedAttributeKey<scene_rdl2::math::Mat4f> instanceLevelKey =
-            sInstanceLevelKeys[instanceLevel];
+            instanceLevelKeys[instanceLevel];
 
         bool addInstanceObjectTransformAttribute = false;
 
