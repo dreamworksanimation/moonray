@@ -795,7 +795,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                                                   0));
                             // add presence data to cryptomatte -- the only data we don't have at this point is 
                             // radiance, which we will add to the cryptomatte in the radiance handler
-                            if (cryptomatteData->mCryptomatteBuffer != nullptr) {
+                            if (cryptomatteData->mCryptomatteBuffer != nullptr && rs->mPathVertex.pathPixelWeight > 0.01f) {
                                 scene_rdl2::math::Color4 beauty(0.f, 0.f, 0.f, presences[i]);
                                 cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
                                                                                     rs->mPathVertex.pathPixelWeight,
@@ -844,7 +844,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         }
 
                         // we will add beauty data in the radiance handler
-                        if (cryptomatteData->mCryptomatteBuffer != nullptr) {
+                        if (cryptomatteData->mCryptomatteBuffer != nullptr && rs->mPathVertex.pathPixelWeight > 0.01f) {
                             scene_rdl2::math::Color4 beauty(0.f, 0.f, 0.f, presences[i]);
                             cryptomatteData->mCryptomatteBuffer->addSampleVector(px, py, cryptomatteData->mId, 
                                                                                 rs->mPathVertex.pathPixelWeight,

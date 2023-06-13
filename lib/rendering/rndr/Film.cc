@@ -1063,7 +1063,9 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                         } else {
                             film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);
                         }
-                    } else if (cryptomatteData->mPresenceDepth >= 0) {
+                    } else if (cryptomatteData->mPresenceDepth >= 0 && cryptomatteData->mPathPixelWeight > 0.01f) {
+                        // We divide by pathPixelWeight to compute Cryptomatte beauty.  This can cause fireflies if
+                        // the value is small, so we clamp at 0.01.
                         beauty.a = 0.f;
                         // presence path: only add beauty -- the rest of the data is populated in the shadeBundleHandler 
                         film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);

@@ -980,6 +980,10 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         unsigned px, py;
         uint32ToPixelLocation(sp.mPixel, &px, &py);
 
+    if (pv.pathPixelWeight > 0.01f) {
+        // We divide by pathPixelWeight to compute Cryptomatte beauty.  This can cause fireflies if
+        // the value is small, so we clamp at 0.01.
+
         float presenceInv = pv.pathPixelWeight == 0.f ? 0.f : (1.f / pv.pathPixelWeight);
         scene_rdl2::math::Color cryptoBeauty = radiance - presenceRadiance;
         cryptoBeauty *= presenceInv;
@@ -994,9 +998,15 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                                                           cryptomatteParamsPtr->mUV,
                                                                           pv.presenceDepth,
                                                                           moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
+        }
     } else if (cryptomatteParamsPtr) {
         // if non-presence path, we still need to record radiance
-        cryptomatteParamsPtr->mBeauty = scene_rdl2::math::Color4(radiance / pv.pathThroughput);
+
+        if (pv.pathPixelWeight > 0.01f) {
+            cryptomatteParamsPtr->mBeauty = scene_rdl2::math::Color4(radiance / pv.pathPixelWeight);
+        } else {
+            cryptomatteParamsPtr->mBeauty = scene_rdl2::math::Color4(0, 0, 0, 0);
+        }
     }
 
     RAYDB_SET_CONTRIBUTION(pbrTls, radiance / pv.pathThroughput);
