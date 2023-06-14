@@ -4,7 +4,7 @@
 function(${PROJECT_NAME}_cxx_compile_definitions target)
     if(CMAKE_BINARY_DIR MATCHES ".*refplat-vfx2020.*")
         # Use openvdb abi version 7 for vfx2020 to match up with Houdini 18.5
-        set(abi OPENVDB_ABI_VERSION_NUMBER=7)
+        set(openvdb_abi OPENVDB_ABI_VERSION_NUMBER=7)
     endif()
 
     target_compile_definitions(${target}
@@ -27,12 +27,11 @@ function(${PROJECT_NAME}_cxx_compile_definitions target)
 
         PUBLIC
             __AVX__
-            _GLIBCXX_USE_CXX11_ABI=0                # https://gcc.gnu.org/onlinedocs/libstdc++/manual/using_dual_abi.html
             GL_GLEXT_PROTOTYPES=1                   # This define makes function symbols to be available as extern declarations.
             TBB_SUPPRESS_DEPRECATED_MESSAGES        # Suppress 'deprecated' messages from TBB
 
             # OpenVdb defs should probably propagate to users of some lib/rendering headers
-            ${abi}                                  # Which version of the openvdb ABI to use
+            ${openvdb_abi}                          # Which version of the openvdb ABI to use
             OPENVDB_USE_BLOSC                       # Denotes whether VDB was built with Blosc support. Shouldn't this be defined by openvdb?
             OPENVDB_USE_LOG4CPLUS                   # Should openvdb use log4cplus (vs. std::cerr) for log messages?
     )
