@@ -131,6 +131,7 @@ package-configurations:
     - buildtools
     environment:
       BROKEN_CUSTOM_ARGS_UNITTESTS: 1
+      REZ_ALTERNATE_CONFIGURATION: CI
     packages_path:
     - /rel/rez/dwa
     - /rel/rez/third_party
