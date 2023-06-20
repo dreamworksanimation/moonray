@@ -22,6 +22,7 @@ target_sources(${component}
         Instance.cc
         IntersectionInit.cc
         InstanceProceduralLeaf.cc
+        LocalMotionBlur.cc
         Points.cc
         PolygonMesh.cc
         Primitive.cc
@@ -76,6 +77,7 @@ set_property(TARGET ${component}
         Instance.h
         InstanceProceduralLeaf.h
         LayerAssignmentId.h
+        LocalMotionBlur.h
         MotionBlurParams.h
         Points.h
         PolygonMesh.h

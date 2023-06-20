@@ -634,10 +634,20 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
                 }
                 // Prepend geometry --> world.
                 shading::XformSamples geometry2render;
-                Mat4f l2r0 = toFloat(geometry->get(scene_rdl2::rdl2::Node::sNodeXformKey,
-                                                   scene_rdl2::rdl2::TIMESTEP_BEGIN) * world2render);
-                Mat4f l2r1 = toFloat(geometry->get(scene_rdl2::rdl2::Node::sNodeXformKey,
-                                                   scene_rdl2::rdl2::TIMESTEP_END) * world2render);
+
+                Mat4f l2r0, l2r1;
+                if (geometry->getUseLocalMotionBlur() && motionBlurParams.isMotionBlurOn()) {
+                    // If use_local_motion_blur is on then the node_xform is
+                    // baked into the points so we don't use it here.
+                    l2r0 = toFloat(world2render);
+                    l2r1 = toFloat(world2render);
+                } else {
+                    l2r0 = toFloat(geometry->get(scene_rdl2::rdl2::Node::sNodeXformKey,
+                                                 scene_rdl2::rdl2::TIMESTEP_BEGIN) * world2render);
+                    l2r1 = toFloat(geometry->get(scene_rdl2::rdl2::Node::sNodeXformKey,
+                                                 scene_rdl2::rdl2::TIMESTEP_END) * world2render);
+                }
+
                 if (scene_rdl2::math::isEqual(l2r0, l2r1) ||
                     !motionBlurParams.isMotionBlurOn()) {
                     geometry2render = {xform<Xform3f>(l2r0)};
