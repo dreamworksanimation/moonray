@@ -16,10 +16,12 @@ namespace local_motion_blur {
 LocalMotionBlur::LocalMotionBlur(const GenerateContext& generateContext,
                                  const std::vector<XformSamples>& regionXforms,
                                  const PrimitiveAttributeTable& pointsAttributes,
+                                 const bool useLocalCameraMotionBlur,
                                  const float strengthMult,
                                  const float radiusMult) :
     mRdlGeometry(generateContext.getRdlGeometry()),
-    mFps(24.0f)
+    mFps(24.0f),
+    mUseLocalCameraMotionBlur(useLocalCameraMotionBlur)
 {
     // Get this geometry's node_xform unblended values
     const Mat4d m0 = mRdlGeometry->get(Node::sNodeXformKey, TIMESTEP_BEGIN);
@@ -37,22 +39,24 @@ LocalMotionBlur::LocalMotionBlur(const GenerateContext& generateContext,
     const SceneVariables& sv = mRdlGeometry->getSceneClass().getSceneContext()->getSceneVariables();
     mFps = sv.get(SceneVariables::sFpsKey);
 
-    // Get the inverse of the scene camera's node_xform
-    const SceneObject* cameraObject = sv.getCamera();
-    const Camera* camera = (cameraObject) ?  cameraObject->asA<Camera>() : nullptr;
-    mCameraXform = { Xform3f(scene_rdl2::math::one) };
-    if (camera) {
-        const Mat4d m0 = camera->get(Node::sNodeXformKey, TIMESTEP_BEGIN).inverse();
-        const Mat4d m1 = camera->get(Node::sNodeXformKey, TIMESTEP_END).inverse();
-        const Xform3f x0(m0.vx.x, m0.vx.y, m0.vx.z,
-                         m0.vy.x, m0.vy.y, m0.vy.z,
-                         m0.vz.x, m0.vz.y, m0.vz.z,
-                         m0.vw.x, m0.vw.y, m0.vw.z);
-        const Xform3f x1(m1.vx.x, m1.vx.y, m1.vx.z,
-                         m1.vy.x, m1.vy.y, m1.vy.z,
-                         m1.vz.x, m1.vz.y, m1.vz.z,
-                         m1.vw.x, m1.vw.y, m1.vw.z);
-        mCameraXform = {x0, x1};
+    if (useLocalCameraMotionBlur) {
+        // Get the inverse of the scene camera's node_xform
+        const SceneObject* cameraObject = sv.getCamera();
+        const Camera* camera = (cameraObject) ?  cameraObject->asA<Camera>() : nullptr;
+        mCameraXform = { Xform3f(scene_rdl2::math::one) };
+        if (camera) {
+            const Mat4d m0 = camera->get(Node::sNodeXformKey, TIMESTEP_BEGIN).inverse();
+            const Mat4d m1 = camera->get(Node::sNodeXformKey, TIMESTEP_END).inverse();
+            const Xform3f x0(m0.vx.x, m0.vx.y, m0.vx.z,
+                             m0.vy.x, m0.vy.y, m0.vy.z,
+                             m0.vz.x, m0.vz.y, m0.vz.z,
+                             m0.vw.x, m0.vw.y, m0.vw.z);
+            const Xform3f x1(m1.vx.x, m1.vx.y, m1.vx.z,
+                             m1.vy.x, m1.vy.y, m1.vy.z,
+                             m1.vz.x, m1.vz.y, m1.vz.z,
+                             m1.vw.x, m1.vw.y, m1.vw.z);
+            mCameraXform = {x0, x1};
+        }
     }
 
     for (size_t i = 0; i < regionXforms.size(); ++i) {
@@ -172,15 +176,18 @@ LocalMotionBlur::apply(const MotionBlurType mbType,
             if (!isOne(mbMult)) {
                 // Account for motion in the camera's node_xform.
                 Vec3f cameraXformDiff(0.f);
-                if (mCameraXform.size() > 1) {
-                    cameraXformDiff = transformPoint(mCameraXform[1], p1) -
-                                      transformPoint(mCameraXform[0], p1);
+                if (mUseLocalCameraMotionBlur) {
+                    if (mCameraXform.size() > 1) {
+                        cameraXformDiff = transformPoint(mCameraXform[0].inverse(), p1) -
+                                          transformPoint(mCameraXform[1].inverse(), p1);
+                    }
                 }
 
                 // Translate the first motion step position towards the second
                 // motion step position(p1) then add the xform difference.
                 vertices(i, 0) = p1 + (p0 - p1) * mbMult  +
                                  cameraXformDiff * (1.0f - mbMult);
+
             }
         }
         break;

@@ -176,6 +176,7 @@ private:
     scene_rdl2::math::Vec3f         mCameraClose2CameraOpenTrans;
     scene_rdl2::math::Quaternion3f  mCameraOpen2CameraCloseRot;
     scene_rdl2::math::Vec3f         mCameraOpen2CameraCloseTrans;
+    scene_rdl2::math::Mat4f         mCameraClose2CameraOpen;
 };
 
 } // namespace pbr

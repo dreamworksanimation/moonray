@@ -60,6 +60,7 @@ public:
     LocalMotionBlur(const moonray::geom::GenerateContext& generateContext,
                     const std::vector<moonray::shading::XformSamples>& regionXforms,
                     const moonray::shading::PrimitiveAttributeTable& pointsAttributes,
+                    const bool useLocalCameraMotionBlur=false,
                     const float strengthMult=1.0f,
                     const float radiusMult=1.0f);
 
@@ -81,6 +82,7 @@ private:
     moonray::shading::XformSamples mCameraXform;
     float mShutterInterval;
     float mFps;
+    bool mUseLocalCameraMotionBlur;
 };
 
 

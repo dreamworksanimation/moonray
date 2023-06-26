@@ -45,6 +45,7 @@ Camera::update(const Mat4d& world2render)
     // and shutter open
     Mat4d cameraClose2World = computeC2W(1.0f);
     const Mat4f cameraClose2CameraOpen = toFloat(cameraClose2World * getWorld2Camera());
+    mCameraClose2CameraOpen = cameraClose2CameraOpen;
     const Mat4f cameraOpen2CameraClose = toFloat((cameraClose2World * getWorld2Camera()).inverse());
     // rotations
     mCameraClose2CameraOpenRot = Quaternion3f(asVec3(cameraClose2CameraOpen.vx),
@@ -92,6 +93,7 @@ Camera::computeCamera2Render(float time) const
         const Quaternion3f r = slerp(Quaternion3f(scene_rdl2::math::one), mCameraClose2CameraOpenRot, time);
         const Vec3f t = mCameraClose2CameraOpenTrans * time;
         const Mat4f cameraTime2CameraOpen = Mat4f(r, Vec4f(t.x, t.y, t.z, 1.f));
+
         // Then apply camera to render transform
         return cameraTime2CameraOpen * getCamera2Render();
     } else {
@@ -108,6 +110,7 @@ Camera::computeRender2Camera(float time) const
         const Quaternion3f r = slerp(Quaternion3f(scene_rdl2::math::one), mCameraOpen2CameraCloseRot, time);
         const Vec3f t = mCameraOpen2CameraCloseTrans * time;
         const Mat4f cameraOpen2CameraTime = Mat4f(r, Vec4f(t.x, t.y, t.z, 1.f));
+
         // Then apply camera to render transform
         return getRender2Camera() * cameraOpen2CameraTime;
     } else {
