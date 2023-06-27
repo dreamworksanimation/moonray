@@ -200,12 +200,15 @@ CookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     Color f = BsdfLobe_computeScaleAndFresnel(lobe, cosMI) * G * D4 * rcp(cosNO) *
               (slice.mIncludeCosineTerm  ?  1.0f  :  rcp(cosNI));
 
-    const Color compen = CookTorranceBsdfLobe_evalEnergyCompensation(
-                             ct,
-                             MICROFACET_DISTRIBUTION_BECKMANN,
-                             cosNO, cosNI,
-                             slice.mIncludeCosineTerm);
-    f = f + compen;
+    const float w2 = CookTorranceBsdfLobe_energyCompensationWeight(ct);
+    if (w2 > 0.0f) {
+        const Color compen = CookTorranceBsdfLobe_evalEnergyCompensation(
+                                 ct,
+                                 MICROFACET_DISTRIBUTION_BECKMANN,
+                                 cosNO, cosNI,
+                                 slice.mIncludeCosineTerm);
+        f = f + compen;
+    }
 
     // Compute pdf of sampling wi using eq. (17) in [1]
     // pdf(wi) = D(m) * |m.n| / (4 * |o.m|)
@@ -218,7 +221,6 @@ CookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         D4 = 0.25f * exp(minusTanThetaM2 * rcp(alpha2)) *
                 rcp(sPi * alpha2 * cosThetaM4);
 #endif
-        const float w2 = CookTorranceBsdfLobe_energyCompensationWeight(ct);
         const float p2 = CookTorranceBsdfLobe_energyCompensationPDF(
                              ct,
                              MICROFACET_DISTRIBUTION_BECKMANN,
@@ -745,12 +747,15 @@ GGXCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     const varying CookTorranceBsdfLobe * uniform ct =
         (const varying CookTorranceBsdfLobe * uniform) lobe;
 
-    const Color compen = CookTorranceBsdfLobe_evalEnergyCompensation(
-                             ct,
-                             MICROFACET_DISTRIBUTION_GGX,
-                             cosNO, cosNI,
-                             slice.mIncludeCosineTerm);
-    f = f + compen;
+    const float w2 = CookTorranceBsdfLobe_energyCompensationWeight(ct);
+    if (w2 > 0.0f) {
+        const Color compen = CookTorranceBsdfLobe_evalEnergyCompensation(
+                                 ct,
+                                 MICROFACET_DISTRIBUTION_GGX,
+                                 cosNO, cosNI,
+                                 slice.mIncludeCosineTerm);
+        f = f + compen;
+    }
 
     // Compute pdf of sampling wi using eq. (17) in [1]
     // pdf(wi) = D(m) * |m.n| / (4 * |o.m|)
@@ -763,7 +768,6 @@ GGXCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         tmp = alpha2 + tanThetaM2;
         D4 = 0.25f * alpha2 / (piCosThetaM4 * tmp * tmp);
 #endif
-        const float w2 = CookTorranceBsdfLobe_energyCompensationWeight(ct);
         const float p2 = CookTorranceBsdfLobe_energyCompensationPDF(
                              ct,
                              MICROFACET_DISTRIBUTION_GGX,

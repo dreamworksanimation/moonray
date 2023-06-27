@@ -159,12 +159,7 @@ CookTorranceBsdfLobe::eval(const BsdfSlice &slice, const Vec3f &wi,
             (slice.getIncludeCosineTerm()  ?  1.0f  :  rcp(cosNI));
 
     const float w2 = energyCompensationWeight();
-
-    // only add energy if weight > 0 -- if we don't do this, we will add energy without 
-    // contributing to the pdf or sampling from the lobe, leading to fireflies
-    // TODO: investigate energy compensation for transmissive lobes -- this seems to be
-    // where the issue is
-    if (w2 > 0.0) {
+    if (w2 > 0.0f) {
         const Color compen = evalEnergyCompensation(ispc::MICROFACET_DISTRIBUTION_BECKMANN,
                                                     cosNO, cosNI,
                                                     slice.getIncludeCosineTerm());
@@ -466,12 +461,7 @@ GGXCookTorranceBsdfLobe::eval(const BsdfSlice &slice, const Vec3f &wi,
             (slice.getIncludeCosineTerm()  ?  1.0f  :  invCosNI);
 
     const float w2 = energyCompensationWeight();
-
-    // only add energy if weight > 0 -- if we don't do this, we will add energy without 
-    // contributing to the pdf or sampling from the lobe, leading to fireflies
-    // TODO: investigate energy compensation for transmissive lobes -- this seems to be
-    // where the issue is
-    if (w2 > 0.0) {
+    if (w2 > 0.0f) {
         const Color compen = evalEnergyCompensation(ispc::MICROFACET_DISTRIBUTION_GGX,
                                                     cosNO, cosNI,
                                                     slice.getIncludeCosineTerm());
