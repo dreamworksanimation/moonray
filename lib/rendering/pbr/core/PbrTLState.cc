@@ -10,7 +10,6 @@
 #include <moonray/rendering/pbr/handlers/RayHandlers.h>
 #include <moonray/rendering/shading/Types.h>
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
-#include <tbb/mutex.h>
 
 // These aren't free so only turn it on if you are doing memory profiling.
 // This will print out the peak number of pool items used for a particular run.
@@ -100,7 +99,7 @@ struct Private
 };
 
 Private gPrivate;
-tbb::mutex gInitMutex;
+std::mutex gInitMutex;
 
 void
 initPool(const unsigned poolSize, const unsigned numTBBThreads,
@@ -357,7 +356,7 @@ TLState::~TLState()
 
     {
         // Protect against races the during gPrivate clean up.
-        tbb::mutex::scoped_lock lock(gInitMutex);
+        std::scoped_lock lock(gInitMutex);
 
         MOONRAY_THREADSAFE_STATIC_WRITE(--gPrivate.mRefCount);
         if (gPrivate.mRefCount == 0) {
@@ -883,7 +882,7 @@ TLState::allocTls(mcrt_common::ThreadLocalState *tls,
 {
     {
         // Protect against races the very first time we initialize gPrivate.
-        tbb::mutex::scoped_lock lock(gInitMutex);
+        std::scoped_lock lock(gInitMutex);
 
         if (gPrivate.mRefCount == 0) {
             initPrivate(initParams);

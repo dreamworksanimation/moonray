@@ -9,7 +9,6 @@
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 
 #include <list>
-#include <tbb/mutex.h>
 #include <vector>
 
 namespace moonray {
@@ -202,7 +201,7 @@ private:
  */
     static const int mMutexTileSize = 15;
     // force mutex to be cache-line aligned for speed
-    struct CACHE_ALIGN AlignedMutex : public tbb::mutex {};
+    struct CACHE_ALIGN AlignedMutex : public std::mutex {};
     AlignedMutex *mPixelMutexes;
     int getMutexIdx(unsigned x, unsigned y) const {
         return (y % mMutexTileSize) * mMutexTileSize + (x % mMutexTileSize);

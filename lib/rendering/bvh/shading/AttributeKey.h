@@ -9,7 +9,6 @@
 #pragma once
 
 #include <scene_rdl2/scene/rdl2/Types.h>
-#include <tbb/mutex.h>
 #include <unordered_set>
 #include <map>
 
@@ -87,7 +86,7 @@ protected:
     static finline bool hasDerivatives(AttributeKey key);
 
 private:
-    static tbb::mutex sRegisterMutex;
+    static std::mutex sRegisterMutex;
     static std::vector<std::string> sKeyNames;
     static std::vector<AttributeType> sKeyTypes;
     static std::vector<size_t> sKeySizes;
@@ -269,7 +268,7 @@ AttributeKey::requestDerivatives() const
         return false;
     }
     {
-        tbb::mutex::scoped_lock lock(sRegisterMutex);
+        std::scoped_lock lock(sRegisterMutex);
         sHasDerivatives[mIndex] = 1;
     }
     return true;
@@ -302,7 +301,7 @@ AttributeKey::insertKey(const std::string &name, bool requestDerivatives)
     std::pair<std::string, AttributeType> lookup(name, type);
     int index = -1;
     {
-        tbb::mutex::scoped_lock lock(sRegisterMutex);
+        std::scoped_lock lock(sRegisterMutex);
         auto it = sTable.find(lookup);
         if (it == sTable.end()) {
             index = static_cast<int>(sKeyNames.size());

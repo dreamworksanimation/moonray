@@ -8,7 +8,7 @@ using namespace scene_rdl2;
 namespace moonray {
 namespace shading {
 
-tbb::mutex AttributeKey::sRegisterMutex;
+std::mutex AttributeKey::sRegisterMutex;
 std::vector<std::string> AttributeKey::sKeyNames;
 std::vector<AttributeType> AttributeKey::sKeyTypes;
 std::vector<size_t> AttributeKey::sKeySizes;

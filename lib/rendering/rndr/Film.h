@@ -213,7 +213,7 @@ public:
     // updating statistics in vector mode.
     void addSampleStatisticsSafe(unsigned px, unsigned py, std::size_t idx, const float* aovs)
     {
-        tbb::mutex::scoped_lock lock(mStatsMutex.getMutex(px, py));
+        std::scoped_lock lock(mStatsMutex.getMutex(px, py));
         addSampleStatistics(px, py, idx, aovs);
     }
 

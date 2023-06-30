@@ -8,11 +8,11 @@
 namespace moonray {
 namespace shading {
 
-tbb::mutex Material::sMaterialListMutex;
+std::mutex Material::sMaterialListMutex;
 MaterialPtrList Material::sAllMaterials;
 MaterialPtrList Material::sQueuelessMaterials;
 
-tbb::mutex Material::sShadeQueueMutex;
+std::mutex Material::sShadeQueueMutex;
 ShadeQueueList Material::sShadeQueues;
 
 tbb::atomic<size_t> Material::sFlushCycleIdx;
@@ -27,7 +27,7 @@ Material::Material(const scene_rdl2::rdl2::SceneObject & owner) :
     mMaterialLabelId(-1),   // no material label
     mLpeMaterialLabelId(-1) // no lpe material label
 {
-    tbb::mutex::scoped_lock lock(sMaterialListMutex);
+    std::scoped_lock lock(sMaterialListMutex);
     sAllMaterials.push_back(this);
     sQueuelessMaterials.push_back(this);
     mMaterialId = 0;
@@ -39,7 +39,7 @@ Material::~Material()
     if (mShadeQueue) {
 
         {
-            tbb::mutex::scoped_lock lock(sShadeQueueMutex);
+            std::scoped_lock lock(sShadeQueueMutex);
 
             // Check the shade queue size also since it may have already been destroyed
             // during global program destruction time.
@@ -59,7 +59,7 @@ Material::~Material()
     }
 
     {
-        tbb::mutex::scoped_lock lock(sMaterialListMutex);
+        std::scoped_lock lock(sMaterialListMutex);
 
         // Remove ourselves from global list of Materials.
         for (auto it = sAllMaterials.begin(); it != sAllMaterials.end(); ++it) {
@@ -99,7 +99,7 @@ Material::deferEntriesForLaterProcessing(mcrt_common::ThreadLocalState *tls,
     }
 
     {
-        tbb::mutex::scoped_lock lock(mDeferredEntryMutex);
+        std::scoped_lock lock(mDeferredEntryMutex);
         mDeferredEntries.insert(mDeferredEntries.end(), entries, entries + numEntries);
     }
 }
@@ -151,8 +151,8 @@ Material::retrieveDeferredEntries(mcrt_common::ThreadLocalState *tls,
 void
 Material::allocShadeQueues(unsigned shadeQueueSize, ShadeQueue::Handler handler)
 {
-    tbb::mutex::scoped_lock lockMaterialMutex(sMaterialListMutex);
-    tbb::mutex::scoped_lock lockShadeQueueMutex(sShadeQueueMutex);
+    std::scoped_lock lockMaterialMutex(sMaterialListMutex);
+    std::scoped_lock lockShadeQueueMutex(sShadeQueueMutex);
 
     for (auto it = sQueuelessMaterials.begin(); it != sQueuelessMaterials.end(); ++it) {
         (*it)->allocShadeQueue(shadeQueueSize, handler);
@@ -283,7 +283,7 @@ Material::resetDeferredEntryState()
 {
     for (auto it = sAllMaterials.begin(); it != sAllMaterials.end(); ++it) {
         Material *material = *it;
-        tbb::mutex::scoped_lock lock(material->mDeferredEntryMutex);
+        std::scoped_lock lock(material->mDeferredEntryMutex);
         material->mDeferredEntries.clear();
     }
 

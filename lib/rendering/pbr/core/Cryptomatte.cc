@@ -96,7 +96,7 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
                                         bool incrementSamples)
 {
     // Lock in case multiple threads want to add samples to this pixel
-    tbb::mutex::scoped_lock lock(mPixelMutexes[getMutexIdx(x, y)]);
+    std::scoped_lock lock(mPixelMutexes[getMutexIdx(x, y)]);
 
     PixelEntry &pixelEntry = mPixelEntries[CRYPTOMATTE_TYPE_REGULAR][y * mWidth + x];
 

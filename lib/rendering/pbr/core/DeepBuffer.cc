@@ -351,7 +351,7 @@ DeepBuffer::addSample8x8Safe(unsigned x, unsigned y, unsigned subpixelX, unsigne
                              float scale, float weight)
 {
     // Lock in case multiple threads want to add samples to this pixel
-    tbb::mutex::scoped_lock lock(mPixelMutex[getMutexIdx(x, y)]);
+    std::scoped_lock lock(mPixelMutex[getMutexIdx(x, y)]);
 
     addSample8x8(x, y, subpixelX, subpixelY, layer, ids, t, rayZ, normal, alpha,
                  channels, numChannels, values, scale, weight);

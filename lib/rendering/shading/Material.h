@@ -167,14 +167,14 @@ protected:
     // We will also get warned when executing this codepath at render time via
     // the logger so if it becomes a common case, we need to revisit and remove
     // these locks and heap allocations.
-    tbb::mutex              mDeferredEntryMutex;
+    std::mutex              mDeferredEntryMutex;
     std::vector<SortedRayState> mDeferredEntries;
 
-    static tbb::mutex       sMaterialListMutex;
+    static std::mutex       sMaterialListMutex;
     static MaterialPtrList  sAllMaterials;
     static MaterialPtrList  sQueuelessMaterials;
 
-    static tbb::mutex       sShadeQueueMutex;
+    static std::mutex       sShadeQueueMutex;
     static ShadeQueueList   sShadeQueues;
 
     // This is used by the flushNonEmptyShadeQueue function to iterate through all queues

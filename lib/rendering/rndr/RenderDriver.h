@@ -28,6 +28,7 @@
 #include <scene_rdl2/render/util/AtomicFloat.h>
 
 #include <tbb/task_scheduler_init.h>
+#include <tbb/spin_mutex.h>
 
 //#define SINGLE_THREAD_CRAWLALLPIXELS
 

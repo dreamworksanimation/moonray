@@ -4,7 +4,6 @@
 #include "TextureSampler.h"
 #include "TextureTLState.h"
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
-#include <tbb/mutex.h>
 
 namespace ispc {
 extern "C" uint32_t TextureTLState_hudValidation(bool);
