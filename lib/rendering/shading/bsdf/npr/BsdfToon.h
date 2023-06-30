@@ -143,6 +143,8 @@ public:
                        scene_rdl2::math::Vec3f &dDdx,
                        scene_rdl2::math::Vec3f &dDdy) const override;
 
+    bool getProperty(Property property, float *dest) const override;
+
     finline scene_rdl2::math::Color albedo(const BsdfSlice &slice) const override
     {
         // This approximation is the same a cook torrance

@@ -283,6 +283,33 @@ ToonSpecularBsdfLobe::differentials(const Vec3f &wo,
     }
 }
 
+bool
+ToonSpecularBsdfLobe::getProperty(Property property, float *dest) const
+{
+    bool handled = true;
+
+    switch (property)
+    {
+    case PROPERTY_ROUGHNESS:
+        *dest       = mRoughness;
+        *(dest + 1) = mRoughness;
+        break;
+    case PROPERTY_NORMAL:
+        {
+            const Vec3f &N = mFrame.getN();
+            *dest       = N.x;
+            *(dest + 1) = N.y;
+            *(dest + 2) = N.z;
+        }
+        break;
+    default:
+        handled = BsdfLobe::getProperty(property, dest);
+        break;
+    }
+
+    return handled;
+}
+
 void
 ToonSpecularBsdfLobe::show(std::ostream& os,
                            const std::string& indent) const
