@@ -9,7 +9,9 @@ pipeline-configurations:
     build:
       rez_args: -b cmake
       prepend_release_dir: true
-      resource: EL7_RaTS_build_fast
+      resource:
+        os-rocky-9: EL9
+        os-CentOS-7: EL7_RaTS_build_fast
     test:
       enabled: true
       cmd:
@@ -51,7 +53,9 @@ pipeline-configurations:
     build:
       rez_args: -b cmake
       prepend_release_dir: true
-      resource: EL7_RaTS_build_fast
+      resource:
+        os-rocky-9: EL9
+        os-CentOS-7: EL7_RaTS_build_fast
     test:
       enabled: false
     finalize:
@@ -62,7 +66,9 @@ pipeline-configurations:
   release:
     build:
       rez_args: -b cmake
-      resource: EL7_RaTS_build_fast
+      resource:
+        os-rocky-9: EL9
+        os-CentOS-7: EL7_RaTS_build_fast
     test:
       enabled: false
     finalize:
@@ -81,7 +87,9 @@ pipeline-configurations:
       merge_target_type: branch
     build:
       enabled: true
-      resource: EL7_RaTS_build_fast
+      resource:
+        os-rocky-9: EL9
+        os-CentOS-7: EL7_RaTS_build_fast
       post_cmd:
       rez_args: -b cmake
       postp: /opt/electriccloud/electriccommander/bin/postp
