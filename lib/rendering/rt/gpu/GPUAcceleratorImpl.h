@@ -23,7 +23,7 @@ namespace rt {
 
 // Also in EmbreeAccelerator.cc
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<GPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
+        std::atomic<GPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
 
 
 class GPUAcceleratorImpl

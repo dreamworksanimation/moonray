@@ -210,7 +210,7 @@ protected:
         return unsigned(entriesToFlush);
     }
 
-    tbb::atomic<uint32_t>   mQueueSize;   // must not exceed mMaxEntries
+    std::atomic<uint32_t>   mQueueSize;   // must not exceed mMaxEntries
     uint32_t                mMaxEntries;
     EntryType *             mEntries;     // all data offsets are relative to this address
     Handler                 mHandler;
@@ -502,7 +502,7 @@ protected:
         return unsigned(entriesToFlush);
     }
 
-    tbb::atomic<uint32_t>   mQueueSize;   // must not exceed mMaxEntries
+    std::atomic<uint32_t>   mQueueSize;   // must not exceed mMaxEntries
     uint32_t                mMaxEntries;
     EntryType *             mEntries;     // all data offsets are relative to this address
     Handler                 mHandler;
@@ -788,7 +788,7 @@ protected:
         return unsigned(entriesToFlush);
     }
 
-    tbb::atomic<uint32_t>       mQueueSize;   // must not exceed mMaxEntries
+    std::atomic<uint32_t>       mQueueSize;   // must not exceed mMaxEntries
     uint32_t                    mMaxEntries;
     EntryType *                 mEntries;     // all data offsets are relative to this address
     Handler                     mHandler;

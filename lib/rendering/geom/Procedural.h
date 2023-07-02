@@ -30,11 +30,18 @@ struct GeometryStatistics {
     GeometryStatistics(): mFaceCount {0}, mMeshVertexCount {0},
         mCurvesCount {0}, mCVCount {0}, mInstanceCount {0} {}
 
-    tbb::atomic<Primitive::size_type> mFaceCount;
-    tbb::atomic<Primitive::size_type> mMeshVertexCount;
-    tbb::atomic<Primitive::size_type> mCurvesCount;
-    tbb::atomic<Primitive::size_type> mCVCount;
-    tbb::atomic<Primitive::size_type> mInstanceCount;
+    GeometryStatistics(const GeometryStatistics &other): 
+        mFaceCount(other.mFaceCount.load()),
+        mMeshVertexCount(other.mMeshVertexCount.load()),
+        mCurvesCount(other.mCurvesCount.load()),
+        mCVCount(other.mCVCount.load()),
+        mInstanceCount(other.mInstanceCount.load()) {}
+
+    std::atomic<Primitive::size_type> mFaceCount;
+    std::atomic<Primitive::size_type> mMeshVertexCount;
+    std::atomic<Primitive::size_type> mCurvesCount;
+    std::atomic<Primitive::size_type> mCVCount;
+    std::atomic<Primitive::size_type> mInstanceCount;
 };
 
 //----------------------------------------------------------------------------
