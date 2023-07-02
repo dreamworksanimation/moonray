@@ -23,8 +23,6 @@
 #include <scene_rdl2/common/math/Math.h>
 #include <scene_rdl2/render/util/Arena.h>
 
-#include <tbb/task_scheduler_init.h>
-
 
 // to iterate over the [0, 1)^2 space we take (NUM_SAMPLES_PER_AXIS * NUM_SAMPLES_PER_AXIS) samples
 #define NUM_SAMPLES_PER_AXIS                1000
