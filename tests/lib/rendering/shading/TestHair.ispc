@@ -641,7 +641,7 @@ sampleTheta(void * uniform hairLobe,
 {
     AS_HAIRBSDFLOBE(lobe, hairLobe);
     float vthetaI;
-    const float pdf = HairBsdfLobe_sampleTheta(lobe, (float) r1, (float) thetaO, vthetaI);
+    const float pdf = HairBsdfLobe_sampleTheta(lobe, (uniform float) r1, (uniform float) thetaO, vthetaI);
     thetaI = extract(vthetaI, 0);
     return extract(pdf, 0);
 }
@@ -655,8 +655,8 @@ samplePhi(void * uniform hairLobe,
     AS_HAIRBSDFLOBE(lobe, hairLobe);
     float vphiI;
     float vpdf = HairBsdfLobe_samplePhi(lobe,
-                                         (float) r2,
-                                         (float) phiO,
+                                         (uniform float) r2,
+                                         (uniform float) phiO,
                                          vphiI);
     phiI = extract(vphiI, 0);
     return extract(vpdf, 0);
@@ -701,7 +701,7 @@ sampleLobe(void * uniform lobe,
     const varying BsdfSlice * uniform vslice = (const varying BsdfSlice * uniform) slice;
     varying Vec3f vwi;
     varying float vpdf;
-    varying Color vresult = BsdfLobe_sample(vlobe, *vslice, (float) r1, (float) r2, vwi, vpdf);
+    varying Color vresult = BsdfLobe_sample(vlobe, *vslice, (uniform float) r1, (uniform float) r2, vwi, vpdf);
     wi = extractVec3f(vwi, 0);
     pdf = extract(vpdf, 0);
     result = extractColor(vresult, 0);

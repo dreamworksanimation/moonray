@@ -409,8 +409,8 @@ StochasticFlakesBsdfFactory(uniform Arena * uniform arena,
     intptr_t flakeColorsPtr;
 
     foreach_active(lane) {
-        flakeNormalsPtr = insert(flakeNormalsPtr, lane, (intptr_t)Arena_allocArray(arena, flakeCount, sizeof(Vec3f)));
-        flakeColorsPtr = insert(flakeColorsPtr, lane, (intptr_t)Arena_allocArray(arena, flakeCount, sizeof(Color)));
+        flakeNormalsPtr = insert(flakeNormalsPtr, lane, (uniform intptr_t)Arena_allocArray(arena, flakeCount, sizeof(Vec3f)));
+        flakeColorsPtr = insert(flakeColorsPtr, lane, (uniform intptr_t)Arena_allocArray(arena, flakeCount, sizeof(Color)));
     }
 
     varying Vec3f * varying flakeNormals = (varying Vec3f * varying)flakeNormalsPtr;
