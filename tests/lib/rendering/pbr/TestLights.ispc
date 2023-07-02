@@ -67,9 +67,9 @@ testLightRadiance(const uniform Vec3f &p, const uniform Vec3f &n,
 
     // TODO: add a reduce_add/min/max/etc() functions for most types
     result = Color_ctor(
-            (float)reduce_add(red),
-            (float)reduce_add(green),
-            (float)reduce_add(blue));
+            (uniform float)reduce_add(red),
+            (uniform float)reduce_add(green),
+            (uniform float)reduce_add(blue));
 }
 
 
