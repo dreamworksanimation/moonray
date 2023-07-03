@@ -27,7 +27,7 @@
 #include <scene_rdl2/common/grid_util/Parser.h>
 #include <scene_rdl2/render/util/AtomicFloat.h>
 
-#include <tbb/task_scheduler_init.h>
+#include <tbb/global_control.h>
 
 //#define SINGLE_THREAD_CRAWLALLPIXELS
 
@@ -766,7 +766,7 @@ private:
     std::unique_ptr<TileScheduler>  mTileSchedulerCheckpointInitEstimation;
     TileWorkQueue       mTileWorkQueue;
 
-    tbb::task_scheduler_init *mTaskScheduler;
+    tbb::global_control *mTaskScheduler;
 
     // The is the per film sample count, NOT the cumulative sample count over
     // all films.

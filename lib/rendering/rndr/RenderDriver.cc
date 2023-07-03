@@ -565,7 +565,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     // building phase to that specified in the TLSInitParams. The second allows
     // the render thread to take part in the rendering phase and ensures a TLS
     // is created for it.
-    mTaskScheduler = new tbb::task_scheduler_init(int(tlsInitParams.mDesiredNumTBBThreads));
+    mTaskScheduler = new tbb::global_control(tbb::global_control::max_allowed_parallelism, int(tlsInitParams.mDesiredNumTBBThreads));
 
     mFilms = alignedMallocArrayCtor<Film>(mNumFilmsAllocated, CACHE_LINE_SIZE);
 
@@ -620,7 +620,7 @@ RenderDriver::~RenderDriver()
     // when building this library, and also to make sure that no other
     // tbb::task_scheduler_init or other higher-level task scheduler objects
     // (i.e. tbb::task_group, etc.) are active in the process.
-    MNRY_VERIFY(mTaskScheduler)->terminate();
+    // MNRY_VERIFY(mTaskScheduler)->terminate();
     delete mTaskScheduler;
 
     cleanUpTLS();
@@ -2427,7 +2427,7 @@ RenderDriver::renderThread(RenderDriver *driver,
     // task scheduler used for rendering. By creating a new task scheduler
     // instance here, we are allowing this thread to take part in rendering work
     // (tbb will spawn tasks on this thread when invoked from this thread.)
-    tbb::task_scheduler_init scheduler(int(initParams.mDesiredNumTBBThreads));
+    tbb::global_control scheduler(tbb::global_control::max_allowed_parallelism, int(initParams.mDesiredNumTBBThreads));
 
     // TLS initialization.
     initTLS(initParams);
@@ -2467,7 +2467,7 @@ RenderDriver::renderThread(RenderDriver *driver,
         case KILL_RENDER_THREAD:
             // This is a sub-tbb scheduler init, we still have the main one to
             // clean up later, which happens in the RenderDriver destructor.
-            scheduler.terminate();
+            // scheduler.terminate();
             driver->mRenderThreadState.set(KILL_RENDER_THREAD, DEAD);
             quit = true;
             break;
