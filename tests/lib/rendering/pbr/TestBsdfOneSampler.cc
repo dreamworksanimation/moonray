@@ -285,15 +285,15 @@ TestBsdfOneSampler::testKajiyaKayFabric()
 //----------------------------------------------------------------------------
 
 void
-TestBsdfOneSampler::testAshikminhShirley()
+TestBsdfOneSampler::testAshikhminShirley()
 {
     scene_rdl2::math::ReferenceFrame frame;
 
-    printInfo("##### TestBsdfOneSampler::testAshikminhShirley() ####################");
+    printInfo("##### TestBsdfOneSampler::testAshikhminShirley() ####################");
     for (int i=0; i < sRoughnessCount; i++) {
         printInfo("===== Roughness: %f ====================", sRoughness[i]);
 
-        AshikminhShirleyBsdfFactory factory(sRoughness[i]);
+        AshikhminShirleyBsdfFactory factory(sRoughness[i]);
         TestBsdfSettings test(factory, frame, true, 0.008, 0.03,
                 (sRoughness[i] > 0.1f), (sRoughness[i] > 0.1f),
                 TestBsdfSettings::BSDF_ONE_SAMPLER);
@@ -303,16 +303,16 @@ TestBsdfOneSampler::testAshikminhShirley()
 
 
 void
-TestBsdfOneSampler::testAshikminhShirleyFull()
+TestBsdfOneSampler::testAshikhminShirleyFull()
 {
     scene_rdl2::math::ReferenceFrame frame;
 
-    printInfo("##### TestBsdfOneSampler::testAshikminhShirleyFull() ####################");
+    printInfo("##### TestBsdfOneSampler::testAshikhminShirleyFull() ####################");
     for (int i=0; i < sRoughnessCount; i++) {
 
         // TODO: There is a heisenbug in here where the consistency check fails
         // with small roughnesses. It stops failing when trying to debug (?!?)
-        // Since we don't really use AshikminhShirley I am skipping this
+        // Since we don't really use AshikhminShirley I am skipping this
         // here for now
         if (sRoughness[i] < 0.3f) {
             continue;
@@ -323,7 +323,7 @@ TestBsdfOneSampler::testAshikminhShirleyFull()
         int sampleCount = getSampleCount(sRoughness[i]) +
                           getSampleCount(sRoughness[sRoughnessCount - 1]);
 
-        AshikminhShirleyFullBsdfFactory factory(sRoughness[i]);
+        AshikhminShirleyFullBsdfFactory factory(sRoughness[i]);
         TestBsdfSettings test(factory, frame, true, 0.008, 0.02,
                 (sRoughness[i] > 0.1f),
                 (sRoughness[i] > 0.1f), TestBsdfSettings::BSDF_ONE_SAMPLER);

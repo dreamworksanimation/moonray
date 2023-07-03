@@ -302,15 +302,15 @@ TestBsdfv::testKajiyaKayFabric()
 //----------------------------------------------------------------------------
 
 void
-TestBsdfv::testAshikminhShirley()
+TestBsdfv::testAshikhminShirley()
 {
     scene_rdl2::math::ReferenceFrame frame;
 
-    printInfo("##### TestBsdfv::testAshikminhShirley() ####################");
+    printInfo("##### TestBsdfv::testAshikhminShirley() ####################");
     for (int i=0; i < sRoughnessCount; i++) {
         printInfo("===== Roughness: %f ====================", sRoughness[i]);
 
-        AshikminhShirleyBsdfFactory factory(sRoughness[i]);
+        AshikhminShirleyBsdfFactory factory(sRoughness[i]);
         TestBsdfSettings test(factory, frame, true, 0.008, 0.03,
                 (sRoughness[i] > 0.1f), (sRoughness[i] > 0.1f), TestBsdfSettings::BSDFV);
         runTest(test, sViewAnglesTheta, 1, getSampleCount(sRoughness[i]));
@@ -319,18 +319,18 @@ TestBsdfv::testAshikminhShirley()
 
 
 void
-TestBsdfv::testAshikminhShirleyFull()
+TestBsdfv::testAshikhminShirleyFull()
 {
     scene_rdl2::math::ReferenceFrame frame;
 
-    printInfo("##### TestBsdfv::testAshikminhShirleyFull() ####################");
+    printInfo("##### TestBsdfv::testAshikhminShirleyFull() ####################");
     for (int i=0; i < sRoughnessCount; i++) {
         printInfo("===== Roughness: %f ====================", sRoughness[i]);
 
         int sampleCount = getSampleCount(sRoughness[i]) +
                           getSampleCount(sRoughness[sRoughnessCount - 1]);
 
-        AshikminhShirleyFullBsdfFactory factory(sRoughness[i]);
+        AshikhminShirleyFullBsdfFactory factory(sRoughness[i]);
         TestBsdfSettings test(factory, frame, true, 0.008, 0.02,
                 (sRoughness[i] > 0.1f),
                 (sRoughness[i] > 0.1f), TestBsdfSettings::BSDFV);
