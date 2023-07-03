@@ -15,6 +15,8 @@
 #include <scene_rdl2/common/math/Vec2.h>
 #include <scene_rdl2/common/math/Vec3.h>
 
+#include <array>
+
 namespace moonray {
 namespace shading {
 
