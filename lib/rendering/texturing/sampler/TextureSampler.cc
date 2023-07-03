@@ -466,7 +466,7 @@ TextureSampler::registerMapForInvalidation(const std::string &fileName, scene_rd
 {
 
     // Textures could be loaded in parallel, use mutex to avoid data race.
-    tbb::recursive_mutex::scoped_lock lock(mMutex);
+    std::scoped_lock lock(mMutex);
     
     OIIO::ustring oiioFileName(fileName);
 
@@ -492,7 +492,7 @@ TextureSampler::registerMapForInvalidation(const std::string &fileName, scene_rd
 void
 TextureSampler::unregisterMapForInvalidation(scene_rdl2::rdl2::Shader *map)
 {
-    tbb::recursive_mutex::scoped_lock lock(mMutex);
+    std::scoped_lock lock(mMutex);
     MNRY_ASSERT(isValid());
 
     auto mapRange = mShaderToName.equal_range(map);

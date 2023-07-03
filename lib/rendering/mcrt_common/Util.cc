@@ -4,10 +4,10 @@
 //
 #include "Util.h"
 #include <execinfo.h>  // backtrace
-#include <tbb/mutex.h>
 #include <sys/syscall.h>
 
 #include <cstring>
+#include <mutex>
 
 namespace moonray {
 namespace mcrt_common {
@@ -38,7 +38,7 @@ debugPrintThreadID(const char *contextString)
 void
 debugPrintCallstack(const char *contextString)
 {
-    static tbb::mutex mutex;
+    static std::mutex mutex;
 
     mutex.lock();
 

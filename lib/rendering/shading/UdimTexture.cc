@@ -19,7 +19,6 @@
 
 #include <tbb/blocked_range.h>
 #include <tbb/parallel_for.h>
-#include <tbb/mutex.h>
 
 #include <dirent.h>
 #include <unordered_set>
@@ -121,8 +120,8 @@ public:
         // to allow for the possibility that we may someday create image maps
         // on multiple threads, we'll protect the writes of the class statics
         // with a mutex.
-        static tbb::mutex errorMutex;
-        tbb::mutex::scoped_lock lock(errorMutex);
+        static std::mutex errorMutex;
+        std::scoped_lock lock(errorMutex);
         MOONRAY_START_THREADSAFE_STATIC_WRITE
 
         mIspc.mUdimTextureStaticDataPtr = &sUdimTextureStaticData;
@@ -251,7 +250,7 @@ public:
         mIspc.mIs8bit = mIs8bit;
 
         mIspc.mIsValid = true;
-        tbb::mutex errorMutex;
+        std::mutex errorMutex;
 
         tbb::blocked_range<int> range(0, mTextureHandleIndices.size());
         tbb::parallel_for(range, [&] (const tbb::blocked_range<int> &r) {

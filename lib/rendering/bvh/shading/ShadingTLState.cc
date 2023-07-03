@@ -3,7 +3,6 @@
 
 #include "ShadingTLState.h"
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
-#include <tbb/mutex.h>
 
 namespace ispc {
 extern "C" uint32_t ShadingTLState_hudValidation(bool);
@@ -33,7 +32,7 @@ struct Private
 };
 
 Private gPrivate;
-tbb::mutex gInitMutex;
+std::mutex gInitMutex;
 
 void
 initPrivate(const mcrt_common::TLSInitParams &initParams)
@@ -97,7 +96,7 @@ TLState::allocTls(mcrt_common::ThreadLocalState *tls,
 {
     {
         // Protect against races the very first time we initialize gPrivate.
-        tbb::mutex::scoped_lock lock(gInitMutex);
+        std::scoped_lock lock(gInitMutex);
 
         if (gPrivate.mRefCount == 0) {
             texture::TLState::initPrivate(initParams);
