@@ -963,24 +963,24 @@ RenderStats::logGeometryUsage(const geom::GeometryStatistics& totalGeomStatistic
 
     for(std::size_t i = 0; i < geomStateInfo.size(); ++i) {
         geomTable.emplace_back(geomStateInfo[i].first,
-           geomStateInfo[i].second.mFaceCount,
-           geomStateInfo[i].second.mMeshVertexCount,
-           geomStateInfo[i].second.mCurvesCount,
-           geomStateInfo[i].second.mCVCount,
-           geomStateInfo[i].second.mInstanceCount);
+           geomStateInfo[i].second.mFaceCount.load(),
+           geomStateInfo[i].second.mMeshVertexCount.load(),
+           geomStateInfo[i].second.mCurvesCount.load(),
+           geomStateInfo[i].second.mCVCount.load(),
+           geomStateInfo[i].second.mInstanceCount.load());
     }
 
     StatsTable<2> summaryTable("Geometry Statistics Summary");
     summaryTable.emplace_back("Total Face Count",
-        totalGeomStatistics.mFaceCount);
+        totalGeomStatistics.mFaceCount.load());
     summaryTable.emplace_back("Total Mesh Vertex Count",
-        totalGeomStatistics.mMeshVertexCount);
+        totalGeomStatistics.mMeshVertexCount.load());
     summaryTable.emplace_back("Total Curves Count",
-        totalGeomStatistics.mCurvesCount);
+        totalGeomStatistics.mCurvesCount.load());
     summaryTable.emplace_back("Total Curves CV Count",
-        totalGeomStatistics.mCVCount);
+        totalGeomStatistics.mCVCount.load());
     summaryTable.emplace_back("Total Instance Count",
-        totalGeomStatistics.mInstanceCount);
+        totalGeomStatistics.mInstanceCount.load());
 
     auto writeCSV = [&](std::ostream& outs, bool athenaFormat) {
         outs.precision(2);

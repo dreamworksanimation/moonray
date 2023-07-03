@@ -14,8 +14,6 @@
 #include <moonray/rendering/geom/PrimitiveGroup.h>
 #include <moonray/rendering/geom/PrimitiveVisitor.h>
 
-#include <tbb/atomic.h>
-
 #include <numeric>
 
 namespace moonray {
@@ -25,7 +23,7 @@ class PrimitiveMemoryAccumulator : public PrimitiveVisitor
 {
 public:
     PrimitiveMemoryAccumulator(
-            tbb::atomic<Primitive::size_type>& usage,
+            std::atomic<Primitive::size_type>& usage,
             SharedPrimitiveSet& sharedPrimitives,
             bool inPrimitiveGroup = false) :
         mUsage(usage), mSharedPrimitives(sharedPrimitives),
@@ -63,7 +61,7 @@ public:
     }
 
 private:
-    tbb::atomic<Primitive::size_type>& mUsage;
+    std::atomic<Primitive::size_type>& mUsage;
     SharedPrimitiveSet& mSharedPrimitives;
     bool mInPrimitiveGroup;
 };
@@ -123,7 +121,7 @@ private:
 Procedural::size_type
 Procedural::getMemory()
 {
-    tbb::atomic<Primitive::size_type> usage {0u};
+    std::atomic<Primitive::size_type> usage {0u};
     SharedPrimitiveSet sharedPrimitives;
     PrimitiveMemoryAccumulator accumulator(usage, sharedPrimitives);
     forEachPrimitive(accumulator);

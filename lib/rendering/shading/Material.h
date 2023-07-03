@@ -180,11 +180,11 @@ protected:
     // This is used by the flushNonEmptyShadeQueue function to iterate through all queues
     // in a cyclic fashion as opposed to starting the iteration at the beginning of the
     // queue list each time.
-    static tbb::atomic<size_t> sFlushCycleIdx;
+    static std::atomic<size_t> sFlushCycleIdx;
 
     // Shared between all Materials.
-    static tbb::atomic<uint32_t> sDeferredEntryCalls;
-    static tbb::atomic<uint32_t> sTotalDeferredEntries;
+    static std::atomic<uint32_t> sDeferredEntryCalls;
+    static std::atomic<uint32_t> sTotalDeferredEntries;
 };
 
 template <typename Body>

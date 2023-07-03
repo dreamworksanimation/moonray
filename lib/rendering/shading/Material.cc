@@ -15,10 +15,10 @@ MaterialPtrList Material::sQueuelessMaterials;
 tbb::mutex Material::sShadeQueueMutex;
 ShadeQueueList Material::sShadeQueues;
 
-tbb::atomic<size_t> Material::sFlushCycleIdx;
+std::atomic<size_t> Material::sFlushCycleIdx;
 
-tbb::atomic<uint32_t> Material::sDeferredEntryCalls;
-tbb::atomic<uint32_t> Material::sTotalDeferredEntries;
+std::atomic<uint32_t> Material::sDeferredEntryCalls;
+std::atomic<uint32_t> Material::sTotalDeferredEntries;
 
 Material::Material(const scene_rdl2::rdl2::SceneObject & owner) :
     RootShader(owner),
