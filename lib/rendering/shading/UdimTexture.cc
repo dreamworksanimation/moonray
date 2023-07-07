@@ -332,9 +332,9 @@ public:
         scene_rdl2::math::Color4 result;
         if (res) {
             if (mIspc.mApplyGamma && mIspc.mIs8bit) {
-                tmp[0] = powf(tmp[0], 2.2f);
-                tmp[1] = powf(tmp[1], 2.2f);
-                tmp[2] = powf(tmp[2], 2.2f);
+                tmp[0] = tmp[0] > 0.0f ? powf(tmp[0], 2.2f) : 0.0f;
+                tmp[1] = tmp[1] > 0.0f ? powf(tmp[1], 2.2f) : 0.0f;
+                tmp[2] = tmp[2] > 0.0f ? powf(tmp[2], 2.2f) : 0.0f;
                 // don't gamma the alpha channel
             }
             result[0] = tmp[0];
@@ -799,9 +799,9 @@ void CPP_oiioUdimTexture(const ispc::UDIM_TEXTURE_Data *tx,
 
     if (res) {
         if (tx->mApplyGamma && tx->mIs8bit) {
-            result[0] = powf(result[0], 2.2f);
-            result[1] = powf(result[1], 2.2f);
-            result[2] = powf(result[2], 2.2f);
+            result[0] = result[0] > 0.0f ? powf(result[0], 2.2f) : 0.0f;
+            result[1] = result[1] > 0.0f ? powf(result[1], 2.2f) : 0.0f;
+            result[2] = result[2] > 0.0f ? powf(result[2], 2.2f) : 0.0f;
             // don't gamma the alpha channel
         }
     } else {
