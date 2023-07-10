@@ -25,7 +25,7 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(${objLib} PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx1-i32x8
+    ISPC_INSTRUCTION_SETS avx2-i32x8
 )
 
 target_link_libraries(${objLib}

@@ -68,7 +68,7 @@ requires = [
     'amorphous',
     'boost',
     'cuda-11.3.0.x',
-    'embree-3.12.1.x.16',
+    'embree-3.13.5.x',
     'mcrt_denoise-3.4',
     'mkl',
     'openexr',
@@ -83,7 +83,7 @@ requires = [
 private_build_requires = [
     build_system_pbr,
     'cppunit',
-    'ispc-1.14.1.x',
+    'ispc-1.20.0.x',
     'python-2.7|3.7|3.9'
 ]
 

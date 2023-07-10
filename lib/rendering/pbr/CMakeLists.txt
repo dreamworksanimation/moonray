@@ -88,7 +88,7 @@ function(make_ispc_target target sources stubsDestination)
     set_target_properties(${target} PROPERTIES
         ISPC_HEADER_SUFFIX _ispc_stubs.h
         ISPC_HEADER_DIRECTORY /${relBinDir}/${stubsDestination}
-        ISPC_INSTRUCTION_SETS avx1-i32x8
+        ISPC_INSTRUCTION_SETS avx2-i32x8
     )
 
     target_link_libraries(${target}

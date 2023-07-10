@@ -52,7 +52,7 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(shading_eval_ispc PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx1-i32x8
+    ISPC_INSTRUCTION_SETS avx2-i32x8
     # If we don't request the C++ linker, cmake will complain about
     # a missing variable CMAKE_ISPC_CREATE_SHARED_LIBRARY. This seems
     # to be a bug in CMake-3.23's ISPC support
@@ -187,7 +187,7 @@ function(make_ispc_target target sources stubsDestination)
     set_target_properties(${target} PROPERTIES
         ISPC_HEADER_SUFFIX _ispc_stubs.h
         ISPC_HEADER_DIRECTORY /${relBinDir}/${stubsDestination}
-        ISPC_INSTRUCTION_SETS avx1-i32x8
+        ISPC_INSTRUCTION_SETS avx2-i32x8
     )
 
     set_property(TARGET ${target}
@@ -253,7 +253,7 @@ target_sources(eval_attribute_debug_hack_ispc PRIVATE EvalAttributeDebugHack.isp
 set_target_properties(eval_attribute_debug_hack_ispc PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx1-i32x8
+    ISPC_INSTRUCTION_SETS avx2-i32x8
 )
 
 target_include_directories(eval_attribute_debug_hack_ispc
