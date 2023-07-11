@@ -51,9 +51,8 @@ find_package(BISON) # built-in
 find_package(FLEX)  # built-in
 
 set(BUILD_SHARED_LIBS ON)
-find_package(Boost REQUIRED
-  COMPONENTS
-    headers)
+find_package(Boost REQUIRED)
+
 
 if (MOONRAY_USE_CUDA)
     include(CheckLanguage)

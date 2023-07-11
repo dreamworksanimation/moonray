@@ -11,6 +11,7 @@
 #include <sstream>
 #include <stddef.h>
 #include <float.h>
+#include <limits>
 
 // This directive makes to keep all passes timing record in memory for debugging purpose.
 // If this is on, memory for record timing result will increase on demand. This might cause problem if
