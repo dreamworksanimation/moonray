@@ -78,6 +78,7 @@ requires = [
     'optix-7.3.0.x',
     'random123-1.08.3',
     'scene_rdl2-12.5',
+    'presenz-2.0.0.27.x.1'
 ]
 
 private_build_requires = [

@@ -1,0 +1,8 @@
+Import('env')
+from os.path import join
+
+env.DWAComponent(
+  'presenz',
+  LIBS = [env.File('/work/gshad/moonshine_test/PresenZ/PresenZ2.5.10_Linux/lib/libPresenZ.so')],
+  CPPPATH_THIRDPARTY = ['/work/gshad/moonshine_test/PresenZ/PresenZ2.5.10_Linux/include'],
+)

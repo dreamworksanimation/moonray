@@ -42,6 +42,7 @@ target_sources(${component}
         Frustum.cc
         ProfileAccumulator.cc
         ProfileAccumulatorHandles.cc
+        PresenZSettings.cc
         Ray.cc
         ThreadLocalState.cc
         Util.cc
@@ -74,6 +75,7 @@ target_link_libraries(${component}
         ${PROJECT_NAME}::common_time
         ${PROJECT_NAME}::deepfile
         ${OPENEXRUTIL}
+        PresenZ::PresenZ
         SceneRdl2::common_math
         SceneRdl2::common_platform
         SceneRdl2::render_logging
