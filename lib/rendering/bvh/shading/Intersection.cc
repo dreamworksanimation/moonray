@@ -112,6 +112,9 @@ Intersection::transferAndComputeDerivatives(mcrt_common::ThreadLocalState *tls,
     // regardless if we had valid ray differentials or valid geometry derivatives.
     MNRY_ASSERT(finite(mdSdx) && finite(mdTdx) && finite(mdSdy) && finite(mdTdy));
 
+    // Why is this needed for PresenZ ?
+    mdSdx = mdSdy = mdTdx = mdTdy = 0.001f;
+
     // Scale the texture derivatives
     mdSdx *= textureDiffScale;
     mdSdy *= textureDiffScale;
