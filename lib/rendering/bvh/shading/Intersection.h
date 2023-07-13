@@ -364,6 +364,15 @@ public:
                                  StandardAttributes::sdPdt });
     }
 
+    inline bool isChaotic() {
+        TypedAttributeKey<bool> chaoticAttrKey("chaotic");
+        if (isProvided(chaoticAttrKey)) {
+            return getAttribute(chaoticAttrKey);
+        } else {
+            return false;
+        }
+    }
+
     /// This must be called after all calls to setInstanceAttributesOverride()
     // and before any calls to hasAllRequiredAttributes()
     inline void validateRequiredAttributes() {
