@@ -3,13 +3,10 @@
 
 ///
 /// @file PresenZSettings.cc
-
 #include "PresenZSettings.h"
 
 namespace moonray {
 namespace mcrt_common {
-
-using namespace scene_rdl2::math;
 
 PresenZSettings::PresenZSettings() :
     mEnabled(true),
@@ -22,6 +19,9 @@ PresenZSettings::PresenZSettings() :
     mZOVScale(1.0f, 0.5f, 1.0f),
     mDistanceToGround(1.6f),
     mDraftRendering(false),
+    mFroxtrumRendering(false),
+    mFroxtrumDepth(6),
+    mFroxtrumResolution(8),
     mRenderInsideZOV(false),
     mEnableDeepReflections(true),
     mInterPupillaryDistance(63.5f),
@@ -36,7 +36,7 @@ PresenZSettings::PresenZSettings() :
 }
 
 void
-PresenZSettings::setCamToWorld(const Mat4d& camToWorld) {
+PresenZSettings::setCamToWorld(const scene_rdl2::math::Mat4d& camToWorld) {
     nozMatrix_set(mCamToWorld,
         camToWorld[0][0], camToWorld[0][1], camToWorld[0][2], 0.0,
         camToWorld[1][0], camToWorld[1][1], camToWorld[1][2], 0.0,
@@ -54,10 +54,23 @@ PresenZSettings::phaseBegin(unsigned numThreads) {
         PzInitPhase(PresenZ::Phase::Render, PresenZ::Util::RenderingEngineId::PRESENZ_DEVELOP);
         PzSetOutFilePath(mRenderFile.c_str());
         PzSetDetectFilePath(mDetectFile.c_str());
+        PzSetFroxtrumRayOrigin(PresenZ::Phase::FroxtrumRayOrigin::useCameraNearClip);
     }
 
     // Draft mode
     PzSetDraft(mDraftRendering);
+
+    // enable/disable the new feature
+    PzSetFroxtrum(mFroxtrumRendering);
+
+    // set the volume of the froxtrum. By default, it's set to a
+    // conservative value of 6. Depending on your scene, you can turn
+    // it up to 7 or 8 to gain more render time, at the cost of some
+    // image degradation
+    PzSetFroxtrumDepth(mFroxtrumDepth);
+
+    // should not be changed, but turning it to 4 could create more froxtrum
+    PzSetFroxtrumResolution(mFroxtrumResolution);
 
     // Zone of View
     PzSetZovOffset(static_cast<float>(mZOVOffset.x),
@@ -70,7 +83,8 @@ PresenZSettings::phaseBegin(unsigned numThreads) {
     PzSetCameraToWorldMatrix(mCamToWorld);
     PzSetRenderScale(mRenderScale);
     PzSetDistanceToGround(mDistanceToGround);
-    PzSetSceneUpVector(NozVector(0.0f, 1.0f, 0.0f));
+    //PzSetSceneUpVector(NozVector(0.0f, 1.0f, 0.0f));
+    PzSetCameraUpVector(NozVector(0.0f, 1.0f, 0.0f));
     PzSetSpecularPointOffset(NozVector(mSpecularPointOffset.x,
                                        mSpecularPointOffset.y,
                                        mSpecularPointOffset.z));
@@ -123,6 +137,3 @@ PresenZSettings::phaseEnd() {
 } // namespace mcrt_common
 } // namespace moonray
 
-// TM and (c) 2019 DreamWorks Animation LLC.  All Rights Reserved.
-// Reproduction in whole or in part without prior written permission of a
-// duly authorized representative is prohibited.

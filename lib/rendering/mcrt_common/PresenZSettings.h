@@ -3,7 +3,6 @@
 
 //
 //
-
 #pragma once
 
 #include <scene_rdl2/common/math/Mat4.h>
@@ -59,6 +58,15 @@ public:
     void setDraftRendering(bool draftRendering) { mDraftRendering = draftRendering; }
     bool getDraftRendering() const { return mDraftRendering; }
 
+    void setFroxtrumRendering(bool froxtrumRendering) { mFroxtrumRendering = froxtrumRendering; }
+    bool getFroxtrumRendering() const { return mFroxtrumRendering; }
+
+    void setFroxtrumDepth(int froxtrumDepth) { mFroxtrumDepth = froxtrumDepth; }
+    int getFroxtrumDepth() const { return mFroxtrumDepth; }
+
+    void setFroxtrumResolution(int froxtrumResolution) { mFroxtrumResolution = froxtrumResolution; }
+    int getFroxtrumResolution() const { return mFroxtrumResolution; }
+
     void setRenderInsideZOV(bool renderInsideZOV) { mRenderInsideZOV = renderInsideZOV; }
     bool getRenderInsideZOV() const { return mRenderInsideZOV; }
 
@@ -100,6 +108,9 @@ private:
     scene_rdl2::math::Vec3f mZOVScale;
     float mDistanceToGround;
     bool mDraftRendering;
+    bool mFroxtrumRendering;
+    int mFroxtrumDepth;
+    int mFroxtrumResolution;
     bool mRenderInsideZOV;
     bool mEnableDeepReflections;
     float mInterPupillaryDistance;
@@ -115,6 +126,3 @@ private:
 } // namespace mcrt_common
 } // namespace moonray
 
-// TM and (c) 2019 DreamWorks Animation LLC.  All Rights Reserved.
-// Reproduction in whole or in part without prior written permission of a
-// duly authorized representative is prohibited.
