@@ -205,10 +205,30 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
 
         // Output 2 fragments per layer: one pair goes to the R,G channels, the other to the B,A channels.
         const PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
+
+        // Sum up the total coverage for all fragments
+        float totalCoverage = 0.f;
+        for (const Fragment &fragment : pixelEntry.mFragments) {
+            totalCoverage += fragment.mCoverage;
+        }
+
+        // Sum up the total coverage for the fragments we intend to output
+        int numOutputFragments = 0;
+        float totalOutputCoverage = 0.f;
+        for (const Fragment &fragment : pixelEntry.mFragments) {
+            totalOutputCoverage += fragment.mCoverage;
+            if (++numOutputFragments >= 2 * numLayers) {
+                break;
+            }
+        }
+
+        // Compute scaling factor to compensate for coverage we are throwing away
+        float coverageScale = totalCoverage / totalOutputCoverage;
+
         int numFragments = 0;
         for (const Fragment &fragment : pixelEntry.mFragments) {
             *dest++ = fragment.mId;
-            *dest++ = fragment.mCoverage;
+            *dest++ = fragment.mCoverage * coverageScale;
             // ensure numFragments added to memory isn't larger than max number 
             // of fragments supported
             if (++numFragments >= 2 * numLayers) {
@@ -386,9 +406,11 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
                 resumeRenderSupportData += 2;
             }
 
-            pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, 
-                                                     refP, refN, uv,
-                                                     presenceDepth, numFragSamples));
+            if (coverage > 0.f) {
+                pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, 
+                                                         refP, refN, uv,
+                                                         presenceDepth, numFragSamples));
+            }
         }
     }
 }
