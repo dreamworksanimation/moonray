@@ -67,7 +67,7 @@ sconsTargets = {
 requires = [
     'amorphous',
     'boost',
-    'cuda-11.3.0.x',
+    'cuda-12.1.0.x',
     'embree-3.13.5.x',
     'mcrt_denoise-3.5',
     'mkl',
