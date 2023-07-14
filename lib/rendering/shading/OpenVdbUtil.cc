@@ -15,8 +15,9 @@ bool
 isOpenVdbGeometry(const Geometry* geom)
 {
     static const std::string sOpenVdbGeometrySceneClassName("OpenVdbGeometry");
+    static const std::string sVdbGeometrySceneClassName("VdbGeometry");
     const SceneClass &sc = geom->getSceneClass();
-    return (sc.getName() == sOpenVdbGeometrySceneClassName);
+    return (sc.getName() == sOpenVdbGeometrySceneClassName || sc.getName() == sVdbGeometrySceneClassName);
 }
 
 AttributeKey<String>
