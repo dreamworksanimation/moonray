@@ -727,7 +727,7 @@ Scene::updateLightList()
     }
 
     // Reserve memory for the light accelerators
-    mLightAccList.reserve(lightSetCount + 1);
+    mLightAccList.resize(lightSetCount + 1);
 
     // Create mapping from rdl2 assignment ids to runtime light sets and light accelerators
     mIdToLightSetMap.reserve(assignmentCount);
