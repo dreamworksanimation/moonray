@@ -761,7 +761,6 @@ RenderDriver::startFrame(const FrameState &fs)
     if (mFs.mRenderMode == RenderMode::PROGRESS_CHECKPOINT &&
         mTileSchedulerCheckpointInitEstimation == nullptr) {
         // We have to generate special tileScheduler for checkpoint mode
-        std::cerr << ">> RenderDriver.cc startFrame() special tileScheduler for checkpoint\n";
         mTileSchedulerCheckpointInitEstimation = TileScheduler::create(TileScheduler::Type::RANDOM);
     }
 

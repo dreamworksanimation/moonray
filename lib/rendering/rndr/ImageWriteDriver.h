@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include "ImageWriteCache.h"
@@ -35,8 +32,8 @@ public:
     static ImageWriteDriverShPtr get();
 
     // Non-copyable
-    ImageWriteDriver &operator =(const ImageWriteDriver &) = delete;
-    ImageWriteDriver(const ImageWriteDriver &) = delete;
+    ImageWriteDriver& operator=(const ImageWriteDriver&) = delete;
+    ImageWriteDriver(const ImageWriteDriver&) = delete;
 
     ImageWriteDriver();
     ~ImageWriteDriver();
@@ -46,37 +43,37 @@ public:
     void setTwoStageOutput(bool flag) { mTwoStageOutput = flag; }
     bool getTwoStageOutput() const { return mTwoStageOutput; }
 
-    void setTmpDirectory(const std::string &directoryName) { mTmpDirectory = directoryName; }
+    void setTmpDirectory(const std::string& directoryName) { mTmpDirectory = directoryName; }
 
     void setMaxBgCache(size_t max) { mMaxBgCache = max; }
 
-    void setRenderContext(RenderContext *renderContext) { mRenderContext = renderContext; }
+    void setRenderContext(RenderContext* renderContext) { mRenderContext = renderContext; }
 
     // Called from signal handler. This function should consists of async-signal-safe operations.
-    void interruptBySignal(const siginfo_t &sigInfo);
+    void interruptBySignal(const siginfo_t& sigInfo);
 
     //------------------------------
 
-    ImageWriteCacheUqPtr newImageWriteCache(const RenderOutputDriver *renderOutputDriver,
+    ImageWriteCacheUqPtr newImageWriteCache(const RenderOutputDriver* renderOutputDriver,
                                             bool snapshotOnly = false); // MTsafe
 
-    void updateSnapshotData(ImageWriteCacheUqPtr &imageWriteCachePtr); // MTsafe
+    void updateSnapshotData(ImageWriteCacheUqPtr& imageWriteCachePtr); // MTsafe
     void resetSnapshotData(); // MTsafe
 
-    void enqImageWriteCache(ImageWriteCacheUqPtr &imageWriteCachePtr); // MTsafe
+    void enqImageWriteCache(ImageWriteCacheUqPtr& imageWriteCachePtr); // MTsafe
     void waitUntilBgWriteReady(); // MTsafe
 
     size_t getBlockDataSizeFull() const { return mBlockDataSizeFull; }
     size_t getBlockDataSizeHalf() const { return mBlockDataSizeHalf; }
 
-    void setLastImageWriteCache(ImageWriteCacheUqPtr &imageWriteCachePtr); // MTsafe
-    const ImageWriteCache *getLastImageWriteCache() const { return mLastImageWriteCache.get(); }
+    void setLastImageWriteCache(ImageWriteCacheUqPtr& imageWriteCachePtr); // MTsafe
+    const ImageWriteCache* getLastImageWriteCache() const { return mLastImageWriteCache.get(); }
 
     void conditionWaitUntilAllCompleted(); // called by RenderDriver::progressCheckpointRenderFrame()
 
     //------------------------------
 
-    std::string genTmpFilename(const int fileSequenceId, const std::string &finalFilename);
+    std::string genTmpFilename(const int fileSequenceId, const std::string& finalFilename);
 
     static size_t getProcMemUsage(); // return rss size by byte for debug
 
@@ -84,25 +81,25 @@ public:
 
  private:
     std::thread mThread;
-    std::atomic<ThreadState> mThreadState;
-    bool mThreadShutdown;
+    std::atomic<ThreadState> mThreadState {ThreadState::INIT};
+    bool mThreadShutdown {false};
 
-    bool mResumableOutput;
-    bool mTwoStageOutput;
+    bool mResumableOutput {false};
+    bool mTwoStageOutput {false};
 
     mutable std::mutex mMutex;
     std::condition_variable mCvBoot; // using at boot threadMain sequence
-    size_t mMaxBgCache;
+    size_t mMaxBgCache {2};   // Default is 2 ImageWriteCache capacity
     std::condition_variable mCvList; // for max ImageWriteCache control
     ImageWriteCacheList mImageWriteCacheList; // ImageWriteCache list
     ImageWriteCacheUqPtr mLastImageWriteCache;
 
     // memory size of curently processed imageWriteCache by ImageWriteDriver thread
-    size_t mCurrImageWriteCacheMemSize;
+    size_t mCurrImageWriteCacheMemSize {0};
 
     // BlockData size for ImageWriteCache cache data memory pre-allocation.
-    size_t mBlockDataSizeFull;  // byte : ready after 1st call of enqImageWriteCache()
-    size_t mBlockDataSizeHalf;  // byte : ready after 1st call of enqImageWriteCache()
+    size_t mBlockDataSizeFull {0};  // byte : ready after 1st call of enqImageWriteCache()
+    size_t mBlockDataSizeHalf {0};  // byte : ready after 1st call of enqImageWriteCache()
 
     std::string mTmpDirectory;  // temporary file directory
     std::string mTmpFilePrefix; // temporary filename prefix
@@ -115,26 +112,25 @@ public:
     //
     // signal interruption related parameters
     //
-    std::atomic<bool> mSigReceived;
+    std::atomic<bool> mSigReceived {false};
     siginfo_t mSigInfo; // received signal information
-    time_t mSigTime; // signal received time
+    time_t mSigTime {0}; // signal received time
 
-    RenderContext *mRenderContext; // signalAction() uses this pointer
+    RenderContext* mRenderContext {nullptr}; // signalAction() uses this pointer
 
     //------------------------------
 
-    static void threadMain(ImageWriteDriver *driver);
+    static void threadMain(ImageWriteDriver* driver);
     ImageWriteCacheUqPtr deqImageWriteCache(); // MTsafe
     bool isImageWriteCacheEmpty() const; // MTsafe
 
     std::string getTmpFilePrefix();
-    std::string getTmpFileExtension(const std::string &finalFilename);
+    std::string getTmpFileExtension(const std::string& finalFilename);
 
     void signalAction();
 
-    static std::string threadStateStr(const ThreadState &v);
+    static std::string threadStateStr(const ThreadState& v);
 };
 
 } // namespace rndr
 } // namespace moonray
-

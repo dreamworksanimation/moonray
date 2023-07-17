@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
 #include "ExrUtils.h"
 #include "ImageWriteCache.h"
@@ -33,7 +30,8 @@ RenderOutputDriver::Impl::writeDeq(ImageWriteCache *cache,
 {
     
     write(true, checkpointOutputMultiVersion,
-          nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0, cache, hashOut);
+          nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, 0,
+          cache, hashOut);
 }
 
 void
@@ -46,7 +44,7 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
                                 const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
                                 const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> *aovBuffers,
                                 const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> *displayFilterBuffers,
-                                const unsigned checkpointTileSampleTotals,
+                                const unsigned checkpointTileSampleTotals, // only used for STD and ENQ
                                 ImageWriteCache *cache,
                                 scene_rdl2::grid_util::Sha1Gen::Hash *hashOut) const
 //
@@ -141,11 +139,15 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
                                     mFinalMaxSamplesPerPixel);
 
         RenderOutputWriter::CallBackCheckpointResumeMetadata callBackMetadata =
-            [&](const unsigned checkpointTileSampleTotals) -> std::vector<std::string> {
+            [&](const unsigned currCheckpointTileSampleTotals) -> std::vector<std::string> {
             // callback for checkpointResumeMetaData
             std::vector<std::string> attrTbl;
             if (mCheckpointRenderActive) {
-                attrTbl = writeCheckpointResumeMetadata(checkpointTileSampleTotals);
+                attrTbl = writeCheckpointResumeMetadata(currCheckpointTileSampleTotals);
+
+                // save timeSaveSecBySignalCheckpoint value into cache for statistical info dump
+                float sec = mRenderContext->getResumeHistoryMetaData()->getTimeSaveSecBySignalCheckpoint();
+                cache->setTimeSaveSecBySignalCheckpoint(sec);
             }
             return attrTbl;
         };
@@ -177,7 +179,7 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
                       samplesCount, deepBuffer);
         }
 
-    } else {
+    } else { // DEQ
         if (cache) cache->timeRec(0); // record timing into position id = 0
         if (cache) cache->timeRec(1); // record timing into position id = 1
 
@@ -397,21 +399,22 @@ RenderOutputDriver::Impl::writeCheckpointResumeMetadata(const unsigned checkpoin
 //------------------------------------------------------------------------------------------
 
 void
-RenderOutputDriver::write(const pbr::DeepBuffer *deepBuffer,
-                          pbr::CryptomatteBuffer *cryptomatteBuffer,
-                          const scene_rdl2::fb_util::HeatMapBuffer *heatMap,
-                          const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
-                          const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
-                          const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuffers,
-                          const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &displayFilterBuffers,
-                          ImageWriteCache *cache) const
+RenderOutputDriver::writeFinal(const pbr::DeepBuffer *deepBuffer,
+                               pbr::CryptomatteBuffer *cryptomatteBuffer,
+                               const scene_rdl2::fb_util::HeatMapBuffer *heatMap,
+                               const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
+                               const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
+                               const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuffers,
+                               const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &displayFilterBuffers,
+                               ImageWriteCache *cache) const
 //
 // This function writes image as final output.
 //
 {
     mImpl->write(false, false,
                  deepBuffer, cryptomatteBuffer, heatMap, weightBuffer,
-                 renderBufferOdd, &aovBuffers, &displayFilterBuffers, 0, cache, nullptr);
+                 renderBufferOdd, &aovBuffers, &displayFilterBuffers, 0,
+                 cache, nullptr);
 }
 
 void
@@ -440,13 +443,15 @@ RenderOutputDriver::writeCheckpointEnq(const bool checkpointMultiVersion,
         } else {
             mImpl->write(false, false,
                          deepBuffer, cryptomatteBuffer, heatMap, weightBuffer,
-                         renderBufferOdd, &aovBuffers, &displayFilterBuffers, tileSampleTotals, nullptr, hashPtr);
+                         renderBufferOdd, &aovBuffers, &displayFilterBuffers, tileSampleTotals,
+                         nullptr, hashPtr);
         }
     }
 
     mImpl->write(true, checkpointMultiVersion,
                  deepBuffer, cryptomatteBuffer, heatMap, weightBuffer,
-                 renderBufferOdd, &aovBuffers, &displayFilterBuffers, tileSampleTotals, outCache, nullptr);
+                 renderBufferOdd, &aovBuffers, &displayFilterBuffers, tileSampleTotals,
+                 outCache, nullptr);
 }
 
 void
@@ -477,4 +482,3 @@ RenderOutputDriver::writeCheckpointDeq(ImageWriteCache *cache,
 
 } // namespace rndr
 } // namespace moonray
-

@@ -1,8 +1,6 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-//
-//
 // This file includes logic about checkpoint/resume render.
 // We need to think about TIME_BASED/QUALITY_BASED checkpoint mode and also
 // UNIFORM/ADAPTIVE sampling mode. These mode required special care to construct multi-passes workQueue.
@@ -752,7 +750,7 @@ RenderDriver::progressCheckpointRenderFrame(RenderDriver *driver, const FrameSta
 #endif // end PRINT_DEBUG_MESSAGE_PROGRESS_CHECKPOINT
 
         // record MCRT end timing for resumeHistory
-        fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(endSampleId - 1);
+        fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(endSampleId - 1, false);
 
         checkpointFileOutput(driver, fs, endSampleId);
 
@@ -1253,7 +1251,10 @@ RenderDriver::checkpointRenderMicroStintLoop(RenderDriver *driver,
             return result;
         }
         if (checkpointController.microStintEnd()) {
-            // do snapshot for unexpected interruption by signal.
+            // Need to update MCRT end timing for resumeHistory here.
+            fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(currEndSampleId - 1, true);
+
+            // do extra-snapshot for unexpected interruption by signal.
             checkpointController.snapshotOnly(fs.mRenderContext,
                                               driver->mCheckpointPostScript,
                                               currEndSampleId);
@@ -1494,4 +1495,3 @@ RenderDriver::verifyPassesLogicForAdaptiveSampling()
 
 } // namespace rndr
 } // namespace moonray
-

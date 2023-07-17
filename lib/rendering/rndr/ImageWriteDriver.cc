@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "ImageWriteDriver.h"
 
 #include "CheckpointSigIntHandler.h"
@@ -32,18 +29,7 @@
 namespace moonray {
 namespace rndr {
 
-ImageWriteDriver::ImageWriteDriver() :
-    mThreadState(ThreadState::INIT),
-    mThreadShutdown(false),
-    mResumableOutput(false),
-    mTwoStageOutput(false),
-    mMaxBgCache(2), // Default is 2 ImageWriteCache capacity
-    mCurrImageWriteCacheMemSize(0),
-    mBlockDataSizeFull(0),
-    mBlockDataSizeHalf(0),
-    mSigReceived(false),
-    mSigTime(0),
-    mRenderContext(nullptr)
+ImageWriteDriver::ImageWriteDriver()
 {
     memset(&mSigInfo, 0x0, sizeof(siginfo_t));
 
@@ -66,7 +52,7 @@ ImageWriteDriver::~ImageWriteDriver()
 }
 
 void
-ImageWriteDriver::interruptBySignal(const siginfo_t &sigInfo)
+ImageWriteDriver::interruptBySignal(const siginfo_t& sigInfo)
 //
 // This function is called from a signal handler
 // So we should only use the async-signal-safe operation inside this function
@@ -95,7 +81,7 @@ ImageWriteDriver::interruptBySignal(const siginfo_t &sigInfo)
 }
 
 ImageWriteDriver::ImageWriteCacheUqPtr
-ImageWriteDriver::newImageWriteCache(const RenderOutputDriver *renderOutputDriver, bool snapshotOnly)
+ImageWriteDriver::newImageWriteCache(const RenderOutputDriver* renderOutputDriver, bool snapshotOnly)
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
@@ -116,7 +102,7 @@ ImageWriteDriver::newImageWriteCache(const RenderOutputDriver *renderOutputDrive
 }
 
 void
-ImageWriteDriver::updateSnapshotData(ImageWriteCacheUqPtr &imageWriteCachePtr)
+ImageWriteDriver::updateSnapshotData(ImageWriteCacheUqPtr& imageWriteCachePtr)
 {
     {
         std::lock_guard<std::mutex> lock(mSnapshotDataMutex);
@@ -137,7 +123,7 @@ ImageWriteDriver::resetSnapshotData()
 }
 
 void
-ImageWriteDriver::enqImageWriteCache(ImageWriteCacheUqPtr &imageWriteCachePtr) // MTsafe
+ImageWriteDriver::enqImageWriteCache(ImageWriteCacheUqPtr& imageWriteCachePtr) // MTsafe
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
@@ -211,7 +197,7 @@ ImageWriteDriver::waitUntilBgWriteReady() // MTsafe
 }
 
 void
-ImageWriteDriver::setLastImageWriteCache(ImageWriteCacheUqPtr &imageWriteCachePtr) // MTsafe
+ImageWriteDriver::setLastImageWriteCache(ImageWriteCacheUqPtr& imageWriteCachePtr) // MTsafe
 {
     std::lock_guard<std::mutex> lock(mMutex);
 
@@ -238,7 +224,7 @@ ImageWriteDriver::conditionWaitUntilAllCompleted()
 
 std::string
 ImageWriteDriver::genTmpFilename(const int fileSequenceId,
-                                 const std::string &finalFilename)
+                                 const std::string& finalFilename)
 {
     return (mTmpDirectory + "/" + getTmpFilePrefix() +
             std::to_string(fileSequenceId) + getTmpFileExtension(finalFilename));
@@ -322,7 +308,7 @@ ImageWriteDriver::showMemUsage() const
 
 // static
 void
-ImageWriteDriver::threadMain(ImageWriteDriver *driver)
+ImageWriteDriver::threadMain(ImageWriteDriver* driver)
 {
     // First of all change driver's threadState condition and do notify_one to caller.
     driver->mThreadState = ThreadState::IDLE;
@@ -423,7 +409,7 @@ ImageWriteDriver::getTmpFilePrefix()
 }
 
 std::string
-ImageWriteDriver::getTmpFileExtension(const std::string &finalFilename)
+ImageWriteDriver::getTmpFileExtension(const std::string& finalFilename)
 {
     size_t pos = finalFilename.rfind(".");
     if (pos == std::string::npos) return ".exr";
@@ -437,7 +423,7 @@ ImageWriteDriver::signalAction()
 // This function never return.
 //
 {
-    auto showSigInfo = [](const siginfo_t &info) -> std::string {
+    auto showSigInfo = [](const siginfo_t& info) -> std::string {
         std::ostringstream ostr;
         ostr
         << "siginfo {\n"
@@ -448,7 +434,7 @@ ImageWriteDriver::signalAction()
         << "}";
         return ostr.str();
     };
-    auto msgOut = [](const std::string &str) {
+    auto msgOut = [](const std::string& str) {
         scene_rdl2::logging::Logger::info(str);
     };
 
@@ -480,9 +466,18 @@ ImageWriteDriver::signalAction()
         time.start();
         currSnapshotData->outputDataFinalize();
         float fileOutputSec = time.end();
-        ostr << "snapshot data freshness:" << freshnessSec << " sec old\n"
-             << "checkpoint file output action:" << fileOutputSec << " sec\n";
-        ostr << ">> ImageWriteDriver.cc signalAction() " << currSnapshotData->timeShow() << '\n';
+        ostr << "snapshot data freshness:" << freshnessSec << " sec old\n";
+
+        float timeSaveSecBySignalCheckpoint = currSnapshotData->getTimeSaveSecBySignalCheckpoint();
+        if (timeSaveSecBySignalCheckpoint > 0.0f) {
+            ostr << "signal-based checkpoint saved "
+                 << scene_rdl2::str_util::secStr(timeSaveSecBySignalCheckpoint)
+                 << " time compared to the ordinal checkpoint\n";
+        }
+        ostr << "checkpoint file output action:" << fileOutputSec << " sec\n";
+
+        // Useful debug message for timing
+        // ostr << ">> ImageWriteDriver.cc signalAction() " << currSnapshotData->timeShow() << '\n';
     } else {
         ostr << "snapshotData is empty\n";
     }
@@ -497,7 +492,7 @@ ImageWriteDriver::signalAction()
 
 // static function
 std::string
-ImageWriteDriver::threadStateStr(const ThreadState &v)
+ImageWriteDriver::threadStateStr(const ThreadState& v)
 {
     switch (v) {
     case ThreadState::INIT: return "INIT";
@@ -528,4 +523,3 @@ ImageWriteDriver::get()
 
 } // namespace rndr
 } // namespace moonray
-

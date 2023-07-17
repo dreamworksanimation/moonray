@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include <scene_rdl2/render/util/TimeUtil.h>
@@ -38,16 +35,19 @@ public:
         mMCRT.emplace_back();
         mMCRT.back().mMCRTStartTime = scene_rdl2::time_util::getCurrentTime();
     }
-    void setMCRTStintEndTime(const unsigned n)
+    void setMCRTStintEndTime(const unsigned n, const bool extraSnapshotFlag)
     {
         mMCRT.back().mMCRTEndTime = scene_rdl2::time_util::getCurrentTime();
         mMCRT.back().mEndTileSamplesId = n;
+        mMCRT.back().mExtraSnapshotFlag = extraSnapshotFlag;
     }
     void setFinalizeSyncStartTime() { mFinalizeSyncStartTime = scene_rdl2::time_util::getCurrentTime(); }
     void setFinalizeSyncEndTime() { mFinalizeSyncEndTime = scene_rdl2::time_util::getCurrentTime(); }
 
-    std::string resumeHistory(const std::string &oldHistory,
-                              const pbr::Statistics &pbrStats) const;
+    float getTimeSaveSecBySignalCheckpoint() const;
+
+    std::string resumeHistory(const std::string& oldHistory, const pbr::Statistics& pbrStats) const;
+    std::string showAllStint() const; // for debug
 
 private:
     class MCRTStint
@@ -58,24 +58,26 @@ private:
         struct timeval mMCRTStartTime;
         struct timeval mMCRTEndTime;
 
-        unsigned mEndTileSamplesId;
+        unsigned mEndTileSamplesId {0};
+
+        bool mExtraSnapshotFlag {false};
     };
 
     enum class SAMPLE_TYPE { UNIFORM, ADAPTIVE };
 
-    bool mBgCheckpointWriteMode;
+    bool mBgCheckpointWriteMode {true};
 
     struct timeval mProcStartTime;
     struct timeval mFrameStartTime;
 
-    unsigned mNumOfThreads;
+    unsigned mNumOfThreads {1};
 
-    SAMPLE_TYPE mSampleType;
-    unsigned mMinSamples;
-    unsigned mMaxSamples;
-    float mAdaptiveTargetError;
+    SAMPLE_TYPE mSampleType {SAMPLE_TYPE::UNIFORM};
+    unsigned mMinSamples {0};
+    unsigned mMaxSamples {0};
+    float mAdaptiveTargetError {0.0f};
 
-    unsigned mStartTileSamplesId;
+    unsigned mStartTileSamplesId {0};
 
     std::vector<MCRTStint> mMCRT;
 
@@ -84,19 +86,22 @@ private:
 
     //------------------------------
 
-    std::string toJson(const pbr::Statistics &pbrStats) const;
-    std::string toJsonSampleInfo(const pbr::Statistics &pbrStats) const;
-    std::string toJsonSampleResultStat(const pbr::Statistics &pbrStats) const;
+    std::string toJson(const pbr::Statistics& pbrStats) const;
+    std::string toJsonSampleInfo(const pbr::Statistics& pbrStats) const;
+    std::string toJsonSampleResultStat(const pbr::Statistics& pbrStats) const;
     std::string toJsonExecEnvInfo() const;
     std::string toJsonTimingInfo() const;
     std::string toJsonTimingSummary() const;
+    std::string toJsonAllStint() const;
+    std::string toJsonStint(size_t id) const;
 
-    void computeTimingSummary(float &renPrepSec, float &mcrtSec,
-                              float &checkpointTotalSecExcludeLast,
-                              float &checkpointAveSec) const;
-    float secInterval(const struct timeval &start, const struct timeval &end) const;
+    void computeTimingSummary(float& renPrepSec,
+                              float& mcrtSec,
+                              float& checkpointTotalSecExcludeLast,
+                              float& checkpointAveSec,
+                              float& timeSaveSecBySignalCheckpoint) const;
+    float secInterval(const struct timeval& start, const struct timeval& end) const;
 };
 
 } // namespace rndr
 } // namespace moonray
-

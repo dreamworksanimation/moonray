@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "ResumeHistoryMetaData.h"
 
 #include <moonray/rendering/pbr/core/Statistics.h>
@@ -34,30 +31,30 @@ getHostname()
 
 inline
 std::string
-getEnvVal(const std::string &envStr)
+getEnvVal(const std::string& envStr)
 {
     return scene_rdl2::util::getenv<std::string>(envStr.c_str());
 }
 
 //------------------------------
 
-MAYBE_UNUSED std::size_t size(const std::string &s) { return s.size(); }
+MAYBE_UNUSED std::size_t size(const std::string& s) { return s.size(); }
 MAYBE_UNUSED std::size_t size(char) { return 1; }
-MAYBE_UNUSED std::size_t size(const char *s) { return std::strlen(s); }
+MAYBE_UNUSED std::size_t size(const char* s) { return std::strlen(s); }
 std::size_t totalSize() { return 0; }
 
 template <typename First, typename... Rest>
 std::size_t
-totalSize(const First &first, const Rest&... rest)
+totalSize(const First& first, const Rest&... rest)
 {
     return size(first) + totalSize(rest...);
 }
 
-void stringCatHelper(std::string &) {}
+void stringCatHelper(std::string&) {}
 
 template <typename First, typename... Rest>
 void
-stringCatHelper(std::string &result, const First &first, const Rest&... rest)
+stringCatHelper(std::string& result, const First& first, const Rest&... rest)
 {
     result += first;
     stringCatHelper(result, rest...);
@@ -77,63 +74,63 @@ stringCat(const T&... vals)
 
 inline
 std::string
-jsonKey(const std::string &key)
+jsonKey(const std::string& key)
 {
     return stringCat("\"", key, "\"");
 }
 
 inline
 std::string
-jsonVal(const std::string &v)
+jsonVal(const std::string& v)
 {
     return stringCat("{\n", scene_rdl2::str_util::addIndent(v), "\n}");
 }
 
 inline
 std::string
-jsonPairObj(const std::string &key, const std::string &pairs)
+jsonPairObj(const std::string& key, const std::string& pairs)
 {
     return stringCat(jsonKey(key), ':', jsonVal(pairs));
 }
 
 inline
 std::string
-jsonPairStr(const std::string &key, const std::string &v)
+jsonPairStr(const std::string& key, const std::string& v)
 {
     return stringCat(jsonKey(key), ":\"", v, "\"");
 }
 
 inline
 std::string
-jsonPairUnsigned(const std::string &key, const unsigned v)
+jsonPairUnsigned(const std::string& key, const unsigned v)
 {
     return stringCat(jsonKey(key), ':', std::to_string(v));
 }
 
 inline
 std::string    
-jsonPairSizeT(const std::string &key, const size_t v)
+jsonPairSizeT(const std::string& key, const size_t v)
 {
     return stringCat(jsonKey(key), ':', std::to_string(v));
 }
 
 inline
 std::string
-jsonPairFloat(const std::string &key, const float v)
+jsonPairFloat(const std::string& key, const float v)
 {
     return stringCat(jsonKey(key), ':', std::to_string(v));
 }
 
 inline
 std::string    
-jsonPairBool(const std::string &key, const bool b)
+jsonPairBool(const std::string& key, const bool b)
 {
     return stringCat(jsonKey(key), ':', (b)? "true": "false");
 }
 
 inline
 std::string
-jsonPairTimeVal(const std::string &key, const struct timeval &tv)
+jsonPairTimeVal(const std::string& key, const struct timeval& tv)
 {
     return stringCat(jsonKey(key), ":{",
                      jsonPairStr("date", scene_rdl2::time_util::timeStr(tv)), ',',
@@ -149,21 +146,13 @@ jsonPairTimeVal(const std::string &key, const struct timeval &tv)
 namespace moonray {
 namespace rndr {
 
-ResumeHistoryMetaData::MCRTStint::MCRTStint() :
-    mEndTileSamplesId(0)
+ResumeHistoryMetaData::MCRTStint::MCRTStint()
 {
     scene_rdl2::time_util::init(mMCRTStartTime);
     scene_rdl2::time_util::init(mMCRTEndTime);
 }
 
-ResumeHistoryMetaData::ResumeHistoryMetaData() :
-    mBgCheckpointWriteMode(true),
-    mNumOfThreads(1),
-    mSampleType(SAMPLE_TYPE::UNIFORM),
-    mMinSamples(0),
-    mMaxSamples(0),
-    mAdaptiveTargetError(0.0f),
-    mStartTileSamplesId(0)
+ResumeHistoryMetaData::ResumeHistoryMetaData()
 {
     scene_rdl2::time_util::init(mProcStartTime);
     scene_rdl2::time_util::init(mFrameStartTime);
@@ -198,9 +187,21 @@ ResumeHistoryMetaData::setStartTileSampleId(const unsigned startTileSampleId)
     mStartTileSamplesId = startTileSampleId;
 }
 
+float
+ResumeHistoryMetaData::getTimeSaveSecBySignalCheckpoint() const
+{
+    if (mMCRT.size() <= 0) return 0.0f;
+
+    const MCRTStint& lastStint = mMCRT.back();
+    if (!lastStint.mExtraSnapshotFlag) return 0.0f;
+    
+    // last stint was created by signal-based checkpoint logic
+    return secInterval(lastStint.mMCRTStartTime, lastStint.mMCRTEndTime);
+}
+
 std::string
-ResumeHistoryMetaData::resumeHistory(const std::string &oldHistory,
-                                     const pbr::Statistics &pbrStats) const
+ResumeHistoryMetaData::resumeHistory(const std::string& oldHistory,
+                                     const pbr::Statistics& pbrStats) const
 {
     std::string str = oldHistory;
     if (oldHistory.empty()) {
@@ -217,10 +218,16 @@ ResumeHistoryMetaData::resumeHistory(const std::string &oldHistory,
     return str;
 }
 
+std::string
+ResumeHistoryMetaData::showAllStint() const
+{
+    return toJsonAllStint();
+}
+
 //---------------------------------------------------------------------------------------------------------------
 
 std::string
-ResumeHistoryMetaData::toJson(const pbr::Statistics &pbrStats) const
+ResumeHistoryMetaData::toJson(const pbr::Statistics& pbrStats) const
 {
     return jsonVal(stringCat(toJsonSampleInfo(pbrStats), ",\n",
                              toJsonExecEnvInfo(), ",\n",
@@ -229,7 +236,7 @@ ResumeHistoryMetaData::toJson(const pbr::Statistics &pbrStats) const
 }
 
 std::string
-ResumeHistoryMetaData::toJsonSampleInfo(const pbr::Statistics &pbrStats) const
+ResumeHistoryMetaData::toJsonSampleInfo(const pbr::Statistics& pbrStats) const
 {
     std::string str;
     switch (mSampleType) {
@@ -253,7 +260,7 @@ ResumeHistoryMetaData::toJsonSampleInfo(const pbr::Statistics &pbrStats) const
 }
 
 std::string
-ResumeHistoryMetaData::toJsonSampleResultStat(const pbr::Statistics &pbrStats) const
+ResumeHistoryMetaData::toJsonSampleResultStat(const pbr::Statistics& pbrStats) const
 {
     const size_t pixelSamples = pbrStats.getCounter(pbr::STATS_PIXEL_SAMPLES);
     const size_t lightSamples = pbrStats.getCounter(pbr::STATS_LIGHT_SAMPLES);
@@ -293,6 +300,17 @@ ResumeHistoryMetaData::toJsonExecEnvInfo() const
 std::string
 ResumeHistoryMetaData::toJsonTimingInfo() const
 {
+    return jsonPairObj("timingDetail",
+                       stringCat(jsonPairBool("bgCheckpointWrite", mBgCheckpointWriteMode), ",\n",
+                                 jsonPairUnsigned("startTileSamplesId", mStartTileSamplesId), ",\n",
+                                 jsonPairTimeVal("procStartTime", mProcStartTime), ",\n",
+                                 jsonPairTimeVal("frameStartTime", mFrameStartTime), ",\n",
+                                 toJsonAllStint()));
+}
+
+std::string
+ResumeHistoryMetaData::toJsonAllStint() const
+{
     auto isActiveStint = [&](size_t id) -> bool {
         if (id >= mMCRT.size()) return false; // outside MCRT stint range
         if (id == 0) return true; // always active for 1st stint
@@ -302,35 +320,35 @@ ResumeHistoryMetaData::toJsonTimingInfo() const
         return true;
     };
 
-    auto stint = [&](size_t id) -> std::string {
-        return jsonVal(stringCat(jsonPairUnsigned("stint", id), ",\n",
-                                 jsonPairTimeVal("MCRTStartTime", mMCRT[id].mMCRTStartTime), ",\n",
-                                 jsonPairTimeVal("MCRTEndTime", mMCRT[id].mMCRTEndTime), ",\n",
-                                 jsonPairUnsigned("endTileSamplesId", mMCRT[id].mEndTileSamplesId)));
-
-    };
-
-    std::string str = stringCat(jsonPairBool("bgCheckpointWrite", mBgCheckpointWriteMode), ",\n",
-                                jsonPairUnsigned("startTileSamplesId", mStartTileSamplesId), ",\n",
-                                jsonPairTimeVal("procStartTime", mProcStartTime), ",\n",
-                                jsonPairTimeVal("frameStartTime", mFrameStartTime), ",\n",
-                                jsonKey("MCRT"),  ":[\n");
+    std::string str = stringCat(jsonKey("MCRT"), ":[\n");
     for (size_t id = 0; id < mMCRT.size(); ++id) {
         if (isActiveStint(id)) { // We skip empty MCRTStint
-            str += scene_rdl2::str_util::addIndent(stint(id));
+            str += scene_rdl2::str_util::addIndent(toJsonStint(id));
             if (id < mMCRT.size() - 1) str += ",\n";
             else                       str += '\n';
         }
     }
     str += "]";
-    return jsonPairObj("timingDetail", str);
+    return str;
+}
+
+std::string
+ResumeHistoryMetaData::toJsonStint(size_t id) const
+{
+    return jsonVal(stringCat(jsonPairUnsigned("stint", id), ",\n",
+                             jsonPairBool("extraSnapshot", mMCRT[id].mExtraSnapshotFlag), ",\n",
+                             jsonPairTimeVal("MCRTStartTime", mMCRT[id].mMCRTStartTime), ",\n",
+                             jsonPairTimeVal("MCRTEndTime", mMCRT[id].mMCRTEndTime), ",\n",
+                             jsonPairUnsigned("endTileSamplesId", mMCRT[id].mEndTileSamplesId)));
 }
 
 std::string
 ResumeHistoryMetaData::toJsonTimingSummary() const
 {
     float renderPrepSec, mcrtSec, checkpointTotalSecExcludeLast, checkpointAveSec;
-    computeTimingSummary(renderPrepSec, mcrtSec, checkpointTotalSecExcludeLast, checkpointAveSec);
+    float timeSaveSecBySignalCheckpoint;
+    computeTimingSummary(renderPrepSec, mcrtSec, checkpointTotalSecExcludeLast, checkpointAveSec,
+                         timeSaveSecBySignalCheckpoint);
     
     std::string str =
         stringCat(jsonPairFloat("renderPrepSec", renderPrepSec), ",\n",
@@ -338,14 +356,19 @@ ResumeHistoryMetaData::toJsonTimingSummary() const
                   jsonPairFloat("checkpointTotalSecExcludeLast", checkpointTotalSecExcludeLast), ",\n",
                   jsonPairUnsigned("checkpointTotal", mMCRT.size()), ",\n",
                   jsonPairFloat("checkpointAverageSec", checkpointAveSec));
+    if (timeSaveSecBySignalCheckpoint > 0.0f) {
+        str = stringCat(str, ",\n",
+                        jsonPairFloat("timeSaveSecBySignalCheckpoint", timeSaveSecBySignalCheckpoint));
+    }
     return jsonPairObj("timingSummary", str);
 }
 
 void
-ResumeHistoryMetaData::computeTimingSummary(float &renderPrepSec,
-                                            float &mcrtSec,
-                                            float &checkpointTotalSecExcludeLast,
-                                            float &checkpointAveSec) const
+ResumeHistoryMetaData::computeTimingSummary(float& renderPrepSec,
+                                            float& mcrtSec,
+                                            float& checkpointTotalSecExcludeLast,
+                                            float& checkpointAveSec,
+                                            float& timeSaveSecBySignalCheckpoint) const
 {
     renderPrepSec = 0.0f;
     mcrtSec = 0.0f;
@@ -367,14 +390,15 @@ ResumeHistoryMetaData::computeTimingSummary(float &renderPrepSec,
     } else {
         checkpointAveSec = 0.0f;
     }
+
+    timeSaveSecBySignalCheckpoint = getTimeSaveSecBySignalCheckpoint();
 }
 
 float
-ResumeHistoryMetaData::secInterval(const struct timeval &start, const struct timeval &end) const
+ResumeHistoryMetaData::secInterval(const struct timeval& start, const struct timeval& end) const
 {
     return (float)(end.tv_sec - start.tv_sec) + (float)(end.tv_usec - start.tv_usec) / 1000.0f / 1000.0f;
 }
 
 } // namespace rndr
 } // namespace moonray
-

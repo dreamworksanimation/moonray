@@ -403,7 +403,7 @@ RenderDriver::batchRenderFrame(RenderDriver *driver, const FrameState &fs)
     }
 
     // store timing info for resume history : set dummy end tile sample id
-    fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(0);
+    fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(0, false);
 
     if (result == RenderPassesResult::ERROR_OR_CANCEL) return false;
     return true;
@@ -515,7 +515,7 @@ RenderDriver::progressiveRenderFrame(RenderDriver *driver, const FrameState &fs)
     driver->setFrameComplete();
 
     // store timing info for resume history : set dummy end tile sample id
-    fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(0);
+    fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintEndTime(0, false);
     return true;
 }
 

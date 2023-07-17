@@ -25,13 +25,13 @@ inline unsigned int f2ui(const float f)
 
 template <typename T, typename F>
 void
-setTiledBuf(OiioReader &reader, T *dstBuf, F pixCopyFunc)
+setTiledBuf(OiioReader& reader, T* dstBuf, F pixCopyFunc)
 // Copy all pixels by scanline segment order which is considered tiled memory layout
 // and maximize memory access coherency for both of source and destination in parallel.
 {
     scene_rdl2::fb_util::Tiler tiler(reader.getWidth(), reader.getHeight());
-    reader.crawlAllTiledScanline([&](const int startX, const int endX, const int pixY, const int nChan, const float *pix) {
-            T *dstPix = dstBuf + tiler.linearCoordsToTiledOffset(startX, pixY);
+    reader.crawlAllTiledScanline([&](const int startX, const int endX, const int pixY, const int nChan, const float* pix) {
+            T* dstPix = dstBuf + tiler.linearCoordsToTiledOffset(startX, pixY);
             for (int x = startX; x < endX; ++x) {
                 pixCopyFunc(dstPix, pix);
                 dstPix ++;
@@ -43,9 +43,9 @@ setTiledBuf(OiioReader &reader, T *dstBuf, F pixCopyFunc)
 } // namespace
 
 bool
-RenderOutputDriver::Impl::revertFilmData(Film &film,
-                                         unsigned &resumeTileSamples, int &resumeNumConsistentSamples, bool &zeroWeightMask,
-                                         bool &adaptiveSampling, float adaptiveSampleParam[3])
+RenderOutputDriver::Impl::revertFilmData(Film& film,
+                                         unsigned& resumeTileSamples, int& resumeNumConsistentSamples, bool& zeroWeightMask,
+                                         bool& adaptiveSampling, float adaptiveSampleParam[3])
 //
 // Read all resume files which defined inside renderOutputDriver
 // return 3 values by argument resumeTileSamples and resumeNumConsistentSamples come from file's metadata and
@@ -65,7 +65,7 @@ RenderOutputDriver::Impl::revertFilmData(Film &film,
     std::vector<std::string> resumeFiles;
 
     // Loop over all files and to read all resume file
-    for (const auto &f: mFiles) {
+    for (const auto& f: mFiles) {
         if (!read(f, film)) { // read one resume file
             std::ostringstream ostr;
             ostr << "Read file failed and could not revert film data from file. filename:" << f.mResumeName;
@@ -118,7 +118,7 @@ RenderOutputDriver::Impl::revertFilmData(Film &film,
             }
             ostr << "}";
             scene_rdl2::logging::Logger::info(ostr.str());
-            if (isatty(STDOUT_FILENO)) std::cout << ostr.str() << std::endl;
+            // if (isatty(STDOUT_FILENO)) std::cout << ostr.str() << std::endl; // useful for debug
         }
 
         if (adaptiveSampling) {
@@ -186,13 +186,13 @@ RenderOutputDriver::Impl::resumeRenderReadyTest() const
 }
 
 bool
-RenderOutputDriver::Impl::read(const File &file, Film &film)
+RenderOutputDriver::Impl::read(const File& file, Film& film)
 //
 // Read one resume file and stored into film object as is.
 // No de-normalization and other operations at this moment and just read from file.
 //
 {
-    const std::string &filename = file.mResumeName;
+    const std::string& filename = file.mResumeName;
     if (filename.empty()) return true; // early exit. skip this File data
 
     //
@@ -232,7 +232,7 @@ RenderOutputDriver::Impl::read(const File &file, Film &film)
 }
 
 bool
-RenderOutputDriver::Impl::readResumableParameters(OiioReader &reader)
+RenderOutputDriver::Impl::readResumableParameters(OiioReader& reader)
 {
     bool errorCondition = false;
 
@@ -347,7 +347,7 @@ RenderOutputDriver::Impl::readResumableParameters(OiioReader &reader)
 }
 
 bool
-RenderOutputDriver::Impl::readSubImage(OiioReader &reader, const Image &currImage, Film &film)
+RenderOutputDriver::Impl::readSubImage(OiioReader& reader, const Image& currImage, Film& film)
 {
     //
     // Test correctness of subImage by name attribute.
@@ -381,7 +381,7 @@ RenderOutputDriver::Impl::readSubImage(OiioReader &reader, const Image &currImag
 }
 
 bool
-RenderOutputDriver::Impl::readSubImageNameValidityTest(OiioReader &reader, const Image &currImage) const
+RenderOutputDriver::Impl::readSubImageNameValidityTest(OiioReader& reader, const Image& currImage) const
 {
     std::ostringstream ostr;
 
@@ -417,9 +417,9 @@ RenderOutputDriver::Impl::readSubImageNameValidityTest(OiioReader &reader, const
 }
 
 bool
-RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
+RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                                                const int roIdx, // index of RenderOutputDriver::Impl::mEntries[] about currEntry
-                                               Film &film)
+                                               Film& film)
 {
     //
     // Properly setup one Entry data from already read resume data into proper destination
@@ -427,15 +427,15 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
     // Result of destination is simply same as resume file data at this point.
     //
 
-    const Entry &currEntry = *(mEntries[roIdx]);
+    const Entry& currEntry = *(mEntries[roIdx]);
 
     //
     // Try to find destination buffer address.
     //
-    scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer = nullptr;
-    scene_rdl2::fb_util::FloatBuffer *weightBuffer = nullptr;
-    scene_rdl2::fb_util::VariablePixelBuffer *aovBuffer = nullptr;
-    scene_rdl2::fb_util::RenderBuffer *renderBufferOdd = nullptr;
+    scene_rdl2::fb_util::HeatMapBuffer* heatMapBuffer = nullptr;
+    scene_rdl2::fb_util::FloatBuffer* weightBuffer = nullptr;
+    scene_rdl2::fb_util::VariablePixelBuffer* aovBuffer = nullptr;
+    scene_rdl2::fb_util::RenderBuffer* renderBufferOdd = nullptr;
     if (!readSubImageSetDestinationBuffer(roIdx,
                                           film,
                                           &heatMapBuffer, &weightBuffer, &renderBufferOdd, &aovBuffer)) {
@@ -467,12 +467,12 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
     // We have to think about memory layout conversion issue here. Main logic of tile <-> untile conversion is done
     // by inside of "setTiledBuf()" templates.
     //
-    const scene_rdl2::rdl2::RenderOutput *ro = currEntry.mRenderOutput;
+    const scene_rdl2::rdl2::RenderOutput* ro = currEntry.mRenderOutput;
     switch (ro->getResult()) {
     case scene_rdl2::rdl2::RenderOutput::RESULT_HEAT_MAP:
         {
-            int64_t *dstBuf = heatMapBuffer->getData();
-            setTiledBuf(reader, dstBuf, [&](int64_t *dstPix, const float *srcPix) {
+            int64_t* dstBuf = heatMapBuffer->getData();
+            setTiledBuf(reader, dstBuf, [&](int64_t* dstPix, const float* srcPix) {
                     // We stored seconds value into 32bit single float and already lost some precision.
                     // Simply convert seconds value to nanoseconds as int64_t here.
                     *dstPix = mcrt_common::Clock::nanoseconds((double)srcPix[chanOffset[0]]);
@@ -481,9 +481,9 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
         break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_WEIGHT:
         {
-            float *dstBuf = weightBuffer->getData();
+            float* dstBuf = weightBuffer->getData();
             bool zeroVal = false;
-            setTiledBuf(reader, dstBuf, [&](float *dstPix, const float *srcPix) {
+            setTiledBuf(reader, dstBuf, [&](float* dstPix, const float* srcPix) {
                     *dstPix = srcPix[chanOffset[0]];
                     if (*dstPix == 0.0f) zeroVal = true;
                 });
@@ -494,8 +494,8 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
     case scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY_AUX:
         {
             if (renderBufferOdd) {  // only read if destination buffer is ready
-                scene_rdl2::fb_util::RenderColor *dstBuf = renderBufferOdd->getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RenderColor *dstPix, const float *srcPix) {
+                scene_rdl2::fb_util::RenderColor* dstBuf = renderBufferOdd->getData();
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RenderColor* dstPix, const float* srcPix) {
                         (*dstPix)[0] = srcPix[chanOffset[0]];
                         (*dstPix)[1] = srcPix[chanOffset[1]];
                         (*dstPix)[2] = srcPix[chanOffset[2]];
@@ -507,8 +507,8 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
     case scene_rdl2::rdl2::RenderOutput::RESULT_ALPHA_AUX:
         {
             if (renderBufferOdd) {
-                scene_rdl2::fb_util::RenderColor *dstBuf = renderBufferOdd->getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RenderColor *dstPix, const float *srcPix) {
+                scene_rdl2::fb_util::RenderColor* dstBuf = renderBufferOdd->getData();
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RenderColor* dstPix, const float* srcPix) {
                         (*dstPix)[3] = srcPix[chanOffset[0]];
                     });
             }
@@ -518,24 +518,23 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
     case scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE:
         {
             // Clear the cryptomatte buffer ready for loading resume data
-            pbr::CryptomatteBuffer *cryptomatteBuf = film.getCryptomatteBuffer();
+            pbr::CryptomatteBuffer* cryptomatteBuf = film.getCryptomatteBuffer();
             cryptomatteBuf->clear();
             cryptomatteBuf->init(reader.getWidth(), reader.getHeight(), 1, cryptomatteBuf->getMultiPresenceOn());
 
             scene_rdl2::fb_util::Tiler tiler(reader.getWidth(), reader.getHeight());
             reader.crawlAllTiledScanline
-                ([&](const int startX, const int endX, const int pixY, const int nChan,
-                     const float *pix) {
+                ([&](const int startX, const int endX, const int pixY, const int nChan, const float* pix) {
                     for (int x = startX; x < endX; ++x) {
                         // get the offsets to the cryptomatte data (the data isn't necessarily contiguous!)
-                        const float *idAndCoverageData       = pix + reader.getPixChanOffset("Cryptomatte00.R");
-                        const float *positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
-                        const float *normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
-                        const float *beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
-                        const float *refPData                = pix + reader.getPixChanOffset("CryptoRefP00.R");
-                        const float *refNData                = pix + reader.getPixChanOffset("CryptoRefN00.R");
-                        const float *uvData                  = pix + reader.getPixChanOffset("CryptoUV00.R");
-                        const float *resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
+                        const float* idAndCoverageData       = pix + reader.getPixChanOffset("Cryptomatte00.R");
+                        const float* positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
+                        const float* normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
+                        const float* beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
+                        const float* refPData                = pix + reader.getPixChanOffset("CryptoRefP00.R");
+                        const float* refNData                = pix + reader.getPixChanOffset("CryptoRefN00.R");
+                        const float* uvData                  = pix + reader.getPixChanOffset("CryptoUV00.R");
+                        const float* resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
 
                         cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, normalData, 
                                                      beautyData, refPData, refNData, uvData, resumeRenderSupportData);
@@ -559,16 +558,16 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
         switch (aovBuffer->getFormat()) {
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT:
             {
-                float *dstBuf = aovBuffer->getFloatBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](float *dstPix, const float *srcPix) {
+                float* dstBuf = aovBuffer->getFloatBuffer().getData();
+                setTiledBuf(reader, dstBuf, [&](float* dstPix, const float* srcPix) {
                         *dstPix = srcPix[chanOffset[0]];
                     });
             }
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2:
             {
-                scene_rdl2::math::Vec2f *dstBuf = aovBuffer->getFloat2Buffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec2f *dstPix, const float *srcPix) {
+                scene_rdl2::math::Vec2f* dstBuf = aovBuffer->getFloat2Buffer().getData();
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec2f* dstPix, const float* srcPix) {
                         dstPix->x = srcPix[chanOffset[0]];
                         dstPix->y = srcPix[chanOffset[1]];
                     });
@@ -576,8 +575,8 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3:
             {
-                scene_rdl2::math::Vec3f *dstBuf = aovBuffer->getFloat3Buffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec3f *dstPix, const float *srcPix) {
+                scene_rdl2::math::Vec3f* dstBuf = aovBuffer->getFloat3Buffer().getData();
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec3f* dstPix, const float* srcPix) {
                         dstPix->x = srcPix[chanOffset[0]];
                         dstPix->y = srcPix[chanOffset[1]];
                         dstPix->z = srcPix[chanOffset[2]];
@@ -587,10 +586,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4:
             if (ro->getMathFilter() == scene_rdl2::rdl2::RenderOutput::MathFilter::MATH_FILTER_CLOSEST) {
                 // This is a special case and this AOV is using the closest math filter
-                scene_rdl2::math::Vec4f *dstBuf = aovBuffer->getFloat4Buffer().getData();
+                scene_rdl2::math::Vec4f* dstBuf = aovBuffer->getFloat4Buffer().getData();
                 switch (film.getAovNumFloats(getAovBuffer(roIdx))) {
                 case 1 :
-                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f *dstPix, const float *srcPix) {
+                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f* dstPix, const float* srcPix) {
                             dstPix->x = srcPix[chanOffset[0]];
                             dstPix->y = 0.0f;
                             dstPix->z = 0.0f;
@@ -598,7 +597,7 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
                         });
                     break;
                 case 2 :
-                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f *dstPix, const float *srcPix) {
+                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f* dstPix, const float* srcPix) {
                             dstPix->x = srcPix[chanOffset[0]];
                             dstPix->y = srcPix[chanOffset[1]];
                             dstPix->z = 0.0f;
@@ -606,7 +605,7 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
                         });
                     break;
                 case 3 :
-                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f *dstPix, const float *srcPix) {
+                    setTiledBuf(reader, dstBuf, [&](scene_rdl2::math::Vec4f* dstPix, const float* srcPix) {
                             dstPix->x = srcPix[chanOffset[0]];
                             dstPix->y = srcPix[chanOffset[1]];
                             dstPix->z = srcPix[chanOffset[2]];
@@ -619,10 +618,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
             {
-                scene_rdl2::fb_util::RunningStatsLightWeight<float> *dstBuf =
+                scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstBuf =
                     aovBuffer->getRgbVarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float> *dstPix,
-                                                const float *srcPix) {
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstPix,
+                                                const float* srcPix) {
                                 dstPix->set(f2ui(srcPix[chanOffset[0]]),
                                             srcPix[chanOffset[1]],
                                             srcPix[chanOffset[2]],
@@ -633,10 +632,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
             {
-                scene_rdl2::fb_util::RunningStatsLightWeight<float> *dstBuf =
+                scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstBuf =
                     aovBuffer->getFloatVarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float> *dstPix,
-                                                const float *srcPix) {
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstPix,
+                                                const float* srcPix) {
                                 dstPix->set(f2ui(srcPix[chanOffset[0]]),
                                             srcPix[chanOffset[1]],
                                             srcPix[chanOffset[2]],
@@ -647,10 +646,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
             {
-                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f> *dstBuf =
+                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f>* dstBuf =
                     aovBuffer->getFloat2VarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f> *dstPix,
-                                                const float *srcPix) {
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f>* dstPix,
+                                                const float* srcPix) {
                                 dstPix->set(f2ui(srcPix[chanOffset[0]]),
                                             scene_rdl2::math::Vec2f(srcPix[chanOffset[1]], srcPix[chanOffset[2]]),
                                             scene_rdl2::math::Vec2f(srcPix[chanOffset[3]], srcPix[chanOffset[4]]),
@@ -661,10 +660,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
             break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
             {
-                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f> *dstBuf =
+                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f>* dstBuf =
                     aovBuffer->getFloat3VarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f> *dstPix,
-                                                const float *srcPix) {
+                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f>* dstPix,
+                                                const float* srcPix) {
                                 dstPix->set(f2ui(srcPix[chanOffset[0]]),
                                             scene_rdl2::math::Vec3f(srcPix[chanOffset[1]],
                                                         srcPix[chanOffset[2]],
@@ -700,10 +699,10 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader &reader,
 bool
 RenderOutputDriver::Impl::readSubImageSetDestinationBuffer(const int roIdx,
                                                            Film &film,
-                                                           scene_rdl2::fb_util::HeatMapBuffer **heatMapBuffer,
-                                                           scene_rdl2::fb_util::FloatBuffer **weightBuffer,
-                                                           scene_rdl2::fb_util::RenderBuffer **renderBufferOdd,
-                                                           scene_rdl2::fb_util::VariablePixelBuffer **aovBuffer) const
+                                                           scene_rdl2::fb_util::HeatMapBuffer** heatMapBuffer,
+                                                           scene_rdl2::fb_util::FloatBuffer** weightBuffer,
+                                                           scene_rdl2::fb_util::RenderBuffer** renderBufferOdd,
+                                                           scene_rdl2::fb_util::VariablePixelBuffer** aovBuffer) const
 {
     bool returnVal = true; // continue to revert information from file
 
@@ -742,13 +741,13 @@ RenderOutputDriver::Impl::readSubImageSetDestinationBuffer(const int roIdx,
 }
 
 bool
-RenderOutputDriver::Impl::readSubImageResoValidityTest(OiioReader &reader,
-                                                       const Entry &currEntry,
-                                                       const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
-                                                       const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
-                                                       const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
-                                                       const scene_rdl2::fb_util::VariablePixelBuffer *aovBuffer,
-                                                       const pbr::CryptomatteBuffer *cryptomatteBuffer) const
+RenderOutputDriver::Impl::readSubImageResoValidityTest(OiioReader& reader,
+                                                       const Entry& currEntry,
+                                                       const scene_rdl2::fb_util::HeatMapBuffer* heatMapBuffer,
+                                                       const scene_rdl2::fb_util::FloatBuffer* weightBuffer,
+                                                       const scene_rdl2::fb_util::RenderBuffer* renderBufferOdd,
+                                                       const scene_rdl2::fb_util::VariablePixelBuffer* aovBuffer,
+                                                       const pbr::CryptomatteBuffer* cryptomatteBuffer) const
 {
     std::ostringstream ostr;
 
@@ -818,12 +817,12 @@ RenderOutputDriver::Impl::readSubImageResoValidityTest(OiioReader &reader,
 }
 
 bool
-RenderOutputDriver::Impl::readSubImageSetPixChanOffset(OiioReader &reader,
-                                                       const Entry &currEntry,
-                                                       std::vector<int> &chanOffset) const
+RenderOutputDriver::Impl::readSubImageSetPixChanOffset(OiioReader& reader,
+                                                       const Entry& currEntry,
+                                                       std::vector<int>& chanOffset) const
 {
     for (size_t chanId = 0; chanId < currEntry.mChannelNames.size(); ++chanId) {
-        const std::string &channelName = currEntry.mChannelNames[chanId];
+        const std::string& channelName = currEntry.mChannelNames[chanId];
 
         int pixChanOffset = reader.getPixChanOffset(channelName);
         if (pixChanOffset < 0) {

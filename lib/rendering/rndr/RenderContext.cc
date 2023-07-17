@@ -2959,7 +2959,7 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
                                                                    logMessage);
         }
         Logger::info(logMessage);
-        if (isatty(STDOUT_FILENO)) std::cout << logMessage << std::endl;
+        // if (isatty(STDOUT_FILENO)) std::cout << logMessage << std::endl; // useful for debug run from terminal
     }
     // Setup checkpoint time cap (minute). 0 = disable
     fs->mCheckpointTimeCap = vars.get(scene_rdl2::rdl2::SceneVariables::sCheckpointTimeCap);

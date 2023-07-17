@@ -176,14 +176,14 @@ public:
     /// Write the outputs : final output and non checkpoint file
     /// Errors are checked via errors()
     /// renderBuffer, aovBuffer, heatMap can be null if no output requires them
-    void write(const pbr::DeepBuffer *deepBuffer,
-               pbr::CryptomatteBuffer *cryptomatteBuffer,
-               const scene_rdl2::fb_util::HeatMapBuffer *heatMap,
-               const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
-               const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
-               const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuffers,
-               const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &displayFilterBuffers,
-               ImageWriteCache *cache) const;
+    void writeFinal(const pbr::DeepBuffer *deepBuffer,
+                    pbr::CryptomatteBuffer *cryptomatteBuffer,
+                    const scene_rdl2::fb_util::HeatMapBuffer *heatMap,
+                    const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
+                    const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
+                    const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuffers,
+                    const std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &displayFilterBuffers,
+                    ImageWriteCache *cache) const;
 
     /// Write the checkpoint outputs
     /// Errors are checked via errors()
