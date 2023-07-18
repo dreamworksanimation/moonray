@@ -219,7 +219,7 @@ public:
         return mCameras.size();
     }
 
-    finline const Camera *getCamera(int i) const
+    finline Camera *getCamera(int i) const
     {
         return mCameras[i].get();
     }
