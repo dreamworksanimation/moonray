@@ -221,7 +221,8 @@ RenderContext::RenderContext(RenderOptions& options, std::stringstream* initMess
     mRenderStats(nullptr),
     mRenderPrepTimingStats(nullptr),
     mPbrStatistics(new pbr::Statistics()),
-    mGeomStatistics(new geom::internal::Statistics())
+    mGeomStatistics(new geom::internal::Statistics()),
+    mExecutionMode(ExecutionMode::AUTO) // for debugConsole command
 {
     MNRY_ASSERT(mDriver.get());
 
@@ -816,6 +817,8 @@ RenderContext::startFrame()
 
     // Log information as to whether we're executing in scalar, vectorized, or xpu mode
     // and the reason why.
+    mExecutionMode = executionMode; // for debugConsole command
+    mExecutionModeString = executionModeString; // for debugConsole command
     mRenderStats->logExecModeConfiguration(executionMode);
     Logger::info(executionModeString);
 
@@ -3370,6 +3373,8 @@ RenderContext::parserConfigure()
                 });
     mParser.opt("saveScene", "<filename>", "save scene",
                 [&](Arg& arg) -> bool { return saveSceneCommand(arg); });
+    mParser.opt("showExecMode", "", "show rendering execMode and the reason why",
+                [&](Arg& arg) -> bool { return arg.msg(showExecModeAndReason() + '\n'); });
 }
 
 void
@@ -3427,6 +3432,21 @@ RenderContext::saveSceneCommand(Arg& arg) const
     }
 
     return arg.msg("done\n");
+}
+
+std::string
+RenderContext::showExecModeAndReason() const
+{
+    std::ostringstream ostr;
+    ostr << "executionMode=";
+    switch (mExecutionMode) {
+    case ExecutionMode::SCALAR : ostr << "SCALAR"; break;
+    case ExecutionMode::VECTORIZED : ostr << "VECTORIZED"; break;
+    case ExecutionMode::XPU : ostr << "XPU"; break;
+    default : ostr << "unknown"; break;
+    }
+    if (!mExecutionModeString.empty()) ostr << " (" << mExecutionModeString << ")";
+    return ostr.str();
 }
 
 } // namespace rndr

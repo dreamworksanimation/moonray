@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "RenderDriver.h"
 #include "Util.h"
 
@@ -389,10 +386,11 @@ RenderDriver::snapshotDeltaHeatMap(unsigned filmIdx,
             const int64_t *src = film.getHeatMapBuffer()->getData() + pixId;
             const float *srcW = film.getWeightBuffer().getData() + pixId;
 
-            uint64_t activePixelMask = scene_rdl2::fb_util::SnapshotUtil::snapshotTileHeatMapWeight((uint64_t *)dst,
-                                                                                        (uint32_t *)dstW,
-                                                                                        (const uint64_t *)src,
-                                                                                        (const uint32_t *)srcW);
+            uint64_t activePixelMask =
+                scene_rdl2::fb_util::SnapshotUtil::snapshotTileHeatMapWeight((uint64_t *)dst,
+                                                                             (uint32_t *)dstW,
+                                                                             (const uint64_t *)src,
+                                                                             (const uint32_t *)srcW);
             activePixelsHeatMap.setTileMask(tileId, activePixelMask);
 
             //
@@ -969,4 +967,3 @@ RenderDriver::snapshotDeltaAovRgbVariance(unsigned filmIdx,
 
 } // namespace rndr
 } // namespace moonray
-

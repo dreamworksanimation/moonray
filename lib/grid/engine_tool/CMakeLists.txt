@@ -33,6 +33,7 @@ target_link_libraries(${component}
         SceneRdl2::common_grid_util
         SceneRdl2::common_math
         SceneRdl2::common_platform
+	SceneRdl2::render_util
         SceneRdl2::scene_rdl2
         ${PROJECT_NAME}::rendering_mcrt_common
         ${PROJECT_NAME}::rendering_rndr
