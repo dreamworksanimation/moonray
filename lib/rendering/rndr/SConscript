@@ -81,6 +81,7 @@ components = [
     'common_time',
     'oiio',
     'openvdb',
+    'presenz',
     'render_logging',
     'render_util',
     'rendering_bvh_shading',

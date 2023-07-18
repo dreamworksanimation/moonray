@@ -9,6 +9,7 @@
 #include "RenderOptions.h"
 #include "RenderPrepExecTracker.h"
 #include "Types.h"
+#include <moonray/rendering/mcrt_common/PresenZSettings.h>
 
 #include <scene_rdl2/common/fb_util/FbTypes.h>
 #include <scene_rdl2/common/grid_util/Arg.h>
@@ -60,6 +61,7 @@ struct RenderPrepTimingStats;
 class RenderProgressEstimation;
 class RenderStats;
 class ResumeHistoryMetaData;
+class PresenZSettings;
 
 /// This must be called at program startup before we create any RenderContexts.
 /// It creates a single global render driver which is shared between all future
@@ -591,6 +593,8 @@ private:
     // constant, fast to access structure for use within renderer inner loops.
     void buildFrameState(FrameState *fs, double frameStartTime, mcrt_common::ExecutionMode executionMode) const;
 
+    void updateFrameStateForPresenZDetectPhase(FrameState *fs) const;
+
     // Called each frame in startFrame to update the internal state of the integrator.
     void updatePbrState(const FrameState &fs);
 
@@ -738,6 +742,10 @@ private:
     typedef std::pair<std::string, std::string> SceneUpdateData;
     typedef std::vector<SceneUpdateData> UpdateQueue;
     UpdateQueue mUpdateQueue;
+
+    // PresenZ
+    mcrt_common::PresenZSettings* mPresenZSettings;
+    bool mPresenZPhaseBeginHasBeenCalled;
 
     std::mutex mMutexForceCallStartFrame;
     bool mForceCallStartFrame = false;

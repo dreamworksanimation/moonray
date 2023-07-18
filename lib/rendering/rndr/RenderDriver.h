@@ -63,6 +63,7 @@ class RenderOutput;
 
 namespace mcrt_common {
 class ThreadLocalState;
+class PresenZSettings;
 }
 
 namespace fb_util { class ActivePixels; }
@@ -451,6 +452,8 @@ public:
 
     template <typename F> void crawlAllTiledPixels(F pixelFunc) const;
 
+    void setPresenZSettings(mcrt_common::PresenZSettings* presenZSettings) { mPresenZSettings = presenZSettings; }
+
     // The RenderDriver owns the XPU queue but other objects like TLState may
     // have pointers to them so they can queue up rays.
     void createXPUQueue();
@@ -760,6 +763,9 @@ private:
     // This mutex is used for exclusive execution of snapshot between regular snapshot and checkpoint snapshot
     mutable std::mutex mExtrapolationBufferMutex;
 
+    // Lock for PzProcessBucketFlushToFile()
+    static std::mutex mPresenZMutex;    
+
     unsigned            mLastCoarsePassIdx;
 
     std::unique_ptr<TileScheduler>  mTileScheduler;
@@ -861,6 +867,8 @@ private:
     RenderFrameTimingRecord mTimeRec;
     RenderProgressEstimation mProgressEstimation; // progress estimation logic for checkpoint render
     unsigned mAdaptiveTileSampleCap; // tile sample cap for adaptive checkpoint render
+
+    mcrt_common::PresenZSettings* mPresenZSettings;
 
     int mLastCheckpointFileEndSampleId; // default is -1
 
