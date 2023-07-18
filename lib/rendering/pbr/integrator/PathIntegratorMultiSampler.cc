@@ -507,12 +507,12 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                                            material->invisibleRefractiveCryptomatte()) ?
                                            refractCryptomatteParams : nullptr;
 
-
+            bool isStereoscopic = false;
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
-                    pbrTls, ray, sp, cameraId,
+                    pbrTls, ray, ray, sp, cameraId,
                     pv, lobe, radianceIndirect, transparencyIndirect,
                     vtIndirect, sequenceID, aovs, nullptr, nullptr, nullptr, 
-                    newRefractCryptomatteParams, false, hitVolume);
+                    newRefractCryptomatteParams, false, hitVolume, isStereoscopic);
 
             if (indirectRadianceType != NONE) {
                 // Accumulate indirect lighting contribution

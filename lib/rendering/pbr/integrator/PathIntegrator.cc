@@ -45,10 +45,16 @@
 
 #include <moonray/common/time/Ticker.h>
 
+#include <scene_rdl2/common/math/Math.h>
 #include <scene_rdl2/common/math/Constants.h>
 #include <scene_rdl2/scene/rdl2/SceneContext.h>
 #include <scene_rdl2/scene/rdl2/Material.h>
 #include <scene_rdl2/scene/rdl2/VisibilityFlags.h>
+
+#include <API/PzShadingApi.h>
+#include <API/PzDetectSampleApi.h>
+#include <API/PzRenderSampleApi.h>
+#include "API/PzCameraApi.h"
 
 #include <limits.h>
 
@@ -357,13 +363,17 @@ shadeMaterial(mcrt_common::ThreadLocalState *tls, const scene_rdl2::rdl2::Materi
 // BsdfLobe is passed in so that we can track the lobe type which generated
 // the ray for ray debugging purposes. Other than that, it's not needed.
 PathIntegrator::IndirectRadianceType
-PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDifferential &ray,
+PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls,
+        mcrt_common::RayDifferential &ray,
+        mcrt_common::RayDifferential &rayForVolume,
         const Subpixel &sp, int cameraId, const PathVertex &prevPv, const shading::BsdfLobe *lobe,
         scene_rdl2::math::Color &radiance, float &transparency, VolumeTransmittance& vt,
         unsigned &sequenceID, float *aovs, float *depth,
         DeepParams* deepParams, CryptomatteParams *cryptomatteParamsPtr,
         CryptomatteParams *refractCryptomatteParamsPtr,
-        bool ignoreVolumes, bool &hitVolume) const
+        bool ignoreVolumes, bool &hitVolume,
+        bool &isStereoscopic,
+        PresenZ::Phase::Eye presenZEye) const
 {
     CHECK_CANCELLATION(pbrTls, return NONE);
 
@@ -452,7 +462,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     float volumeSurfaceT = scene_rdl2::math::sMaxValue;
 
     if (!ignoreVolumes) {
-        hitVolume = computeRadianceVolume(pbrTls, ray, sp, cameraId, pv, lobeType,
+        hitVolume = computeRadianceVolume(pbrTls, rayForVolume, sp, cameraId, pv, lobeType,
             radiance, sequenceID, vt, aovs, deepParams, nullptr, &volumeSurfaceT);
         if (hitVolume) {
             indirectRadianceType = IndirectRadianceType(indirectRadianceType | VOLUME);
@@ -535,6 +545,42 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     indirectRadianceType = IndirectRadianceType(indirectRadianceType | SURFACE);
 
     CHECK_CANCELLATION(pbrTls, return NONE);
+
+    // PresenZ - Bend camera rays for stereo
+    if (fs.mPresenZSettings != nullptr &&
+        fs.mPresenZSettings->getEnabled() &&
+        fs.mPresenZSettings->getPhase() == PresenZ::Phase::Render &&
+        ray.getDepth() == 0) {
+
+        const NozVector Nn = nozVector(isect.getN().x,
+                                       isect.getN().y,
+                                       isect.getN().z);
+
+        const NozVector camDir = nozVector(ray.getDirection().x,
+                                           ray.getDirection().y,
+                                           ray.getDirection().z);
+
+        const NozPoint worldHitPoint(isect.getP().x,
+                                     isect.getP().y,
+                                     isect.getP().z);
+
+        const double hitDistance = scene_rdl2::math::length(isect.getP() - ray.getOrigin());
+
+        PresenZ::Shading::PzBendRay newCamRay =
+            PresenZ::Shading::PzGetBendRayRenderPhase(presenZEye,
+                                                      Nn,
+                                                      camDir,
+                                                      worldHitPoint,
+                                                      hitDistance);
+
+        isStereoscopic = newCamRay.isStereoScopic;
+
+        ray = mcrt_common::RayDifferential(
+            ray.getOrigin(), scene_rdl2::math::normalize(scene_rdl2::math::Vec3f(newCamRay.dir.x, newCamRay.dir.y, newCamRay.dir.z)),
+            ray.getOrigin(), scene_rdl2::math::normalize(scene_rdl2::math::Vec3f(newCamRay.dDdx.x, newCamRay.dDdx.y, newCamRay.dDdx.z)),
+            ray.getOrigin(), scene_rdl2::math::normalize(scene_rdl2::math::Vec3f(newCamRay.dDdy.x, newCamRay.dDdy.y, newCamRay.dDdy.z)),
+            ray.getStart(), newCamRay.wHitDistance, ray.getTime(), 0);
+    }
 
     // Early return with error color if isect doesn't provide all the
     // required attributes shader request
@@ -696,10 +742,10 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         VolumeTransmittance vtPresence;
         unsigned presenceSequenceID = sequenceID;
         bool presenceHitVolume;
-        computeRadianceRecurse(pbrTls, presenceRay, sp, cameraId, newPv, lobe,
+        computeRadianceRecurse(pbrTls, presenceRay, rayForVolume, sp, cameraId, newPv, lobe,
             presenceRadiance, presenceTransparency, vtPresence,
             presenceSequenceID, aovs, nullptr, nullptr, newCryptomatteParamsPtr, nullptr, 
-            false, presenceHitVolume);
+            false, presenceHitVolume, isStereoscopic, presenZEye);
 
         radiance += presenceRadiance;
         vt.mTransmittanceE *= vtPresence.mTransmittanceE;
@@ -1026,6 +1072,7 @@ PathIntegrator::initPrimaryRay(pbr::TLState *pbrTls,
                                int subpixelIndex,
                                int pixelSamples,
                                const Sample& sample,
+                               const FrameState& fs,
                                mcrt_common::RayDifferential &ray,
                                Subpixel &sp,
                                PathVertex &pv) const
@@ -1034,8 +1081,18 @@ PathIntegrator::initPrimaryRay(pbr::TLState *pbrTls,
 
     MNRY_ASSERT(camera);
 
-    camera->createRay(&ray, pixelX + sample.pixelX, pixelY + sample.pixelY,
-                      sample.time, sample.lensU, sample.lensV, true);
+    // PresenZ
+    if (fs.mPresenZSettings != nullptr &&
+        fs.mPresenZSettings->getEnabled()) {
+
+        // If PresenZ is enabled, the PresenZCamera will offset the pixel
+        // with the PresenZ generated sample position so don't offset it here.
+        camera->createRay(&ray, pixelX, pixelY,
+                          0.0f, sample.lensU, sample.lensV, true);
+    } else {
+        camera->createRay(&ray, pixelX + sample.pixelX, pixelY + sample.pixelY,
+                          sample.time, sample.lensU, sample.lensV, true);
+    }
 
      // check that the ray is valid
      if (ray.getStart() == scene_rdl2::math::sMaxValue && ray.getEnd() == scene_rdl2::math::sMaxValue) {
@@ -1160,6 +1217,50 @@ PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_com
     }
 }
 
+struct PresenZRayTestInterfaceUserData
+{
+    PresenZRayTestInterfaceUserData(TLState* pbrTls) :
+        mPbrTls(pbrTls)
+    {}
+
+    TLState* mPbrTls;
+};
+
+uint64_t presenZQueryFlags(uint64_t flags, void* userData) { return 0; }
+
+// This is the callback that is invoked by PresenZ
+bool presenZRayTest(const NozVector& origin,
+                    const NozVector& dir,
+                    const double maxDist,
+                    PresenZ::DetectSample::RayTestResult& out,
+                    void* userData)
+{
+    PresenZRayTestInterfaceUserData& context = *reinterpret_cast<PresenZRayTestInterfaceUserData*>(userData);
+
+    scene_rdl2::math::Vec3f rayOrigin = scene_rdl2::math::Vec3f(origin.x, origin.y, origin.z);
+    scene_rdl2::math::Vec3f rayDirection = scene_rdl2::math::Vec3f(dir.x, dir.y, dir.z);
+
+    mcrt_common::Ray ray(rayOrigin, rayDirection, 0.0f, maxDist);
+
+    shading::Intersection isect;
+    bool hitGeom = context.mPbrTls->mFs->mScene->intersectRay(context.mPbrTls->mTopLevelTls,
+                                                              ray, isect, 0);
+
+    if (hitGeom) {
+        // Record hit result in RayTestResult
+        scene_rdl2::math::Vec3f hitLocation = isect.getP();
+        scene_rdl2::math::Vec3f hitNormal = isect.getN();
+        double hitDistance = scene_rdl2::math::length(rayOrigin - hitLocation);
+
+        out.hit = NozPoint(hitLocation.x, hitLocation.y, hitLocation.z);
+        out.normal = NozPoint(hitNormal.x, hitNormal.y, hitNormal.z);
+        out.d = hitDistance;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 scene_rdl2::math::Color
 PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
         int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
@@ -1183,11 +1284,47 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(fs.mScene);
     const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
-                                         pixelSamples, sample, ray, sp, pv);
+                                         pixelSamples, sample, fs, ray, sp, pv);
 
     if (!validRay) {
         alpha = 0.f;
         return scene_rdl2::math::sBlack;
+    }
+
+    // Copy the unmodified ray for use with PresenZ
+    mcrt_common::RayDifferential cameraRay = ray;
+
+    shading::Intersection isect;
+    bool rayHit = false;
+    if (fs.mPresenZSettings != nullptr && fs.mPresenZSettings->getEnabled()) {
+        rayHit = scene->intersectRay(pbrTls->mTopLevelTls, ray, isect, 0);
+
+        // PresenZ - Detect Phase
+        if (fs.mPresenZSettings->getPhase() == PresenZ::Phase::Detect) {
+            if (rayHit) {
+                PresenZRayTestInterfaceUserData userData(pbrTls);
+                PresenZ::DetectSample::RayTestInterface intf;
+                intf.userdata = &userData;
+                intf.probe = presenZRayTest;
+                intf.query = presenZQueryFlags;
+
+                PresenZ::DetectSample::PzDetectSample sample;
+                sample.pixelX = pixelX;
+                sample.pixelY = pixelY;
+                sample.sampleIndex = subpixelIndex;
+                sample.isTransparent = false;
+
+                scene_rdl2::math::Vec3f hitNormal = isect.getN();
+                //sample.hitNormalWorld = NozVector(hitNormal.x, hitNormal.y, hitNormal.z);
+                sample.hitNormal = NozVector(hitNormal.x, hitNormal.y, hitNormal.z);
+                scene_rdl2::math::Vec3d hitPoint = isect.getP();
+                //sample.hitPointWorld = NozPoint(hitPoint.x, hitPoint.y, hitPoint.z);
+                sample.hitPoint = NozPoint(hitPoint.x, hitPoint.y, hitPoint.z);
+                sample.isChaotic = isect.isChaotic();
+                PzProcessDetectSample(&intf, sample, pbrTls->mThreadIdx);
+            }
+            return scene_rdl2::math::sBlack;
+        }
     }
 
     // LPE
@@ -1212,6 +1349,9 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
     RAYDB_START_NEW_RAY(pbrTls, ray.org, pixelX, pixelY);
 
     scene_rdl2::math::Color radiance;
+    scene_rdl2::math::Color radianceRight;
+    scene_rdl2::math::Vec3f motionVector(0.0f, 0.0f, 0.0f);
+    bool isStereoscopic;
     float pathPixelWeight;
     unsigned sequenceID = fs.mInitialSeed[cameraId];
     unsigned hsSequenceID = sequenceID;
@@ -1243,7 +1383,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
             if (layer > 0) {
                 float tfar = ray.tfar;
                 initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
-                               pixelSamples, sample, ray, sp, pv);
+                               pixelSamples, sample, fs, ray, sp, pv);
                 ray.tnear = tfar + mDeepLayerBias;
 
                 // LPE
@@ -1273,10 +1413,10 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
             scene_rdl2::math::Color deepRadiance;
             float deepTransparency;
             float *deepAovs = (layer == 0) ? aovs : aovParams.mDeepAovs;
-            computeRadianceRecurse(pbrTls, ray, sp, cameraId, pv, nullptr, deepRadiance,
+            computeRadianceRecurse(pbrTls, ray, ray, sp, cameraId, pv, nullptr, deepRadiance,
                                    deepTransparency, vt, sequenceID, deepAovs, depth,
                                    &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
-                                   false, hitVolume);
+                                   false, hitVolume, isStereoscopic);
 
             float deepAlpha = 1.f - deepTransparency;
 
@@ -1295,7 +1435,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                 Subpixel hsSp;
                 PathVertex hsPv;
                 initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
-                               pixelSamples, sample, hsRay, hsSp, hsPv);
+                               pixelSamples, sample, fs, hsRay, hsSp, hsPv);
 
                 // LPE
                 if (aovs) {
@@ -1310,10 +1450,10 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                 scene_rdl2::math::Color hsRadiance;
                 float hsTransparency;
                 float *hsAovs = aovParams.mDeepAovs;
-                computeRadianceRecurse(pbrTls, hsRay, hsSp, cameraId, hsPv, nullptr, hsRadiance,
+                computeRadianceRecurse(pbrTls, hsRay, hsRay, hsSp, cameraId, hsPv, nullptr, hsRadiance,
                                        hsTransparency, vt, hsSequenceID, hsAovs, depth,
                                        &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
-                                       true, hitVolume);
+                                       true, hitVolume, isStereoscopic);
 
                 float hsAlpha = 1.f;
 
@@ -1354,17 +1494,108 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
         // not deep render
         float transparency;
         bool hitVolume;
-        computeRadianceRecurse(pbrTls, ray, sp, cameraId, pv, nullptr, radiance,
-            transparency, vt, sequenceID, aovs, depth, nullptr, cryptomatteParamsPtr,
-            refractCryptomatteParamsPtr, false, hitVolume);
+        isStereoscopic = false;
 
-        alpha = 1.f - transparency;
-        pathPixelWeight = pv.pathPixelWeight;
+        if (fs.mPresenZSettings != nullptr &&
+            fs.mPresenZSettings->getEnabled() &&
+            fs.mPresenZSettings->getPhase() == PresenZ::Phase::Render) {
 
-        if (checkForNanSimple(radiance, "Path integrator", sp)) {
-            // Put a negative value in alpha to denote an invalid sample.
-            radiance = scene_rdl2::math::sBlack;
-            alpha = -1.0f;
+            if (rayHit) {
+
+                bool doComputeRadiance = true;
+
+                mcrt_common::RayDifferential rayForVolume = ray;
+
+                if (fs.mPresenZSettings->getFroxtrumRendering()) {
+                    const double hitDistance = scene_rdl2::math::length(isect.getP() - ray.getOrigin());
+                    doComputeRadiance = PresenZ::Shading::PzIsValidEvaluation(pixelX,
+                                                                              pixelY,
+                                                                              hitDistance,
+                                                                              isect.isChaotic());
+
+                    if (doComputeRadiance) {
+
+                        float minZ, maxZ;
+                        bool isVoxtrum = false;
+                        PresenZ::Camera::PzGetRayMinMaxZ(pixelX, pixelY, isVoxtrum, minZ, maxZ);
+                        if (isVoxtrum) {
+                            rayForVolume = mcrt_common::RayDifferential(
+                                ray.getOrigin(), ray.getDirection(),
+                                ray.getOrigin(), ray.getDirX(),
+                                ray.getOrigin(), ray.getDirY(),
+                                ray.getStart() - minZ,
+                                ray.getEnd(),
+                                0.0f, 0);
+                        }
+                    }
+                }
+
+                MNRY_ASSERT(isect.isProvided(shading::StandardAttributes::sMotion));
+                if (isect.isProvided(shading::StandardAttributes::sMotion)) {
+                    motionVector = isect.getAttribute(shading::StandardAttributes::sMotion);
+                }
+
+                if (doComputeRadiance) {
+                    computeRadianceRecurse(pbrTls, ray, rayForVolume, sp, cameraId, pv, nullptr, radiance,
+                        transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
+                        false, hitVolume, isStereoscopic,
+                        PresenZ::Phase::Eye::RC_Left);
+
+                    alpha = 1.f - transparency;
+
+                    // If PresenZ ray is stereoscopic, compute radiance for right eye
+                    // otherwise copy the left eye radiance to the right eye
+                    if (isStereoscopic) {
+                        mcrt_common::RayDifferential cameraRayCopy = cameraRay;
+                        computeRadianceRecurse(pbrTls, cameraRayCopy, rayForVolume, sp, cameraId, pv, nullptr, radianceRight,
+                            transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
+                            false, hitVolume, isStereoscopic,
+                            PresenZ::Phase::Eye::RC_Right);
+                    } else {
+                        radianceRight = radiance;
+                    }
+                } else {
+                    radiance = scene_rdl2::math::sBlack;
+                    radianceRight = scene_rdl2::math::sBlack;
+                    alpha = 0.0f;
+                }
+
+                // PresenZ - Record render phase results
+                scene_rdl2::math::Vec3d rayOrigin = cameraRay.getOrigin();
+                scene_rdl2::math::Vec3d hitPoint = isect.getP();
+                scene_rdl2::math::Vec3f hitNormal = isect.getNg();
+                float rayDepth = scene_rdl2::math::length(rayOrigin - hitPoint);
+
+                PresenZ::RenderSample::PzRenderSample winSample;
+                PresenZ::RenderSample::PzSetSamplePosition(winSample, NozVector(hitPoint.x, hitPoint.y, hitPoint.z));
+                PresenZ::RenderSample::PzSetSampleNormal(winSample, NozVector(hitNormal.x, hitNormal.y, hitNormal.z));
+                PresenZ::RenderSample::PzSetSampleZ(winSample, rayDepth);
+                PresenZ::RenderSample::PzSetSamplePosXY(winSample, sample.pixelX, sample.pixelY);
+                PresenZ::RenderSample::PzSetSampleColor(winSample, NozRGBA(radiance.r, radiance.g, radiance.b, alpha));
+                PresenZ::RenderSample::PzAddRightColorSampleAov(winSample, NozRGB(radianceRight.r, radianceRight.g, radianceRight.b));
+
+                motionVector = scene_rdl2::math::transformVector(scene->getRender2World(), motionVector);
+
+                PresenZ::RenderSample::PzAddWSVelocitySampleAov(winSample, NozVector(motionVector.x,
+                                                                                     motionVector.y,
+                                                                                     motionVector.z));
+
+                PresenZ::RenderSample::PzProcessRenderSample(pbrTls->mThreadIdx, pixelX, pixelY, 0, winSample);
+            }                
+        } else {
+            computeRadianceRecurse(pbrTls, ray, ray, sp, cameraId, pv, nullptr, radiance,
+                transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
+                false, hitVolume, isStereoscopic,
+                PresenZ::Phase::Eye::RC_Left);
+
+            alpha = 1.f - transparency;
+            pathPixelWeight = pv.pathPixelWeight;
+
+            if (checkForNanSimple(radiance, "Path integrator", sp)) {
+                // Put a negative value in alpha to denote an invalid sample.
+                radiance = scene_rdl2::math::sBlack;
+                alpha = -1.0f;
+            }            
         }
     }
 
@@ -1424,7 +1655,7 @@ PathIntegrator::computeColorFromIntersection(pbr::TLState *pbrTls, int pixelX, i
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(fs.mScene);
     const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
-                                         pixelSamples, sample, ray, sp, pv);
+                                         pixelSamples, sample, fs, ray, sp, pv);
 
     if (!validRay) {
         aovParams.mAlpha = 0.f;
@@ -1475,12 +1706,13 @@ PathIntegrator::queuePrimaryRay(pbr::TLState *pbrTls,
                                 int cameraId,
                                 int pixelSamples,
                                 const Sample& sample,
+                                const FrameState& fs,
                                 RayState *rs) const
 {
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(pbrTls->mFs->mScene);
     bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY,
-                                   subpixelIndex, pixelSamples, sample, rs->mRay,
+                                   subpixelIndex, pixelSamples, sample, fs, rs->mRay,
                                    rs->mSubpixel, rs->mPathVertex);
     if (!validRay) {
         return false;

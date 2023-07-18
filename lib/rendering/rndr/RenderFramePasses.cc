@@ -1325,6 +1325,7 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
                                                 cameraId,
                                                 params->mTotalNumSamples,
                                                 sample,
+                                                fs,
                                                 rs);
             if (!queued) {
                 rayStatesToFree[numRayStatesToFree++] = rs;

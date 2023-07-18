@@ -463,10 +463,12 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             ++sequenceID;
             bool hitVolume;
 
+            bool isStereoscopic = false;
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
-                    pbrTls, ray, sp, cameraId, nextPv, &lobe,
+                    pbrTls, ray, ray, sp, cameraId, nextPv, &lobe,
                     contribution, transparency, vt,
-                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, false, hitVolume);
+                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, false, hitVolume,
+                    isStereoscopic);
             if (indirectRadianceType != NONE) {
                 // Accumulate radiance, but only accumulate indirect or direct
                 // contribution

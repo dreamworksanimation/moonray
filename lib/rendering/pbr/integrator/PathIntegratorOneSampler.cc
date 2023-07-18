@@ -1013,10 +1013,12 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
         VolumeTransmittance vtIndirect;
         ++sequenceID;
         bool hitVolume;
-        IndirectRadianceType result = computeRadianceRecurse(pbrTls, nextRay, sp, cameraId, nextPv,
+        bool isStereoscopic = false;
+        IndirectRadianceType result = computeRadianceRecurse(pbrTls, nextRay, nextRay, sp, cameraId, nextPv,
             lobe, radianceIndirect, transparencyIndirect,
             vtIndirect, sequenceID, aovs, /* depth = */ nullptr, /* deepParams = */ nullptr,
-            /* cryptomatteParams = */ nullptr, /* refractCryptomatteParams = */ nullptr, /* ignoreVolumes = */ false, hitVolume);
+            /* cryptomatteParams = */ nullptr, /* refractCryptomatteParams = */ nullptr, /* ignoreVolumes = */ false, hitVolume,
+            isStereoscopic);
         if (result != NONE) {
             radiance += radianceIndirect;
 
