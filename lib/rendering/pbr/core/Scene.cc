@@ -14,6 +14,7 @@
 #include <moonray/rendering/pbr/camera/DomeMaster3DCamera.h>
 #include <moonray/rendering/pbr/camera/OrthographicCamera.h>
 #include <moonray/rendering/pbr/camera/PerspectiveCamera.h>
+#include <moonray/rendering/pbr/camera/PresenZCamera.h>
 #include <moonray/rendering/pbr/camera/SphericalCamera.h>
 #include <moonray/rendering/pbr/integrator/PathIntegratorUtil.h>
 #include <moonray/rendering/pbr/light/CylinderLight.h>
@@ -78,6 +79,8 @@ std::unique_ptr<Camera> cameraFactory(const rdl2::Camera* rdlCamera)
         return std::unique_ptr<Camera>(new DomeMaster3DCamera(rdlCamera));
     } else if (className == "BakeCamera") {
         return std::unique_ptr<Camera>(new BakeCamera(rdlCamera));
+    } else if (className == "PresenZCamera") {
+        return std::unique_ptr<Camera>(new PresenZCamera(rdlCamera));
     } else {
         MNRY_ASSERT(!"Should not get here");
         throw std::runtime_error("No valid camera type specified");
