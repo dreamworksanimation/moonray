@@ -934,20 +934,20 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
     // use these samples to decide how far ray goes before
     // the next scatter event happens
     IntegratorSample1D freePathSamples;
-    SequenceIDIntegrator freePathSid(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::VolumeDistance);
+    SequenceIDIntegrator freePathSid(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::VolumeDistance, sequenceID);
     freePathSamples.resume(freePathSid,
         sp.mSubpixelIndex * scatterSampleCount *
         (mMaxVolumeDepth - pv.volumeDepth + 1));
 
     IntegratorSample1D freePathSamples2;
-    SequenceIDIntegrator freePathSid2(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::IndexSelection);
+    SequenceIDIntegrator freePathSid2(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::IndexSelection, sequenceID);
     freePathSamples2.resume(freePathSid2,
         sp.mSubpixelIndex * scatterSampleCount *
         (mMaxVolumeDepth - pv.volumeDepth + 1));
 
     // use these samples to decide how a scatter event alters the ray direction
     IntegratorSample2D phaseSamples;
-    SequenceIDIntegrator phaseSid(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::VolumePhase);
+    SequenceIDIntegrator phaseSid(pv.nonMirrorDepth, sp.mPixel, pv.volumeDepth, SequenceType::VolumePhase, sequenceID);
     phaseSamples.resume(phaseSid,
         sp.mSubpixelIndex * scatterSampleCount *
         (mMaxVolumeDepth - pv.volumeDepth + 1));
@@ -955,19 +955,19 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
     // (light strategy)
     IntegratorSample3D scatterLightSamples;
     SequenceIDIntegrator scatterLightSid(pv.nonMirrorDepth, sp.mPixel,
-        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::Light);
+        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::Light, sequenceID);
     scatterLightSamples.resume(scatterLightSid,
             sp.mSubpixelIndex * scatterSampleCount *
             (mMaxVolumeDepth - pv.volumeDepth) * lightCount);
     IntegratorSample2D scatterLightFilterSamples;
     SequenceIDIntegrator scatterLightFilterSid(pv.nonMirrorDepth, sp.mPixel,
-        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::LightFilter);
+        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::LightFilter, sequenceID);
     scatterLightFilterSamples.resume(scatterLightFilterSid,
             sp.mSubpixelIndex * scatterSampleCount *
             (mMaxVolumeDepth - pv.volumeDepth) * lightCount);
     IntegratorSample3D scatterLightFilterSamples3D;
     SequenceIDIntegrator scatterLightFilter3DSid(pv.nonMirrorDepth, sp.mPixel,
-        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::LightFilter3D);
+        pv.volumeDepth, SequenceType::VolumeScattering, SequenceType::LightFilter3D, sequenceID);
     scatterLightFilterSamples3D.resume(scatterLightFilter3DSid,
             sp.mSubpixelIndex * scatterSampleCount *
             (mMaxVolumeDepth - pv.volumeDepth) * lightCount);
