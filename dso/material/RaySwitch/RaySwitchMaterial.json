@@ -7,42 +7,48 @@
             "label": "default material",
             "aliases": [ "default material" ],
             "type": "SceneObject*",
-            "interface": "INTERFACE_MATERIAL"
+            "interface": "INTERFACE_MATERIAL",
+            "comment": "The default material to use if no material was specified for the incoming ray type."
         },
         "attrCameraRayMaterial": {
             "name": "camera_ray_material",
             "label": "camera ray material",
             "aliases": [ "camera ray material" ],
             "type": "SceneObject*",
-            "interface": "INTERFACE_MATERIAL"
+            "interface": "INTERFACE_MATERIAL",
+            "comment": "The material to use if the incoming ray is a camera ray."
         },
        "attrIndirectMirrorRayMaterial": {
             "name": "indirect_mirror_ray_material",
             "label": "indirect mirror ray material",
             "aliases": [ "indirect mirror ray material" ],
             "type": "SceneObject*",
-            "interface": "INTERFACE_MATERIAL"
+            "interface": "INTERFACE_MATERIAL",
+            "comment": "The material to use if the incoming ray is an indirect mirror ray."
         },
        "attrIndirectGlossyRayMaterial": {
             "name": "indirect_glossy_ray_material",
             "label": "indirect glossy ray material",
             "aliases": [ "indirect glossy ray material" ],
             "type": "SceneObject*",
-            "interface": "INTERFACE_MATERIAL"
+            "interface": "INTERFACE_MATERIAL",
+            "comment": "The material to use if the incoming ray is an indirect glossy ray."
         },
        "attrIndirectDiffuseRayMaterial": {
             "name": "indirect_diffuse_ray_material",
             "label": "indirect diffuse ray material",
             "aliases": [ "indirect diffuse ray material" ],
             "type": "SceneObject*",
-            "interface": "INTERFACE_MATERIAL"
+            "interface": "INTERFACE_MATERIAL",
+            "comment": "The material to use if the incoming ray is an indirect diffuse ray."
         },
         "attrCutoutCameraRays": {
             "name": "cutout_camera_rays",
             "label": "cutout camera rays",
             "aliases": [ "cutout camera rays" ],
             "type": "Bool",
-            "default": "false"
+            "default": "false",
+            "comment": "If true, this material acts as a cutout material, i.e. we terminate any rays that encounter this material."
         }
     }
 }
