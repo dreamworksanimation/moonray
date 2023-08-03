@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include <scene_rdl2/common/grid_util/Sha1Util.h>
@@ -82,18 +79,7 @@ public:
                                              const std::string &metaDataName,
                                              const std::vector<std::string> &resumeAttr)>;
 
-    ImageWriteCacheImageSpec() :
-        mWidth(0),
-        mHeight(0),
-        mSpecX(0),
-        mSpecY(0),
-        mSpecFullX(0),
-        mSpecFullY(0),
-        mSpecFullWidth(0),
-        mSpecFullHeight(0),
-        mTotalNumChans(0),
-        mLevel(0.0f)
-    {}
+    ImageWriteCacheImageSpec() {}
 
     void setName(const std::string &name) { mName = name; }
     void setSizeInfo(int width, int height,
@@ -127,20 +113,20 @@ public:
 private:
     std::string mName;
 
-    int mWidth;
-    int mHeight;
+    int mWidth {0};
+    int mHeight {0};
 
-    int mSpecX;
-    int mSpecY;
-    int mSpecFullX;
-    int mSpecFullY;
-    int mSpecFullWidth;
-    int mSpecFullHeight;
+    int mSpecX {0};
+    int mSpecY {0};
+    int mSpecFullX {0};
+    int mSpecFullY {0};
+    int mSpecFullWidth {0};
+    int mSpecFullHeight {0};
 
-    int mTotalNumChans;
+    int mTotalNumChans {0};
 
     std::string mCompression;
-    float mLevel; // for compression type 'dwaa' or 'dwab'
+    float mLevel {0.0f}; // for compression type 'dwaa' or 'dwab'
 
     std::vector<ChannelFormat> mChanFormat;
     std::vector<std::string> mChanNames;
@@ -168,17 +154,7 @@ public:
         FULL
     };
 
-    ImageWriteCacheBufferSpecSubImage() :
-        mImgSpecId(0),
-        mAovBuffOffset(0),
-        mDisplayFilterBuffOffset(0),
-        mAovBuffSize(0),
-        mDisplayFilterBuffSize(0),
-        mPixCacheFullOffset(0),
-        mPixCacheHalfOffset(0),
-        mPixCacheFullSize(0),
-        mPixCacheHalfSize(0)
-    {}
+    ImageWriteCacheBufferSpecSubImage() {}
 
     void setup(const ImageWriteCacheBufferSpecSubImage *prevBuff,
                const std::string &name,
@@ -213,17 +189,17 @@ private:
 
     std::string mName;
 
-    size_t mImgSpecId;
+    size_t mImgSpecId {0};
 
-    size_t mAovBuffOffset;           // offset from 1st image of 1st file
-    size_t mDisplayFilterBuffOffset; // offset from 1st image of 1st file
-    size_t mAovBuffSize;             // size of this image
-    size_t mDisplayFilterBuffSize;   // size of this image
+    size_t mAovBuffOffset {0};           // offset from 1st image of 1st file
+    size_t mDisplayFilterBuffOffset {0}; // offset from 1st image of 1st file
+    size_t mAovBuffSize {0};             // size of this image
+    size_t mDisplayFilterBuffSize {0};   // size of this image
     
-    size_t mPixCacheFullOffset;      // offset from 1st image of 1st file
-    size_t mPixCacheHalfOffset;      // offset from 1st image of 1st file
-    size_t mPixCacheFullSize;        // size of this image
-    size_t mPixCacheHalfSize;        // size of this image
+    size_t mPixCacheFullOffset {0};      // offset from 1st image of 1st file
+    size_t mPixCacheHalfOffset {0};      // offset from 1st image of 1st file
+    size_t mPixCacheFullSize {0};        // size of this image
+    size_t mPixCacheHalfSize {0};        // size of this image
 
     std::vector<ChanFormat> mPixChanFormat; // mPixChanFormat[entryId]
     std::vector<int> mPixNumChan;           // mPixNumChan[entryId]
@@ -332,12 +308,11 @@ public:
     ImageWriteCacheTmpFileItem(const std::string &tmpFilename,
                                const std::string &checkpointFilename,
                                const std::string &checkpointMultiVersionFilename,
-                               const std::string &finalFilename) :
-        mTmpFileFd(-1),
-        mTmpFilename(tmpFilename),
-        mCheckpointFilename(checkpointFilename),
-        mCheckpointMultiVersionFilename(checkpointMultiVersionFilename),
-        mFinalFilename(finalFilename)
+                               const std::string &finalFilename)
+        : mTmpFilename(tmpFilename)
+        , mCheckpointFilename(checkpointFilename)
+        , mCheckpointMultiVersionFilename(checkpointMultiVersionFilename)
+        , mFinalFilename(finalFilename)
     {}
     ~ImageWriteCacheTmpFileItem() { if (mTmpFileFd != -1) closeTmpFile(); }
 
@@ -359,7 +334,7 @@ public:
     size_t memSizeByte() const;
 
 private:
-    int mTmpFileFd;
+    int mTmpFileFd {-1};
     std::string mTmpFilename;        // tmp file name
     std::string mCheckpointFilename; // checkpoint file name
     std::string mCheckpointMultiVersionFilename; // checkpoint multi version file name
@@ -434,25 +409,12 @@ public:
 
     ImageWriteCache(Type type,
                     const RenderOutputDriver *renderOutputDriver, bool resumableOutput,
-                    size_t initialBlockDataSizeFull, size_t initialBlockDataSizeHalf) :
-        mType(type),
-        mMode(Mode::STD),
-        mRenderOutputDriver(renderOutputDriver),
-        mWidth(0),
-        mHeight(0),
-        mYBlockSize(0),
-        mYBlockTotal(0),
-        mBlockDataSizeFull(initialBlockDataSizeFull), // if set 0, memory is allocated on the fly
-        mBlockDataSizeHalf(initialBlockDataSizeHalf), // if set 0, memory is allocated on the fly
-        mLastImageWriteCacheSpecsId(0),
-        mDataHash(scene_rdl2::grid_util::Sha1Util::init()),
-        mResumableOutput(resumableOutput),
-        mTwoStageOutput(true),
-        mCheckpointOverwrite(true),
-        mProgressCounter(0),
-        mCurrProgressStage(ProgressStage::INIT),
-        mCurrBuffWriteProgressCounter(0),
-        mCurrBuffWriteProgressFraction(0)
+                    size_t initialBlockDataSizeFull, size_t initialBlockDataSizeHalf)
+        : mType(type)
+        , mRenderOutputDriver(renderOutputDriver)
+        , mBlockDataSizeFull(initialBlockDataSizeFull) // if set 0, memory is allocated on the fly
+        , mBlockDataSizeHalf(initialBlockDataSizeHalf) // if set 0, memory is allocated on the fly
+        , mResumableOutput(resumableOutput)
     {}
     ~ImageWriteCache() {}
 
@@ -536,7 +498,6 @@ public:
     //------------------------------
 
     void outputDataFinalize(); // for ImageWriteDriver
-
     void runPostCheckpointScript();
 
     //------------------------------
@@ -553,6 +514,9 @@ public:
     void timeUpdateBuffWrite(float fraction);
     void timeEndBuffWrite();
     std::string timeShow() const;
+
+    void setTimeSaveSecBySignalCheckpoint(const float sec) { mTimeSaveSecBySignalCheckpoint = sec; }
+    float getTimeSaveSecBySignalCheckpoint() const { return mTimeSaveSecBySignalCheckpoint; }
 
     unsigned getProgressCounter() const { return mProgressCounter.load(std::memory_order_relaxed); }
     ProgressStage getProgressStage() const { return mCurrProgressStage.load(std::memory_order_relaxed); }
@@ -573,10 +537,10 @@ public:
 
 private:
 
-    Type mType;
-    Mode mMode;
+    Type mType {Type::OUTPUT};
+    Mode mMode {Mode::STD};
 
-    const RenderOutputDriver *mRenderOutputDriver;
+    const RenderOutputDriver *mRenderOutputDriver {nullptr};
 
     std::vector<std::string> mErrors;
     std::vector<std::string> mInfos;
@@ -584,17 +548,17 @@ private:
     //------------------------------
 
     std::string mPostCheckpointScript; // post checkpoint script name
-    unsigned mCheckpointTileSampleTotals;
+    unsigned mCheckpointTileSampleTotals {0};
     std::vector<std::string> mCheckpointFilename;
 
     //------------------------------
 
     ImageWriteCacheBufferSpec mBufferSpec;
 
-    int mWidth;                 // output image width
-    int mHeight;                // output image height
-    int mYBlockSize;            // single yblock height
-    int mYBlockTotal;           // total number of blocks in height
+    int mWidth {0};             // output image width
+    int mHeight {0};            // output image height
+    int mYBlockSize {0};        // single yblock height
+    int mYBlockTotal {0};       // total number of blocks in height
 
     // Following std::string and vector of std::string are cache data itself and used by cacheQueue.
     // std::string is used as byte data storage (and not ASCII string data storage).
@@ -602,8 +566,8 @@ private:
     std::vector<std::string> mDataFullArray; // mDataFullArray[yBlockId]
     std::vector<std::string> mDataHalfArray; // mDataHalfArray[yBlockId]
 
-    size_t mBlockDataSizeFull; // byte : final data size of mDataFullArray's one item
-    size_t mBlockDataSizeHalf; // byte : final data size of mDataHalfArray's one item
+    size_t mBlockDataSizeFull {0}; // byte : final data size of mDataFullArray's one item
+    size_t mBlockDataSizeHalf {0}; // byte : final data size of mDataHalfArray's one item
 
     std::vector<ImageWriteCacheImageSpec> mImgSpecTbl;
 
@@ -619,16 +583,17 @@ private:
     std::vector<CacheQueue> mCacheQueueFullBuffArray; // mCacheQueueFullBuffArray[yBlockId]
     std::vector<CacheQueue> mCacheQueueHalfBuffArray; // mCacheQueueHalfBuffArray[yBlockId]
 
-    size_t mLastImageWriteCacheSpecsId;
+    size_t mLastImageWriteCacheSpecsId {0};
     std::vector<ImageWriteCacheSpecs> mImageWriteCacheSpecs;
 
-    scene_rdl2::grid_util::Sha1Gen::Hash mDataHash; // output data hash for runtime verify
+    // output data hash for runtime verify
+    scene_rdl2::grid_util::Sha1Gen::Hash mDataHash {scene_rdl2::grid_util::Sha1Util::init()};
 
     //------------------------------
 
     const bool mResumableOutput;
-    bool mTwoStageOutput;
-    bool mCheckpointOverwrite;
+    bool mTwoStageOutput {true};
+    bool mCheckpointOverwrite {true};
     std::vector<ImageWriteCacheTmpFileItemShPtr> mTmpFileItemArray;
     
     //------------------------------
@@ -637,11 +602,13 @@ private:
     float mTimeAll[2]; // 0:STD/ENQ 1:DEQ
     ImageWriteCacheTimingLog mTime, mTimeFile, mTimeImage;
 
+    float mTimeSaveSecBySignalCheckpoint {0.0f};
+
     // write action progress update related parameters
-    std::atomic<unsigned> mProgressCounter;
-    std::atomic<ProgressStage> mCurrProgressStage;
-    std::atomic<int> mCurrBuffWriteProgressCounter;
-    std::atomic<int> mCurrBuffWriteProgressFraction; // 0 ~ 10
+    std::atomic<unsigned> mProgressCounter {0};
+    std::atomic<ProgressStage> mCurrProgressStage {ProgressStage::INIT};
+    std::atomic<int> mCurrBuffWriteProgressCounter {0};
+    std::atomic<int> mCurrBuffWriteProgressFraction {0}; // 0 ~ 10
 
     //------------------------------
 
@@ -729,4 +696,3 @@ ImageWriteCache::initAllTimeArray()
     
 } // namespace rndr
 } // namespace moonray
-

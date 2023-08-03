@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 //
@@ -45,6 +42,7 @@ class McrtFbSender
 public:
     using ActivePixels = scene_rdl2::fb_util::ActivePixels;
     using RenderBuffer = scene_rdl2::fb_util::RenderBuffer;
+    using RenderColor = scene_rdl2::fb_util::RenderColor;
     using FloatBuffer = scene_rdl2::fb_util::FloatBuffer;
     using PixelInfoBuffer = scene_rdl2::fb_util::PixelInfoBuffer;
     using HeatMapBuffer = scene_rdl2::fb_util::HeatMapBuffer;
@@ -420,6 +418,9 @@ protected:
 
     void parserConfigure();
     std::string showDenoiseInfo() const;
+    std::string showRenderBufferPix(const unsigned sx, const unsigned sy) const;
+
+    RenderColor getRenderBufferPix(const int x, const int y) const;
 
 }; // McrtFbSender
 
@@ -433,4 +434,3 @@ McrtFbSender::duplicateWorkData()
 
 } // namespace engine_tool
 } // namespace moonray
-

@@ -14,7 +14,7 @@ def version():
     """
     Increment the build in the version.
     """
-    _version = '14.5'
+    _version = '14.8'
     from rezbuild import earlybind
     return earlybind.version(this, _version)
 
@@ -67,9 +67,9 @@ sconsTargets = {
 requires = [
     'amorphous',
     'boost',
-    'cuda-11.3.0.x',
+    'cuda-12.1.0.x',
     'embree-3.13.5.x',
-    'mcrt_denoise-3.5',
+    'mcrt_denoise-3.8',
     'mkl',
     'openexr',
     'openimageio-2.3.20.0.x',
@@ -77,7 +77,7 @@ requires = [
     'openvdb',
     'optix-7.3.0.x',
     'random123-1.08.3',
-    'scene_rdl2-12.5',
+    'scene_rdl2-12.8',
     'presenz-2.0.0.27.x.1'
 ]
 

@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
 #include "ImageWriteCache.h"
 #include "ProcKeeper.h"
@@ -553,7 +550,7 @@ ImageWriteCacheTmpFileItem::renameFile(const std::string &dstName, std::string &
     std::string msg = scene_rdl2::util::buildString("Wrote: '", dstName.c_str(), "'");
 #   endif // end !IMAGE_WRITE_DETAIL_MESSAGE
     scene_rdl2::logging::Logger::info(msg);
-    if (isatty(STDOUT_FILENO)) std::cout << msg << std::endl;
+    // if (isatty(STDOUT_FILENO)) std::cout << msg << std::endl; // useful for debug run from terminal
     
     return true;
 }
@@ -1193,4 +1190,3 @@ ImageWriteCache::updateProgress(const ProgressStage &stage)
 
 } // namespace rndr
 } // namespace moonray
-

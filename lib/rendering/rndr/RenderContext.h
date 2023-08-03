@@ -641,6 +641,7 @@ private:
     void setSceneVarTextureCacheSize(const unsigned int sizeMB);
     std::string getSceneVarTextureCacheSize() const;
     bool saveSceneCommand(Arg& arg) const;
+    std::string showExecModeAndReason() const;
 
     // Options for rendering, such as the frame size, input/output files, etc.
     RenderOptions& mOptions;
@@ -750,6 +751,10 @@ private:
     std::mutex mMutexForceCallStartFrame;
     bool mForceCallStartFrame = false;
     Parser mParser;
+
+    // final rendering execution mode and the reason why
+    mcrt_common::ExecutionMode mExecutionMode; // for debugConsole command
+    std::string mExecutionModeString; // for debugConsole command
 };
 
 const scene_rdl2::rdl2::Layer *

@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "McrtFbSender.h"
 
 #include <moonray/rendering/mcrt_common/Clock.h>
@@ -13,6 +10,7 @@
 #include <scene_rdl2/common/fb_util/SparseTiledPixelBuffer.h>
 #include <scene_rdl2/common/grid_util/PackTiles.h>
 #include <scene_rdl2/common/grid_util/ProgressiveFrameBufferName.h>
+#include <scene_rdl2/render/util/StrUtil.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 
 #include <fstream>
@@ -1528,6 +1526,12 @@ McrtFbSender::parserConfigure()
                 [&](Arg& arg) -> bool {
                     return arg.msg(showDenoiseInfo() + '\n');
                 });
+    mParser.opt("showPix", "<sx> <sy>", "show pixel value",
+                [&](Arg& arg) {
+                    unsigned sx = (arg++).as<unsigned>(0);
+                    unsigned sy = (arg++).as<unsigned>(0);
+                    return arg.msg(showRenderBufferPix(sx, sy) + '\n');
+                });
 }
 
 std::string
@@ -1549,6 +1553,31 @@ McrtFbSender::showDenoiseInfo() const
     return ostr.str();
 }
 
+std::string
+McrtFbSender::showRenderBufferPix(const unsigned sx, const unsigned sy) const
+{
+    if (sx >= getWidth() || sy >= getHeight()) {
+        std::ostringstream ostr;
+        ostr << "pix(sx:" << sx << ", sy:" << sy << ") is out of framebuffer size";
+        return ostr.str();
+    }            
+
+    bool activePixFlag = mActivePixels.getActivePixelCondition(sx, sy);
+
+    scene_rdl2::fb_util::Tiler tiler(getWidth(), getHeight());
+    unsigned px, py;
+    tiler.linearToTiledCoords(sx, sy, &px, &py);
+    RenderColor c = mRenderBufferTiled.getPixel(px, py);
+    float w = mRenderBufferWeightBufferTiled.getPixel(px, py);
+
+    std::ostringstream ostr;
+    ostr << "RenderBuffer (sx:" << sx << ", sy:" << sy << ") {\n"
+         << "  activePixFlag:" << scene_rdl2::str_util::boolStr(activePixFlag) << '\n'
+         << "  color:" << c[0] << ' ' << c[1] << ' ' << c[2] << ' ' << c[3] << '\n'
+         << "  w:" << w << '\n'
+         << "}";
+    return ostr.str();
+}
+
 } // namespace engine_tool
 } // namespace moonray
-

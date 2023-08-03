@@ -333,14 +333,14 @@ writeRenderOutputsWithMessages(const rndr::RenderOutputDriver *rod,
             MNRY_ASSERT(!cache);
         }
             
-        rod->write(deepBuffer,
-                   cryptomatteBuffer,
-                   heatMap,
-                   weightBuffer,
-                   renderBufferOdd,
-                   aovBuffers,
-                   displayFilterBuffers,
-                   cache.get());
+        rod->writeFinal(deepBuffer,
+                        cryptomatteBuffer,
+                        heatMap,
+                        weightBuffer,
+                        renderBufferOdd,
+                        aovBuffers,
+                        displayFilterBuffers,
+                        cache.get());
         err = rod->loggingErrorAndInfo(cache.get())? 0: 1;
 
         if (cache && cache->getTwoStageOutput()) {

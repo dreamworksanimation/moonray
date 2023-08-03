@@ -1121,13 +1121,13 @@ RenderOutputDriver::Impl::loggingErrorAndInfo(ImageWriteCache *cache) const
 
     for (const auto &e: errors) {
         scene_rdl2::logging::Logger::error(e);
-        if (isatty(STDOUT_FILENO)) std::cout << e << std::endl; // useful for debug run from terminal
+        // if (isatty(STDOUT_FILENO)) std::cout << e << std::endl; // useful for debug run from terminal
     }
     errors.clear();
 
     for (const auto &i: infos) {
         scene_rdl2::logging::Logger::info(i);
-        if (isatty(STDOUT_FILENO)) std::cout << i << std::endl; // useful for debug run from terminal
+        // if (isatty(STDOUT_FILENO)) std::cout << i << std::endl; // useful for debug run from terminal
     }
     infos.clear();
 

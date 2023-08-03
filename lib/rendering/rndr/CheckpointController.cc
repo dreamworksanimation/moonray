@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "CheckpointController.h"
 #include "ImageWriteDriver.h"
 #include "RenderContext.h"
@@ -399,15 +396,18 @@ CheckpointController::snapshotOnly(RenderContext *renderContext,
 
     resetRemainingIntervalSec();
 
-#   ifdef DEBUG_MSG
+    //
+    // output extra snapshot detailed info to the log
+    //
     float overhead = snapshotActionSec / mLastSnapshotIntervalSec * 100.0f;
-    std::cerr << ">> CheckpointController.cc CheckpointController::snapshotOnly() "
-              << scene_rdl2::time_util::timeStr(scene_rdl2::time_util::getCurrentTime())
-              << " snapshot:" << snapshotActionSec << " sec"
-              << " interval:" << mLastSnapshotIntervalSec << " sec"
-              << " overhead:" << std::setw(6) << std::fixed << std::setprecision(3) << overhead << "%\n";
-    // std::cerr << ImageWriteDriver::get()->showMemUsage() << '\n'; // for debug
-#   endif // end DEBUG_MSG
+    std::ostringstream ostr;
+    ostr << "executed extra snapshot "
+         << scene_rdl2::time_util::timeStr(scene_rdl2::time_util::getCurrentTime())
+         << " snapshot:" << snapshotActionSec << " sec"
+         << " interval:" << mLastSnapshotIntervalSec << " sec"
+         << " overhead:" << std::setw(6) << std::fixed << std::setprecision(3) << overhead << "%";
+    // ostr << '\n' << ImageWriteDriver::get()->showMemUsage(); // for debug
+    scene_rdl2::logging::Logger::info(ostr.str());
 }
 
 void
@@ -635,4 +635,3 @@ CheckpointController::fileOutputMain(bool checkpointBgWrite,
 
 } // namespace rndr
 } // namespace moonray
-

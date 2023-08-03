@@ -1,8 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "ExrUtils.h"
 #include "ImageWriteDriver.h"
 #include "RenderOutputDriverImpl.h"
@@ -85,7 +82,7 @@ RenderOutputWriter::main() const
 
 // static
 std::string
-RenderOutputWriter::generateCheckpointMultiVersionFilename(const File &file,
+RenderOutputWriter::generateCheckpointMultiVersionFilename(const File& file,
                                                            const bool overwriteCheckpoint,
                                                            const unsigned finalMaxSamplesPerPixel,
                                                            const unsigned checkpointTileSampleTotals)
@@ -136,13 +133,13 @@ RenderOutputWriter::setupBuffOffsetTable()
         size_t lastBufferSpecSubImageId = ~0;
 
         for (size_t fId = 0; fId < mFiles->size(); ++fId) {
-            const File &file = (*mFiles)[fId];
-            ImageWriteCacheBufferSpecFile *currBufferSpecFile = mCurrBufferSpec->newFile();
+            const File& file = (*mFiles)[fId];
+            ImageWriteCacheBufferSpecFile* currBufferSpecFile = mCurrBufferSpec->newFile();
 
             for (size_t imgId = 0; imgId < file.mImages.size(); ++imgId) {
-                const Image &img = file.mImages[imgId];
+                const Image& img = file.mImages[imgId];
                 
-                ImageWriteCacheBufferSpecSubImage *currBufferSpecSubImage = currBufferSpecFile->newSubImage();
+                ImageWriteCacheBufferSpecSubImage* currBufferSpecSubImage = currBufferSpecFile->newSubImage();
 
                 size_t aovBuffSize = 0;
                 size_t displayFilterBuffSize = 0;
@@ -351,11 +348,11 @@ RenderOutputWriter::singleFileOutput(const size_t fileId) const
 
 std::string
 RenderOutputWriter::calcFilename(const size_t fileId,
-                                 ImageWriteCache::ImageWriteCacheTmpFileItemShPtr &tmpFileItem) const
+                                 ImageWriteCache::ImageWriteCacheTmpFileItemShPtr& tmpFileItem) const
 {
     std::string filename;
     if (mRunMode != ImageWriteCache::Mode::DEQ) { // STD/ENQ
-        const File &file = (*mFiles)[fileId];
+        const File& file = (*mFiles)[fileId];
 
         std::string finalFilename = file.mName;
         std::string checkpointFilename = file.mCheckpointName;
@@ -424,18 +421,18 @@ RenderOutputWriter::calcFilename(const size_t fileId,
 
 bool    
 RenderOutputWriter::verifyFilenameAndDataType(const size_t fileId,
-                                              const std::string &filename,
-                                              ImageWriteCache::ImageWriteCacheTmpFileItemShPtr &tmpFileItem,
-                                              bool &returnStatus) const
+                                              const std::string& filename,
+                                              ImageWriteCache::ImageWriteCacheTmpFileItemShPtr& tmpFileItem,
+                                              bool& returnStatus) const
 {
     returnStatus = true;
     if (mRunMode != ImageWriteCache::Mode::DEQ) { // STD/ENQ
         if (filename.empty()) {
             // don't write files that have empty filenames
             if (!mFileNameParam->mCheckpointOutput) {
-                const File &file = (*mFiles)[fileId];
-                for (const auto &img: file.mImages) {
-                    for (const auto &entry: img.mEntries) {
+                const File& file = (*mFiles)[fileId];
+                for (const auto& img: file.mImages) {
+                    for (const auto& entry: img.mEntries) {
                         // there is an error message for each render output
                         const std::string& name = entry.mRenderOutput->getName();
                         std::ostringstream ostr;
@@ -464,10 +461,10 @@ RenderOutputWriter::verifyFilenameAndDataType(const size_t fileId,
         // output using a different library, e.g. OpenDCX.
         bool hasFlat = false;
         bool hasNonFlat = false;
-        const File &file = (*mFiles)[fileId];
-        for (const auto &img: file.mImages) {
-            for (const auto &entry: img.mEntries) {
-                const scene_rdl2::rdl2::RenderOutput *ro = entry.mRenderOutput;
+        const File& file = (*mFiles)[fileId];
+        for (const auto& img: file.mImages) {
+            for (const auto& entry: img.mEntries) {
+                const scene_rdl2::rdl2::RenderOutput* ro = entry.mRenderOutput;
                 if (ro->getOutputType() == std::string("flat")) {
                     hasFlat = true;
                 } else {
@@ -501,9 +498,9 @@ RenderOutputWriter::verifyFilenameAndDataType(const size_t fileId,
 }
 
 OIIO::ImageOutput::unique_ptr
-RenderOutputWriter::setupOiioImageSetup(const std::string &filename,
+RenderOutputWriter::setupOiioImageSetup(const std::string& filename,
                                         ImageWriteCache::ImageWriteCacheTmpFileItemShPtr tmpFileItem,
-                                        bool &result) const
+                                        bool& result) const
 {
     OIIO::ImageOutput::unique_ptr imgOutput = nullptr;
 
@@ -526,24 +523,24 @@ RenderOutputWriter::setupOiioImageSetup(const std::string &filename,
 
 void
 RenderOutputWriter::setupOiioImageSpecTable(const size_t fileId,
-                                            std::vector<OIIO::ImageSpec> &specs) const
+                                            std::vector<OIIO::ImageSpec>& specs) const
 {
     scene_rdl2::math::HalfOpenViewport aperture;
     scene_rdl2::math::HalfOpenViewport region;
     if (mRunMode != ImageWriteCache::Mode::DEQ) { // STD/ENQ
-        const auto &file = (*mFiles)[fileId];
+        const auto& file = (*mFiles)[fileId];
         const scene_rdl2::rdl2::SceneVariables& vars =
             file.mImages[0].mEntries[0].mRenderOutput->getSceneClass().getSceneContext()->getSceneVariables();
         aperture = vars.getRezedApertureWindow();
         region = vars.getRezedRegionWindow();
     }
 
-    const ImageWriteCacheBufferSpecFile &buffSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
+    const ImageWriteCacheBufferSpecFile& buffSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
     for (size_t imgId = 0; imgId < buffSpecFile.getSubImgTotal(); ++imgId) {
-        const ImageWriteCacheBufferSpecSubImage &buffSpecSubImg = buffSpecFile.getBufferSpecSubImage(imgId);
+        const ImageWriteCacheBufferSpecSubImage& buffSpecSubImg = buffSpecFile.getBufferSpecSubImage(imgId);
 
         ImageWriteCacheImageSpec localImgSpec;
-        ImageWriteCacheImageSpec *imgSpec = nullptr;
+        ImageWriteCacheImageSpec* imgSpec = nullptr;
         if (mRunMode == ImageWriteCache::Mode::ENQ) {
             imgSpec = mCache->newImgSpec(); // create new imgSpec
 
@@ -570,7 +567,7 @@ RenderOutputWriter::setupOiioImageSpecTable(const size_t fileId,
             setupImageSpecStdEnq(imgSpec, (*mFiles)[fileId].mImages[imgId], aperture, region);
         } // STD/ENQ
 
-        if (mRunMode != ImageWriteCache::Mode::ENQ) {
+        if (mRunMode != ImageWriteCache::Mode::ENQ) { // STD/DEQ
             addOiioImageSpec(imgSpec, specs);
         }
 
@@ -589,10 +586,10 @@ RenderOutputWriter::setupOiioImageSpecTable(const size_t fileId,
 }
 
 bool
-RenderOutputWriter::openFile(const std::string &filename,
+RenderOutputWriter::openFile(const std::string& filename,
                              const ImageWriteCache::ImageWriteCacheTmpFileItemShPtr tmpFileItem,
                              OIIO::ImageOutput::unique_ptr& io,
-                             const std::vector<OIIO::ImageSpec> &specs) const
+                             const std::vector<OIIO::ImageSpec>& specs) const
 {
     if (mRunMode == ImageWriteCache::Mode::ENQ) {
         return true;
@@ -631,18 +628,18 @@ RenderOutputWriter::openFile(const std::string &filename,
 
 bool
 RenderOutputWriter::fillBufferAndWrite(const size_t fileId,
-                                       const std::string &filename,
+                                       const std::string& filename,
                                        const ImageWriteCache::ImageWriteCacheTmpFileItemShPtr tmpFileItem,
                                        OIIO::ImageOutput::unique_ptr& io,
-                                       const std::vector<OIIO::ImageSpec> &specs) const
+                                       const std::vector<OIIO::ImageSpec>& specs) const
 {
     bool result = true;
 
-    const ImageWriteCacheBufferSpecFile &bufferSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
+    const ImageWriteCacheBufferSpecFile& bufferSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
     for (size_t subImgId = 0; subImgId < bufferSpecFile.getSubImgTotal(); ++subImgId) {
-        const ImageWriteCacheBufferSpecSubImage &bufferSpecSubImage =
+        const ImageWriteCacheBufferSpecSubImage& bufferSpecSubImage =
             bufferSpecFile.getBufferSpecSubImage(subImgId);
-        const OIIO::ImageSpec *spec = (mRunMode != ImageWriteCache::Mode::ENQ) ? &specs[subImgId] : nullptr;
+        const OIIO::ImageSpec* spec = (mRunMode != ImageWriteCache::Mode::ENQ) ? &specs[subImgId] : nullptr;
 
         if (mCache) mCache->timeStartImage();
 
@@ -690,7 +687,7 @@ RenderOutputWriter::fillBufferAndWrite(const size_t fileId,
 }
 
 bool
-RenderOutputWriter::closeFile(const std::string &filename,
+RenderOutputWriter::closeFile(const std::string& filename,
                               const ImageWriteCache::ImageWriteCacheTmpFileItemShPtr tmpFileItem,
                               OIIO::ImageOutput::unique_ptr& io) const
 {
@@ -732,10 +729,10 @@ RenderOutputWriter::closeFile(const std::string &filename,
 //------------------------------------------------------------------------------------------
 
 void
-RenderOutputWriter::setupImageSpecStdEnq(ImageWriteCacheImageSpec *imgSpec,
-                                         const Image &img,
-                                         const scene_rdl2::math::HalfOpenViewport &aperture,
-                                         const scene_rdl2::math::HalfOpenViewport &region) const
+RenderOutputWriter::setupImageSpecStdEnq(ImageWriteCacheImageSpec* imgSpec,
+                                         const Image& img,
+                                         const scene_rdl2::math::HalfOpenViewport& aperture,
+                                         const scene_rdl2::math::HalfOpenViewport& region) const
 {
     int numChans = 0;
     for (const auto &entry: img.mEntries) {
@@ -774,10 +771,10 @@ RenderOutputWriter::setupImageSpecStdEnq(ImageWriteCacheImageSpec *imgSpec,
 
     // add metadata to image spec
     // get first valid metadata we find.
-    for (const auto &entry: img.mEntries) {
-        const scene_rdl2::rdl2::SceneObject *metadata = entry.mRenderOutput->getExrHeaderAttributes();
+    for (const auto& entry: img.mEntries) {
+        const scene_rdl2::rdl2::SceneObject* metadata = entry.mRenderOutput->getExrHeaderAttributes();
         if (metadata) {
-            const scene_rdl2::rdl2::Metadata *currMetadata = metadata->asA<scene_rdl2::rdl2::Metadata>();
+            const scene_rdl2::rdl2::Metadata* currMetadata = metadata->asA<scene_rdl2::rdl2::Metadata>();
             imgSpec->setExrHeaderInfo(currMetadata->getAttributeNames(),
                                       currMetadata->getAttributeTypes(),
                                       currMetadata->getAttributeValues(),
@@ -795,8 +792,8 @@ RenderOutputWriter::setupImageSpecStdEnq(ImageWriteCacheImageSpec *imgSpec,
 
 // static function
 void
-RenderOutputWriter::addOiioImageSpec(const ImageWriteCacheImageSpec *imgSpec,
-                                     std::vector<OIIO::ImageSpec> &specs)
+RenderOutputWriter::addOiioImageSpec(const ImageWriteCacheImageSpec* imgSpec,
+                                     std::vector<OIIO::ImageSpec>& specs)
 {
     imgSpec->
         setupOIIOSpecs
@@ -812,16 +809,16 @@ RenderOutputWriter::addOiioImageSpec(const ImageWriteCacheImageSpec *imgSpec,
              int totalNumChans,
              const std::string &compression,
              float level,
-             const std::vector<ImageWriteCacheImageSpec::ChannelFormat> &chanFormat,
-             const std::vector<std::string> &chanNames,
-             const std::vector<std::string> &attrNames,
-             const std::vector<std::string> &attrTypes,
-             const std::vector<std::string> &attrValues,
-             const std::string &metaDataName,
-             const std::vector<std::string> &resumeAttr)
+             const std::vector<ImageWriteCacheImageSpec::ChannelFormat>& chanFormat,
+             const std::vector<std::string>& chanNames,
+             const std::vector<std::string>& attrNames,
+             const std::vector<std::string>& attrTypes,
+             const std::vector<std::string>& attrValues,
+             const std::string& metaDataName,
+             const std::vector<std::string>& resumeAttr)
          {
              auto calcOIIOChanFormat =
-                 [](const ImageWriteCacheImageSpec::ChannelFormat &chanFormat) -> OIIO::TypeDesc {
+                 [](const ImageWriteCacheImageSpec::ChannelFormat& chanFormat) -> OIIO::TypeDesc {
                  if (chanFormat == scene_rdl2::rdl2::RenderOutput::CHANNEL_FORMAT_HALF) {
                      return OIIO::TypeDesc::HALF;
                  } else {
@@ -875,9 +872,9 @@ RenderOutputWriter::addOiioImageSpec(const ImageWriteCacheImageSpec *imgSpec,
 }
 
 void
-RenderOutputWriter::updateHashImageSpecOrg(const File &file,
-                                           const scene_rdl2::math::HalfOpenViewport &aperture,
-                                           const scene_rdl2::math::HalfOpenViewport &region) const
+RenderOutputWriter::updateHashImageSpecOrg(const File& file,
+                                           const scene_rdl2::math::HalfOpenViewport& aperture,
+                                           const scene_rdl2::math::HalfOpenViewport& region) const
 {
     int specs_x = region.min().x;
     int specs_y = aperture.max().y - region.max().y; // flip y coordinate relative to display window
@@ -891,7 +888,7 @@ RenderOutputWriter::updateHashImageSpecOrg(const File &file,
         std::vector<OIIO::TypeDesc> chanFormats;
         std::vector<std::string> chanNames;
         for (const auto &entry: img.mEntries) {
-            const scene_rdl2::rdl2::RenderOutput *ro = entry.mRenderOutput;
+            const scene_rdl2::rdl2::RenderOutput* ro = entry.mRenderOutput;
 
             // number of channels and channel names
             int nc = entry.mChannelNames.size();
@@ -956,7 +953,7 @@ RenderOutputWriter::updateHashImageSpecOrg(const File &file,
 
 // static function
 OIIO::TypeDesc
-RenderOutputWriter::getChannelFormat(const scene_rdl2::rdl2::RenderOutput *ro)
+RenderOutputWriter::getChannelFormat(const scene_rdl2::rdl2::RenderOutput* ro)
 {
     if (ro->getChannelFormat() == scene_rdl2::rdl2::RenderOutput::CHANNEL_FORMAT_HALF) {
         return OIIO::TypeDesc::HALF;
@@ -966,7 +963,7 @@ RenderOutputWriter::getChannelFormat(const scene_rdl2::rdl2::RenderOutput *ro)
 
 // static function
 std::string
-RenderOutputWriter::getCompressionStr(const scene_rdl2::rdl2::RenderOutput *ro)
+RenderOutputWriter::getCompressionStr(const scene_rdl2::rdl2::RenderOutput* ro)
 {
     switch (ro->getCompression()) {
     case scene_rdl2::rdl2::RenderOutput::COMPRESSION_NONE:  return "none";
@@ -986,7 +983,7 @@ RenderOutputWriter::getCompressionStr(const scene_rdl2::rdl2::RenderOutput *ro)
 //------------------------------------------------------------------------------------------
 
 bool
-progressCallBack(void *data, float fraction)
+progressCallBack(void* data, float fraction)
 {
     if (data) {
         (static_cast<ImageWriteCache *>(data))->timeUpdateBuffWrite(fraction);
@@ -998,7 +995,7 @@ bool
 RenderOutputWriter::subImageFillBufferAndWrite(const size_t fileId,
                                                const size_t subImgId,
                                                OIIO::ImageOutput::unique_ptr& io,
-                                               const OIIO::ImageSpec *spec) const
+                                               const OIIO::ImageSpec* spec) const
 {
     bool result = true;
     if (mRunMode != ImageWriteCache::Mode::ENQ) { // STD/DEQ
@@ -1030,7 +1027,7 @@ RenderOutputWriter::subImageFillBufferAndWrite(const size_t fileId,
 bool
 RenderOutputWriter::fillBuffer(const size_t fileId,
                                const size_t subImgId,
-                               OIIO::ImageBuf *buffer) const
+                               OIIO::ImageBuf* buffer) const
 {
     auto getBuffSpecSubImage = [&]() -> const ImageWriteCacheBufferSpecSubImage & {
         const ImageWriteCacheBufferSpecFile &buffSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
@@ -1145,18 +1142,18 @@ RenderOutputWriter::fillPixBufferStd(const size_t fileId,
                                      const size_t subImgId,
                                      const int x,
                                      const int y,
-                                     const VariablePixelBuffer *aovBuffers,
-                                     const VariablePixelBuffer *displayFilterBuffers,
-                                     void *outData) const
+                                     const VariablePixelBuffer* aovBuffers,
+                                     const VariablePixelBuffer* displayFilterBuffers,
+                                     void* outData) const
 {
-    const std::vector<Entry> &entries = (*mFiles)[fileId].mImages[subImgId].mEntries;
+    const std::vector<Entry>& entries = (*mFiles)[fileId].mImages[subImgId].mEntries;
 
     size_t outDataOffset = 0;
-    const scene_rdl2::fb_util::VariablePixelBuffer *aov = aovBuffers;
-    const scene_rdl2::fb_util::VariablePixelBuffer *displayFilterBuffer = displayFilterBuffers;
-    for (const auto &e: entries) {
+    const scene_rdl2::fb_util::VariablePixelBuffer* aov = aovBuffers;
+    const scene_rdl2::fb_util::VariablePixelBuffer* displayFilterBuffer = displayFilterBuffers;
+    for (const auto& e: entries) {
         int numChan = e.mChannelNames.size();
-        float *fPtr = (float *)((uintptr_t)outData + outDataOffset);
+        float* fPtr = (float *)((uintptr_t)outData + outDataOffset);
         outDataOffset += numChan * sizeof(float);
 
         fillPixBufferSingleEntry(e, x, y, aov, displayFilterBuffer, fPtr);
@@ -1180,13 +1177,13 @@ RenderOutputWriter::fillPixBufferEnq(const size_t fileId,
                                      const size_t subImgId,
                                      const int x,
                                      const int y,
-                                     const VariablePixelBuffer *aovBuffers,
-                                     const VariablePixelBuffer *displayFilterBuffers,
-                                     void *outDataFull,
+                                     const VariablePixelBuffer* aovBuffers,
+                                     const VariablePixelBuffer* displayFilterBuffers,
+                                     void* outDataFull,
                                      size_t outDataFullSize, // pixCacheSizeByte for full float
-                                     void *outDataHalf,
+                                     void* outDataHalf,
                                      size_t outDataHalfSize, // pixCacheSizeByte for half float
-                                     PageAlignedBuff &convertBuff) const
+                                     PageAlignedBuff& convertBuff) const
 //
 // outDataFull and outDataHalf should have enough memory to store data.
 // This function returns false immediately without completion of data setup when buffer size is not
@@ -1196,9 +1193,9 @@ RenderOutputWriter::fillPixBufferEnq(const size_t fileId,
     MNRY_ASSERT(outDataHalfSize % sizeof(unsigned short) == 0);
     int halfFloatTotal = outDataHalfSize / sizeof(unsigned short);
 
-    const std::vector<Entry> &entries = (*mFiles)[fileId].mImages[subImgId].mEntries;
+    const std::vector<Entry>& entries = (*mFiles)[fileId].mImages[subImgId].mEntries;
 
-    float *convertBuffPtr = nullptr;
+    float* convertBuffPtr = nullptr;
     size_t convertBuffSize = 0; // byte
     if (halfFloatTotal) {
         convertBuffSize = halfFloatTotal * sizeof(float); // byte
@@ -1208,11 +1205,11 @@ RenderOutputWriter::fillPixBufferEnq(const size_t fileId,
     size_t outDataFullOffset = 0; // byte
     size_t convertBuffOffset = 0; // byte
 
-    const scene_rdl2::fb_util::VariablePixelBuffer *aov = aovBuffers;
-    const scene_rdl2::fb_util::VariablePixelBuffer *displayFilterBuffer = displayFilterBuffers;
+    const scene_rdl2::fb_util::VariablePixelBuffer* aov = aovBuffers;
+    const scene_rdl2::fb_util::VariablePixelBuffer* displayFilterBuffer = displayFilterBuffers;
     for (const auto &e: entries) {
         int numChan = e.mChannelNames.size();
-        float *fPtr = nullptr;
+        float* fPtr = nullptr;
 
         bool halfFloatMode =
             (e.mRenderOutput->getChannelFormat() == scene_rdl2::rdl2::RenderOutput::CHANNEL_FORMAT_HALF);
@@ -1243,37 +1240,37 @@ RenderOutputWriter::fillPixBufferEnq(const size_t fileId,
 }
 
 void
-RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
+RenderOutputWriter::fillPixBufferSingleEntry(const Entry& e,
                                              const int x,
                                              const int y,
                                              const VariablePixelBuffer *&aov,
                                              const VariablePixelBuffer *&displayFilterBuffer,
-                                             float *outPtr) const
+                                             float* outPtr) const
 //
 // outPtr should have proper memory size already before call this function
 //
 {
-    const scene_rdl2::rdl2::RenderOutput *ro = e.mRenderOutput;
+    const scene_rdl2::rdl2::RenderOutput* ro = e.mRenderOutput;
 
     switch(ro->getResult()) {
     case scene_rdl2::rdl2::RenderOutput::RESULT_HEAT_MAP:
         if (mHeatMap) {
             // time per pixel stat
-            const int64_t *p = mHeatMap->getData();
+            const int64_t* p = mHeatMap->getData();
             p = p + y * mWidth + x;
             outPtr[0] = mcrt_common::Clock::seconds(*p);
         }
         break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_WEIGHT:
         if (mWeightBuffer) {
-            const float *p = mWeightBuffer->getData();
+            const float* p = mWeightBuffer->getData();
             p = p + y * mWidth + x;
             outPtr[0] = *p;
         }
         break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY_AUX:
         if (mRenderBufferOdd) {
-            const scene_rdl2::fb_util::RenderColor *p = mRenderBufferOdd->getData();
+            const scene_rdl2::fb_util::RenderColor* p = mRenderBufferOdd->getData();
             p = p + y * mWidth + x;
             outPtr[0] = p->x;
             outPtr[1] = p->y;
@@ -1282,7 +1279,7 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
         break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_ALPHA_AUX:
         if (mRenderBufferOdd) {
-            const scene_rdl2::fb_util::RenderColor *p = mRenderBufferOdd->getData();
+            const scene_rdl2::fb_util::RenderColor* p = mRenderBufferOdd->getData();
             p = p + y * mWidth + x;
             outPtr[0] = p->w;
         }
@@ -1305,8 +1302,8 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT:
                 {
                     MNRY_ASSERT(e.mChannelNames.size() == 1);
-                    const scene_rdl2::fb_util::FloatBuffer &fbuf = aov->getFloatBuffer();
-                    const float *f = fbuf.getData();
+                    const scene_rdl2::fb_util::FloatBuffer& fbuf = aov->getFloatBuffer();
+                    const float* f = fbuf.getData();
                     f += y * mWidth + x;
                     outPtr[0] = *f;
                 }
@@ -1314,8 +1311,8 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2:
                 {
                     MNRY_ASSERT(e.mChannelNames.size() == 2);
-                    const scene_rdl2::fb_util::Float2Buffer &f2buf = aov->getFloat2Buffer();
-                    const scene_rdl2::math::Vec2f *v2f = f2buf.getData();
+                    const scene_rdl2::fb_util::Float2Buffer& f2buf = aov->getFloat2Buffer();
+                    const scene_rdl2::math::Vec2f* v2f = f2buf.getData();
                     v2f += y * mWidth + x;
                     outPtr[0] = v2f->x;
                     outPtr[1] = v2f->y;
@@ -1324,8 +1321,8 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3:
                 {
                     MNRY_ASSERT(e.mChannelNames.size() == 3);
-                    const scene_rdl2::fb_util::Float3Buffer &f3buf = aov->getFloat3Buffer();
-                    const scene_rdl2::math::Vec3f *v3f = f3buf.getData();
+                    const scene_rdl2::fb_util::Float3Buffer& f3buf = aov->getFloat3Buffer();
+                    const scene_rdl2::math::Vec3f* v3f = f3buf.getData();
                     v3f += y * mWidth + x;
                     outPtr[0] = v3f->x;
                     outPtr[1] = v3f->y;
@@ -1335,8 +1332,8 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4:
                 {
                     MNRY_ASSERT(e.mChannelNames.size() == 4);
-                    const scene_rdl2::fb_util::Float4Buffer &f4buf = aov->getFloat4Buffer();
-                    const scene_rdl2::math::Vec4f *v4f = f4buf.getData();
+                    const scene_rdl2::fb_util::Float4Buffer& f4buf = aov->getFloat4Buffer();
+                    const scene_rdl2::math::Vec4f* v4f = f4buf.getData();
                     v4f += y * mWidth + x;
                     outPtr[0] = v4f->x;
                     outPtr[1] = v4f->y;
@@ -1346,35 +1343,35 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
                 break;
             case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE_FULLDUMP:
                 {
-                    const scene_rdl2::fb_util::RgbVarianceFulldumpBuffer &buf = aov->getRgbVarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float> *pix = buf.getData();
+                    const scene_rdl2::fb_util::RgbVarianceFulldumpBuffer& buf = aov->getRgbVarianceFulldumpBuffer();
+                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float>* pix = buf.getData();
                     pix += y * mWidth + x;
                     pix->fillPixBuffer(outPtr);
                 }
                 break;
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE_FULLDUMP:
                 {
-                    const scene_rdl2::fb_util::FloatVarianceFulldumpBuffer &buf =
+                    const scene_rdl2::fb_util::FloatVarianceFulldumpBuffer& buf =
                         aov->getFloatVarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float> *pix = buf.getData();
+                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float>* pix = buf.getData();
                     pix += y * mWidth + x;
                     pix->fillPixBuffer(outPtr);
                 }
                 break;
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE_FULLDUMP:
                 {
-                    const scene_rdl2::fb_util::Float2VarianceFulldumpBuffer &buf =
+                    const scene_rdl2::fb_util::Float2VarianceFulldumpBuffer& buf =
                         aov->getFloat2VarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec2f> *pix = buf.getData();
+                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec2f>* pix = buf.getData();
                     pix += y * mWidth + x;
                     pix->fillPixBuffer(outPtr);
                 }
                 break;
             case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE_FULLDUMP:
                 {
-                    const scene_rdl2::fb_util::Float3VarianceFulldumpBuffer &buf =
+                    const scene_rdl2::fb_util::Float3VarianceFulldumpBuffer& buf =
                         aov->getFloat3VarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec3f> *pix = buf.getData();
+                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec3f>* pix = buf.getData();
                     pix += y * mWidth + x;
                     pix->fillPixBuffer(outPtr);
                 }
@@ -1399,7 +1396,7 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
     case scene_rdl2::rdl2::RenderOutput::RESULT_DISPLAY_FILTER:
         {
             // Read data from the DisplayFilter Buffer
-            const scene_rdl2::fb_util::Float3Buffer &f3buf = displayFilterBuffer->getFloat3Buffer();
+            const scene_rdl2::fb_util::Float3Buffer& f3buf = displayFilterBuffer->getFloat3Buffer();
             const scene_rdl2::math::Vec3f& v3f = f3buf.getPixel(x, y);
             outPtr[0] = v3f.x;
             outPtr[1] = v3f.y;
@@ -1416,9 +1413,9 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry &e,
 void
 RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
                                      const size_t subImgId,
-                                     const void *cacheDataFull,
-                                     const void *cacheDataHalf,
-                                     float *dataOut) const
+                                     const void* cacheDataFull,
+                                     const void* cacheDataHalf,
+                                     float* dataOut) const
 {
     auto getBuffSpecSubImage = [&]() -> const ImageWriteCacheBufferSpecSubImage & {
         const ImageWriteCacheBufferSpecFile &buffSpecFile = mCurrBufferSpec->getBufferSpecFile(fileId);
@@ -1445,7 +1442,7 @@ RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
         switch (getPixChanFormat(entryId)) {
         case ImageWriteCacheBufferSpecSubImage::ChanFormat::HALF :
             {
-                const unsigned short *hPtr = (const unsigned short *)((uintptr_t)cacheDataHalf + cacheDataHalfOffset);
+                const unsigned short* hPtr = (const unsigned short *)((uintptr_t)cacheDataHalf + cacheDataHalfOffset);
                 hVecToFVec(hPtr, numChan, fVec);
                 size_t dataSize = numChan * sizeof(float);
                 std::memcpy((void *)((uintptr_t)dataOut + dataOutOffset), &fVec[0], dataSize);
@@ -1462,7 +1459,7 @@ RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
 
         case ImageWriteCacheBufferSpecSubImage::ChanFormat::FULL :
             { 
-                const float *fPtr = (const float *)((uintptr_t)cacheDataFull + cacheDataFullOffset);
+                const float* fPtr = (const float *)((uintptr_t)cacheDataFull + cacheDataFullOffset);
                 size_t dataSize = numChan * sizeof(float);
                 std::memcpy((void *)((uintptr_t)dataOut + dataOutOffset), (const void *)(fPtr), dataSize);
                 dataOutOffset += dataSize;
@@ -1484,8 +1481,8 @@ RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
 
 // static function
 void
-RenderOutputWriter::calcPixCacheSize(const std::vector<Entry> &entries,
-                                     size_t &fullBuffSize, size_t &halfBuffSize)
+RenderOutputWriter::calcPixCacheSize(const std::vector<Entry>& entries,
+                                     size_t& fullBuffSize, size_t& halfBuffSize)
 {
     fullBuffSize = 0;
     halfBuffSize = 0;
@@ -1501,12 +1498,12 @@ RenderOutputWriter::calcPixCacheSize(const std::vector<Entry> &entries,
 
 // static function
 void
-RenderOutputWriter::fVecToHVec(const PageAlignedBuff &fVec, unsigned short *hVec)
+RenderOutputWriter::fVecToHVec(const PageAlignedBuff& fVec, unsigned short* hVec)
 {
 #if 1
     // fp16c instruction version :
     // You can check your cpu has fp16c instruction by ( lscpu | grep fp16c).
-    auto f4toh4 = [](const __m128 &in, unsigned short *h4, int count) {
+    auto f4toh4 = [](const __m128& in, unsigned short* h4, int count) {
         // This function basically converts 4 floats to 4 half floats however still need to maintain
         // less than 4 floats case. (i.e. it is the case that Input data has 4 float memory but only
         // set less than 4 float).
@@ -1517,20 +1514,20 @@ RenderOutputWriter::fVecToHVec(const PageAlignedBuff &fVec, unsigned short *hVec
     };
 #else
     // non fp16c instruction version
-    auto f4toh4 = [&](const __m128 &in, unsigned short *h4, int count) {
+    auto f4toh4 = [&](const __m128& in, unsigned short* h4, int count) {
         // This is a special version which does not use fp16c instruction (i.e. _mm_cvtps_ph).
         // We are not using a host that does not support fp16c instruction anymore.
         // However, just in case, I would like to keep this code in order to support non-fp16c hosts
         // in some cases.
         MNRY_ASSERT(count <= 4);
-        const float *fptr = (const float *)&in;
+        const float* fptr = (const float*)&in;
         for (int i = 0; i < count; ++i) {
             h4[i] = ftoh(fptr[i]);
         }
     };
 #endif
 
-    const float *fPtr = (const float *)&fVec[0];
+    const float* fPtr = (const float*)&fVec[0];
 
     size_t fCount = fVec.size() / sizeof(float); // total float count
 
@@ -1544,7 +1541,7 @@ RenderOutputWriter::fVecToHVec(const PageAlignedBuff &fVec, unsigned short *hVec
     if (fCount == 1) {
         hVec[0] = ftoh(fPtr[0]);
     } else {
-        const __m128 *m128Ptr = (const __m128 *)fPtr;
+        const __m128* m128Ptr = (const __m128*)fPtr;
 
         size_t simd4LoopMax = fCount / 4;
         for (size_t i = 0; i < simd4LoopMax; ++i) {
@@ -1583,7 +1580,7 @@ RenderOutputWriter::ftoh(const float f)
 
 // static function
 void
-RenderOutputWriter::hVecToFVec(const unsigned short *hVec, const unsigned itemTotal, std::vector<float> &fVec)
+RenderOutputWriter::hVecToFVec(const unsigned short* hVec, const unsigned itemTotal, std::vector<float>& fVec)
 {
     fVec.clear();
     fVec.resize(itemTotal);
@@ -1625,8 +1622,8 @@ RenderOutputWriter::precisionAdjustH(const unsigned short h, int reso)
 //------------------------------------------------------------------------------------------
     
 std::string
-RenderOutputWriter::errMsg(const std::string &msg,
-                           const std::string &filename,
+RenderOutputWriter::errMsg(const std::string& msg,
+                           const std::string& filename,
                            ImageWriteCache::ImageWriteCacheTmpFileItemShPtr tmpFileItem) const
 //
 // error message utilities : add filename info to the end of the error message
@@ -1644,4 +1641,3 @@ RenderOutputWriter::errMsg(const std::string &msg,
 
 } // namespace rndr
 } // namespace moonray
-
