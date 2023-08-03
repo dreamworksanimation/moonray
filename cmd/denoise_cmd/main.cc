@@ -24,7 +24,8 @@ void usage(char *argv0)
     std::cerr << "  -in input.exr              input image file to denoise" << std::endl;
     std::cerr << "  -albedo albedo.exr         optional input albedo image to aid denoising" << std::endl;
     std::cerr << "  -normals normals.exr       optional input normals image to aid denoising" << std::endl;
-    std::cerr << "  -mode optix OR -mode oidn  use Optix or Open Image Denoise denoiser" << std::endl;
+    std::cerr << "  -mode optix OR -mode oidn OR -mode oidn_cpu OR -mode oidn_cuda" << std::endl;
+    std::cerr << "                             use Optix or Open Image Denoise denoiser" << std::endl;
     std::cerr << "  -out output.exr            denoised output image file (default = \"denoised.exr\")" << std::endl;
 }
 
@@ -166,7 +167,13 @@ main(int argc, char* argv[])
             std::cout << "Denoising with Optix" << std::endl;
         } else if (inDenoiserMode == "oidn") {
             denoiserMode = moonray::denoiser::OPEN_IMAGE_DENOISE;
-            std::cout << "Denoising with Open Image Denoise" << std::endl;
+            std::cout << "Denoising with Open Image Denoise (default/best device)" << std::endl;
+        } else if (inDenoiserMode == "oidn_cpu") {
+            denoiserMode = moonray::denoiser::OPEN_IMAGE_DENOISE_CPU;
+            std::cout << "Denoising with Open Image Denoise (CPU device)" << std::endl;
+        } else if (inDenoiserMode == "oidn_cuda") {
+            denoiserMode = moonray::denoiser::OPEN_IMAGE_DENOISE_CUDA;
+            std::cout << "Denoising with Open Image Denoise (CUDA device)" << std::endl;
         } else {
             std::cerr << "Unrecognized denoiser mode." << std::endl;
             usage(argv[0]);
