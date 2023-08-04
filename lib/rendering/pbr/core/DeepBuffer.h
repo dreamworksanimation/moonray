@@ -13,7 +13,6 @@
 #include <moonray/deepfile/DcxChannelSet.h>
 #include <moonray/deepfile/DcxDeepImageTile.h>
 #include <OpenEXR/ImfHeader.h>
-#include <tbb/mutex.h>
 
 namespace moonray {
 
@@ -420,7 +419,7 @@ private:
  */
     static const int mMutexTileSize = 15;
     // force mutex to be cache-line aligned for speed
-    struct CACHE_ALIGN AlignedMutex : public tbb::mutex {};
+    struct CACHE_ALIGN AlignedMutex : public std::mutex {};
     AlignedMutex *mPixelMutex;
     int getMutexIdx(unsigned x, unsigned y) const {
         return (y % mMutexTileSize) * mMutexTileSize + (x % mMutexTileSize);

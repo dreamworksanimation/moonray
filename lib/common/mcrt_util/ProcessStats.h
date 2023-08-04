@@ -8,12 +8,11 @@
 #include <scene_rdl2/common/platform/Platform.h>
 #include <scene_rdl2/render/logging/logging.h>
 
-#include <tbb/mutex.h>
-
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <mutex>
 
 namespace moonray {
 namespace util {
@@ -49,9 +48,9 @@ private:
     // ifstream mutex to prevent corrupt reads
     // when we are getting log messages from
     // threaded sections of code
-    mutable tbb::mutex mMemoryReadMutex;
-    mutable tbb::mutex mReadIOMutex;
-    mutable tbb::mutex mSystemUtilMutex;
+    mutable std::mutex mMemoryReadMutex;
+    mutable std::mutex mReadIOMutex;
+    mutable std::mutex mSystemUtilMutex;
 
 };
 
