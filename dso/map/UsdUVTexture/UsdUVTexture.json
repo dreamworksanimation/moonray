@@ -6,7 +6,7 @@
             "name": "file",
             "type": "String",
             "flags": "FLAGS_FILENAME",
-            "comment": "Path to the texture"
+            "comment": "Filename of an EXR or TX format texture (must be mip-mapped and tiled with maketx). If filename contains '<UDIM>', udim index substitution is performed on filename."
         },
         "attrOutputMode": {
             "name": "output_mode",
@@ -93,24 +93,26 @@
                 "sRGB": "1",
                 "auto": "3"
             },
-            "comment": "Flag indicating the color space in which the source texture is encoded."
+            "comment": "Flag indicating the color space in which the source texture is encoded.  If set to auto, gamma correction will be applied if the images is not single channel."
         },
         "attrUDimValues": {
             "name": "udim_values",
             "label": "udim values",
-            "type": "IntVector"
+            "type": "IntVector",
+            "comment": "Explicit list of UDIM values corresponding to filename in the \\\"udim_files\\\" list"
         },
         "attrUDimFiles": {
             "name": "udim_files",
             "label": "udim files",
-            "type": "StringVector"
+            "type": "StringVector",
+            "comment": "Explicit list of UDIM filenames corresponding to values in the \\\"udim_values\\\" list"
         },
         "attrMaxVdim": {
             "name": "udim_max_v",
             "label": "udim max v",
             "type": "Int",
             "default": "10",
-            "comment": "udim maximum v value"
+            "comment": "Maximum UDIM v value used (maximum UDIM row). Needed to for texture allocation."
         }
     }
 }

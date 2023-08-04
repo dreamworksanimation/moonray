@@ -7,13 +7,14 @@
             "label": "wrap around",
             "aliases": [ "wrap around" ],
             "type": "Bool",
-            "default": "true"
+            "default": "true",
+            "comment": "If true, the image will repeat itself at it's boundries.   If false, the image will be clamped at it's boundries."
         },
         "attrTexture": {
             "name": "texture",
             "type": "String",
             "flags": "FLAGS_FILENAME",
-            "comment": "filename that points to a texture .exr or .tx file (must be mip-mapped and tiled with maketx). If filename contains '<UDIM>', udim index substitution is performed on filename.  In the UDIM case, 'scale', 'offset', and 'wrap around' are ignored."
+            "comment": "Filename that points to a texture .exr or .tx file (must be mip-mapped and tiled with maketx). If filename contains '<UDIM>', udim index substitution is performed on filename.  In the UDIM case, 'scale', 'offset', and 'wrap around' are ignored."
         },
         "attrUseDefaultColor": {
             "name": "use_default_color_when_missing",
@@ -29,7 +30,7 @@
             "aliases": [ "default color" ],
             "type": "Rgb",
             "default": "Rgb(0.0f, 1.0f, 0.0f)",
-            "comment": "default color to be used for missing udims when 'use default color when missing' is enabled"
+            "comment": "Default color to be used for missing udims when 'use default color when missing' is enabled"
         },
         "attrTextureEnum": {
             "name": "texture_coordinates",
@@ -43,7 +44,8 @@
                 "input texture coordinates": "2",
                 "hair surface": "1",
                 "hair closest surface": "3"
-            }
+            },
+            "comment": "Selects the source of the coordinates used to map the texture.  For meshes, the 'texture' setting will read a Vec2f attribute named 'surface_st' if it exists, otherwise it will use barycentric coordinates.   For points and curves, the 'texture' setting will read a Vec2f attribute named 'uv' if it exists.   If the attribute doesn't exist, parametric st coordinates are used for curves and a constant value of (1.0, 1.0) is used for points.  The 'input texture coordinates' setting will evaluate a binding on the 'input_texture_coordinates' parameter and use the resulting red and green channels as the texture coordinates.   The 'hair surface' setting will try to read an explicit attribute named 'surface_st'.   The 'hair closest surface' setting will try to read an explicit attribute named 'closest_surface_uv'."
         },
         "attrAlphaOnly": {
             "name": "alpha_only",
@@ -59,7 +61,8 @@
             "aliases": [ "input texture coordinates" ],
             "type": "Vec3f",
             "default": "Vec3f(0.0f, 0.0f, 0.0f)",
-            "flags": "FLAGS_BINDABLE"
+            "flags": "FLAGS_BINDABLE",
+            "comment": "If the 'texture_coordinates' parameter is set to 'input texture coordinates' then this parameter is evaluated and the resulting red and green channels are used for the u and v coordinates respectively."
         },
         "attrMipBias": {
             "name": "mip_bias",
@@ -68,7 +71,7 @@
             "default": "0.0f",
             "flags": "FLAGS_BINDABLE",
             "group": "Blur",
-            "comment": "Amount to scale derivatives which controls mipmap selection"
+            "comment": "Amount to scale derivatives which controls mipmap selection.   This can be used to provide a cheap, albiet low quality, blur."
         },
         "attrGamma": {
             "name": "gamma",
@@ -79,17 +82,20 @@
                 "off": "0",
                 "on": "1",
                 "auto": "2"
-            }
+            },
+            "comment": "If this is set to 'on' or 'auto' and the 'texture' file is 8-bit, then a power of 2.2 will be applied to the RGB channels of the image."
         },
         "attrOffset": {
             "name": "offset",
             "type": "Vec2f",
-            "default": "Vec2f(0.0f, 0.0f)"
+            "default": "Vec2f(0.0f, 0.0f)",
+            "comment": "A constant offset applied to the texture coordinates."
         },
         "attrScale": {
             "name": "scale",
             "type": "Vec2f",
-            "default": "Vec2f(1.0f, 1.0f)"
+            "default": "Vec2f(1.0f, 1.0f)",
+            "comment": "A constant scale applied to the texture coordinates."
         },
         "attrRotationAngle": {
             "name": "rotation_angle",
@@ -97,7 +103,7 @@
             "aliases": [ "rotation angle" ],
             "type": "Float",
             "default": "0.0f",
-            "comment": "Rotation in degrees"
+            "comment": "A constant rotation in degrees applied to the texture coordinates."
         },
         "attrRotationCenter": {
             "name": "rotation_center",
@@ -111,13 +117,15 @@
             "name": "udim_values",
             "label": "udim values",
             "aliases": [ "udim values" ],
-            "type": "IntVector"
+            "type": "IntVector",
+            "comment": "Explicit list of UDIM values corresponding to filename in the 'udim_files' list."
         },
         "attrUDimFiles": {
             "name": "udim_files",
             "label": "udim files",
             "aliases": [ "udim files" ],
-            "type": "StringVector"
+            "type": "StringVector",
+            "comment": "Explicit list of UDIM filenames corresponding to values in the 'udim_values' list.  If this is set, the 'texture' parameter is ignored."
         },
         "attrMaxVdim": {
             "name": "udim_max_v",
@@ -125,7 +133,7 @@
             "aliases": [ "udim max v" ],
             "type": "Int",
             "default": "10",
-            "comment": "udim maximum v value"
+            "comment": "Maximum UDIM v value used (maximum UDIM row). Needed to for texture allocation."
         },
         "attrSaturationEnabled": {
             "name": "saturation_enabled",
@@ -133,13 +141,15 @@
             "aliases": [ "saturation enabled" ],
             "type": "Bool",
             "default": "false",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Enables 'saturation' parameter"
         },
         "attrSaturation": {
             "name": "saturation",
             "type": "Rgb",
             "default": "Rgb(1.0f, 1.0f, 1.0f)",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Applies saturation per channel with 0.0 being grayscale and 1.0 being full saturation"
         },
         "attrContrastEnabled": {
             "name": "contrast_enabled",
@@ -147,13 +157,15 @@
             "aliases": [ "contrast enabled" ],
             "type": "Bool",
             "default": "false",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Enables 'contrast' parameter"
         },
         "attrContrast": {
             "name": "contrast",
             "type": "Rgb",
             "default": "Rgb(1.0f, 1.0f, 1.0f)",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Applies contrast per channel in the style of Nuke where the pivot is at 0.18"
         },
         "attrGammaEnabled": {
             "name": "gamma_enabled",
@@ -161,7 +173,8 @@
             "aliases": [ "gamma enabled" ],
             "type": "Bool",
             "default": "false",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Enables 'gamma_adjust' parameter"
         },
         "attrGammaAdjust": {
             "name": "gamma_adjust",
@@ -169,7 +182,8 @@
             "aliases": [ "gamma adjust" ],
             "type": "Rgb",
             "default": "Rgb(1.0f, 1.0f, 1.0f)",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Applies gamma(power fuction) per channel."
         },
         "attrGainOffsetEnabled": {
             "name": "gain_offset_enabled",
@@ -177,13 +191,15 @@
             "aliases": [ "gain offset enabled" ],
             "type": "Bool",
             "default": "false",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Enables 'gain' and 'offset_adjust' parameters"
         },
         "attrGain": {
             "name": "gain",
             "type": "Rgb",
             "default": "Rgb(1.0f, 1.0f, 1.0f)",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Applies multiplier per channel."
         },
         "attrOffsetAdjust": {
             "name": "offset_adjust",
@@ -191,7 +207,8 @@
             "aliases": [ "offset adjust" ],
             "type": "Rgb",
             "default": "Rgb(0.0f, 0.0f, 0.0f)",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Applies offset per channel."
         },
         "attrTMIControlEnabled": {
             "name": "TMI_control_enabled",
@@ -199,7 +216,8 @@
             "aliases": [ "TME control enabled", "TMI control enabled" ],
             "type": "Bool",
             "default": "false",
-            "group": "Color Correction"
+            "group": "Color Correction",
+            "comment": "Enables 'TMI' (Temperature Magenta Intensity) parameter" 
         },
         "attrTMI": {
             "name": "TMI",
