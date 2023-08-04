@@ -42,7 +42,7 @@ namespace
 {
 
 // Counter to hand out unique indices to TLSProxy objects.
-tbb::atomic<unsigned> gNextFrameUpdateTLSIndex;
+std::atomic<unsigned> gNextFrameUpdateTLSIndex;
 
 // These are lightweight objects which we put into a tbb::enumerable_thread_specific
 // container so that we can map OS thread ids to consistent top level ThreadLocalState
@@ -50,7 +50,7 @@ tbb::atomic<unsigned> gNextFrameUpdateTLSIndex;
 struct FrameUpdateTLSProxy
 {
     FrameUpdateTLSProxy() :
-        mTLSIndex(gNextFrameUpdateTLSIndex.fetch_and_increment())
+        mTLSIndex(gNextFrameUpdateTLSIndex++)
     {
     }
 

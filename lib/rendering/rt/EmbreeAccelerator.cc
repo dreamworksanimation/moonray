@@ -41,7 +41,7 @@ namespace rt {
 
 
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<bool>, geom::SharedPtrHash> SharedSceneMap;
+        std::atomic<bool>, geom::SharedPtrHash> SharedSceneMap;
 
 
 class BVHBuilder : public geom::PrimitiveVisitor

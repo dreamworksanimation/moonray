@@ -12,7 +12,6 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/math/Vec4.h>
 
-#include <tbb/atomic.h>
 #include <vector>
 
 
