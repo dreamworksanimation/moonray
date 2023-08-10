@@ -373,7 +373,8 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls,
         CryptomatteParams *refractCryptomatteParamsPtr,
         bool ignoreVolumes, bool &hitVolume,
         bool &isStereoscopic,
-        PresenZ::Phase::Eye presenZEye) const
+        PresenZ::Phase::Eye presenZEye,
+        int pixelX, int pixelY) const
 {
     CHECK_CANCELLATION(pbrTls, return NONE);
 
@@ -556,6 +557,12 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls,
                                        isect.getN().y,
                                        isect.getN().z);
 
+        const NozVector Ng = nozVector(isect.getNg().x,
+                                       isect.getNg().y,
+                                       isect.getNg().z);
+
+        const NozVector bestWsPosition = PresenZ::Shading::PzGetBestCameraWSPosition(pixelX, pixelY);
+
         const NozVector camDir = nozVector(ray.getDirection().x,
                                            ray.getDirection().y,
                                            ray.getDirection().z);
@@ -568,10 +575,11 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls,
 
         PresenZ::Shading::PzBendRay newCamRay =
             PresenZ::Shading::PzGetBendRayRenderPhase(presenZEye,
-                                                      Nn,
+                                                      Ng, Nn,
                                                       camDir,
                                                       worldHitPoint,
-                                                      hitDistance);
+                                                      hitDistance,
+                                                      bestWsPosition);
 
         isStereoscopic = newCamRay.isStereoScopic;
 
@@ -745,7 +753,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls,
         computeRadianceRecurse(pbrTls, presenceRay, rayForVolume, sp, cameraId, newPv, lobe,
             presenceRadiance, presenceTransparency, vtPresence,
             presenceSequenceID, aovs, nullptr, nullptr, newCryptomatteParamsPtr, nullptr, 
-            false, presenceHitVolume, isStereoscopic, presenZEye);
+            false, presenceHitVolume, isStereoscopic, presenZEye, pixelX, pixelY);
 
         radiance += presenceRadiance;
         vt.mTransmittanceE *= vtPresence.mTransmittanceE;
@@ -1312,7 +1320,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                 sample.pixelX = pixelX;
                 sample.pixelY = pixelY;
                 sample.sampleIndex = subpixelIndex;
-                sample.isTransparent = false;
+                sample.transpType = PresenZ::DetectSample::DST_opaque;
 
                 scene_rdl2::math::Vec3f hitNormal = isect.getN();
                 //sample.hitNormalWorld = NozVector(hitNormal.x, hitNormal.y, hitNormal.z);
@@ -1539,7 +1547,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                     computeRadianceRecurse(pbrTls, ray, rayForVolume, sp, cameraId, pv, nullptr, radiance,
                         transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
                         false, hitVolume, isStereoscopic,
-                        PresenZ::Phase::Eye::RC_Left);
+                        PresenZ::Phase::Eye::RC_Left, pixelX, pixelY);
 
                     alpha = 1.f - transparency;
 
@@ -1550,7 +1558,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                         computeRadianceRecurse(pbrTls, cameraRayCopy, rayForVolume, sp, cameraId, pv, nullptr, radianceRight,
                             transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
                             false, hitVolume, isStereoscopic,
-                            PresenZ::Phase::Eye::RC_Right);
+                            PresenZ::Phase::Eye::RC_Right, pixelX, pixelY);
                     } else {
                         radianceRight = radiance;
                     }
@@ -1585,8 +1593,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
         } else {
             computeRadianceRecurse(pbrTls, ray, ray, sp, cameraId, pv, nullptr, radiance,
                 transparency, vt, sequenceID, aovs, depth, nullptr, nullptr, nullptr,
-                false, hitVolume, isStereoscopic,
-                PresenZ::Phase::Eye::RC_Left);
+                false, hitVolume, isStereoscopic);
 
             alpha = 1.f - transparency;
             pathPixelWeight = pv.pathPixelWeight;

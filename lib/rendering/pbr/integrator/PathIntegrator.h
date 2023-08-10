@@ -514,7 +514,8 @@ private:
             CryptomatteParams *refractCryptomatteParams,
             bool ignoreVolumes, bool &hitVolume,
             bool &isStereoscopic,
-            PresenZ::Phase::Eye presenZEye=PresenZ::Phase::RC_Left) const;
+            PresenZ::Phase::Eye presenZEye=PresenZ::Phase::RC_Left,
+            int pixelX=0, int pixelY=0) const;
 
     scene_rdl2::math::Color computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             const shading::Bsdf &bsdf, const Subpixel &sp, int cameraId,
