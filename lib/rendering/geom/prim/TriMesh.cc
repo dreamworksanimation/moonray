@@ -658,7 +658,7 @@ TriMesh::splitNGons(size_t outputFaceCount,
                               inputIndexOffset);
         }
 
-        if (!nonZeroArea || !planar || fvCount == 3) {
+        if (!nonZeroArea || !planar || fvCount <= 4) {
             for (size_t v = fvCount; v >= sTriangleVertexCount; --v) {
                 // triangulate a ngon into triangles fan
                 indexRemapping[outputIndexOffset] = inputIndexOffset + v - 1;
