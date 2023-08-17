@@ -195,6 +195,10 @@ LocalMotionBlur::apply(const MotionBlurType mbType,
 
     case MotionBlurType::VELOCITY:
     {
+        if (!primitiveAttributeTable.hasAttribute(StandardAttributes::sVelocity)) {
+            mRdlGeometry->error("Missing velocity attribute for local motion blur");
+            return;
+        }
         PrimitiveAttribute<Vec3f>& velocityAttr =
             primitiveAttributeTable.getAttribute(StandardAttributes::sVelocity);
         if (velocityAttr.getRate() != AttributeRate::RATE_VERTEX &&
@@ -229,6 +233,10 @@ LocalMotionBlur::apply(const MotionBlurType mbType,
 
     case MotionBlurType::ACCELERATION:
     {
+        if (!primitiveAttributeTable.hasAttribute(StandardAttributes::sVelocity)) {
+            mRdlGeometry->error("Missing velocity attribute for local motion blur");
+            return;
+        }
         PrimitiveAttribute<Vec3f>& velocityAttr =
             primitiveAttributeTable.getAttribute(StandardAttributes::sVelocity);
         if (velocityAttr.getRate() != AttributeRate::RATE_VERTEX &&
@@ -237,6 +245,10 @@ LocalMotionBlur::apply(const MotionBlurType mbType,
             return;
         }
 
+        if (!primitiveAttributeTable.hasAttribute(TypedAttributeKey<Vec3f>("accel"))) {
+            mRdlGeometry->error("Missing 'accel' acceleration attribute for local motion blur");
+            return;
+        }
         PrimitiveAttribute<Vec3f>& accelAttr =
             primitiveAttributeTable.getAttribute(TypedAttributeKey<Vec3f>("accel"));
         if (accelAttr.getRate() != AttributeRate::RATE_VERTEX &&
@@ -273,6 +285,10 @@ LocalMotionBlur::apply(const MotionBlurType mbType,
 
     case scene_rdl2::rdl2::MotionBlurType::HERMITE:
     {
+        if (!primitiveAttributeTable.hasAttribute(StandardAttributes::sVelocity)) {
+            mRdlGeometry->error("Missing velocity attribute for local motion blur");
+            return;
+        }
         PrimitiveAttribute<Vec3f>& velocity0Attr =
             primitiveAttributeTable.getAttribute(StandardAttributes::sVelocity, 0);
         if (velocity0Attr.getRate() != AttributeRate::RATE_VERTEX &&
