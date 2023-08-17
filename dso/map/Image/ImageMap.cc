@@ -152,6 +152,8 @@ ImageMap::update()
                                       get(attrUDimFiles),
                                       errorStr)) {
                 fatal(errorStr);
+                mUdimTexture = nullptr;
+                mIspc.mUdimTexture = nullptr;
                 return;
             }
         }
@@ -179,6 +181,8 @@ ImageMap::update()
                                   asCpp(mIspc.mFatalColor),
                                   errorStr)) {
                 fatal(errorStr);
+                mTexture = nullptr;
+                mIspc.mTexture = nullptr;
                 return;
             }
         }
