@@ -2540,18 +2540,15 @@ void
 RenderContext::resetShaderStatsAndLogs()
 {
     const int numTLS = getMaxNumTLS();
+    scene_rdl2::rdl2::Shader::getLogEventRegistry().clearCounters();
     std::for_each(mSceneContext->beginSceneObject(),
                   mSceneContext->endSceneObject(),
                   [numTLS](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
             scene_rdl2::rdl2::SceneObject *obj = entry.second;
             if (obj->isA<scene_rdl2::rdl2::Shader>()) {
-                scene_rdl2::rdl2::Shader *shader = obj->asA<scene_rdl2::rdl2::Shader>();
+                scene_rdl2::rdl2::Shader* const shader = obj->asA<scene_rdl2::rdl2::Shader>();
                 auto tlos = shader->getThreadLocalObjectState();
-                const scene_rdl2::logging::LogEventRegistry *registry = shader->getLogEventRegistry();
                 for (int i = 0; i < numTLS; i++) {
-                    if (registry != nullptr) {
-                        registry->initLog(tlos[i].mLogs);
-                    }
                     tlos[i].clear();
                 }
             }
@@ -2618,22 +2615,14 @@ RenderContext::reportShadingLogs()
         [numRenderThreads](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
             scene_rdl2::rdl2::SceneObject *obj = entry.second;
             MNRY_ASSERT(obj);
-            scene_rdl2::logging::ObjectLogs log;
-            const scene_rdl2::logging::LogEventRegistry *registry = nullptr;
             if (obj->isA<scene_rdl2::rdl2::Shader>()) {
-                obj->asA<scene_rdl2::rdl2::Shader>()->forEachThreadLocalObjectState([&log] (const shading::ThreadLocalObjectState &s) {
-                        log += s.mLogs;
-                    }, numRenderThreads);
-                registry = obj->asA<scene_rdl2::rdl2::Shader>()->getLogEventRegistry();
-
                 // Reset fatal flag so we can potentially render next frame
                 // fatal only applies to the current frame
-                obj->asA<scene_rdl2::rdl2::Shader>()->setFataled(false);
-            }
-            if (registry != nullptr) {
-                registry->report(obj->getName(),
-                                 obj->getSceneClass().getName(),
-                                 log);
+                auto* const shader = obj->asA<scene_rdl2::rdl2::Shader>();
+                shader->setFataled(false);
+                scene_rdl2::rdl2::Shader::getLogEventRegistry().outputReport(shader,
+                                                                             obj->getName(),
+                                                                             obj->getSceneClass().getName());
             }
         });
 }

@@ -548,7 +548,7 @@ inline void logNormalError(
     const uniform int * uniform ptr = (const uniform int * uniform)
         (((const uniform int8 * uniform) sceneObject) +
          SHADER_INVALID_NORMAL_MAP_LOG_EVENT);
-    logEvent(sceneObject, tls, *ptr);
+    logEvent(sceneObject, *ptr);
 }
 
 inline Vec3f

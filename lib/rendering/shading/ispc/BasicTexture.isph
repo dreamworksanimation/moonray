@@ -14,6 +14,8 @@ typedef uniform intptr_t (*uniform StartAccumulatorFn) (uniform ShadingTLState *
 typedef void (*uniform StopAccumulatorFn) (uniform intptr_t accumulator);
 
 struct BASIC_TEXTURE_StaticData {
+    // shade time error events.
+    uniform int sErrorSampleFail;
     // Function pointers for accumulator
     uniform intptr_t mStartAccumulator;
     uniform intptr_t mStopAccumulator;

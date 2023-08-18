@@ -34,7 +34,7 @@ sample(const uniform Map* uniform map,
             sample.g = v2.y;
             sample.b = 0.0f;
             if (getAttrWarnWhenUnavailable(map)) {
-                logEvent(map, tls, me->mMissingAttributeEvent);
+                logEvent(map, me->mMissingAttributeEvent);
             }
         }
     }

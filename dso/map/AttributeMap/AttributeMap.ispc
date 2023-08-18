@@ -95,14 +95,14 @@ sample(const uniform Map *            uniform  map,
                 // and use the default value
                 sample = evalAttrDefaultValue(map, tls, state);
                 if (getAttrWarnWhenUnavailable(map)) {
-                    logEvent(map, tls, me->mMissingAttributeEvent);
+                    logEvent(map, me->mMissingAttributeEvent);
                 }
             }
         } else {
             // the primitive attribute is unavailable
             sample = evalAttrDefaultValue(map, tls, state);
             if (getAttrWarnWhenUnavailable(map)) {
-                logEvent(map, tls, me->mMissingAttributeEvent);
+                logEvent(map, me->mMissingAttributeEvent);
             }
         }
     } else if (getAttrMapType(map) == P) {

@@ -17,13 +17,6 @@ struct NormalMap;
 struct Material;
 struct SceneObject;
 
-// keep in sync with scene_rdl2::util::ObjectLogs
-struct ObjectLogs
-{
-    uniform int mNumEvents;
-    uniform int * uniform mEventCounts;
-};
-
 // keep in sync with scene_rdl2::util::InclusiveExclusiveAverage<int64>
 struct InclusiveExclusiveAverageInt64
 {
@@ -35,14 +28,11 @@ struct InclusiveExclusiveAverageInt64
 // keep in sync with moonray::shading::ThreadLocalObjectState
 struct ThreadLocalObjectState
 {
-    ObjectLogs mLogs;
     InclusiveExclusiveAverageInt64 mShaderCallStat;
-    // sizeof(ObjectLogs) == 16
     // sizeof(InclusiveExclusiveAverageInt64) == 24
-    // cache align is set to 64 on the c++ side - so pad
-    // with 3 64 bit ints.  as far as i can tell,
-    // ISPC has no alignment directive.
-    uniform int64 mPad[3];
+    // cache align is set to 64 on the c++ side - so manually pad to 64.
+    // As far as I can tell, ISPC has no alignment directive.
+    uniform int8 mPad[64 - 24];
 };
 
 inline uniform ThreadLocalObjectState * uniform
@@ -243,79 +233,59 @@ subtractTimeInChild(const uniform Material * uniform parent,
 //===-------------------------------------------------------------------
 // LogEvent Functionality
 //===-------------------------------------------------------------------
+
+extern "C" void CPP_logEvent(const uniform int64* uniform shader, uniform int event);
+
 inline void
-logEvent(const uniform int64 * uniform shader,
-         uniform ShadingTLState * uniform tls,
-         uniform int eventIndex)
+logEvent(const uniform int64 * uniform shader, uniform int eventIndex)
 {
-    uniform uint32_t threadIndex = tls->mThreadIdx;
-    uniform ThreadLocalObjectState * uniform threadLocalObjectState = getThreadLocalObjectState(shader, threadIndex);
-
-    uniform ObjectLogs &logs = threadLocalObjectState->mLogs;
-
-    logs.mEventCounts[eventIndex]++;
+    CPP_logEvent(shader, eventIndex);
 }
 
 inline void
-logEvent(const uniform int64 * uniform shader,
-         uniform ShadingTLState * uniform tls,
-         varying int eventIndex)
+logEvent(const uniform int64 * uniform shader, varying int eventIndex)
 {
-    uniform uint32_t threadIndex = tls->mThreadIdx;
-    uniform ThreadLocalObjectState * uniform threadLocalObjectState = getThreadLocalObjectState(shader, threadIndex);
-
-    uniform ObjectLogs &logs = threadLocalObjectState->mLogs;
-
-    logs.mEventCounts[eventIndex]++;
+    foreach_active(lane) {
+        const uniform int eidx = extract(eventIndex, lane);
+        CPP_logEvent(shader, eidx);
+    }
 }
 
 // overloads
 inline void
-logEvent(const uniform Map * uniform shader,
-         uniform ShadingTLState * uniform tls,
-         uniform int eventIndex)
+logEvent(const uniform Map * uniform shader, uniform int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) shader, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) shader, eventIndex);
 }
 
 inline void
-logEvent(const uniform NormalMap * uniform shader,
-         uniform ShadingTLState * uniform tls,
-         uniform int eventIndex)
+logEvent(const uniform NormalMap * uniform shader, uniform int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) shader, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) shader, eventIndex);
 }
 
 inline void
-logEvent(const uniform Material * uniform material, 
-         uniform ShadingTLState * uniform tls, 
-         uniform int eventIndex)
+logEvent(const uniform Material * uniform material, uniform int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) material, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) material, eventIndex);
 }
 
 inline void
-logEvent(const uniform SceneObject * uniform sceneObject, 
-         uniform ShadingTLState * uniform tls, 
-         uniform int eventIndex)
+logEvent(const uniform SceneObject * uniform sceneObject, uniform int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) sceneObject, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) sceneObject, eventIndex);
 }
 
 inline void
-logEvent(const uniform SceneObject * uniform sceneObject, 
-         uniform ShadingTLState * uniform tls, 
-         varying int eventIndex)
+logEvent(const uniform SceneObject * uniform sceneObject, varying int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) sceneObject, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) sceneObject, eventIndex);
 }
 
 inline void
-logEvent(const uniform Displacement * uniform displacement, 
-         uniform ShadingTLState * uniform tls, 
-         uniform int eventIndex)
+logEvent(const uniform Displacement * uniform displacement, uniform int eventIndex)
 {
-    logEvent((const uniform int64 * uniform) displacement, tls, eventIndex);
+    logEvent((const uniform int64 * uniform) displacement, eventIndex);
 }
 
 //===-------------------------------------------------------------------

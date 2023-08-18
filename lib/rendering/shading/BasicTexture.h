@@ -18,7 +18,7 @@ namespace shading {
 class BasicTexture {
 public:
     BasicTexture(scene_rdl2::rdl2::Shader *shader,
-                 scene_rdl2::logging::LogEventRegistry& logEventRegistry);
+                 scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry);
 
     ~BasicTexture();
 

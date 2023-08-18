@@ -40,9 +40,7 @@ evalNormalImpl(const rdl2::Shader* const obj,
          !std::isfinite(normalMapValue.z)) ||
         // We require a non-zero length vector
         math::isZero(normalMapValue)) {
-
-        auto &objTls = obj->getThreadLocalObjectState()[mcrt_common::getThreadIdx(tls)];
-        objTls.mLogs.log(obj->getInvalidNormalMapLogEvent());
+        scene_rdl2::rdl2::Shader::getLogEventRegistry().log(obj, obj->getInvalidNormalMapLogEvent());
         needsAdapting = false;
         return N;
     }
@@ -66,8 +64,7 @@ evalNormalImpl(const rdl2::Shader* const obj,
     if (normalMapSpace == 0) { // TBN space
         // We check that the vector be in the upper half plane of tangent space.
         if (result.z < 0.f) {
-            auto &objTls = obj->getThreadLocalObjectState()[mcrt_common::getThreadIdx(tls)];
-            objTls.mLogs.log(obj->getInvalidNormalMapLogEvent());
+            scene_rdl2::rdl2::Shader::getLogEventRegistry().log(obj, obj->getInvalidNormalMapLogEvent());
             needsAdapting = false;
             return N;
         }

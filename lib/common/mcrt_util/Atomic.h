@@ -87,6 +87,13 @@ atomicLoad(const T* v, std::memory_order order = std::memory_order_seq_cst) noex
 }
 
 template <typename T>
+void
+atomicStore(T* v, const T val, std::memory_order order = std::memory_order_seq_cst) noexcept
+{
+    __atomic_store(v, std::addressof(val), static_cast<int>(order));
+}
+
+template <typename T>
 inline T
 atomicCompareAndSwapWeak(T* v, T& expected, T desired, std::memory_order success, std::memory_order failure) noexcept
 {

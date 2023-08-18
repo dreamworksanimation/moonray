@@ -11,33 +11,26 @@
 #include <scene_rdl2/render/logging/logging.h>
 #include <scene_rdl2/scene/rdl2/rdl2.h>
 
-namespace moonray {
-namespace shading {
-
-class Intersection;
-
-//---------------------------------------------------------------------------
-
 /**
- * Convenience function to allow for fast local (in the thread-local sense)
- * logging from within a Shader.
+ * Convenience function to allow for logging from within a Shader.
  *
  * Sample usage:
- * 
+ *
  * In constructor/update:
- * LogEvent mBadValueError = mLogEventRegistry.createEvent(logging::ERROR_LEVEL, "Bad value");
- * 
+ * LogEvent mBadValueError = sLogEventRegistry.createEvent(logging::ERROR_LEVEL, "Bad value");
+ *
  * In sample/shade:
  * shading::localLog(me, tls, mBadValueError)
- * 
+ *
  * See lib/scene_rdl2/render/logging/logging.h for more details
  */
-void logEvent(const scene_rdl2::rdl2::Shader *shader, const shading::TLState *tls, scene_rdl2::logging::LogEvent event);
+extern "C" void CPP_logEvent(const scene_rdl2::rdl2::Shader* shader, scene_rdl2::logging::LogEvent event);
 
-
-//---------------------------------------------------------------------------
-
-} // namespace shading 
+namespace moonray {
+namespace shading {
+inline void logEvent(const scene_rdl2::rdl2::Shader* shader, scene_rdl2::logging::LogEvent event)
+{
+    CPP_logEvent(shader, event);
+}
+} // namespace shading
 } // namespace moonray
-
-

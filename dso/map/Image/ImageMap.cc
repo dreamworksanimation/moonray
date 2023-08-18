@@ -88,7 +88,7 @@ ImageMap::ImageMap(const scene_rdl2::rdl2::SceneClass &sceneClass, const std::st
     tbb::mutex::scoped_lock lock(errorMutex);
     MOONRAY_START_THREADSAFE_STATIC_WRITE
     sStaticImageMapData.sErrorInvalidUdimCoord =
-        mLogEventRegistry.createEvent(scene_rdl2::logging::ERROR_LEVEL,
+        sLogEventRegistry.createEvent(scene_rdl2::logging::ERROR_LEVEL,
                                       "invalid udim coordinate");
     MOONRAY_FINISH_THREADSAFE_STATIC_WRITE
 }
@@ -139,7 +139,7 @@ ImageMap::update()
             hasChanged(attrUDimFiles)) {
             std::string errorStr;
             if (!mUdimTexture->update(this,
-                                      mLogEventRegistry,
+                                      sLogEventRegistry,
                                       get(attrTexture),
                                       static_cast<ispc::TEXTURE_GammaMode>(get(attrGamma)),
                                       wrapS,
@@ -164,7 +164,7 @@ ImageMap::update()
         bool needsUpdate = false;
         if (!mTexture) {
             needsUpdate = true;
-            mTexture = fauxstd::make_unique<moonray::shading::BasicTexture>(this, mLogEventRegistry);
+            mTexture = fauxstd::make_unique<moonray::shading::BasicTexture>(this, sLogEventRegistry);
             mIspc.mTexture = &mTexture->getBasicTextureData();
         }
         if (needsUpdate ||
@@ -300,7 +300,7 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
         // compute udim index
         udim = me->mUdimTexture->computeUdim(tls, st.x, st.y);
         if (udim == -1) {
-            moonray::shading::logEvent(me, tls, me->mIspc.mImageMapDataPtr->sErrorInvalidUdimCoord);
+            moonray::shading::logEvent(me, me->mIspc.mImageMapDataPtr->sErrorInvalidUdimCoord);
             *result = asCpp(me->mIspc.mFatalColor);
             return;
         }
