@@ -262,7 +262,7 @@ bssrdfTraceSetIntersectionFilter(const RTCFilterFunctionNArguments* args)
 {
     // TODO can we make this filter only get called while firing bssrdf
     // projection ray instead of register it to every intersection call?
-    // (it seems embree3 can do some kind of per ray filter function call)
+    // (it seems embree can do some kind of per ray filter function call)
     if (args->N == 1) {
         // If this is not a subsurface intersection,
         // immediately exit filter function.

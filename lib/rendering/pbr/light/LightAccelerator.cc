@@ -293,8 +293,14 @@ LightAccelerator::intersectBounded(const Vec3f &P,  const Vec3f* N, const Vec3f 
     context.mNumHits = &numHits;
     context.mDepth = &depth;
     context.mLightIdMap = lightIdMap;
+
     // Call Embree intersection test
-    rtcIntersect1(mRtcScene, &context.mRtcContext, &rayHit);
+    RTCIntersectArguments args;
+    rtcInitIntersectArguments(&args);
+    args.context = &context.mRtcContext;
+
+    rtcIntersect1(mRtcScene, &rayHit, &args);
+
     if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
         isect.distance = maxDistance;
         return -1;
@@ -396,7 +402,12 @@ extern "C" void CPP_lightIntersect(RTCScene scene, RTCRayHitv& rayHitv,
         shadingNormals[i] = Vec3f(shadingNormalv->x[i], shadingNormalv->y[i], shadingNormalv->z[i]);
     }
     context.mShadingNormal = shadingNormals;
-    rtcIntersectv(sAllValidMask, scene, &context.mRtcContext, &rayHitv);
+
+    RTCIntersectArguments args;
+    rtcInitIntersectArguments(&args);
+    args.context = &context.mRtcContext;
+
+    rtcIntersectv(sAllValidMask, scene, &rayHitv, &args);
 
     // need to update the sample number for the ispc SampleIntegrator1D struct
     for (int i = 0; i < VLEN; ++i) {

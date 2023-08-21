@@ -27,7 +27,7 @@
 #include <scene_rdl2/render/util/stdmemory.h>
 #include <scene_rdl2/scene/rdl2/VisibilityFlags.h>
 
-#include <embree3/rtcore.h>
+#include <embree4/rtcore.h>
 
 #include <tbb/concurrent_unordered_map.h>
 
@@ -764,11 +764,26 @@ void
 EmbreeAccelerator::intersect(mcrt_common::Ray& ray) const
 {
     MNRY_ASSERT(isValidRay(ray));
-    // carry per ray data that we need to process after rtcIntersect1
+
+    // Carry per ray data that we need to process after rtcOccluded1...
+    // The IntersectContext contains an embree RTCRayQueryContext and a 
+    // MoonRay RayExtension object.
+    // The RTCRayQueryContext object is the first member of the IntersectContext
+    // struct so we do a hack where we pass the RTCRayQueryContext pointer through 
+    // the rtcIntersect/rtcOccluded funcs and then cast that pointer back to a 
+    // IntersectContext in the intersection filters and instance intersect/occluded
+    // functions, which then lets us access the RayExtension.
+
     ray.id = 0;
     mcrt_common::IntersectContext context;
     context.mRayExtension = &ray.ext;
-    rtcIntersect1(mRootScene, &context.mRtcContext, (RTCRayHit*)&ray);
+
+    RTCIntersectArguments args;
+    rtcInitIntersectArguments(&args);
+    args.context = &context.mRtcContext;
+
+    rtcIntersect1(mRootScene, (RTCRayHit*)&ray, &args);
+
     if (ray.geomID != RTC_INVALID_GEOMETRY_ID &&
         ray.instID == RTC_INVALID_GEOMETRY_ID) {
         // intersect a regular primitive (if the intersection is an instance,
@@ -782,11 +797,26 @@ bool
 EmbreeAccelerator::occluded(mcrt_common::Ray& ray) const
 {
     MNRY_ASSERT(isValidRay(ray));
-    // carry per ray data that we need to process after rtcOccluded1
+
+    // Carry per ray data that we need to process after rtcOccluded1...
+    // The IntersectContext contains an embree RTCRayQueryContext and a 
+    // MoonRay RayExtension object.
+    // The RTCRayQueryContext object is the first member of the IntersectContext
+    // struct so we do a hack where we pass the RTCRayQueryContext pointer through 
+    // the rtcIntersect/rtcOccluded funcs and then cast that pointer back to a 
+    // IntersectContext in the intersection filters and instance intersect/occluded
+    // functions, which then lets us access the RayExtension.
+
     ray.id = 0;
     mcrt_common::IntersectContext context;
     context.mRayExtension = &ray.ext;
-    rtcOccluded1(mRootScene, &context.mRtcContext, (RTCRay*)&ray);
+
+    RTCOccludedArguments args;
+    rtcInitOccludedArguments(&args);
+    args.context = &context.mRtcContext;
+
+    rtcOccluded1(mRootScene, (RTCRay*)&ray, &args);
+
     return ray.tfar < 0.0f;
 }
 

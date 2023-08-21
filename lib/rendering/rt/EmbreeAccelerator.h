@@ -13,7 +13,7 @@
 #include <scene_rdl2/scene/rdl2/SceneContext.h>
 #include <scene_rdl2/scene/rdl2/Layer.h>
 
-#include <embree3/rtcore.h>
+#include <embree4/rtcore.h>
 
 namespace moonray {
 namespace rt {

@@ -1568,7 +1568,12 @@ MeshLight::intersect(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::V
 
     // Call Embree intersection test
     LightIntersectContext context;
-    rtcIntersect1(mRtcScene, &context.mRtcContext, &rayHit);
+
+    RTCIntersectArguments args;
+    rtcInitIntersectArguments(&args);
+    args.context = &context.mRtcContext;
+
+    rtcIntersect1(mRtcScene, &rayHit, &args);
 
     if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
         return false;
