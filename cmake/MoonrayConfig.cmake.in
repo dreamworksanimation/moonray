@@ -13,10 +13,10 @@ find_dependency(FLEX)  # built-in
 set(BUILD_SHARED_LIBS ON)
 find_dependency(Boost)
 
-
-find_dependency(CUDAToolkit) # built-in
-find_dependency(OptiX)
-
+if (NOT DEFINED MOONRAY_USE_CUDA OR "${MOONRAY_USE_CUDA}")
+    find_dependency(CUDAToolkit) # built-in
+    find_dependency(OptiX)
+endif()
 
 find_package(Amorphous QUIET)
 
