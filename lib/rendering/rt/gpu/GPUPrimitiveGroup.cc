@@ -66,7 +66,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
         oinstance.instanceId = 0;
         oinstance.visibilityMask = 255;
         oinstance.sbtOffset = mSBTOffset;
-        oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
         oinstance.traversableHandle = mTrianglesGAS;
         instances.push_back(oinstance);
     }
@@ -87,7 +86,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
         oinstance.instanceId = 0;
         oinstance.visibilityMask = 255;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size();
-        oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
         oinstance.traversableHandle = mTrianglesMBGAS;
         instances.push_back(oinstance);
     }
@@ -108,7 +106,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
         oinstance.instanceId = 0;
         oinstance.visibilityMask = 255;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size();
-        oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
         oinstance.traversableHandle = mRoundCurvesGAS;
         instances.push_back(oinstance);
     }
@@ -129,7 +126,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
         oinstance.instanceId = 0;
         oinstance.visibilityMask = 255;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size() + mRoundCurves.size();
-        oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
         oinstance.traversableHandle = mRoundCurvesMBGAS;
         instances.push_back(oinstance);
     }
@@ -151,7 +147,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
         oinstance.visibilityMask = 255;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size() +
                                            mRoundCurves.size() + mRoundCurvesMB.size();
-        oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
         oinstance.traversableHandle = mCustomPrimitivesGAS;
         instances.push_back(oinstance);
 
@@ -185,7 +180,6 @@ GPUPrimitiveGroup::build(CUstream cudaStream,
                 // The xform is specified in the mMMTTraversable instead.  The child
                 // node is the MatrixMotionTransform of the instance, which itself
                 // has the group's top level IAS node as its child.
-                oinstance.flags = OPTIX_INSTANCE_FLAG_DISABLE_TRANSFORM;
                 GPUXform::identityXform().toOptixTransform(oinstance.transform);
                 oinstance.traversableHandle = mInstances[i]->mMMTTraversable;
             }

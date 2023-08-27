@@ -1005,11 +1005,11 @@ GPUAcceleratorImpl::GPUAcceleratorImpl(const scene_rdl2::rdl2::Layer *layer,
     }
 
     scene_rdl2::logging::Logger::info("GPU: Creating pipeline");
-
+  
+    OptixPipelineLinkOptions pipelineLinkOptions = {};
     if (!createOptixPipeline(mContext,
                              pipelineCompileOptions,
-                             { 1, // maxTraceDepth
-                               OPTIX_COMPILE_DEBUG_LEVEL_NONE },
+                             pipelineLinkOptions,
                              mProgramGroups,
                              &mPipeline,
                              errorMsg)) {
