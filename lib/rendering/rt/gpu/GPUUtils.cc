@@ -135,14 +135,14 @@ createOptixModule(OptixDeviceContext context,
 
     char logString[MAX_LOGSTRING_SIZE];
     size_t logStringSize = sizeof(logString);
-    if (optixModuleCreateFromPTX(context,
-                                 &moduleCompileOptions,
-                                 &pipelineCompileOptions,
-                                 ptx.c_str(),
-                                 ptx.length(),
-                                 logString,
-                                 &logStringSize,
-                                 module) != OPTIX_SUCCESS) {
+    if (optixModuleCreate(context,
+                          &moduleCompileOptions,
+                          &pipelineCompileOptions,
+                          ptx.c_str(),
+                          ptx.length(),
+                          logString,
+                          &logStringSize,
+                          module) != OPTIX_SUCCESS) {
         *errorMsg = "Unable to create Optix module.  Log: " + std::string(logString);
         return false;
     }
@@ -293,7 +293,7 @@ createOptixPipeline(OptixDeviceContext context,
 
     OptixStackSizes stackSizes = {};
     for (auto pg : pgs) {
-        if (optixUtilAccumulateStackSizes(pg, &stackSizes) != OPTIX_SUCCESS) {
+        if (optixUtilAccumulateStackSizes(pg, &stackSizes, *pipeline) != OPTIX_SUCCESS) {
             optixPipelineDestroy(*pipeline);
             *errorMsg = "Unable to accumulate Optix stack sizes.";
             return false;
