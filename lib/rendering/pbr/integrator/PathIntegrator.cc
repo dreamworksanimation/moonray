@@ -721,11 +721,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                                                                  newPv.presenceDepth,
                                                                                  moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
         }
-
-        if (scene_rdl2::math::isEqual(presence, 0.f)) {
-            // Only the presence continuation ray contributes to the radiance so we can early out here.
-            return indirectRadianceType;
-        }  
     }
 
     // refractive cryptomatte PART A
@@ -813,6 +808,12 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             refractCryptomatteParamsPtr->mHit = false;
         }
 
+        return indirectRadianceType;
+    }
+
+    if (scene_rdl2::math::isEqual(presence, 0.f)) {
+        // Only the presence continuation ray contributes to the radiance so we can early out here.
+        // We must process cutouts (early termination) before this or the cutout alpha will be incorrect.
         return indirectRadianceType;
     }
 

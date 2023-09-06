@@ -191,11 +191,6 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
         CHECK_CANCELLATION(pbrTls, return);
 
-        // Only the presence continuation ray contributes to the radiance so we can early out here.
-        if (isEqual(presences[i], 0.f)) {
-            continue;
-        }
-
         varying RayState * uniform rs = &rayStates[i];
         const varying RayDifferential &ray = rs->mRay;
         const varying Intersection &isect = isects[i];
@@ -270,6 +265,12 @@ integrateBundled( const uniform PathIntegrator * uniform this,
                 cryptomatteData->mHit = 0;
             }
 
+            continue;
+        }
+
+        // Only the presence continuation ray contributes to the radiance so we can early out here.
+        // We must process cutouts (early termination) before this or the cutout alpha will be incorrect.
+        if (isEqual(presences[i], 0.f)) {
             continue;
         }
 
