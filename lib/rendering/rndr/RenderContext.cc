@@ -3265,7 +3265,8 @@ RenderContext::canRunVectorized(std::string &reason) const
             if (ro->getOutputType() == "deep") {
                 hasDeepOutput = true;
             }
-            if (ro->getCryptomatteEnableRefract()) {
+            if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE &&
+                ro->getCryptomatteEnableRefract()) {
                 hasRefractCrypto = true;
             }
         }
