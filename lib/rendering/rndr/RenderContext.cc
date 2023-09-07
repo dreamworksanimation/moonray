@@ -787,18 +787,13 @@ RenderContext::startFrame()
 
     case ExecutionMode::XPU:
         // XPU mode inherits the same limitations of vector mode
+        executionModeString = "Executing an xpu render since execution mode was set to xpu.";
         if (!vecSupport) {
-            executionModeString = "Executing a scalar render since execution mode was set to xpu.";
-            executionModeString += "  The following features are missing xpu/vector mode support: ";
+            executionModeString += "  The following features will be missing: ";
             executionModeString += missingVecFeatures;
             executionModeString += ".";
-            executionMode = ExecutionMode::SCALAR;
-        } else {
-            executionModeString = "Executing an xpu render since execution mode was set to xpu.";
-            executionMode = ExecutionMode::XPU;
-            // XPU may still fall back to vector mode later on if it fails to start up, but this is fine
-            // because we know that it's safe to run in vector mode.
         }
+        executionMode = ExecutionMode::XPU;
     break;
 
     case ExecutionMode::AUTO:
