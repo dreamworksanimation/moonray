@@ -3254,6 +3254,7 @@ RenderContext::canRunVectorized(std::string &reason) const
     // The issues will still be reported in alphabetical order.
     bool hasVarianceBuffers = false;
     bool hasDeepOutput = false;
+    bool hasRefractCrypto = false;
     const scene_rdl2::rdl2::SceneContext::RenderOutputVector &ros = mSceneContext->getAllRenderOutputs();
     for (auto roItr = ros.cbegin(); roItr != ros.cend(); ++roItr) {
         const scene_rdl2::rdl2::RenderOutput *ro = *roItr;
@@ -3263,6 +3264,9 @@ RenderContext::canRunVectorized(std::string &reason) const
             }
             if (ro->getOutputType() == "deep") {
                 hasDeepOutput = true;
+            }
+            if (ro->getCryptomatteEnableRefract()) {
+                hasRefractCrypto = true;
             }
         }
     }
@@ -3297,6 +3301,11 @@ RenderContext::canRunVectorized(std::string &reason) const
                 break; // no reason to keep looping
             }
         }
+    }
+
+    // Refractive crypto: MOONRAY-5074
+    if (hasRefractCrypto) {
+        fail("refractive cryptomattes");
     }
 
     return result;
