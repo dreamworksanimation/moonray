@@ -78,6 +78,10 @@ CombineLightFilter::update(const LightFilterMap& lightFilters,
             // not a light filter, ignore
             continue;
         }
+        if (!rdlLightFilter->isOn()) {
+            // only enabled light filters will be in the LightFilterMap
+            continue; 
+        }
         auto search = lightFilters.find(rdlLightFilter);
         MNRY_ASSERT(search != lightFilters.end());
         const LightFilter *filter = search->second.get();
