@@ -27,29 +27,26 @@ struct RateCounts {
 /// the largest one that works and produce a warning message.  Zero size always
 /// returns RATE_UNKNOWN and prints an error.  The object and keyname are only used
 /// for the warning messages.
-AttributeRate pickRate(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size,
-    const geom::RateCounts& rates);
+AttributeRate pickRate(const scene_rdl2::rdl2::SceneObject* object,
+                       const std::string& keyName,
+                       size_t size,
+                       const geom::RateCounts& rates);
 
 /// Same but also compare the two sizes, complaining if they are unequal and using
 /// the smaller one to choose the rate. This is for time sampled primvars. If one of
 /// them is zero it is ignored.
-AttributeRate pickRate(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size0,
-    size_t size1,
-    const geom::RateCounts& rates);
+AttributeRate pickRate(const scene_rdl2::rdl2::SceneObject* object,
+                       const std::string& keyName,
+                       size_t size0,
+                       size_t size1,
+                       const geom::RateCounts& rates);
 
 /// This is used for motion blur data. Return true if the sizes are equal. If different
 /// and size is non-zero, print an error message and return false.
-bool sizeCheck(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size,
-    size_t correctSize);
+bool sizeCheck(const scene_rdl2::rdl2::SceneObject* object,
+               const std::string& keyName,
+               size_t size,
+               size_t correctSize);
 
 /// Convenience function to turn AttributeKey<T> into it's name
 template<typename T>
@@ -59,13 +56,12 @@ const std::string& getName(const scene_rdl2::rdl2::SceneObject* object, const sc
 }
 
 // Add all the attributes from a list of UserData objects to the table
-void processArbitraryData(
-    const scene_rdl2::rdl2::SceneObject* geometry,
-    const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObjectVector> attributeKey,
-    shading::PrimitiveAttributeTable& primitiveAttributeTable,
-    const geom::RateCounts& rates,
-    bool useFirstFrame,
-    bool useSecondFrame);
+void processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
+                          const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObjectVector> attributeKey,
+                          shading::PrimitiveAttributeTable& primitiveAttributeTable,
+                          const geom::RateCounts& rates,
+                          bool useFirstFrame,
+                          bool useSecondFrame);
 
 } // namespace geom
 } // namespace moonray
