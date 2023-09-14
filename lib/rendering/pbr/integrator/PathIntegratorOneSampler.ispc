@@ -100,7 +100,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
             data = PbrTLState_allocList(pbrTls, sizeof(uniform BundledOcclRayData), lobesContribution->mMatchedLobeCount);
             uniform BundledOcclRayData * varying b =
                 (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, 0);
-            BundledOcclRayData_init(b, LPE | LIGHT_SAMPLE, rs->mCameraId, light);
+            BundledOcclRayData_init(b, LPE | LIGHT_SAMPLE, light);
         }
     }
     if (data == PBR_nullHandle) {
@@ -108,7 +108,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
         data = PbrTLState_allocList(pbrTls, sizeof(uniform BundledOcclRayData), 1);
         uniform BundledOcclRayData * varying b =
             (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, 0);
-        BundledOcclRayData_init(b, /* flags = */ 0, rs->mCameraId, light);
+        BundledOcclRayData_init(b, /* flags = */ 0, light);
     }
     uint32_t currAov = 0;
     for (int lobeIndex = 0; lobeIndex < lobesContribution->mMatchedLobeCount; ++lobeIndex) {
@@ -152,7 +152,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
                 ++currAov;
                 if (currAov < lobesContribution->mMatchedLobeCount) {
                     b = (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, currAov);
-                    BundledOcclRayData_init(b, (uniform uint32_t) (LPE | LIGHT_SAMPLE), rs->mCameraId, light);
+                    BundledOcclRayData_init(b, (uniform uint32_t) (LPE | LIGHT_SAMPLE), light);
                 }
             }
         }
@@ -715,7 +715,7 @@ computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
         // and the lobe albedo methods.
         const uniform LightAovs &lightAovs = *((const uniform LightAovs * uniform) fs.mLightAovs);
         const uniform MaterialAovs &materialAovs = *((const uniform MaterialAovs * uniform) fs.mMaterialAovs);
-        aovAccumMaterialAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, materialAovs, isect, ray, fs.mScene, bsdf,
+        aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs, isect, ray, fs.mScene, bsdf,
                              ssAov, slice, pv.aovPathPixelWeight, sp.mPixel, rs->mDeepDataHandle,
                              getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);
     }
@@ -1130,7 +1130,6 @@ computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
         nextRayState.mSubpixel.mSampleClampingValue = sp.mSampleClampingValue;
         nextRayState.mSubpixel.mPrimaryRayDiffScale = sp.mPrimaryRayDiffScale;
         nextRayState.mSubpixel.mTextureDiffScale = sp.mTextureDiffScale;
-        nextRayState.mCameraId = rs->mCameraId;
         nextRayState.mTilePassAndFilm = rs->mTilePassAndFilm;
         nextRayState.mDeepDataHandle = rs->mDeepDataHandle;
         nextRayState.mCryptomatteDataHandle = rs->mCryptomatteDataHandle;

@@ -39,7 +39,7 @@ accumLightAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay, const FrameS
                 }
                 const scene_rdl2::math::Color *pNonMatchValue = nonMatchMultiplier ? &nonMatchValue : nullptr;
 
-                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, b->mCameraId,
+                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                          *fs.mLightAovs, b->mLpeRadiance * matchMultiplier,
                                          pNonMatchValue, flags, lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle,
                                          pbr::getFilm(occlRay.mTilePassAndFilm));
@@ -67,7 +67,7 @@ accumVisibilityAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
             const int lpeStateId = b->mLpeStateId;
             MNRY_ASSERT(lpeStateId > 0);
             if (lpeStateId > 0) {
-                if (aovAccumVisibilityAovsBundled(pbrTls, *fs.mAovSchema, b->mCameraId, *fs.mLightAovs,
+                if (aovAccumVisibilityAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     scene_rdl2::math::Vec2f(value, 1.0f), lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle,
                     pbr::getFilm(occlRay.mTilePassAndFilm))) {
 
@@ -117,7 +117,6 @@ fillBundledRadiance(pbr::TLState* pbrTls, BundledRadiance* dst, const BundledOcc
     dst->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(occlRay.mCryptomatteDataHandle);
     dst->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(occlRay.mCryptomatteDataHandle2);
     dst->mTilePassAndFilm = occlRay.mTilePassAndFilm;
-    dst->mCameraId = b->mCameraId;
 }
 
 scene_rdl2::math::Color

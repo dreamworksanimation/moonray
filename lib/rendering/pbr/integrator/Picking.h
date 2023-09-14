@@ -24,7 +24,7 @@ class Scene;
 
 // Compute the Z-value of a ray-hit, traced through the center of a pixel
 float computeOpenGLDepth(mcrt_common::ThreadLocalState *tls, const Scene* scene,
-                         int cameraId, int pixelX, int pixelY);
+                         int pixelX, int pixelY);
 
 // Returns by reference the lights affecting the pixel(x, y) and the lights
 // contibution value to that pixel.

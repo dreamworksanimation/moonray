@@ -416,7 +416,7 @@ computeMatte(const uniform int flags,
 
 // we need to rely on a c++ function to retrieve
 // interpolated camera matrices
-typedef void(*GetRender2CameraFn)(uniform intptr_t, uniform float, uniform int, uniform Mat4f * uniform);
+typedef void(*GetRender2CameraFn)(uniform intptr_t, uniform float, uniform Mat4f * uniform);
 
 inline void
 gatherVector(varying Vec4f &target, const uniform Vec4f &source, uniform int lane)
@@ -442,8 +442,8 @@ computeDepthFromIsect(const varying Intersection &isect, const varying RayDiffer
 {
     varying float rayTime = Ray_getTime(ray);
     // Use reduce_equal to determine if the varying inputs ray time
-    // and cameraId are identical across all lanes.
-    if (reduce_equal(rayTime) && reduce_equal(isect.mCameraId)) {
+    // are identical across all lanes.
+    if (reduce_equal(rayTime)) {
         // Great!
         // Pick an active lane and get the time.
         // Choose the smallest lane number from the set of active lanes
@@ -453,9 +453,8 @@ computeDepthFromIsect(const varying Intersection &isect, const varying RayDiffer
         while (laneBit >> (lane + 1)) ++lane;
         MNRY_ASSERT((1 << lane) & lanemask());
         uniform float t = extract(Ray_getTime(ray), lane);
-        uniform int cameraId = extract(isect.mCameraId, lane);
         uniform Mat4f r2c;
-        getRender2Camera(scene, t, cameraId, &r2c);
+        getRender2Camera(scene, t, &r2c);
 
         varying Vec3f cp = transformPoint(r2c, getP(isect));
         return -cp.z; // might want to clamp this to 0.f
@@ -463,9 +462,8 @@ computeDepthFromIsect(const varying Intersection &isect, const varying RayDiffer
         varying Mat4f r2c;
         foreach_active(lane) {
             uniform float laneT = extract(rayTime, lane);
-            uniform int cameraId = extract(isect.mCameraId, lane);
             uniform Mat4f laneR2c;
-            getRender2Camera(scene, laneT, cameraId, (uniform Mat4f * uniform) &laneR2c);
+            getRender2Camera(scene, laneT, (uniform Mat4f * uniform) &laneR2c);
             gatherMatrix(r2c, laneR2c, lane);
         }
 
@@ -573,7 +571,7 @@ struct MotionVectorFns {
 };
 
 typedef void(* uniform ComputeMotionFn)(uniform intptr_t scene, uniform float time,
-    const uniform Vec3f * uniform p, const uniform Vec3f * uniform dp, uniform int cameraId,
+    const uniform Vec3f * uniform p, const uniform Vec3f * uniform dp,
     uniform Vec2f * uniform result);
 
 static varying Vec2f
@@ -607,9 +605,8 @@ computeMotion(const varying Intersection &isect, const varying RayDifferential &
             dp.z = extract(isectDp.z, lane);
             dpPtr = &dp;
         }
-        uniform int cameraId = extract(isect.mCameraId, lane);
         uniform Vec2f result;
-        computeMotionFn(scene, time, &p, dpPtr, cameraId, &result);
+        computeMotionFn(scene, time, &p, dpPtr, &result);
         motion.x = insert(motion.x, lane, result.x);
         motion.y = insert(motion.y, lane, result.y);
     }
@@ -1351,7 +1348,6 @@ computePbrValidity(const varying Bsdf * uniform bsdf,
 extern "C" void
 CPP_aovSetMaterialAovs(uniform PbrTLState * uniform pbrTls,
                        const uniform AovSchema &aovSchema,
-                       const uniform uint32_t * uniform cameraId,
                        const uniform LightAovs &lightAovs,
                        const uniform MaterialAovs &materialAovs,
                        const varying Intersection &isect,
@@ -1373,7 +1369,6 @@ CPP_aovSetMaterialAovs(uniform PbrTLState * uniform pbrTls,
 extern "C" void
 CPP_aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                       const uniform AovSchema &aovSchema,
-                      const uniform uint32_t cameraId,
                       const uniform LightAovs &lightAovs,
                       const uniform Color &value,
                       uniform int lpeStateId,
@@ -1384,7 +1379,6 @@ CPP_aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
 extern "C" void
 CPP_aovAccumPostScatterExtraAov(uniform PbrTLState * uniform pbrTls,
                                 const uniform AovSchema &aovSchema,
-                                const uniform uint32_t cameraId,
                                 const uniform LightAovs &lightAovs,
                                 const uniform Color &value,
                                 const uniform Color &sampleValue,
@@ -1397,7 +1391,6 @@ CPP_aovAccumPostScatterExtraAov(uniform PbrTLState * uniform pbrTls,
 void
 aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                      const uniform AovSchema &aovSchema,
-                     const varying uint32_t cameraId,
                      const uniform LightAovs &lightAovs,
                      const uniform MaterialAovs &materialAovs,
                      const varying Intersection &isect,
@@ -1418,7 +1411,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 
     CPP_aovSetMaterialAovs(pbrTls,
                            aovSchema,
-                           (uniform uint32_t * uniform) &cameraId,
                            lightAovs,
                            materialAovs,
                            isect,
@@ -1441,7 +1433,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 void
 aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                      const uniform AovSchema &aovSchema,
-                     const varying uint32_t cameraId,
                      const uniform LightAovs &lightAovs,
                      const uniform MaterialAovs &materialAovs,
                      const varying Intersection &isect,
@@ -1461,7 +1452,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 
     CPP_aovSetMaterialAovs(pbrTls,
                            aovSchema,
-                           (uniform uint32_t * uniform) &cameraId,
                            lightAovs,
                            materialAovs,
                            isect,
@@ -1484,7 +1474,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 void
 aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                   const uniform AovSchema &aovSchema,
-                  const varying uint32_t cameraId,
                   const uniform LightAovs &lightAovs,
                   const varying Color &value,
                   varying int lpeStateId,
@@ -1498,9 +1487,8 @@ aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
         const uniform uint32_t uPixel = extract(pixel, lane);
         const uniform uint32_t uDeepDataHandle = extract(deepDataHandle, lane);
         const uniform uint32_t uFilmIdx = extract(filmIdx, lane);
-        const uniform uint32_t uCameraId = extract(cameraId, lane);
 
-        CPP_aovAccumLightAovs(pbrTls, aovSchema, uCameraId, lightAovs, uValue, uStateId, uPixel, 
+        CPP_aovAccumLightAovs(pbrTls, aovSchema, lightAovs, uValue, uStateId, uPixel, 
                               uDeepDataHandle, uFilmIdx);
     }
 }
@@ -1538,11 +1526,9 @@ aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
                 const uniform uint32_t uPixel = extract(rayState->mSubpixel.mPixel, lane);
                 const uniform uint32_t uDeepDataHandle = extract(rayState->mDeepDataHandle, lane);
                 const uniform uint32_t uFilm = extract(film, lane);
-                const uniform uint32_t uCameraId = extract(rayState->mCameraId, lane);
 
                 CPP_aovAccumPostScatterExtraAov(pbrTls,
                                                 aovSchema,
-                                                uCameraId,
                                                 lightAovs,
                                                 uValue,
                                                 uSampleValue,

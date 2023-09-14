@@ -706,7 +706,7 @@ private:
                                          const pbr::DeepBuffer *deepBuffer,
                                          pbr::CryptomatteBuffer *cryptomatteBuffer);
     static void computePixelInfo(RenderDriver *driver, mcrt_common::ThreadLocalState *tls,
-                                 Film &film, int numCameras, const unsigned px, const unsigned py);
+                                 Film &film, const unsigned px, const unsigned py);
     static unsigned computeTotalNumSamples(const rndr::FrameState &fs, const unsigned ifilm, unsigned px, unsigned py);
 
     void parserConfigure();

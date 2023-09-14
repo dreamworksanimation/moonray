@@ -313,9 +313,7 @@ Film::Film() :
 Film::~Film()
 {
     delete mHeatMapBuf;
-    for (size_t i = 0; i < mPixelInfoBufs.size(); i++) {
-        delete mPixelInfoBufs[i];
-    }
+    delete mPixelInfoBuf;
     delete mDeepBuf;
     delete mCryptomatteBuf;
     delete mRenderBufOdd;
@@ -325,7 +323,6 @@ void
 Film::init(unsigned w, unsigned h,
            const scene_rdl2::math::Viewport &viewport,
            uint32_t flags,
-           int numCameras,
            int deepFormat,
            float deepCurvatureTolerance,
            float deepZTolerance,
@@ -470,16 +467,11 @@ Film::init(unsigned w, unsigned h,
         mDisplayFilterBufs[i].init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3, alignedW, alignedH);
     }
 
-    for (size_t i = 0; i < mPixelInfoBufs.size(); i++) {
-        delete mPixelInfoBufs[i];
-    }
-    mPixelInfoBufs.resize(0);
+    delete mPixelInfoBuf;
 
     if (flags & ALLOC_PIXEL_INFO_BUFFER) {
-        for (int i = 0; i < numCameras; i++) {
-            mPixelInfoBufs.push_back(new scene_rdl2::fb_util::PixelInfoBuffer);
-            mPixelInfoBufs[i]->init(alignedW, alignedH);
-        }
+        mPixelInfoBuf = new scene_rdl2::fb_util::PixelInfoBuffer;
+        mPixelInfoBuf->init(alignedW, alignedH);
     }
 
     if (flags & ALLOC_HEAT_MAP_BUFFER) {
@@ -502,10 +494,8 @@ Film::cleanUp()
     mRenderBuf.cleanUp();
     for (auto &buf: mAovBuf) buf.cleanUp();
 
-    for (size_t i = 0; i < mPixelInfoBufs.size(); i++) {
-        delete mPixelInfoBufs[i];
-    }
-    mPixelInfoBufs.resize(0);
+    delete mPixelInfoBuf;
+    mPixelInfoBuf = nullptr;
 
     delete mHeatMapBuf;
     mHeatMapBuf = nullptr;
@@ -545,10 +535,8 @@ Film::clearAllBuffers()
         mCryptomatteBuf->clear();
     }
 
-    for (size_t i = 0; i < mPixelInfoBufs.size(); i++) {
-        if (mPixelInfoBufs[i]) {
-            mPixelInfoBufs[i]->clear(scene_rdl2::fb_util::PixelInfo(FLT_MAX));
-        }
+    if (mPixelInfoBuf) {
+        mPixelInfoBuf->clear(scene_rdl2::fb_util::PixelInfo(FLT_MAX));
     }
 
     if (mHeatMapBuf) {
@@ -571,11 +559,11 @@ Film::initAdaptiveRegions(const scene_rdl2::math::Viewport &viewport, float targ
 }
 
 void
-Film::addSamplesToAovBuffer(unsigned px, unsigned py, float *depths,
+Film::addSamplesToAovBuffer(unsigned px, unsigned py, float depth,
         const float *accAovs)
 {
     mTiler.linearToTiledCoords(px, py, &px, &py);
-    addAovSamplesToBuffer(mAovBuf, mAovEntries, px, py, depths, accAovs);
+    addAovSamplesToBuffer(mAovBuf, mAovEntries, px, py, depth, accAovs);
 
     updateFilmActivity();
 }
@@ -583,15 +571,13 @@ Film::addSamplesToAovBuffer(unsigned px, unsigned py, float *depths,
 void
 Film::addAovSamplesToBuffer(std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuf,
                             const std::vector<pbr::AovSchema::Entry> &aovEntries,
-                            unsigned px, unsigned py, const float *depths, const float *aovs)
+                            unsigned px, unsigned py, const float depth, const float *aovs)
 {
     MNRY_ASSERT(depths);
     for (size_t b = 0; b < aovBuf.size(); ++b) {
         scene_rdl2::fb_util::VariablePixelBuffer &buf = aovBuf[b];
         const pbr::AovFilter &filter = aovEntries[b].filter();
         const size_t numFloats = aovEntries[b].numChannels();
-        const int cameraId = aovEntries[b].cameraId();
-        const float depth = depths[cameraId];
 
         MNRY_ASSERT(filter != pbr::AOV_FILTER_CLOSEST ||
                    buf.getFormat() == scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4);
@@ -999,14 +985,11 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
             MNRY_ASSERT(br->mPixel == currPixel);
             MNRY_ASSERT(pbr::getFilm(br->mTilePassAndFilm) == filmIdx);
 
-            if (br->mCameraId == 0) {
-                // Only radiance from the primary camera contributes
-                accSamples += br->mRadiance;
-                accWeight += br->mPathPixelWeight;
-                if /*constexpr*/ (adaptive) {
-                    if (br->mSubPixelIndex & 1) {
-                        accSamplesHalf += br->mRadiance;
-                    }
+            accSamples += br->mRadiance;
+            accWeight += br->mPathPixelWeight;
+            if /*constexpr*/ (adaptive) {
+                if (br->mSubPixelIndex & 1) {
+                    accSamplesHalf += br->mRadiance;
                 }
             }
 

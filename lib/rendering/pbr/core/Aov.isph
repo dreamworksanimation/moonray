@@ -39,7 +39,6 @@ AovSchema_empty(const uniform AovSchema &aovSchema) { return aovSchema.mNumChann
 
 void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                           const uniform AovSchema &aovSchema,
-                          const varying uint32_t cameraId,
                           const uniform LightAovs &lightAovs,
                           const uniform MaterialAovs &materialAovs,
                           const varying Intersection &isect,
@@ -57,7 +56,6 @@ void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 
 void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                           const uniform AovSchema &aovSchema,
-                          const varying uint32_t cameraId,
                           const uniform LightAovs &lightAovs,
                           const uniform MaterialAovs &materialAovs,
                           const varying Intersection &isect,
@@ -74,7 +72,6 @@ void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
 
 void aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                        const uniform AovSchema &aovSchema,
-                       const varying uint32_t cameraId,
                        const uniform LightAovs &lightAovs,
                        const varying Color &value,
                        varying int lpeStateId,

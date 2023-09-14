@@ -413,7 +413,7 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
     // Get the camera and layer objects.
     try {
         std::vector<const scene_rdl2::rdl2::Camera*> cameras = mSceneContext->getActiveCameras();
-        initActiveCameras(cameras);
+        initActiveCamera(cameras[0]);
     } catch (scene_rdl2::except::KeyError& e) {
         std::stringstream errMsg;
         errMsg << e.what();
@@ -477,25 +477,17 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 }
 
 void
-RenderContext::initActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &cameras)
+RenderContext::initActiveCamera(const scene_rdl2::rdl2::Camera *camera)
 {
-    // mCameras[0] is primary
-    mCameras = cameras;
-    if (mCameras.size() == 0) {
-        throw scene_rdl2::except::RuntimeError("Scene context contains no cameras.");
-    }
-    if (mCameras.size() > MAX_CAMERAS) {
-        throw scene_rdl2::except::RuntimeError("Scene context contains too many cameras.");
-    }
+    mCamera = camera;
 
     // Initialize the length of the pixel sample map vectors
-    mPixelSampleMaps.reset(new std::vector<scene_rdl2::fb_util::PixelBuffer<float> *>(mCameras.size(), nullptr));
-    mCachedPixelSampleMapNames.resize(mCameras.size());
-    mMaxPixelSampleValues.resize(mCameras.size());
+    mPixelSampleMap.reset();
+    mCachedPixelSampleMapName.clear();
     // The max pixel sample value is a multiplier for the FrameState::mNumSamplesPerPixel
     // This is needed to initialize the render passes with the appropriate mEndSampleIdx.
     // By default this multiplier should be 1.
-    std::fill(mMaxPixelSampleValues.begin(), mMaxPixelSampleValues.end(), 1.0f);
+    mMaxPixelSampleValue = 1.0f;
 }
 
 
@@ -629,29 +621,25 @@ RenderContext::bakeGeometry(std::vector<std::unique_ptr<geom::BakedMesh>>& baked
 
     // Cameras may require per geometry primitive attributes (e.g. the BakeCamera)
     shading::PerGeometryAttributeKeySet perGeometryAttributes;
-    for (size_t i = 0; i < mPbrScene->getCameraCount(); i++) {
-        mPbrScene->getCamera(i)->getRequiredPrimAttributes(perGeometryAttributes);
-    }
+    mPbrScene->getCamera()->getRequiredPrimAttributes(perGeometryAttributes);
 
     mGeometryManager->loadGeometries(mLayer, rt::ChangeFlag::ALL, world2render, currentFrame, motionBlurParams,
                                      getNumTBBThreads(), perGeometryAttributes);
     mGeometryManager->loadGeometries(mMeshLightLayer, rt::ChangeFlag::ALL, world2render, currentFrame, motionBlurParams,
                                      getNumTBBThreads(), perGeometryAttributes);
 
-    // Get the camera frustums and render to camera matrices for times points 0 and 1
+    // Get the camera frustum and render to camera matrices for times points 0 and 1
     // TODO: generalize for multi-segment motion blur. Currently we only have 2
     // motion samples and assume the ray time points are 0 and 1. In multi-segment
     // motion blur there will be multiple motion samples with a ray time range
     // of [0,1].
     std::vector<mcrt_common::Frustum> frustums;
-    for (size_t i = 0; i < mPbrScene->getCameraCount(); i++) {
-        const pbr::Camera *camera = mPbrScene->getCamera(i);
-        if (camera->hasFrustum()) {
-            frustums.push_back(mcrt_common::Frustum());
-            camera->computeFrustum(&frustums.back(), 0, true);  // frustum at shutter open
-            frustums.push_back(mcrt_common::Frustum());
-            camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
-        }
+    const pbr::Camera *camera = mPbrScene->getCamera();
+    if (camera->hasFrustum()) {
+        frustums.push_back(mcrt_common::Frustum());
+        camera->computeFrustum(&frustums.back(), 0, true);  // frustum at shutter open
+        frustums.push_back(mcrt_common::Frustum());
+        camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
     }
 
     const scene_rdl2::rdl2::Camera* dicingCamera = mSceneContext->getDicingCamera();
@@ -865,48 +853,40 @@ RenderContext::startFrame()
         mCachedPixelFilterWidth = pixelFilterWidth;
     }
 
-    // Loop through the cameras to collect the
-    // pixel sample maps and get the max pixel sample values.
-    for (size_t i = 0; i < mCameras.size(); ++i) { // loop through cameras
-        const std::string pixelSampleMapName = mCameras[i]->get(scene_rdl2::rdl2::Camera::sPixelSampleMap);
-        scene_rdl2::fb_util::PixelBuffer<float> *pixelSampleMap = mPixelSampleMaps->at(i);
-        std::string &cachedPixelSampleMapName = mCachedPixelSampleMapNames[i];
+    // Get the max pixel sample values.
 
-        // update pixel sample map
-        if (pixelSampleMapName.empty()) {
-            if (!pixelSampleMap) {
-                continue;
-            }
+    const std::string pixelSampleMapName = mCamera->get(scene_rdl2::rdl2::Camera::sPixelSampleMap);
 
+    // update pixel sample map
+    if (pixelSampleMapName.empty()) {
+        if (mPixelSampleMap) {
             // delete pixel sample map
-            pixelSampleMap->cleanUp();
-            delete pixelSampleMap;
-            mPixelSampleMaps->at(i) = nullptr;
-            cachedPixelSampleMapName.clear();
-            mMaxPixelSampleValues[i] = 1.0;
-        } else {
-            // create pixel buffer
-            if (!pixelSampleMap) {
-                pixelSampleMap = new scene_rdl2::fb_util::PixelBuffer<float>();
-                mPixelSampleMaps->at(i) = pixelSampleMap;
-            }
+            mPixelSampleMap->cleanUp();
+            mPixelSampleMap.reset();
+        }
+        mCachedPixelSampleMapName.clear();
+        mMaxPixelSampleValue = 1.0;
+    } else {
+        // create pixel buffer
+        if (!mPixelSampleMap) {
+            mPixelSampleMap = std::make_unique<scene_rdl2::fb_util::PixelBuffer<float>>();
+        }
 
-            // change pixel sample map
-            unsigned width = vars.getRezedWidth();
-            unsigned height = vars.getRezedHeight();
-            if (pixelSampleMapName != cachedPixelSampleMapName ||
-                 width != pixelSampleMap->getWidth() ||
-                 height != pixelSampleMap->getHeight()) {
-                pixelSampleMap->init(width, height);
-                rndr::readPixelBuffer(*pixelSampleMap, pixelSampleMapName,
-                                       width, height);
-                cachedPixelSampleMapName = pixelSampleMapName;
+        // change pixel sample map
+        unsigned width = vars.getRezedWidth();
+        unsigned height = vars.getRezedHeight();
+        if (pixelSampleMapName != mCachedPixelSampleMapName ||
+             width != mPixelSampleMap->getWidth() ||
+             height != mPixelSampleMap->getHeight()) {
+            mPixelSampleMap->init(width, height);
+            rndr::readPixelBuffer(*mPixelSampleMap, pixelSampleMapName,
+                                   width, height);
+            mCachedPixelSampleMapName = pixelSampleMapName;
 
-                // find the max value in map
-                unsigned numPixels = pixelSampleMap->getArea();
-                auto data = pixelSampleMap->getData();
-                mMaxPixelSampleValues[i] = *std::max_element(data, data + numPixels);
-            }
+            // find the max value in map
+            unsigned numPixels = mPixelSampleMap->getArea();
+            auto data = mPixelSampleMap->getData();
+            mMaxPixelSampleValue = *std::max_element(data, data + numPixels);
         }
     }
 
@@ -1892,32 +1872,30 @@ RenderContext::renderPrep(ExecutionMode executionMode)
         bool frameChanged = (sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sFrameKey) &&
             mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE);
 
-        // Our cameras could have changed.
-        // A primary camera change requires a geometry rebuild, our definition of
-        // render space depends on this.  So changing the primary camera doesn't seem
+        // Our camera could have changed.
+        // A camera change requires a geometry rebuild, our definition of
+        // render space depends on this.  So changing the camera doesn't seem
         // like a particularly good work flow.
         const std::vector<const scene_rdl2::rdl2::Camera *> activeCameras = mSceneContext->getActiveCameras();
-        const bool primaryCameraChanged = sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sCamera);
-        if (primaryCameraChanged || !(activeCameras == mCameras)) {
-            initActiveCameras(activeCameras);
-            MNRY_ASSERT(mCameras == activeCameras);
-            mPbrScene->updateActiveCameras(mCameras);
-            mRenderOutputDriver->updateActiveCameras(mCameras);
+        const bool cameraChanged = sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sCamera);
+        if (cameraChanged) {
+            initActiveCamera(activeCameras[0]);
+            mPbrScene->updateActiveCamera(mCamera);
         }
 
         bool motionBlurChanged = sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sEnableMotionBlur) ||
             (sv.get(scene_rdl2::rdl2::SceneVariables::sEnableMotionBlur) &&
             (sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sMotionSteps) ||
-            mCameras[0]->hasChanged(scene_rdl2::rdl2::Camera::sMbShutterOpenKey) ||
-            mCameras[0]->hasChanged(scene_rdl2::rdl2::Camera::sMbShutterCloseKey)));
-        // note: the primary camera specifies shutter open/close times, so we only
+            mCamera->hasChanged(scene_rdl2::rdl2::Camera::sMbShutterOpenKey) ||
+            mCamera->hasChanged(scene_rdl2::rdl2::Camera::sMbShutterCloseKey)));
+        // note: the camera specifies shutter open/close times, so we only
         // need to check its attr
 
         bool globalToggleChanged = sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sEnableDisplacement) ||
             sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sEnableMaxGeomResolution) ||
             sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sMaxGeomResolution);
 
-        loadAllGeometries = frameChanged || motionBlurChanged || globalToggleChanged || primaryCameraChanged;
+        loadAllGeometries = frameChanged || motionBlurChanged || globalToggleChanged || cameraChanged;
 
         geomChangeFlag = loadAllGeometries ?
             rt::ChangeFlag::ALL :
@@ -2416,11 +2394,9 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
 
     const pbr::Scene * scene = getScene();
 
-    // Cameras may require per geometry primitive attributes (e.g. the BakeCamera)
+    // Camera may require per geometry primitive attributes (e.g. the BakeCamera)
     shading::PerGeometryAttributeKeySet perGeometryAttributes;
-    for (size_t i = 0; i < scene->getCameraCount(); i++) {
-        scene->getCamera(i)->getRequiredPrimAttributes(perGeometryAttributes);
-    }
+        scene->getCamera()->getRequiredPrimAttributes(perGeometryAttributes);
 
     mGeometryManager->
         setStageIdAndCallBackLoadGeometries(0,
@@ -2462,20 +2438,18 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
 
     mRenderStats->logEndGeneratingProcedurals();
 
-    // Get the camera frustums and render to camera matrices for times points 0 and 1
+    // Get the camera frustum and render to camera matrices for times points 0 and 1
     // TODO: generalize for multi-segment motion blur. Currently we only have 2
     // motion samples and assume the ray time points are 0 and 1. In multi-segment
     // motion blur there will be multiple motion samples with a ray time range
     // of [0,1].
     std::vector<mcrt_common::Frustum> frustums;
-    for (size_t i = 0; i < scene->getCameraCount(); i++) {
-        const pbr::Camera *camera = getScene()->getCamera(i);
-        if (camera->hasFrustum()) {
-            frustums.push_back(mcrt_common::Frustum());
-            camera->computeFrustum(&frustums.back(), 0, true);  // frustum at shutter open
-            frustums.push_back(mcrt_common::Frustum());
-            camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
-        }
+    const pbr::Camera *camera = getScene()->getCamera();
+    if (camera->hasFrustum()) {
+        frustums.push_back(mcrt_common::Frustum());
+        camera->computeFrustum(&frustums.back(), 0, true);  // frustum at shutter open
+        frustums.push_back(mcrt_common::Frustum());
+        camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
     }
 
     // configure the way to construct spatial accelerator
@@ -2762,12 +2736,11 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
 
     if (samplingMode == SamplingMode::UNIFORM) {
 
-        // The maximum number of samples per pixel over all the pixel sample maps from each camera
-        fs->mMaxSamplesPerPixel = unsigned(numSamplesPerPixel *
-            *std::max_element(mMaxPixelSampleValues.begin(), mMaxPixelSampleValues.end()));
+        // The maximum number of samples per pixel over the pixel sample map
+        fs->mMaxSamplesPerPixel = unsigned(numSamplesPerPixel * mMaxPixelSampleValue);
         fs->mMinSamplesPerPixel = fs->mMaxSamplesPerPixel;
         fs->mTargetAdaptiveError = 0.f;
-        fs->mPixelSampleMaps = MNRY_VERIFY(mPixelSampleMaps.get());
+        fs->mPixelSampleMap = MNRY_VERIFY(mPixelSampleMap.get());
 
     } else {
 
@@ -2779,7 +2752,7 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
         // by 10,000 in order to provide more user-friendly values (e.g. 2.0).
         const float targetAdaptiveError = vars.get(scene_rdl2::rdl2::SceneVariables::sTargetAdaptiveError) / 10000.0f;
         fs->mTargetAdaptiveError = std::max(0.000001f, targetAdaptiveError);
-        fs->mPixelSampleMaps = nullptr;
+        fs->mPixelSampleMap = nullptr;
     }
 
     fs->mDeepFormat = vars.get(scene_rdl2::rdl2::SceneVariables::sDeepFormat);
@@ -2895,13 +2868,7 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
 
     MNRY_ASSERT(fs->mViewport.mMinX >= 0 && fs->mViewport.mMinY >= 0);
 
-    fs->mDofEnabled = false;
-    for (size_t i = 0; i < mPbrScene->getCameraCount(); i++) {
-        if (mPbrScene->getCamera(i)->getIsDofEnabled()) {
-            fs->mDofEnabled = true;
-            break;
-        }
-    }
+    fs->mDofEnabled = mPbrScene->getCamera()->getIsDofEnabled();
 
     fs->mPixelFilter = MNRY_VERIFY(mPixelFilter.get());
 
@@ -2913,11 +2880,9 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
 
     fs->mFrameStartTime = frameStartTime;
 
-    for (size_t i = 0; i < mPbrScene->getCameraCount(); i++) {
-        const pbr::Camera* camera = getScene()->getCamera(i);
-        StereoView stereoView = camera->getStereoView();
-        fs->mInitialSeed[i] = getInitialSeed(fs->mFrameNumber, stereoView, fs->mLockFrameNoise);
-    }
+    const pbr::Camera* camera = getScene()->getCamera();
+    StereoView stereoView = camera->getStereoView();
+    fs->mInitialSeed = getInitialSeed(fs->mFrameNumber, stereoView, fs->mLockFrameNoise);
 
     // the presence shadow handler in vectorized mode need to access this value
     fs->mMaxPresenceDepth = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxPresenceDepth);
@@ -3073,9 +3038,9 @@ RenderContext::getMotionBlurParams(bool bake) const
         shutterOpen  = sceneVarsMotionSteps[0];
         shutterClose = sceneVarsMotionSteps[1];
     } else {
-        // Shutter open and close are controlled by the primary camera
-        shutterOpen  = mCameras[0]->get(scene_rdl2::rdl2::Camera::sMbShutterOpenKey);
-        shutterClose = mCameras[0]->get(scene_rdl2::rdl2::Camera::sMbShutterCloseKey);
+        // Shutter open and close are controlled by the camera
+        shutterOpen  = mCamera->get(scene_rdl2::rdl2::Camera::sMbShutterOpenKey);
+        shutterClose = mCamera->get(scene_rdl2::rdl2::Camera::sMbShutterCloseKey);
     }
 
     float fps = mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sFpsKey);
@@ -3178,7 +3143,7 @@ RenderContext::handlePickLocation(const int x, const int y, scene_rdl2::math::Ve
     }
 
     const pbr::Scene *scene = getScene();
-    const pbr::Camera *pbrCamera = scene->getCamera(0);  // pick with primary camera
+    const pbr::Camera *pbrCamera = scene->getCamera();
 
     mcrt_common::RayDifferential ray;
     pbrCamera->createRay(&ray, x + 0.5f, height - y + 0.5f, 0.0f, 0.0f, 0.0f, false);

@@ -585,9 +585,6 @@ public:
     finline void setMediumIor(float ior) { mMediumIor = ior; }
     finline float getMediumIor() const { return mMediumIor; }
 
-    finline void setCameraId(int id) { mCameraId = id; }
-    finline int getCameraId() const { return mCameraId; }
-
     /// Adapt a normal mapped normal to the current view direction
     finline void setUseAdaptNormal(bool useAdaptNormal) { mFlags.set(UseAdaptNormal, useAdaptNormal); }
     scene_rdl2::math::Vec3f adaptNormal(const scene_rdl2::math::Vec3f &Ns) const;

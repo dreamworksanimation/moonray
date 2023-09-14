@@ -129,7 +129,7 @@ scene_rdl2::math::Color
 PathIntegrator::estimateInScatteringSourceTerm(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         const scene_rdl2::math::Vec3f& scatterPoint, const Light* light, int assignmentId,
         const VolumePhase& phaseFunction, const scene_rdl2::math::Vec3f& ul, const LightFilterRandomValues& ulFilter,
-        const Subpixel &sp, int cameraId, unsigned sequenceID, float scaleFactor) const
+        const Subpixel &sp, unsigned sequenceID, float scaleFactor) const
 {
     const LightFilterList* lightFilterList = pbrTls->mFs->mScene->getLightFilterList(assignmentId, light);
     if (!light->canIlluminate(scatterPoint, nullptr, ray.getTime(), /* radius = */ 0.f, lightFilterList)) {
@@ -174,7 +174,7 @@ PathIntegrator::equiAngularVolumeScattering(pbr::TLState *pbrTls,
         float D, float thetaA, float thetaB, float offset,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, int cameraId, unsigned& sequenceID, bool doMIS) const
+        const Subpixel &sp, unsigned& sequenceID, bool doMIS) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
 
@@ -217,7 +217,7 @@ PathIntegrator::equiAngularVolumeScattering(pbr::TLState *pbrTls,
         }
     }
     scene_rdl2::math::Color Ls = estimateInScatteringSourceTerm(pbrTls, ray, scatterPoint,
-        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, cameraId, sequenceID);
+        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, sequenceID);
     return misWeight * vp.mSigmaS * trScatter * Ls / pdfTe;
 }
 
@@ -228,7 +228,7 @@ PathIntegrator::distanceVolumeScattering(pbr::TLState *pbrTls,
         float D, float thetaA, float thetaB, float offset,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, int cameraId, unsigned& sequenceID, bool doMIS,
+        const Subpixel &sp, unsigned& sequenceID, bool doMIS,
         float& deepTd, scene_rdl2::math::Color& radiance, scene_rdl2::math::Color& transmittance) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
@@ -272,7 +272,7 @@ PathIntegrator::distanceVolumeScattering(pbr::TLState *pbrTls,
         }
     }
     scene_rdl2::math::Color Ls = estimateInScatteringSourceTerm(pbrTls, ray, scatterPoint,
-        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, cameraId, sequenceID);
+        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, sequenceID);
 
     // For deep volume support, we need to extract the t distance, radiance,
     //  and transmittance.
@@ -287,7 +287,7 @@ scene_rdl2::math::Color
 PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, int cameraId, const PathVertex& pv, unsigned& sequenceID,
+        const Subpixel &sp, const PathVertex& pv, unsigned& sequenceID,
         float* aovs, DeepParams* deepParams, const RayState *rs) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
@@ -353,7 +353,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                         equiAngularVolumeScattering(
                         pbrTls, ray, lightIndex, ue, uel, uelFilter, D,
                         thetaA, thetaB, offset, volumeProperties,
-                        densityDistribution, sp, cameraId, sequenceID, true);
+                        densityDistribution, sp, sequenceID, true);
                     // we always do distance sampling so set doMIS to true
                     LDirect += contribution;
                 }
@@ -372,7 +372,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                     distanceVolumeScattering(
                     pbrTls, ray, lightIndex, ud, udl, udlFilter, D,
                     thetaA, thetaB, offset, volumeProperties,
-                    densityDistribution, sp, cameraId, sequenceID, doEquiAngular,
+                    densityDistribution, sp, sequenceID, doEquiAngular,
                     td, radiance, transmittance);
                 LDirect += contribution;
 
@@ -387,7 +387,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                         lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
                         // retrieve AOV data for this sample
                         fs.mAovSchema->initFloatArray(deepParams->mVolumeAovs);
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             deepContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, deepParams->mVolumeAovs);
                     }
                     deepParams->mDeepBuffer->addVolumeSample(
@@ -413,11 +413,11 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
             lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
             // accumulate matching aovs
             if (aovs) {
-                aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     LDirect, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
             } else {
                 MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
-                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, cameraId, lightAovs,
+                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, lightAovs,
                     LDirect, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
                     sp.mPixel, rs->mDeepDataHandle, getFilm(rs->mTilePassAndFilm));
             }
@@ -425,7 +425,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
     }
     // treat emissive volumes as light sources and compute their in-scattering
     // contribution, similar to what we do on bsdf/bssrdf surface reflection
-    LSingleScatter += computeRadianceEmissiveRegionsVolumes(pbrTls, sp, cameraId, pv, ray,
+    LSingleScatter += computeRadianceEmissiveRegionsVolumes(pbrTls, sp, pv, ray,
         volumeProperties, densityDistribution, sequenceID, aovs, rs);
     return LSingleScatter;
 }
@@ -908,7 +908,7 @@ scene_rdl2::math::Color
 PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
         const mcrt_common::Ray& ray, const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, int cameraId, const PathVertex& pv, const int rayMask,
+        const Subpixel &sp, const PathVertex& pv, const int rayMask,
         unsigned sequenceID, float* aovs, DeepParams* deepParams, const RayState *rs) const
 {
     // The approximation implementation is based on
@@ -1184,7 +1184,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
 
                 scene_rdl2::math::Color scatteringSourceTerm = estimateInScatteringSourceTerm(
                     pbrTls, scatterRay, scatterPoint, light, assignmentId,
-                    phase, usl, uslFilter, sp, cameraId, sequenceID, ai);
+                    phase, usl, uslFilter, sp, sequenceID, ai);
 
                 scene_rdl2::math::Color contribution = invN * throughput * bi *
                     scatteringSourceTerm;
@@ -1205,7 +1205,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                                                 scatterStateId, light);
                         // accumulate matching aovs
                         fs.mAovSchema->initFloatArray(deepParams->mVolumeAovs);
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             deepContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, deepParams->mVolumeAovs);
                     }
 
@@ -1229,11 +1229,11 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                         scatterStateId, light);
                     // accumulate matching aovs
                     if (aovs) {
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                     } else {
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
-                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
                             getFilm(rs->mTilePassAndFilm));
                     }
@@ -1280,7 +1280,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                             scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                         // accumulate matching aovs
                         fs.mAovSchema->initFloatArray(deepParams->mVolumeAovs);
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                                           deepContribution, nullptr, AovSchema::sLpePrefixNone,
                                           lpeStateId, deepParams->mVolumeAovs);
                     }
@@ -1306,11 +1306,11 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                     // accumulate matching aovs
                     if (aovs) {
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                     } else {
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
-                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
                             getFilm(rs->mTilePassAndFilm));
                     }
@@ -1328,7 +1328,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
 
 bool
 PathIntegrator::computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
-        const Subpixel& sp, int cameraId, PathVertex& pv, const int lobeType,
+        const Subpixel& sp, PathVertex& pv, const int lobeType,
         scene_rdl2::math::Color& radiance, unsigned sequenceID, VolumeTransmittance& vt,
         float* aovs, DeepParams* deepParams, const RayState *rs,
         float* surfaceT) const
@@ -1497,11 +1497,11 @@ PathIntegrator::computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::R
                         lpeStateId, fs.mScene->getVolumeLabelId(volumeId));
                     // accumulate matching aovs
                     if (aovs) {
-                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                     } else {
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
-                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             emissionContribution, nullptr, AovSchema::sLpePrefixNone,
                             lpeStateId, sp.mPixel, rs->mDeepDataHandle, getFilm(rs->mTilePassAndFilm));
                     }
@@ -1528,11 +1528,11 @@ PathIntegrator::computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::R
         densityDistribution.tabulateCdf();
         // draw some samples to integrate volume single scattering
         radiance += integrateVolumeScattering(pbrTls, ray,
-            volumeProperties, densityDistribution, sp, cameraId, pv, sequenceID, aovs, deepParams, rs);
+            volumeProperties, densityDistribution, sp, pv, sequenceID, aovs, deepParams, rs);
         pv.volumeDepth++;
         if (pv.volumeDepth < mMaxVolumeDepth) {
             radiance += approximateVolumeMultipleScattering(
-                pbrTls, ray, volumeProperties, densityDistribution, sp, cameraId, pv,
+                pbrTls, ray, volumeProperties, densityDistribution, sp, pv,
                 rayMask, sequenceID, aovs, deepParams, rs);
         }
     }
@@ -1793,7 +1793,6 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
                pbrTls->mFs->mExecutionMode == mcrt_common::ExecutionMode::XPU);
 
     const Subpixel &sp = rs.mSubpixel;
-    const int cameraId = rs.mCameraId;
     const PathVertex &pv = rs.mPathVertex;
     const mcrt_common::Ray &ray = rs.mRay;
     const shading::Intersection &isect = *rs.mAOSIsect;
@@ -1886,7 +1885,7 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
                     lpeStateId = lightAovs.emissionEventTransition(pbrTls,
                         lpeStateId,
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
-                    aovAccumLightAovsBundled(pbrTls, aovSchema, cameraId, lightAovs, lobeContribution,
+                    aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, lobeContribution,
                         nullptr, AovSchema::sLpePrefixNone,
                         lpeStateId, sp.mPixel, rs.mDeepDataHandle, getFilm(rs.mTilePassAndFilm));
 
@@ -1945,7 +1944,7 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
                     lpeStateId = lightAovs.emissionEventTransition(pbrTls,
                         lpeStateId,
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
-                    aovAccumLightAovsBundled(pbrTls, aovSchema, cameraId, lightAovs, lobeContribution,
+                    aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, lobeContribution,
                         nullptr, AovSchema::sLpePrefixNone,
                         lpeStateId, sp.mPixel, rs.mDeepDataHandle, getFilm(rs.mTilePassAndFilm));
                 }
@@ -1957,7 +1956,7 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceEmissiveRegionsScalar(pbr::TLState *pbrTls,
-        const Subpixel& sp, int cameraId, const PathVertex& pv, const mcrt_common::Ray& ray,
+        const Subpixel& sp, const PathVertex& pv, const mcrt_common::Ray& ray,
         const shading::Intersection& isect, shading::Bsdf& bsdf, const shading::BsdfSlice& slice,
         float rayEpsilon, unsigned sequenceID, float* aovs) const
 {
@@ -2047,7 +2046,7 @@ PathIntegrator::computeRadianceEmissiveRegionsScalar(pbr::TLState *pbrTls,
                         lpeStateId,
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                     // accumulate matching aovs
-                    aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                    aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                         lobeContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
             }
@@ -2104,7 +2103,7 @@ PathIntegrator::computeRadianceEmissiveRegionsScalar(pbr::TLState *pbrTls,
                         lpeStateId,
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                     // accumulate matching aovs
-                    aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                    aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                         lobeContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
             }
@@ -2115,7 +2114,7 @@ PathIntegrator::computeRadianceEmissiveRegionsScalar(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceEmissiveRegionsSSS(pbr::TLState *pbrTls,
-        const Subpixel& sp, int cameraId, const PathVertex& pv, const mcrt_common::Ray& ray,
+        const Subpixel& sp, const PathVertex& pv, const mcrt_common::Ray& ray,
         const scene_rdl2::math::Color& pathThroughput, const shading::Fresnel* transmissionFresnel,
         const shading::Bsdf& bsdf, const shading::BsdfLobe &lobe, const shading::BsdfSlice &slice,
         const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n,
@@ -2200,7 +2199,7 @@ PathIntegrator::computeRadianceEmissiveRegionsSSS(pbr::TLState *pbrTls,
             lpeStateId = lightAovs.emissionEventTransition(pbrTls, lpeStateId,
                 scene->getVolumeLabelId(emissiveRegion.mVolumeId));
             // accumulate matching aovs
-            aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+            aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                 emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
         }
     }
@@ -2209,7 +2208,7 @@ PathIntegrator::computeRadianceEmissiveRegionsSSS(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceEmissiveRegionsVolumes(pbr::TLState *pbrTls,
-        const Subpixel& sp, int cameraId, const PathVertex& pv,
+        const Subpixel& sp, const PathVertex& pv,
         const mcrt_common::Ray& ray,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
@@ -2312,11 +2311,11 @@ PathIntegrator::computeRadianceEmissiveRegionsVolumes(pbr::TLState *pbrTls,
                 scene->getVolumeLabelId(emissiveRegion.mVolumeId));
             // accumulate matching aovs
             if (aovs) {
-                aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
             } else {
                 MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
-                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
                     getFilm(rs->mTilePassAndFilm));
             }

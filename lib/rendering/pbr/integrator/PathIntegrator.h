@@ -195,24 +195,24 @@ public:
     /// - If we encountered a NaN during the execution of this function, a
     ///   a negative alpha value is returned and radiance is set to black.
     scene_rdl2::math::Color computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
-            int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
+            int subpixelIndex, int pixelSamples, const Sample& sample,
             ComputeRadianceAovParams &aovParams, DeepBuffer *deepBuffer,
             CryptomatteBuffer *cryptomatteBuffer) const;
 
     /// Output intersection properties as color for fast progressive render mode
     scene_rdl2::math::Color computeColorFromIntersection(pbr::TLState *pbrTls, int pixelX, int pixelY,
-            int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
+            int subpixelIndex, int pixelSamples, const Sample& sample,
             ComputeRadianceAovParams &aovParams, rndr::FastRenderMode fastMode) const;
 
     scene_rdl2::math::Color computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls, const shading::Bsdf &bsdf,
-            const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const Subpixel &sp, const PathVertex &pv,
             const mcrt_common::RayDifferential &ray, const shading::Intersection &isect,
             const shading::BsdfSlice &slice, const shading::Bssrdf &bssrdf, const LightSet &lightSet,
             bool doIndirect, float rayEpsilon, float shadowRayEpsilon, unsigned &sequenceID,
             scene_rdl2::math::Color &ssAov, float *aovs) const;
 
     scene_rdl2::math::Color computeRadiancePathTraceSubsurface(pbr::TLState *pbrTls, const shading::Bsdf &bsdf,
-            const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const Subpixel &sp, const PathVertex &pv,
             const mcrt_common::RayDifferential &ray, const shading::Intersection &isect,
             const shading::VolumeSubsurface& volumeSubsurface, const LightSet &lightSet,
             bool doIndirect, float rayEpsilon, float shadowRayEpsilon, unsigned &sequenceID,
@@ -226,7 +226,7 @@ public:
     // non-null and is used to queue aov values.  The aovs buffer is only
     // used in scalar mode.
     bool computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
-            const Subpixel& sp, int cameraId, PathVertex& pv, const int lobeType,
+            const Subpixel& sp, PathVertex& pv, const int lobeType,
             scene_rdl2::math::Color& radiance, unsigned sequenceID, VolumeTransmittance& vt,
             float* aovs, DeepParams* deepParams, const RayState *rs,
             float* surfaceT) const;
@@ -247,7 +247,7 @@ public:
             float rayEpsilon, unsigned int lane) const;
 
     bool queuePrimaryRay(pbr::TLState *pbrTls, int pixelX, int pixelY,
-            int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
+            int subpixelIndex, int pixelSamples, const Sample& sample,
             RayState *rs) const;
 
     // Used for bundled case as a wrapper to call directly into ISPC.
@@ -320,28 +320,28 @@ private:
     PathIntegrator &operator=(const PathIntegrator&) = delete;
 
     finline void addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const Subpixel &sp, const PathVertex &pv,
             const BsdfSampler &bSampler, int lobeIndex, bool doIndirect, const BsdfSample &bsmp,
             const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
             const shading::Intersection &isect) const;
 
     void addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const Subpixel &sp, const PathVertex &pv,
             const BsdfSampler &bSampler, bool doIndirect, const BsdfSample *bsmp,
             const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
             const shading::Intersection &isect) const;
 
     void addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const Subpixel &sp, const PathVertex &pv,
             const LightSetSampler &lSampler, const LightSample *lsmp,
             const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
             const shading::Intersection &isect) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId,
+            const Subpixel &sp, 
             const PathVertex &parentPv, const BsdfSampler &bSampler,
             const BsdfSample *bsmp, const mcrt_common::RayDifferential &parentRay,
             float rayEpsilon, float shadowRayEpsilon,
@@ -351,27 +351,27 @@ private:
             float *aovs, CryptomatteParams *refractCryptomatteParams) const;
 
     scene_rdl2::math::Color oneSamplerDirectLight(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
             const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler,
                                                   const scene_rdl2::math::Color &pt,
             const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const;
 
     scene_rdl2::math::Color oneSamplerDirectBsdf(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
             const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler,
                                                  const scene_rdl2::math::Color &pt,
             const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const;
 
     scene_rdl2::math::Color oneSamplerDirect(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const BsdfOneSampler &bsdfOneSampler,
             const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal, float rayEpsilon,
             float shadowRayEpsilon, IntegratorSample1D &rrSamples, unsigned sequenceID, float *aovs) const;
 
     scene_rdl2::math::Color oneSamplerRayTerminatorLights(pbr::TLState *pbrTls,
-            int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const scene_rdl2::math::Vec3f &wi, float pdfBsdf,
             const shading::BsdfLobe &lobe, const shading::Bsdf &bsdf,
             const LightSet &activeLightSet, const LightFilterRandomValues& lightFilterR,
@@ -392,7 +392,7 @@ private:
     // compute integrated radiance, transparency and aovs from a multiple lobe bsdf using
     // a bsdf multi sampler strategy
     scene_rdl2::math::Color computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
             bool doIndirect, shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
             int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
@@ -402,7 +402,7 @@ private:
     // compute integrated radiance, transparency and aovs from a multiple lobe bsdf using
     // a bsdf one sampler strategy
     scene_rdl2::math::Color computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
             const shading::Intersection &isect, const shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
             bool doIndirect, shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
             int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
@@ -413,14 +413,14 @@ private:
     // (something like fire and explosion) toward intersection point
     // with scalar shading results.
     scene_rdl2::math::Color computeRadianceEmissiveRegionsScalar(pbr::TLState *pbrTls,
-            const Subpixel& sp, int cameraId, const PathVertex& pv, const mcrt_common::Ray& ray,
+            const Subpixel& sp, const PathVertex& pv, const mcrt_common::Ray& ray,
             const shading::Intersection& isect, shading::Bsdf& bsdf, const shading::BsdfSlice& slice,
             float rayEpsilon, unsigned sequenceID, float* aovs) const;
 
     // compute the emission contribution from volumes emitting energy
     // (something like fire and explosion) toward bssrdf projection samples
     scene_rdl2::math::Color computeRadianceEmissiveRegionsSSS(pbr::TLState *pbrTls,
-            const Subpixel& sp, int cameraId, const PathVertex& pv, const mcrt_common::Ray& ray,
+            const Subpixel& sp, const PathVertex& pv, const mcrt_common::Ray& ray,
             const scene_rdl2::math::Color& pathThroughput, const shading::Fresnel* transmissionFresnel,
             const shading::Bsdf& bsdf, const shading::BsdfLobe &lobe, const shading::BsdfSlice &slice,
             const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n,
@@ -433,7 +433,7 @@ private:
     // If called from bundled mode, aovs are sent directly to the aov bundle handler
     // via info in the ray state.  If called from scalar code, rs will be null
     scene_rdl2::math::Color computeRadianceEmissiveRegionsVolumes(pbr::TLState *pbrTls,
-            const Subpixel& sp, int cameraId, const PathVertex& pv, const mcrt_common::Ray& ray,
+            const Subpixel& sp, const PathVertex& pv, const mcrt_common::Ray& ray,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
             unsigned sequenceID, float* aovs, const RayState *rs) const;
@@ -442,7 +442,7 @@ private:
     scene_rdl2::math::Color integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, int cameraId, const PathVertex& pv,
+            const Subpixel &sp, const PathVertex& pv,
             unsigned& sequenceID, float* aovs,
             DeepParams* deepParams, const RayState *rs) const;
 
@@ -452,7 +452,7 @@ private:
             float D, float thetaA, float thetaB, float offset,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, int cameraId, unsigned& sequenceID, bool doMIS) const;
+            const Subpixel &sp, unsigned& sequenceID, bool doMIS) const;
 
     scene_rdl2::math::Color distanceVolumeScattering(pbr::TLState *pbrTls,
             const mcrt_common::Ray& ray, int lightIndex,
@@ -460,13 +460,13 @@ private:
             float D, float thetaA, float thetaB, float offset,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, int cameraId, unsigned& sequenceID, bool doMIS,
+            const Subpixel &sp, unsigned& sequenceID, bool doMIS,
             float& td, scene_rdl2::math::Color& radiance, scene_rdl2::math::Color& transmittance) const;
 
     scene_rdl2::math::Color approximateVolumeMultipleScattering(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, int cameraId, const PathVertex& pv, const int rayMask,
+            const Subpixel &sp, const PathVertex& pv, const int rayMask,
             unsigned sequenceID, float* aovs, DeepParams* deepParams, const RayState *rs) const;
 
     // estimator for volume scattering direct lighting contribution
@@ -475,7 +475,7 @@ private:
             const scene_rdl2::math::Vec3f& scatterPoint, const Light* light, int assignmentId,
             const VolumePhase& phaseFunction,
             const scene_rdl2::math::Vec3f& ul, const LightFilterRandomValues& ulFilter,
-            const Subpixel &sp, int cameraId, unsigned sequenceID,
+            const Subpixel &sp, unsigned sequenceID,
             float scaleFactor = 1.0f) const;
 
     scene_rdl2::math::Color transmittanceSubinterval(pbr::TLState *pbrTls,
@@ -504,7 +504,7 @@ private:
     // volume emission/in-scattering accumulated along the ray)
     IndirectRadianceType computeRadianceRecurse(pbr::TLState *pbrTls,
             mcrt_common::RayDifferential &ray,
-            const Subpixel &sp, int cameraId, const PathVertex &pv, const shading::BsdfLobe *lobe,
+            const Subpixel &sp, const PathVertex &pv, const shading::BsdfLobe *lobe,
             scene_rdl2::math::Color &radiance, float &transparency, VolumeTransmittance& vt,
             unsigned &sequenceID, float *aovs, float *depth,
             DeepParams* deepParams, CryptomatteParams *cryptomatteParams,
@@ -512,7 +512,7 @@ private:
             bool ignoreVolumes, bool &hitVolume) const;
 
     scene_rdl2::math::Color computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
-            const shading::Bsdf &bsdf, const Subpixel &sp, int cameraId,
+            const shading::Bsdf &bsdf, const Subpixel &sp,
             const PathVertex &pv, const mcrt_common::RayDifferential &parentRay,
             const scene_rdl2::math::Vec3f &dNdx, const scene_rdl2::math::Vec3f &dNdy,
             const scene_rdl2::math::Color &pathThroughput, const shading::Fresnel *transmissionFresnel,
@@ -524,7 +524,7 @@ private:
             const shading::Intersection &isect) const;
 
     scene_rdl2::math::Color computeDiffusionForwardScattering(pbr::TLState *pbrTls,
-            const shading::Bsdf &bsdf, const Subpixel &sp, int cameraId, const PathVertex &pv,
+            const shading::Bsdf &bsdf, const Subpixel &sp, const PathVertex &pv,
             const mcrt_common::RayDifferential &ray, const shading::Intersection &isect,
             const shading::BsdfSlice &slice, const shading::Fresnel *transmissionFresnel,
             const scene_rdl2::math::Color& scaleFresnelWo, const LightSet &lightSet,

@@ -44,8 +44,6 @@ bool State::isHifi()              const { return mIntersection->isHifi();       
 
 float State::getMediumIor() const { return mIntersection->getMediumIor(); }
 
-int  State::getCameraId() const { return mIntersection->getCameraId(); }
-
 math::Vec3f State::adaptNormal(const math::Vec3f &Ns) const { return mIntersection->adaptNormal(Ns); }
 math::Vec3f State::adaptToonNormal(const math::Vec3f &Ns) const { return mIntersection->adaptToonNormal(Ns); }
 

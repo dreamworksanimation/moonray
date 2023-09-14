@@ -136,7 +136,6 @@ fillBundledRadiance(       uniform PbrTLState *     uniform pbrTls,
         PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
         PbrTLState_acquireCryptomatteData2(pbrTls, dst->mCryptomatteDataHandle2);
         dst->mTilePassAndFilm = rayState.mTilePassAndFilm;
-        dst->mCameraId = rayState.mCameraId;
 
 #ifdef PBR_CHECK_FOR_NAN
         checkForNan(radiance, "BundledRadiance", rayState.mSubpixel,
@@ -243,7 +242,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
 
             if (aovs) {
-                aovAccumMaterialAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, materialAovs, isect,
+                aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs, isect,
                                      ray, fs.mScene, *bsdf, ssAov,
                                      NULL, NULL, pv.aovPathPixelWeight, sp.mPixel,
                                      rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);
@@ -287,7 +286,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
                 // accumulate matching aovs. No need to worry about pre-occlusion here because we are accumulating an
                 // emission event, and emission is not supported by pre-occlusion aovs
-                aovAccumLightAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, selfEmission, lpeStateId,
+                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, selfEmission, lpeStateId,
                                   sp.mPixel, rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm));
             }
         }
@@ -307,7 +306,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
 
             if (aovs) {
-                aovAccumMaterialAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, materialAovs,
+                aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs,
                                      isect, ray, fs.mScene, *bsdf, ssAov,
                                      NULL, NULL, pv.aovPathPixelWeight, sp.mPixel,
                                      rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);
@@ -463,7 +462,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
         if (Bsdf_getLobeCount(bsdf) == 0) {
 
             if (aovs) {
-                aovAccumMaterialAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, materialAovs,
+                aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs,
                                      isect, ray, fs.mScene, *bsdf, ssAov,
                                      NULL, NULL, pv.aovPathPixelWeight, sp.mPixel,
                                      rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);

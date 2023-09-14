@@ -358,7 +358,7 @@ shadeMaterial(mcrt_common::ThreadLocalState *tls, const scene_rdl2::rdl2::Materi
 // the ray for ray debugging purposes. Other than that, it's not needed.
 PathIntegrator::IndirectRadianceType
 PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDifferential &ray,
-        const Subpixel &sp, int cameraId, const PathVertex &prevPv, const shading::BsdfLobe *lobe,
+        const Subpixel &sp, const PathVertex &prevPv, const shading::BsdfLobe *lobe,
         scene_rdl2::math::Color &radiance, float &transparency, VolumeTransmittance& vt,
         unsigned &sequenceID, float *aovs, float *depth,
         DeepParams* deepParams, CryptomatteParams *cryptomatteParamsPtr,
@@ -452,7 +452,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     float volumeSurfaceT = scene_rdl2::math::sMaxValue;
 
     if (!ignoreVolumes) {
-        hitVolume = computeRadianceVolume(pbrTls, ray, sp, cameraId, pv, lobeType,
+        hitVolume = computeRadianceVolume(pbrTls, ray, sp, pv, lobeType,
             radiance, sequenceID, vt, aovs, deepParams, nullptr, &volumeSurfaceT);
         if (hitVolume) {
             indirectRadianceType = IndirectRadianceType(indirectRadianceType | VOLUME);
@@ -462,7 +462,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     if (!hitGeom && aovs) {
         // accumuate background aovs
-        aovAccumBackgroundExtraAovs(pbrTls, fs, pv, cameraId, aovs);
+        aovAccumBackgroundExtraAovs(pbrTls, fs, pv, aovs);
     }
 
     //---------------------------------------------------------------------
@@ -513,7 +513,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                 int lpeStateId = pv.lpeStateId;
                 lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, hitLight);
                 // accumulate matching aovs
-                aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs,
+                aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     lightContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
             }
 
@@ -526,7 +526,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
         // Did we hit a volume and do we have volume depth/position AOVs?
         if (ray.getDepth() == 0 && hitVolume && volumeSurfaceT < scene_rdl2::math::sMaxValue) {
-            aovSetStateVarsVolumeOnly(pbrTls, aovSchema, cameraId, volumeSurfaceT, ray,
+            aovSetStateVarsVolumeOnly(pbrTls, aovSchema, volumeSurfaceT, ray,
                                       *scene, pv.pathPixelWeight, aovs);
         }
 
@@ -552,8 +552,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                  isSubsurfaceAllowed(pv.subsurfaceDepth),
                                  pv.minRoughness,
                                  -ray.getDirection());
-
-    isect.setCameraId(cameraId);
 
     //---------------------------------------------------------------------
     // Run the material shader at the ray intersection point to get the Bsdf
@@ -606,7 +604,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // This also enables automatic removal of self-overlapping geometry that's assigned to the
     // same material.
     int materialPriority = material->priority();
-    const scene_rdl2::rdl2::Camera* camera = scene->getCamera(cameraId)->getRdlCamera();
+    const scene_rdl2::rdl2::Camera* camera = scene->getCamera()->getRdlCamera();
 
     const scene_rdl2::rdl2::Material* newPriorityList[4];
     int newPriorityListCount[4]; 
@@ -696,7 +694,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         VolumeTransmittance vtPresence;
         unsigned presenceSequenceID = sequenceID;
         bool presenceHitVolume;
-        computeRadianceRecurse(pbrTls, presenceRay, sp, cameraId, newPv, lobe,
+        computeRadianceRecurse(pbrTls, presenceRay, sp, newPv, lobe,
             presenceRadiance, presenceTransparency, vtPresence,
             presenceSequenceID, aovs, nullptr, nullptr, newCryptomatteParamsPtr, nullptr, 
             false, presenceHitVolume);
@@ -750,7 +748,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     // Evaluate any extra aovs on this material
     if (aovs) {
-        aovAccumExtraAovs(pbrTls, fs, pv, isect,  material, cameraId, aovs);
+        aovAccumExtraAovs(pbrTls, fs, pv, isect,  material, aovs);
     }
 
     CHECK_CANCELLATION(pbrTls, return NONE);
@@ -779,18 +777,18 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
         // if this is a primary ray, fill out the aovs
         if (aovs) {
-            aovSetMaterialAovs(pbrTls, aovSchema, cameraId, *fs.mLightAovs, *fs.mMaterialAovs,
+            aovSetMaterialAovs(pbrTls, aovSchema, *fs.mLightAovs, *fs.mMaterialAovs,
                                isect, ray, *scene, *bsdf, ssAov,
                                nullptr, nullptr, earlyTerminatorPathPixelWeight, pv.lpeStateId, aovs);
         }
         if (aovs && ray.getDepth() == 0) {
-            aovSetStateVars(pbrTls, aovSchema, cameraId, isect, volumeSurfaceT, ray, *scene, earlyTerminatorPathPixelWeight, aovs);
-            aovSetPrimAttrs(pbrTls, aovSchema, cameraId, material->get<shading::Material>().getAovFlags(),
+            aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, earlyTerminatorPathPixelWeight, aovs);
+            aovSetPrimAttrs(pbrTls, aovSchema, material->get<shading::Material>().getAovFlags(),
                             isect, earlyTerminatorPathPixelWeight, aovs);
         }
 
         if (depth && ray.getDepth() == 0) {
-            *depth = scene->getCamera(cameraId)->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
+            *depth = scene->getCamera()->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
         }
 
         if (deepParams) {
@@ -819,13 +817,13 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     // if this is a primary ray, fill out the intersection and primitive attribute aovs
     if (aovs && ray.getDepth() == 0) {
-        aovSetStateVars(pbrTls, aovSchema, cameraId, isect, volumeSurfaceT, ray, *scene, pv.pathPixelWeight, aovs);
-        aovSetPrimAttrs(pbrTls, aovSchema, cameraId, material->get<shading::Material>().getAovFlags(),
+        aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, pv.pathPixelWeight, aovs);
+        aovSetPrimAttrs(pbrTls, aovSchema, material->get<shading::Material>().getAovFlags(),
                          isect, pv.pathPixelWeight, aovs);
     }
 
     if (depth && ray.getDepth() == 0) {
-        *depth = scene->getCamera(cameraId)->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
+        *depth = scene->getCamera()->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
     }
 
     //---------------------------------------------------------------------
@@ -843,7 +841,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             lpeStateId = lightAovs.emissionEventTransition(pbrTls, lpeStateId, *bsdf);
 
             // accumulate matching aovs
-            aovAccumLightAovs(pbrTls, *fs.mAovSchema, cameraId, *fs.mLightAovs, selfEmission, 
+            aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs, selfEmission, 
                               nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
         }
     }
@@ -854,7 +852,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         RAYDB_SET_CONTRIBUTION(pbrTls, radiance / pv.pathThroughput);
 
         if (aovs) {
-            aovSetMaterialAovs(pbrTls, aovSchema, cameraId, *fs.mLightAovs, *fs.mMaterialAovs,
+            aovSetMaterialAovs(pbrTls, aovSchema, *fs.mLightAovs, *fs.mMaterialAovs,
                                isect, ray, *scene, *bsdf, ssAov,
                                nullptr, nullptr, pv.aovPathPixelWeight, pv.lpeStateId, aovs);
         }
@@ -923,7 +921,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         pv.subsurfaceDepth += 1;
         // Stop the accumulator here since the subsurface accumulator will be
         // started up inside of computeRadianceSubsurface as needed.
-        radiance += computeRadianceDiffusionSubsurface(pbrTls, *bsdf, sp, cameraId, pv, ray,
+        radiance += computeRadianceDiffusionSubsurface(pbrTls, *bsdf, sp, pv, ray,
             isect, slice, *bssrdf, activeLightSet, doIndirect, rayEpsilon, shadowRayEpsilon,
             sequenceID, ssAov, aovs);
     }
@@ -932,7 +930,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     if (volumeSubsurface != nullptr) {
         // increment subsurface depth
         pv.subsurfaceDepth += 1;
-        radiance += computeRadiancePathTraceSubsurface(pbrTls, *bsdf, sp, cameraId, pv, ray,
+        radiance += computeRadiancePathTraceSubsurface(pbrTls, *bsdf, sp, pv, ray,
             isect, *volumeSubsurface, activeLightSet, doIndirect, rayEpsilon, shadowRayEpsilon,
             sequenceID, ssAov, aovs);
     }
@@ -946,7 +944,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         RAYDB_SET_CONTRIBUTION(pbrTls, radiance / pv.pathThroughput);
 
         if (aovs) {
-            aovSetMaterialAovs(pbrTls, aovSchema, cameraId, *fs.mLightAovs, *fs.mMaterialAovs,
+            aovSetMaterialAovs(pbrTls, aovSchema, *fs.mLightAovs, *fs.mMaterialAovs,
                                isect, ray, *scene, *bsdf, ssAov,
                                nullptr, nullptr, pv.aovPathPixelWeight, pv.lpeStateId, aovs);
         }
@@ -958,19 +956,19 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     //---------------------------------------------------------------------
     // Estimate emissive volume region energy contribution
-    radiance += computeRadianceEmissiveRegionsScalar(pbrTls, sp, cameraId, pv, ray, isect,
+    radiance += computeRadianceEmissiveRegionsScalar(pbrTls, sp, pv, ray, isect,
         *bsdf, slice, rayEpsilon, sequenceID, aovs);
 
     //---------------------------------------------------------------------
     // Setup bsdf and light samples
     if (mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_MULTI_SAMPLE) {
-        radiance += computeRadianceBsdfMultiSampler(pbrTls, sp, cameraId, pv, ray, isect, *bsdf, slice,
+        radiance += computeRadianceBsdfMultiSampler(pbrTls, sp, pv, ray, isect, *bsdf, slice,
             doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
             rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs, refractCryptomatteParamsPtr);
     } else {
         MNRY_ASSERT(mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_SAMPLE ||
                    mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_LOBE);
-        radiance += computeRadianceBsdfOneSampler(pbrTls, sp, cameraId, pv, ray, isect,
+        radiance += computeRadianceBsdfOneSampler(pbrTls, sp, pv, ray, isect,
             *bsdf, slice, doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
             hasRayTerminatorLights, rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs);
     }
@@ -1163,7 +1161,7 @@ PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_com
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
-        int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
+        int subpixelIndex, int pixelSamples, const Sample& sample,
         ComputeRadianceAovParams &aovParams, DeepBuffer *deepBuffer,
         CryptomatteBuffer *cryptomatteBuffer) const
 {
@@ -1183,7 +1181,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
 
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(fs.mScene);
-    const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
+    const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
                                          pixelSamples, sample, ray, sp, pv);
 
     if (!validRay) {
@@ -1214,7 +1212,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
 
     scene_rdl2::math::Color radiance;
     float pathPixelWeight;
-    unsigned sequenceID = fs.mInitialSeed[cameraId];
+    unsigned sequenceID = fs.mInitialSeed;
     unsigned hsSequenceID = sequenceID;
 
     // the volume attenuation along this ray to the first hit (or infinity)
@@ -1243,7 +1241,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
 
             if (layer > 0) {
                 float tfar = ray.tfar;
-                initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
+                initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
                                pixelSamples, sample, ray, sp, pv);
                 ray.tnear = tfar + mDeepLayerBias;
 
@@ -1274,7 +1272,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
             scene_rdl2::math::Color deepRadiance;
             float deepTransparency;
             float *deepAovs = (layer == 0) ? aovs : aovParams.mDeepAovs;
-            computeRadianceRecurse(pbrTls, ray, sp, cameraId, pv, nullptr, deepRadiance,
+            computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, deepRadiance,
                                    deepTransparency, vt, sequenceID, deepAovs, depth,
                                    &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
                                    false, hitVolume);
@@ -1295,7 +1293,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                 mcrt_common::RayDifferential hsRay;
                 Subpixel hsSp;
                 PathVertex hsPv;
-                initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
+                initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
                                pixelSamples, sample, hsRay, hsSp, hsPv);
 
                 // LPE
@@ -1311,7 +1309,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                 scene_rdl2::math::Color hsRadiance;
                 float hsTransparency;
                 float *hsAovs = aovParams.mDeepAovs;
-                computeRadianceRecurse(pbrTls, hsRay, hsSp, cameraId, hsPv, nullptr, hsRadiance,
+                computeRadianceRecurse(pbrTls, hsRay, hsSp, hsPv, nullptr, hsRadiance,
                                        hsTransparency, vt, hsSequenceID, hsAovs, depth,
                                        &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
                                        true, hitVolume);
@@ -1355,7 +1353,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
         // not deep render
         float transparency;
         bool hitVolume;
-        computeRadianceRecurse(pbrTls, ray, sp, cameraId, pv, nullptr, radiance,
+        computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, radiance,
             transparency, vt, sequenceID, aovs, depth, nullptr, cryptomatteParamsPtr,
             refractCryptomatteParamsPtr, false, hitVolume);
 
@@ -1403,14 +1401,14 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
     alpha = std::max(alpha, 0.f);
 #endif
 
-    aovSetBeautyAndAlpha(pbrTls, *fs.mAovSchema, cameraId, radiance, alpha, pathPixelWeight, aovs);
+    aovSetBeautyAndAlpha(pbrTls, *fs.mAovSchema, radiance, alpha, pathPixelWeight, aovs);
 
     return radiance;
 }
 
 scene_rdl2::math::Color
 PathIntegrator::computeColorFromIntersection(pbr::TLState *pbrTls, int pixelX, int pixelY,
-        int subpixelIndex, int cameraId, int pixelSamples, const Sample& sample,
+        int subpixelIndex, int pixelSamples, const Sample& sample,
         ComputeRadianceAovParams &aovParams, rndr::FastRenderMode fastMode) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_INTEGRATION);
@@ -1424,7 +1422,7 @@ PathIntegrator::computeColorFromIntersection(pbr::TLState *pbrTls, int pixelX, i
 
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(fs.mScene);
-    const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY, subpixelIndex,
+    const bool validRay = initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
                                          pixelSamples, sample, ray, sp, pv);
 
     if (!validRay) {
@@ -1473,14 +1471,13 @@ PathIntegrator::queuePrimaryRay(pbr::TLState *pbrTls,
                                 int pixelX,
                                 int pixelY,
                                 int subpixelIndex,
-                                int cameraId,
                                 int pixelSamples,
                                 const Sample& sample,
                                 RayState *rs) const
 {
     // Create primary ray.
     const Scene *scene = MNRY_VERIFY(pbrTls->mFs->mScene);
-    bool validRay = initPrimaryRay(pbrTls, scene->getCamera(cameraId), pixelX, pixelY,
+    bool validRay = initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY,
                                    subpixelIndex, pixelSamples, sample, rs->mRay,
                                    rs->mSubpixel, rs->mPathVertex);
     if (!validRay) {
@@ -1489,7 +1486,7 @@ PathIntegrator::queuePrimaryRay(pbr::TLState *pbrTls,
 
     // Fill in remaining RayState members.
     rs->mRay.mask = scene_rdl2::rdl2::CAMERA;
-    rs->mSequenceID = pbrTls->mFs->mInitialSeed[cameraId];
+    rs->mSequenceID = pbrTls->mFs->mInitialSeed;
 
     // LPE
     if (!pbrTls->mFs->mAovSchema->empty()) {

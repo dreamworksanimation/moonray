@@ -28,8 +28,6 @@ enum SHADING_Space {
     SHADING_SPACE_HAIR_CLOSEST_SURFACE_ST
 };
 
-#define MAX_CAMERAS 8   // Also in rendering/pbr/Types.hh
-
 /**
  * This structure encapsulates all the transform data used by
  * the xform library. In order to use any of the library functions in ISPC,
@@ -40,13 +38,13 @@ enum SHADING_Space {
  */
 struct Xform
 {
-    uniform Xform3f mR2C[MAX_CAMERAS];
+    uniform Xform3f mR2C;
     uniform Xform3f mR2W;
-    uniform Mat4f mR2S[MAX_CAMERAS];
+    uniform Mat4f mR2S;
     uniform Xform3f mR2O;
-    uniform Xform3f mR2CInv[MAX_CAMERAS];
+    uniform Xform3f mR2CInv;
     uniform Xform3f mR2WInv;
-    uniform Mat4f mR2SInv[MAX_CAMERAS];
+    uniform Mat4f mR2SInv;
     uniform Xform3f mR2OInv;
     uniform intptr_t mGetR2OFn; // Function pointer to getR2O()
     uniform int mUseExternalObj;

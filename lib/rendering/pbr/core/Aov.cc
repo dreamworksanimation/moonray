@@ -268,7 +268,6 @@ AovSchema::EntryData::toString() const
          << "  filter:" << aovFilterToString(filter) << '\n'
          << "  varianceIndex:" << varianceIndex << '\n'
          << "  storageType:" << aovStorageTypeToString(storageType) << '\n'
-         << "  cameraId:" << cameraId << '\n'
          << "}";
     return ostr.str();
 }
@@ -283,7 +282,6 @@ AovSchema::Entry::toString() const
          << "  mNumChannels:" << mNumChannels << '\n'
          << "  mFilter:" << aovFilterToString(mFilter) << '\n'
          << "  mStorageType:" << aovStorageTypeToString(mStorageType) << '\n'
-         << "  mCameraId:" << mCameraId << '\n'
          << "}";
     return ostr.str();
 }
@@ -344,7 +342,6 @@ AovSchema::initFloatArray(float *aovs) const
 static void
 addToBundledQueue(pbr::TLState *pbrTls,
                   const AovSchema &aovSchema,
-                  int cameraId,
                   float depth,
                   const uint32_t aovTypeMask,
                   const float *aovValues,
@@ -378,7 +375,7 @@ addToBundledQueue(pbr::TLState *pbrTls,
     const float *result = aovValues;
     for (const auto &entry: aovSchema) {
         const unsigned int nchans = entry.numChannels();
-        if ((entry.type() & aovTypeMask) && entry.cameraId() == cameraId) {
+        if (entry.type() & aovTypeMask) {
             if (entry.filter() == AOV_FILTER_CLOSEST &&
                 aov + nchans + 1 >= BundledAov::MAX_AOV) {
                 // A closest filtered value cannot be split
@@ -442,7 +439,6 @@ addToBundledQueue(pbr::TLState *pbrTls,
 static void
 addToBundledQueue(pbr::TLState *pbrTls,
                   const AovSchema &aovSchema,
-                  const uint32_t cameraId[],
                   const float depth[],
                   const float *aovValues,
                   const uint32_t lane,
@@ -487,48 +483,45 @@ addToBundledQueue(pbr::TLState *pbrTls,
                 continue;
             }
 
-            if (entry.cameraId() == cameraId[lane]) {
+            if (entry.filter() == AOV_FILTER_CLOSEST &&
+                aov + nchans + 1 >= BundledAov::MAX_AOV) {
+                // A closest filtered value cannot be split
+                // across bundles.  So flush if needed
+                MNRY_ASSERT(aov != 0);
+                queueBundledAov();
+                initBundledAov();
+            }
 
-                if (entry.filter() == AOV_FILTER_CLOSEST &&
-                    aov + nchans + 1 >= BundledAov::MAX_AOV) {
-                    // A closest filtered value cannot be split
-                    // across bundles.  So flush if needed
-                    MNRY_ASSERT(aov != 0);
+            for (unsigned int c = 0; c < nchans; ++c) {
+                const float value = result[lane + c * VLEN];
+                // When averaging or summing, only queue non-zero values (otherwise it's wasted effort).
+                // When using min, max or closest filters, only queue finite values (because the frame
+                // buffer is already cleared with the appropriate +/-inf).
+                if ((value != 0.f && entry.filter() <= AOV_FILTER_SUM) ||
+                    (scene_rdl2::math::isfinite(value) && entry.filter() > AOV_FILTER_SUM)) {
+                    bundledAov.setAov(aov++, value, aovIdx + c);
+                }
+
+                // flush if needed
+                if (aov == BundledAov::MAX_AOV) {
+                    MNRY_ASSERT(entry.filter() != AOV_FILTER_CLOSEST);
                     queueBundledAov();
                     initBundledAov();
                 }
-
-                for (unsigned int c = 0; c < nchans; ++c) {
-                    const float value = result[lane + c * VLEN];
-                    // When averaging or summing, only queue non-zero values (otherwise it's wasted effort).
-                    // When using min, max or closest filters, only queue finite values (because the frame
-                    // buffer is already cleared with the appropriate +/-inf).
-                    if ((value != 0.f && entry.filter() <= AOV_FILTER_SUM) ||
-                        (scene_rdl2::math::isfinite(value) && entry.filter() > AOV_FILTER_SUM)) {
-                        bundledAov.setAov(aov++, value, aovIdx + c);
-                    }
-
-                    // flush if needed
-                    if (aov == BundledAov::MAX_AOV) {
-                        MNRY_ASSERT(entry.filter() != AOV_FILTER_CLOSEST);
-                        queueBundledAov();
-                        initBundledAov();
-                    }
-                }
-
-                // Add the depth if indicated
-                if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH) {
-                    bundledAov.setAov(aov++, depth[lane]);
-                    // flush if needed
-                    if (aov == BundledAov::MAX_AOV) {
-                        queueBundledAov();
-                        initBundledAov();
-                    }
-                }
-
-                // Not sparse, so advance result now
-                result += nchans * VLEN;
             }
+
+            // Add the depth if indicated
+            if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH) {
+                bundledAov.setAov(aov++, depth[lane]);
+                // flush if needed
+                if (aov == BundledAov::MAX_AOV) {
+                    queueBundledAov();
+                    initBundledAov();
+                }
+            }
+
+            // Not sparse, so advance result now
+            result += nchans * VLEN;
         }
 
         // advance aovIdx
@@ -554,8 +547,6 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
-    const int cameraId = isect.getCameraId();
-
     // Do we need to compute a depth value?
     float depth = scene_rdl2::math::inf;
     const FrameState &fs = *pbrTls->mFs;
@@ -565,15 +556,15 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
             if (entry.stateAovId() == AOV_SCHEMA_ID_STATE_DEPTH ||
                 entry.filter() == AOV_FILTER_CLOSEST) {
                 // compute it
-                depth = scene.getCamera(cameraId)->computeZDistance(isect.getP(),
-                                                                    ray.getOrigin(),
-                                                                    ray.getTime());
+                depth = scene.getCamera()->computeZDistance(isect.getP(),
+                                                            ray.getOrigin(),
+                                                            ray.getTime());
                 break;
             }
         }
     }
 
-    addToBundledQueue(pbrTls, aovSchema, cameraId, depth, aovTypeMask, aovValues, true, 0, 1,
+    addToBundledQueue(pbrTls, aovSchema, depth, aovTypeMask, aovValues, true, 0, 1,
                       pixel, deepDataHandle, film);
 }
 
@@ -583,7 +574,6 @@ aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
                                const mcrt_common::RayDifferential &ray,
                                const uint32_t aovTypeMask,
                                const float *aovValues,
-                               const int cameraId,
                                uint32_t pixel,
                                uint32_t deepDataHandle,
                                uint32_t film)
@@ -592,7 +582,7 @@ aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
 
     float depth = scene_rdl2::math::inf; // hard surface depth, not applicable here
 
-    addToBundledQueue(pbrTls, aovSchema, cameraId, depth, aovTypeMask, aovValues, true, 0, 1,
+    addToBundledQueue(pbrTls, aovSchema, depth, aovTypeMask, aovValues, true, 0, 1,
                       pixel, deepDataHandle, film);
 }
 
@@ -702,10 +692,10 @@ sampleWireframe(const shading::Intersection &isect)
 // ispc hook
 void
 CPP_computeMotion(intptr_t scenePtr, float time, const Vec3f *p, const Vec3f *dp,
-                  int cameraId, Vec2f *result)
+                  Vec2f *result)
 {
     const Scene *scene = reinterpret_cast<const Scene *>(scenePtr);
-    const Camera *pbrCamera = scene->getCamera(cameraId);
+    const Camera *pbrCamera = scene->getCamera();
     MNRY_ASSERT(pbrCamera);
 
     const float halfDt = 0.01f;
@@ -763,8 +753,7 @@ CPP_computeMotion(intptr_t scenePtr, float time, const Vec3f *p, const Vec3f *dp
 static Vec2f
 computeMotion(const shading::Intersection &isect,
               const mcrt_common::RayDifferential &ray,
-              const Scene &scene,
-              int cameraId)
+              const Scene &scene)
 {
     // use CPP_computeMotion, which is shared with ISPC
     intptr_t scenePtr = (intptr_t) &scene;
@@ -778,7 +767,7 @@ computeMotion(const shading::Intersection &isect,
         dpPtr = &dp;
     }
     Vec2f motion;
-    CPP_computeMotion(scenePtr, time, &p, dpPtr, cameraId, &motion);
+    CPP_computeMotion(scenePtr, time, &p, dpPtr, &motion);
 
     return motion;
 }
@@ -792,7 +781,6 @@ computeMotion(const shading::Intersection &isect,
 void
 aovSetBeautyAndAlpha(pbr::TLState *pbrTls,
                      const AovSchema &aovSchema,
-                     int cameraId,
                      const Color &c,
                      float alpha,
                      float pixelWeight,
@@ -801,16 +789,14 @@ aovSetBeautyAndAlpha(pbr::TLState *pbrTls,
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
     for (const auto &entry: aovSchema) {
-        if (entry.cameraId() == cameraId) {
-            if (entry.type() == AOV_TYPE_BEAUTY) {
-                const float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
-                dest[0] = c[0] * weight;
-                dest[1] = c[1] * weight;
-                dest[2] = c[2] * weight;
-            } else if (entry.type() == AOV_TYPE_ALPHA) {
-                const float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
-                dest[0] = alpha * weight;
-            }
+        if (entry.type() == AOV_TYPE_BEAUTY) {
+            const float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
+            dest[0] = c[0] * weight;
+            dest[1] = c[1] * weight;
+            dest[2] = c[2] * weight;
+        } else if (entry.type() == AOV_TYPE_ALPHA) {
+            const float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
+            dest[0] = alpha * weight;
         }
 
         // onto the next
@@ -823,7 +809,7 @@ aovSetBeautyAndAlpha(pbr::TLState *pbrTls,
 static inline void
 getStateVarVolumeOnly(int aovSchemaId, float volumeT,
                       const mcrt_common::RayDifferential &ray, const Scene &scene,
-                      float pixelWeight, int cameraId, float *dest)
+                      float pixelWeight, float *dest)
 {
     MNRY_ASSERT(aovType(aovSchemaId) == AOV_TYPE_STATE_VAR);
 
@@ -887,7 +873,7 @@ getStateVarVolumeOnly(int aovSchemaId, float volumeT,
 static inline void
 getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
             const mcrt_common::RayDifferential &ray, const Scene &scene,
-            float pixelWeight, int cameraId, float *dest)
+            float pixelWeight, float *dest)
 {
     MNRY_ASSERT(aovType(aovSchemaId) == AOV_TYPE_STATE_VAR);
 
@@ -969,7 +955,7 @@ getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
             break;
         case AOV_SCHEMA_ID_STATE_DEPTH:
             {
-                float cameraZ = scene.getCamera(cameraId)->computeZDistance(
+                float cameraZ = scene.getCamera()->computeZDistance(
                                     isect.getP(), ray.getOrigin(), ray.getTime());
                 // Same conversion we use in the DeepBuffer
                 float volumeZ = -volumeT * ray.getDirection().z;
@@ -979,7 +965,7 @@ getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
             }
         case AOV_SCHEMA_ID_STATE_MOTION:
             {
-                const Vec2f v = computeMotion(isect, ray, scene, cameraId) * pixelWeight;
+                const Vec2f v = computeMotion(isect, ray, scene) * pixelWeight;
                 *dest       = v.x;
                 *(dest + 1) = v.y;
             }
@@ -995,7 +981,6 @@ getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
 void
 aovSetStateVars(pbr::TLState *pbrTls,
                 const AovSchema &aovSchema,
-                int cameraId,
                 const shading::Intersection &isect,
                 float volumeT,
                 const mcrt_common::RayDifferential &ray,
@@ -1006,9 +991,9 @@ aovSetStateVars(pbr::TLState *pbrTls,
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
     for (const auto &entry: aovSchema) {
-        if (entry.type() == AOV_TYPE_STATE_VAR && entry.cameraId() == cameraId) {
+        if (entry.type() == AOV_TYPE_STATE_VAR) {
             float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
-            getStateVar(entry.id(), isect, volumeT, ray, scene, weight, cameraId, dest);
+            getStateVar(entry.id(), isect, volumeT, ray, scene, weight, dest);
         }
 
         // onto the next
@@ -1019,7 +1004,6 @@ aovSetStateVars(pbr::TLState *pbrTls,
 void
 aovSetStateVarsVolumeOnly(pbr::TLState *pbrTls,
                           const AovSchema &aovSchema,
-                          int cameraId,
                           float volumeT,
                           const mcrt_common::RayDifferential &ray,
                           const Scene &scene,
@@ -1029,9 +1013,9 @@ aovSetStateVarsVolumeOnly(pbr::TLState *pbrTls,
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
     for (const auto &entry: aovSchema) {
-        if (entry.type() == AOV_TYPE_STATE_VAR && entry.cameraId() == cameraId) {
+        if (entry.type() == AOV_TYPE_STATE_VAR) {
             float weight = (entry.filter() == AOV_FILTER_AVG) ? pixelWeight : 1.0f;
-            getStateVarVolumeOnly(entry.id(), volumeT, ray, scene, weight, cameraId, dest);
+            getStateVarVolumeOnly(entry.id(), volumeT, ray, scene, weight, dest);
         }
 
         // onto the next
@@ -1153,7 +1137,6 @@ getMissValue(AovFilter filter)
 void
 aovSetPrimAttrs(pbr::TLState *pbrTls,
                 const AovSchema &aovSchema,
-                int cameraId,
                 const std::vector<char> &activeFlags,
                 const shading::Intersection &isect,
                 float pixelWeight,
@@ -1163,7 +1146,7 @@ aovSetPrimAttrs(pbr::TLState *pbrTls,
 
     auto af = activeFlags.begin();
     for (const auto &entry: aovSchema) {
-        if (entry.type() == AOV_TYPE_PRIM_ATTR && entry.cameraId() == cameraId && *af) {
+        if (entry.type() == AOV_TYPE_PRIM_ATTR && *af) {
             float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
             float missValue = getMissValue(entry.filter());
             getPrimAttr(aovToGeomIndex(entry.id()), isect, weight, missValue, dest);
@@ -1536,10 +1519,10 @@ computeMattev(const MaterialAovs::ComputeParamsv &p, float *dest)
 // where there is no Scene struct, so the type for
 // Scene* is just inptr_t
 static void
-getRender2Camera(intptr_t scenePtr, float t, int cameraId, Mat4f *r2c)
+getRender2Camera(intptr_t scenePtr, float t, Mat4f *r2c)
 {
     const Scene *scene = reinterpret_cast<const Scene *>(scenePtr);
-    const Camera *camera = scene->getCamera(cameraId);
+    const Camera *camera = scene->getCamera();
     if (scene_rdl2::math::isZero(t)) {
         // the pbr::Camera caches this xform
         *r2c = camera->getRender2Camera();
@@ -2132,7 +2115,7 @@ computeStateAov(const MaterialAovs::ComputeParams &p, float *dest)
     if (matched) {
         // if we matched, we compute the state aov
         getStateVar(p.mEntry.mStateAovId, p.mIsect, scene_rdl2::math::sMaxValue, p.mRay, p.mScene,
-                    p.mPixelWeight, p.mIsect.getCameraId(), dest);
+                    p.mPixelWeight, dest);
     } else {
         // if not, need to fill in dest with an appropriate miss value
         setMissValue(p, dest);
@@ -2934,7 +2917,6 @@ MaterialAovs::computeVector(pbr::TLState *pbrTls,
 void
 aovSetMaterialAovs(pbr::TLState *pbrTls,
                    const AovSchema &aovSchema,
-                   int cameraId,
                    const LightAovs &lightAovs,
                    const MaterialAovs &materialAovs,
                    const shading::Intersection &isect,
@@ -2952,7 +2934,7 @@ aovSetMaterialAovs(pbr::TLState *pbrTls,
 
     for (const auto &entry: aovSchema) {
 
-        if (entry.type() == AOV_TYPE_MATERIAL_AOV && entry.cameraId() == cameraId) {
+        if (entry.type() == AOV_TYPE_MATERIAL_AOV) {
             float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
             materialAovs.computeScalar(pbrTls, entry.id(), lightAovs, isect,
                                        ray, scene, bsdf,
@@ -2968,7 +2950,6 @@ aovSetMaterialAovs(pbr::TLState *pbrTls,
 void
 aovSetMaterialAovs(pbr::TLState *pbrTls,
                    const AovSchema &aovSchema,
-                   int cameraId,
                    const LightAovs &lightAovs,
                    const MaterialAovs &materialAovs,
                    const shading::Intersection &isect,
@@ -2985,7 +2966,7 @@ aovSetMaterialAovs(pbr::TLState *pbrTls,
 
     for (const auto &entry: aovSchema) {
 
-        if (entry.type() == AOV_TYPE_MATERIAL_AOV && entry.cameraId() == cameraId) {
+        if (entry.type() == AOV_TYPE_MATERIAL_AOV) {
             float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
             materialAovs.computeScalar(pbrTls, entry.id(), lightAovs, isect,
                                        ray, scene, bsdf,
@@ -3001,7 +2982,6 @@ aovSetMaterialAovs(pbr::TLState *pbrTls,
 void
 CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
                        const AovSchema &aovSchema,
-                       const uint32_t cameraId[],
                        const LightAovs &lightAovs,
                        const MaterialAovs &materialAovs,
                        const shading::Intersectionv &isect,
@@ -3084,7 +3064,7 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
     for (unsigned int lane = 0; lane < VLEN; ++lane) {
         if (!(lanemask & (1 << lane))) continue;
         // We need to call a version of addToBundledQueue() that passes the array of per-entry lane masks from above
-        addToBundledQueue(pbrTls, aovSchema, cameraId, depth,
+        addToBundledQueue(pbrTls, aovSchema, depth,
                           buffer, lane, materialAovLanemasks, pixel,
                           deepDataHandle, filmIdx);
     }
@@ -3657,7 +3637,6 @@ template<AovType type, typename VALUE>
 bool
 aovAccumLpeAovs(pbr::TLState *pbrTls,
                 const AovSchema &aovSchema,
-                int cameraId,
                 const LightAovs &lightAovs,
                 const VALUE &matchValue,          // the value used for avg filters if aov matches prefixFlags
                 const VALUE &matchSampleValue,    // the value used for sum, max and min filters if aov matches 
@@ -3671,7 +3650,7 @@ aovAccumLpeAovs(pbr::TLState *pbrTls,
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
     bool success = false;
     for (const auto &entry: aovSchema) {
-        if (entry.type() == type && entry.cameraId() == cameraId) {
+        if (entry.type() == type) {
             if (lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
                 // Make sure to keep (== prefixFlags) as this statement should always hold true when prefixFlags == 0.
                 const bool aovMatchPrefixFlags = (entry.lpePrefixFlags() & prefixFlags) == prefixFlags;
@@ -3719,7 +3698,6 @@ aovAccumLpeAovs(pbr::TLState *pbrTls,
 bool
 aovAccumLightAovs(pbr::TLState *pbrTls,
                   const AovSchema &aovSchema,
-                  int cameraId,
                   const LightAovs &lightAovs,
                   const scene_rdl2::math::Color &matchValue,
                   const scene_rdl2::math::Color *nonMatchValue,
@@ -3728,20 +3706,19 @@ aovAccumLightAovs(pbr::TLState *pbrTls,
                   float *dest)
 {
     return aovAccumLpeAovs<AOV_TYPE_LIGHT_AOV, Color>(pbrTls, aovSchema,
-        cameraId, lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags, lpeStateId, dest);
+        lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags, lpeStateId, dest);
 }
 
 bool
 aovAccumVisibilityAovs(pbr::TLState *pbrTls,
                        const AovSchema &aovSchema,
-                       int cameraId,
                        const LightAovs &lightAovs,
                        const Vec2f &value,
                        int lpeStateId,
                        float *dest)
 {
     return aovAccumLpeAovs<AOV_TYPE_VISIBILITY_AOV, Vec2f>(pbrTls, aovSchema,
-        cameraId, lightAovs, value, value, /* nonMatchValue = */ nullptr, /* nonMatchSampleValue = */nullptr, 
+        lightAovs, value, value, /* nonMatchValue = */ nullptr, /* nonMatchSampleValue = */nullptr, 
         AovSchema::sLpePrefixNone, lpeStateId, dest);
 }
 
@@ -3749,7 +3726,6 @@ template<AovType type, typename VALUE>
 bool
 aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
                        const AovSchema &aovSchema,
-                       int cameraId,
                        const LightAovs &lightAovs,
                        const VALUE &matchValue,            // used for avg filters
                        const VALUE &matchSampleValue,      // used for sum, max, and min filters
@@ -3775,7 +3751,7 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
     BundledAov bundledAov(pixel, pbr::nullHandle, film);
     for (const auto &entry: aovSchema) {
 
-        if (entry.type() == type && entry.cameraId() == cameraId) {
+        if (entry.type() == type) {
             if (lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
                 // Make sure to keep (== prefixFlags) as this statement should always hold true when prefixFlags == 0.
                 const bool aovMatchPrefixFlags = (entry.lpePrefixFlags() & prefixFlags) == prefixFlags;
@@ -3842,7 +3818,6 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
 bool
 aovAccumLightAovsBundled(pbr::TLState *pbrTls,
                          const AovSchema &aovSchema,
-                         int cameraId,
                          const LightAovs &lightAovs,
                          const Color &matchValue,
                          const Color *nonMatchValue,
@@ -3853,14 +3828,13 @@ aovAccumLightAovsBundled(pbr::TLState *pbrTls,
                          uint32_t film)
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls, aovSchema,
-        cameraId, lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags,
+        lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags,
         lpeStateId, pixel, deepDataHandle, film);
 }
 
 bool
 aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                          const AovSchema &aovSchema,
-                         int cameraId,
                          const LightAovs &lightAovs,
                          const Vec2f &value,
                          int lpeStateId,
@@ -3869,7 +3843,7 @@ aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                          uint32_t film)
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_VISIBILITY_AOV, Vec2f>(
-        pbrTls, aovSchema, cameraId, lightAovs, value, value, /* nonMatchValue = */ nullptr,
+        pbrTls, aovSchema, lightAovs, value, value, /* nonMatchValue = */ nullptr,
         /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, film);
 }
 
@@ -3880,7 +3854,6 @@ aovAccumExtraAovs(pbr::TLState *pbrTls,
                   const PathVertex &pv,
                   const shading::Intersection &isect,
                   const scene_rdl2::rdl2::Material *mat,
-                  int cameraId,
                   float *dest)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
@@ -3908,7 +3881,6 @@ aovAccumExtraAovs(pbr::TLState *pbrTls,
         // lpeStateId.
         MNRY_VERIFY((aovAccumLpeAovs<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                aovSchema,
-                                                               cameraId,
                                                                lightAovs,
                                                                value * pv.pathThroughput,
                                                                value,
@@ -3968,7 +3940,6 @@ aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
                 const unsigned int idx = ray - block * VLEN;
                 if (lpeStateIds[idx] >= 0) {
                     const PathVertex &pv = rayStates[ray]->mPathVertex;
-                    const int cameraId = rayStates[ray]->mCameraId;
                     const uint32_t pixel = rayStates[ray]->mSubpixel.mPixel;
                     const uint32_t deepDataHandle = rayStates[ray]->mDeepDataHandle;
                     const uint32_t film = getFilm(rayStates[ray]->mTilePassAndFilm);
@@ -3981,7 +3952,6 @@ aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
                     // it has not been multiplied into the path throughput yet.
                     MNRY_VERIFY((aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                                   aovSchema,
-                                                                                  cameraId,
                                                                                   lightAovs,
                                                                                   value * pv.pathThroughput * presences[ray],
                                                                                   value,
@@ -4004,7 +3974,6 @@ void
 aovAccumPostScatterExtraAovs(pbr::TLState *pbrTls,
                              const FrameState &fs,
                              const PathVertex &pv,
-                             int cameraId,
                              const Bsdf &bsdf,
                              float *dest)
 {
@@ -4021,7 +3990,6 @@ aovAccumPostScatterExtraAovs(pbr::TLState *pbrTls,
             if (lpeStateId != -1) {
                 MNRY_VERIFY((aovAccumLpeAovs<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                        aovSchema,
-                                                                       cameraId,
                                                                        lightAovs,
                                                                        value * pv.pathThroughput,
                                                                        value,
@@ -4043,7 +4011,6 @@ void
 aovAccumBackgroundExtraAovs(pbr::TLState *pbrTls,
                             const FrameState &fs,
                             const PathVertex &pv,
-                            int cameraId,
                             float *dest)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
@@ -4061,7 +4028,6 @@ aovAccumBackgroundExtraAovs(pbr::TLState *pbrTls,
         const scene_rdl2::math::Color &value = lightAovs.getBackgroundExtraAovs()[i].mColor;
         MNRY_VERIFY((aovAccumLpeAovs<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                aovSchema,
-                                                               cameraId,
                                                                lightAovs,
                                                                value * pv.pathThroughput,
                                                                value,
@@ -4091,7 +4057,6 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
         const int lpeStateId = lightAovs.extraAovEventTransition(pbrTls, pv.lpeStateId, bgLabelId);
         if (lpeStateId == -1) continue;
 
-        const int cameraId = rs->mCameraId;
         const uint32_t pixel = rs->mSubpixel.mPixel;
         const uint32_t deepDataHandle = rs->mDeepDataHandle;
         const uint32_t film = getFilm(rs->mTilePassAndFilm);
@@ -4114,7 +4079,6 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
         const scene_rdl2::math::Color &value = lightAovs.getBackgroundExtraAovs()[i].mColor;
         MNRY_VERIFY((aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                       aovSchema,
-                                                                      cameraId,
                                                                       lightAovs,
                                                                       value * pt,
                                                                       value,
@@ -4132,7 +4096,6 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
 extern "C" void
 CPP_aovAccumLightAovs(pbr::TLState *pbrTls,
                       const AovSchema &aovSchema,
-                      uint32_t cameraId,
                       const LightAovs &lightAovs,
                       const Color &value,
                       int lpeStateId,
@@ -4142,14 +4105,13 @@ CPP_aovAccumLightAovs(pbr::TLState *pbrTls,
 {
     // TODO: fix accumulator parameter.
     // CPP_aovAccumLightAovs doesn't have to take into account flags, so we won't include them.
-    aovAccumLightAovsBundled(pbrTls, aovSchema, cameraId, lightAovs, value, nullptr, 
+    aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, value, nullptr, 
                              AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, film);
 }
 
 extern "C" void
 CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
                                 const AovSchema &aovSchema,
-                                uint32_t cameraId,
                                 const LightAovs &lightAovs,
                                 const Color &value,
                                 const Color &sampleValue,
@@ -4165,7 +4127,6 @@ CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
     if (lpeStateId != -1) {
         MNRY_VERIFY((aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls,
                                                                       aovSchema,
-                                                                      cameraId,
                                                                       lightAovs,
                                                                       value,
                                                                       sampleValue,

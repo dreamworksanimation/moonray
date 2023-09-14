@@ -118,7 +118,7 @@ struct BundledOcclRayData
     static uint32_t hudValidation(bool verbose) { BUNDLED_OCCL_RAY_DATA_VALIDATION; }
 };
 
-MNRY_STATIC_ASSERT(sizeof(BundledOcclRayData) == 40);
+MNRY_STATIC_ASSERT(sizeof(BundledOcclRayData) == 32);
 
 struct CACHE_ALIGN BundledOcclRay
 {

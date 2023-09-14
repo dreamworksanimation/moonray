@@ -128,7 +128,7 @@ applyRussianRoulette(float r, float threshold, float invThreshold, int nonMirror
 
 scene_rdl2::math::Color
 PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
     const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler, const scene_rdl2::math::Color &pt,
     const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const
@@ -228,7 +228,7 @@ PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
                     // Add any visibility information:
                     if (addVisibilityAov) {
                         if (lightAovs.hasVisibilityEntries()) {
-                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                                     scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs)) {
                                 addVisibilityAov = false; // add visibility aov at most once per shadow ray
                             }
@@ -240,7 +240,7 @@ PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
                         if (pv.nonMirrorDepth >= mSampleClampingDepth) {
                             unoccludedLobeContribution = smartClamp(unoccludedLobeContribution, sp.mSampleClampingValue);
                         }
-                        aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeContribution, nullptr, 
+                        aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeContribution, nullptr, 
                             AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                     }
                 }
@@ -286,17 +286,17 @@ PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
             // Accumulate aovs depending on whether or not the unoccluded flag is set.
             if (hasUnoccludedFlag) {
                 // If the unoccluded flag is set we have to add unoccluded and occluded (with presence and volumes) separately.
-                aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeContribution, 
+                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeContribution, 
                                   &lobeContribution, AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
             } else {
                 // Otherwise, just add the contribution to all non-pre-occlusion aovs.
-                aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, lobeContribution, nullptr, 
+                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lobeContribution, nullptr, 
                                   AovSchema::sLpePrefixNone, lpeStateId, aovs);
             }
 
             // visibilty aov
             if (addVisibilityAov && lightAovs.hasVisibilityEntries()) {
-                if (aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                         scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f), lpeStateId, aovs)) {
                     addVisibilityAov = false; // add visibility aov at most once per shadow ray
                 }
@@ -311,7 +311,7 @@ PathIntegrator::oneSamplerDirectLight(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::oneSamplerDirectBsdf(pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
     const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler, const scene_rdl2::math::Color &pt,
     const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const
@@ -428,10 +428,10 @@ PathIntegrator::oneSamplerDirectBsdf(pbr::TLState *pbrTls,
                 lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
                 // accumulate matching aovs
                 if (fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded)) {
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeContribution, &lobeContribution,
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeContribution, &lobeContribution,
                                       AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                 } else {
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, lobeContribution, nullptr,
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lobeContribution, nullptr,
                                       AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
             }
@@ -467,7 +467,7 @@ PathIntegrator::oneSamplerDirectBsdf(pbr::TLState *pbrTls,
                     *(lobesContribution.mLobes[lobeIndex]));
                 lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
                 // accumulate matching aovs
-                aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeContribution, nullptr,
+                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeContribution, nullptr,
                                   AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
             }
         }
@@ -477,7 +477,7 @@ PathIntegrator::oneSamplerDirectBsdf(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::oneSamplerDirect(pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const BsdfOneSampler &bsdfOneSampler,
     const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal, float rayEpsilon, float shadowRayEpsilon,
     IntegratorSample1D &rrSamples, unsigned sequenceID, float *aovs) const
@@ -588,7 +588,7 @@ PathIntegrator::oneSamplerDirect(pbr::TLState *pbrTls,
                 lightFilterSamples3D.getSample(&r[6], pv.nonMirrorDepth);
             }
 
-            radiance += oneSamplerDirectLight(pbrTls, sp, cameraId, pv, ray,
+            radiance += oneSamplerDirectLight(pbrTls, sp, pv, ray,
                 isect, light, lightFilterList, cullingNormal, bsdfOneSampler, pt, r,
                 rayEpsilon, shadowRayEpsilon, sequenceID, aovs);
 
@@ -602,7 +602,7 @@ PathIntegrator::oneSamplerDirect(pbr::TLState *pbrTls,
                 lightFilterSamples3D.getSample(&r[6], pv.nonMirrorDepth);
             }
 
-            radiance += oneSamplerDirectBsdf(pbrTls, sp, cameraId, pv, ray,
+            radiance += oneSamplerDirectBsdf(pbrTls, sp, pv, ray,
                 isect, light, lightFilterList, cullingNormal, bsdfOneSampler, pt, r,
                 rayEpsilon, shadowRayEpsilon, sequenceID, aovs);
         }
@@ -613,7 +613,7 @@ PathIntegrator::oneSamplerDirect(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::oneSamplerRayTerminatorLights(pbr::TLState *pbrTls,
-    int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const scene_rdl2::math::Vec3f &wi, float pdfBsdf,
     const shading::BsdfLobe &lobe, const shading::Bsdf &bsdf,
     const LightSet &activeLightSet, const LightFilterRandomValues& lightFilterR,
@@ -660,7 +660,7 @@ PathIntegrator::oneSamplerRayTerminatorLights(pbr::TLState *pbrTls,
             lpeStateId = lightAovs.scatterEventTransition(pbrTls, lpeStateId, bsdf, lobe);
             lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
             // Accumulate matching aovs. Don't have to worry about pre-occlusion aovs.
-            aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contribution, nullptr,
+            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contribution, nullptr,
                               AovSchema::sLpePrefixNone, lpeStateId, aovs);
         }
     }
@@ -670,7 +670,7 @@ PathIntegrator::oneSamplerRayTerminatorLights(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
     bool doIndirect, const shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
     int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
@@ -693,7 +693,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
         // Since we don't produce BsdfSample objects like multi-sample,
         // we can pack the material aovs now.  The albedo aov will use the slice
         // and the lobe albedo methods.
-        aovSetMaterialAovs(pbrTls, aovSchema, cameraId, lightAovs, materialAovs, isect,
+        aovSetMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs, isect,
             ray, scene, bsdf, ssAov, &slice, pv.aovPathPixelWeight, pv.lpeStateId, aovs);
     }
 
@@ -707,7 +707,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
     // First do NEE
     const bool doNEE = mLightSamples != 0;
     if (doNEE) {
-        radiance += oneSamplerDirect(pbrTls, sp, cameraId, pv, ray, isect, bsdfOneSampler,
+        radiance += oneSamplerDirect(pbrTls, sp, pv, ray, isect, bsdfOneSampler,
             activeLightSet, cullingNormal, rayEpsilon, shadowRayEpsilon, rrSamples, sequenceID, aovs);
     }
 
@@ -876,7 +876,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
                     LightFilterRandomValues lightFilterR = { 
                         scene_rdl2::math::Vec2f(r[4], r[5]), 
                         scene_rdl2::math::Vec3f(r[6], r[7], r[8])};
-                    radiance += oneSamplerRayTerminatorLights(pbrTls, cameraId, pv, ray, isect, wi, pdfBsdf,
+                    radiance += oneSamplerRayTerminatorLights(pbrTls, pv, ray, isect, wi, pdfBsdf,
                         *lobe, bsdf, activeLightSet, lightFilterR, cullingNormal, pt, aovs);
                 }
                 continue; // terminate the path
@@ -937,7 +937,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
             // transition
             nextPv.lpeStateId = lightAovs.scatterEventTransition(pbrTls, pv.lpeStateId, bsdf, *lobe);
             // Accumulate post scatter extra aovs
-            aovAccumPostScatterExtraAovs(pbrTls, fs, pv, cameraId, bsdf, aovs);
+            aovAccumPostScatterExtraAovs(pbrTls, fs, pv, bsdf, aovs);
         }
 
         // We have some self-intersections when rays leave at grazing
@@ -1013,7 +1013,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
         VolumeTransmittance vtIndirect;
         ++sequenceID;
         bool hitVolume;
-        IndirectRadianceType result = computeRadianceRecurse(pbrTls, nextRay, sp, cameraId, nextPv,
+        IndirectRadianceType result = computeRadianceRecurse(pbrTls, nextRay, sp, nextPv,
             lobe, radianceIndirect, transparencyIndirect,
             vtIndirect, sequenceID, aovs, /* depth = */ nullptr, /* deepParams = */ nullptr,
             /* cryptomatteParams = */ nullptr, /* refractCryptomatteParams = */ nullptr, /* ignoreVolumes = */ false, hitVolume);
@@ -1051,7 +1051,7 @@ PathIntegrator::computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
                     int lpeStateId = nextPv.lpeStateId; // already includes the scatter event
                     lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, hitLight);
                     // Accumulate matching aovs. Don't have to worry about pre-occlusion aovs.
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contribution, nullptr, 
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contribution, nullptr, 
                                       AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
 

@@ -25,23 +25,23 @@ namespace pbr {
 
 float
 computeOpenGLDepth(mcrt_common::ThreadLocalState *tls, const Scene* scene,
-                   int cameraId, int pixelX, int pixelY)
+                   int pixelX, int pixelY)
 {
     // Initialize intersection
     shading::Intersection isect;
 
     // Initialize ray
     mcrt_common::RayDifferential ray;
-    scene->getCamera(cameraId)->createRay(&ray, pixelX + 0.5f, pixelY + 0.5f,
+    scene->getCamera()->createRay(&ray, pixelX + 0.5f, pixelY + 0.5f,
                           0.5f, 0.5f, 0.5f, false);
 
     // Initialize depth to the far plane of the camera
-    float depth = scene->getCamera(cameraId)->getRdlCamera()->get(scene_rdl2::rdl2::Camera::sFarKey);
+    float depth = scene->getCamera()->getRdlCamera()->get(scene_rdl2::rdl2::Camera::sFarKey);
     int lobeType = 0;
     // Intersect the ray with the scene. This does the heavy lifting.
     bool hitGeom = scene->intersectRay(tls, ray, isect, lobeType);
     // Transform intersection point into camera space
-    scene_rdl2::math::Vec3f p = transformPoint(scene->getCamera(cameraId)->getRender2Camera(), isect.getP());
+    scene_rdl2::math::Vec3f p = transformPoint(scene->getCamera()->getRender2Camera(), isect.getP());
 
     // Only executed for primary rays
     if (hitGeom) {
@@ -58,8 +58,7 @@ computeMaterial(mcrt_common::ThreadLocalState *tls, const Scene* scene,
     shading::Intersection isect;
 
     mcrt_common::RayDifferential ray;
-    // pick with primary camera (0)
-    scene->getCamera(0)->createRay(&ray, x + 0.5f, y + 0.5f,
+    scene->getCamera()->createRay(&ray, x + 0.5f, y + 0.5f,
                         0.5f, 0.5f, 0.5f, false);
 
     int lobeType = 0;
@@ -80,8 +79,7 @@ computePrimitive(mcrt_common::ThreadLocalState *tls, const Scene* scene,
     shading::Intersection isect;
 
     mcrt_common::RayDifferential ray;
-    // pick with primary camera (0)
-    scene->getCamera(0)->createRay(&ray, x + 0.5f, y + 0.5f,
+    scene->getCamera()->createRay(&ray, x + 0.5f, y + 0.5f,
                         0.5f, 0.5f, 0.5f, false);
 
     int lobeType = 0;
@@ -101,8 +99,7 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
     shading::Intersection isect;
 
     mcrt_common::RayDifferential ray;
-    // pick with primary camera (0)
-    scene->getCamera(0)->createRay(&ray, x + 0.5f, y + 0.5f,
+    scene->getCamera()->createRay(&ray, x + 0.5f, y + 0.5f,
                         0.5f, 0.5f, 0.5f, false);
 
     // Test whether we hit geometry
@@ -141,8 +138,6 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
     // Now we get the light contribution on that geometry.
 
     geom::initIntersectionPhase2(isect, tls, 0, 0, 0, true, scene_rdl2::math::Vec2f(0.0f), -ray.getDirection());
-
-    isect.setCameraId(0);  // primary
 
     float rayEpsilon = isect.getEpsilonHint();
     if (rayEpsilon <= 0.0f) {

@@ -55,7 +55,6 @@ transformPoint(const uniform Xform * const uniform xform,
 {
     varying Vec3f result;
     varying Vec3f rPoint;
-    varying int cameraId = state.mCameraId;
 
     // Transform to render space if necessary
     switch (srcSpace) {
@@ -63,7 +62,7 @@ transformPoint(const uniform Xform * const uniform xform,
         rPoint = inPoint;
         break;
     case SHADING_SPACE_CAMERA:
-        rPoint = transformPoint(xform->mR2CInv[cameraId], inPoint);
+        rPoint = transformPoint(xform->mR2CInv, inPoint);
         break;
     case SHADING_SPACE_WORLD:
         rPoint = transformPoint(xform->mR2WInv, inPoint);
@@ -71,7 +70,7 @@ transformPoint(const uniform Xform * const uniform xform,
     case SHADING_SPACE_SCREEN:
         {
             const varying Vec4f PH = Vec4f_ctor(inPoint.x, inPoint.y, inPoint.z, 1.f);
-            rPoint = transformH(xform->mR2SInv[cameraId], PH);
+            rPoint = transformH(xform->mR2SInv, PH);
         }
         break;
     case SHADING_SPACE_OBJECT:
@@ -94,7 +93,7 @@ transformPoint(const uniform Xform * const uniform xform,
         result = rPoint;
         break;
     case SHADING_SPACE_CAMERA:
-        result = transformPoint(xform->mR2C[cameraId], rPoint);
+        result = transformPoint(xform->mR2C, rPoint);
         break;
     case SHADING_SPACE_WORLD:
         result = transformPoint(xform->mR2W, rPoint);
@@ -102,7 +101,7 @@ transformPoint(const uniform Xform * const uniform xform,
     case SHADING_SPACE_SCREEN:
         {
             const Vec4f PH = Vec4f_ctor(rPoint.x, rPoint.y, rPoint.z, 1.f);
-            result = transformH(xform->mR2S[cameraId], PH);
+            result = transformH(xform->mR2S, PH);
         }
         break;
     case SHADING_SPACE_OBJECT:
@@ -131,7 +130,6 @@ transformNormal(const uniform Xform * const uniform xform,
 {
     varying Vec3f result;
     varying Vec3f rNormal;
-    varying int cameraId = state.mCameraId;
 
     // Transform to render space if necessary
     // Normal transform requires inverse transpose of a point xform matrix
@@ -141,13 +139,13 @@ transformNormal(const uniform Xform * const uniform xform,
         rNormal = inNormal;
         break;
     case SHADING_SPACE_CAMERA:
-        rNormal = transformNormal(xform->mR2C[cameraId], inNormal);
+        rNormal = transformNormal(xform->mR2C, inNormal);
         break;
     case SHADING_SPACE_WORLD:
         rNormal = transformNormal(xform->mR2W, inNormal);
         break;
     case SHADING_SPACE_SCREEN:
-        rNormal = transformNormal(xform->mR2S[cameraId], inNormal);
+        rNormal = transformNormal(xform->mR2S, inNormal);
         break;
     case SHADING_SPACE_OBJECT:
         {
@@ -169,13 +167,13 @@ transformNormal(const uniform Xform * const uniform xform,
         result = rNormal;
         break;
     case SHADING_SPACE_CAMERA:
-        result = transformNormal(xform->mR2CInv[cameraId], rNormal);
+        result = transformNormal(xform->mR2CInv, rNormal);
         break;
     case SHADING_SPACE_WORLD:
         result = transformNormal(xform->mR2WInv, rNormal);
         break;
     case SHADING_SPACE_SCREEN:
-        result = transformNormal(xform->mR2SInv[cameraId], rNormal);
+        result = transformNormal(xform->mR2SInv, rNormal);
         break;
     case SHADING_SPACE_OBJECT:
         {
@@ -203,7 +201,6 @@ transformVector(const uniform Xform * const uniform xform,
 {
     varying Vec3f result;
     varying Vec3f rVector;
-    varying int cameraId = state.mCameraId;
 
     // Transform to render space if necessary
     switch (srcSpace) {
@@ -211,13 +208,13 @@ transformVector(const uniform Xform * const uniform xform,
         rVector = inVector;
         break;
     case SHADING_SPACE_CAMERA:
-        rVector = transformVector(xform->mR2CInv[cameraId], inVector);
+        rVector = transformVector(xform->mR2CInv, inVector);
         break;
     case SHADING_SPACE_WORLD:
         rVector = transformVector(xform->mR2WInv, inVector);
         break;
     case SHADING_SPACE_SCREEN:
-        rVector = transformVector(xform->mR2SInv[cameraId], inVector);
+        rVector = transformVector(xform->mR2SInv, inVector);
         break;
     case SHADING_SPACE_OBJECT:
         {
@@ -239,13 +236,13 @@ transformVector(const uniform Xform * const uniform xform,
         result = rVector;
         break;
     case SHADING_SPACE_CAMERA:
-        result = transformVector(xform->mR2C[cameraId], rVector);
+        result = transformVector(xform->mR2C, rVector);
         break;
     case SHADING_SPACE_WORLD:
         result = transformVector(xform->mR2W, rVector);
         break;
     case SHADING_SPACE_SCREEN:
-        result = transformVector(xform->mR2S[cameraId], rVector);
+        result = transformVector(xform->mR2S, rVector);
         break;
     case SHADING_SPACE_OBJECT:
         {

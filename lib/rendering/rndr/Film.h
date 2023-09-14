@@ -76,7 +76,6 @@ public:
     void init(unsigned w, unsigned h,
               const scene_rdl2::math::Viewport &viewport,
               uint32_t flags,
-              int numCameras,
               int deepFormat,
               float deepCurvatureTolerance,
               float deepZTolerance,
@@ -147,7 +146,7 @@ public:
                                   const scene_rdl2::fb_util::RenderColor *accSamplesOdd);
 
     // This adds aovs to the Aov Buffers.
-    void addSamplesToAovBuffer(unsigned px, unsigned py, float *depths, const float *accAovs);
+    void addSamplesToAovBuffer(unsigned px, unsigned py, float depth, const float *accAovs);
 
     void addTileSamplesToDisplayFilterBuffer(unsigned bufferIdx,
                                              unsigned startX, unsigned startY,
@@ -159,15 +158,15 @@ private:
     // aovBuf are the aov pixel buffers
     // aovEntries provide metadata about the aov buffers
     // px, py is the pixel
-    // depths, one for each camera
+    // depth
     // aovs is the float array of aov values
     static void addAovSamplesToBuffer(std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuf,
                                       const std::vector<pbr::AovSchema::Entry> &aovEntries,
-                                      unsigned px, unsigned py, const float *depths, const float *aovs);
+                                      unsigned px, unsigned py, const float depth, const float *aovs);
 
     // Same as the above version but does accumulation internally using atomics
     // so it's safe to call in vector mode.
-    // The depths array contains a depth value, one per aovBuf, rather than one per camera.
+    // The depths array contains a depth value, one per aovBuf.
     // When bundling, we can't be sure that all values from a camera, came from the same
     // camera ray.
     static void addAovSamplesToBufferSafe(std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuf,
@@ -217,7 +216,7 @@ public:
         addSampleStatistics(px, py, idx, aovs);
     }
 
-    inline void setPixelInfo(int cameraId, unsigned px, unsigned py, const scene_rdl2::fb_util::PixelInfo &data);
+    inline void setPixelInfo(unsigned px, unsigned py, const scene_rdl2::fb_util::PixelInfo &data);
 
     inline unsigned getNumAovs() const { return mAovBuf.size(); }
 
@@ -230,8 +229,8 @@ public:
 
     inline float getWeight(unsigned px, unsigned py) const;
 
-    inline scene_rdl2::fb_util::PixelInfo &getPixelInfo(int cameraId, unsigned px, unsigned py);
-    inline const scene_rdl2::fb_util::PixelInfo &getPixelInfo(int cameraId, unsigned px, unsigned py) const;
+    inline scene_rdl2::fb_util::PixelInfo &getPixelInfo(unsigned px, unsigned py);
+    inline const scene_rdl2::fb_util::PixelInfo &getPixelInfo(unsigned px, unsigned py) const;
 
     inline int64_t &getHeatMap(unsigned px, unsigned py);
     inline const int64_t &getHeatMap(unsigned px, unsigned py) const;
@@ -269,9 +268,9 @@ public:
     const scene_rdl2::fb_util::VariablePixelBuffer &getDisplayFilterBuffer(unsigned idx) const { return mDisplayFilterBufs[idx]; }
     unsigned int getDisplayFilterCount() const { return mDisplayFilterBufs.size(); }
 
-    bool                           hasPixelInfoBuffer() const              { return mPixelInfoBufs.size() > 0; }
-    scene_rdl2::fb_util::PixelInfoBuffer       *getPixelInfoBuffer(int cameraId)       { return mPixelInfoBufs[cameraId]; }
-    const scene_rdl2::fb_util::PixelInfoBuffer *getPixelInfoBuffer(int cameraId) const { return mPixelInfoBufs[cameraId]; }
+    bool                           hasPixelInfoBuffer() const              { return mPixelInfoBuf != nullptr; }
+    scene_rdl2::fb_util::PixelInfoBuffer       *getPixelInfoBuffer()       { return mPixelInfoBuf; }
+    const scene_rdl2::fb_util::PixelInfoBuffer *getPixelInfoBuffer() const { return mPixelInfoBuf; }
 
     scene_rdl2::fb_util::HeatMapBuffer       *getHeatMapBuffer()       { return mHeatMapBuf; }
     const scene_rdl2::fb_util::HeatMapBuffer *getHeatMapBuffer() const { return mHeatMapBuf; }
@@ -420,13 +419,9 @@ protected:
     std::vector<scene_rdl2::fb_util::VariablePixelBuffer> mDisplayFilterBufs;
 
     // Optional, contains linear depth.
-    // One per camera.
-    std::vector<scene_rdl2::fb_util::PixelInfoBuffer *> mPixelInfoBufs;
+    scene_rdl2::fb_util::PixelInfoBuffer* mPixelInfoBuf;
 
     // Optional, contains heat map samples.
-    // Only one even if there's multiple cameras because it's impossible to split
-    // out the timings for rays from different cameras when they are all mixed together
-    // in bundled mode.
     scene_rdl2::fb_util::HeatMapBuffer * mHeatMapBuf;
 
     // The start condition of sampleId val at resume render situation. It's empty if non resume render case.
@@ -487,13 +482,13 @@ Film::fillPixelSampleCountBuffer(scene_rdl2::fb_util::PixelBuffer<unsigned>& buf
 // It is up to the client to check a pixel data buffer has been allocated before
 // calling this function.
 inline void
-Film::setPixelInfo(int cameraId, unsigned px, unsigned py, const scene_rdl2::fb_util::PixelInfo &data)
+Film::setPixelInfo(unsigned px, unsigned py, const scene_rdl2::fb_util::PixelInfo &data)
 {
-    MNRY_ASSERT(mPixelInfoBufs[cameraId]);
+    MNRY_ASSERT(mPixelInfoBuf);
 
     mTiler.linearToTiledCoords(px, py, &px, &py);
 
-    mPixelInfoBufs[cameraId]->setPixel(px, py, data);
+    mPixelInfoBuf->setPixel(px, py, data);
 
     updatePixelInfoBufferActivity();
 }
@@ -506,19 +501,19 @@ Film::getWeight(unsigned px, unsigned py) const
 }
 
 inline scene_rdl2::fb_util::PixelInfo &
-Film::getPixelInfo(int cameraId, unsigned px, unsigned py)
+Film::getPixelInfo(unsigned px, unsigned py)
 {
-    MNRY_ASSERT(mPixelInfoBufs[cameraId]);
+    MNRY_ASSERT(mPixelInfoBuf);
 
     mTiler.linearToTiledCoords(px, py, &px, &py);
 
-    return mPixelInfoBufs[cameraId]->getPixel(px, py);
+    return mPixelInfoBuf->getPixel(px, py);
 }
 
 inline const scene_rdl2::fb_util::PixelInfo &
-Film::getPixelInfo(int cameraId, unsigned px, unsigned py) const
+Film::getPixelInfo(unsigned px, unsigned py) const
 {
-    return const_cast<Film *>(this)->getPixelInfo(cameraId, px, py);
+    return const_cast<Film *>(this)->getPixelInfo(px, py);
 }
 
 inline int64_t &

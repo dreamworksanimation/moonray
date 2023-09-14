@@ -199,7 +199,6 @@ public:
             filter(AovFilter::AOV_FILTER_AVG),
             varianceIndex(sNoVarianceKey),
             storageType(AovStorageType::UNSPECIFIED),
-            cameraId(0),
             lpePrefixFlags(sLpePrefixNone),
             stateAovId(0)
         {
@@ -209,7 +208,6 @@ public:
         AovFilter filter;
         int varianceIndex;
         AovStorageType storageType;
-        int cameraId;
         int lpePrefixFlags;
         int stateAovId;
 
@@ -224,7 +222,6 @@ public:
             mNumChannels(aovNumChannels(data.schemaID)),
             mFilter(data.filter),
             mStorageType(data.storageType),
-            mCameraId(data.cameraId),
             mLpePrefixFlags(data.lpePrefixFlags),
             mStateAovId(data.stateAovId)
         {
@@ -235,7 +232,6 @@ public:
         unsigned int   numChannels()      const noexcept { return mNumChannels; }
         AovFilter      filter()           const noexcept { return mFilter; }
         AovStorageType storageType()      const noexcept { return mStorageType; }
-        int            cameraId()         const noexcept { return mCameraId; }
         int            lpePrefixFlags()   const noexcept { return mLpePrefixFlags; }
         int            stateAovId()       const noexcept { return mStateAovId; }
  
@@ -248,8 +244,6 @@ public:
             return 0.f;
         }
 
-        void updateCameraId(int cameraId) { mCameraId = cameraId; }
-
         std::string toString() const; // for debug
 
     private:
@@ -258,7 +252,6 @@ public:
         unsigned int   mNumChannels;
         AovFilter      mFilter;
         AovStorageType mStorageType;
-        int            mCameraId;
         int            mLpePrefixFlags;
         int            mStateAovId;
     };
@@ -340,7 +333,6 @@ int aovToRangeTypeOffset(int aovSchemaId);
 // Skips values in *dest that aren't beauty and alpha.
 void aovSetBeautyAndAlpha(pbr::TLState *pbrTls,
                           const AovSchema &aovSchema,
-                          int cameraId,
                           const scene_rdl2::math::Color &c,
                           float alpha,
                           float pixelWeight,
@@ -355,7 +347,6 @@ void aovSetBeautyAndAlpha(pbr::TLState *pbrTls,
 // dest size = aovSchema.numChannels()
 void aovSetStateVars(pbr::TLState *pbrTls,
                      const AovSchema &aovSchema,
-                     int cameraId,
                      const shading::Intersection &isect,
                      float volumeT,
                      const mcrt_common::RayDifferential &ray,
@@ -367,7 +358,6 @@ void aovSetStateVars(pbr::TLState *pbrTls,
 //  but no hard-surface isect.
 void aovSetStateVarsVolumeOnly(pbr::TLState *pbrTls,
                      const AovSchema &aovSchema,
-                     int cameraId,
                      float volumeT,
                      const mcrt_common::RayDifferential &ray,
                      const Scene &scene,
@@ -393,7 +383,6 @@ int aovFromGeomIndex(int geomIndex);
 // dest size = aovSchema.numChannels()
 void aovSetPrimAttrs(pbr::TLState *pbrTls,
                      const AovSchema &aovSchema,
-                     int cameraId,
                      const std::vector<char> &activeFlags,
                      const shading::Intersection &isect,
                      float pixelWeight,
@@ -719,7 +708,6 @@ void aovParseMaterialExpression(ParsedMaterialExpression *m);
 // dest size = aovSchema.numChannels()
 void aovSetMaterialAovs(pbr::TLState *pbrTls,
                         const AovSchema &aovSchema,
-                        int cameraId,
                         const LightAovs &lightAovs,
                         const MaterialAovs &materialAovs,
                         const shading::Intersection &isect,
@@ -738,7 +726,6 @@ void aovSetMaterialAovs(pbr::TLState *pbrTls,
 // dest size = aovSchema.numChannels()
 void aovSetMaterialAovs(pbr::TLState *pbrTls,
                         const AovSchema &aovSchema,
-                        int cameraId,
                         const LightAovs &lightAovs,
                         const MaterialAovs &materialAovs,
                         const shading::Intersection &isect,
@@ -755,7 +742,6 @@ void aovSetMaterialAovs(pbr::TLState *pbrTls,
 extern "C" void
 CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
                        const AovSchema &aovSchema,
-                       const uint32_t cameraId[],
                        const LightAovs &lightAovs,
                        const MaterialAovs &materialAovs,
                        const shading::Intersectionv &isectv,
@@ -913,12 +899,11 @@ private:
 };
 
 
-// add matchValue to aov dest locations that match cameraId, lpeStateId, and prefixFlags.
-// If nonMatchValue is not NULL, adds it to aov dest locations that match cameraId, lpeStateId and not prefixFlags.
+// add matchValue to aov dest locations that match lpeStateId and prefixFlags.
+// If nonMatchValue is not NULL, adds it to aov dest locations that match lpeStateId and not prefixFlags.
 // @returns true if there is a dest that matches lpeStateId, false otherwise
 bool aovAccumLightAovs(pbr::TLState *pbrTls,
                        const AovSchema &aovSchema,
-                       int cameraId,
                        const LightAovs &lightAovs,
                        const scene_rdl2::math::Color &matchValue,
                        const scene_rdl2::math::Color *nonMatchValue,
@@ -928,7 +913,6 @@ bool aovAccumLightAovs(pbr::TLState *pbrTls,
 
 bool aovAccumVisibilityAovs(pbr::TLState *pbrTls,
                             const AovSchema &aovSchema,
-                            int cameraId,
                             const LightAovs &lightAovs,
                             const scene_rdl2::math::Vec2f &value,
                             int lpeStateId,
@@ -938,7 +922,6 @@ bool aovAccumVisibilityAovs(pbr::TLState *pbrTls,
 // @returns true if there is a result that matches lpeStateId, false otherwise
 bool aovAccumLightAovsBundled(pbr::TLState *pbrTls,
                               const AovSchema &aovSchema,
-                              int cameraId,
                               const LightAovs &lightAovs,
                               const scene_rdl2::math::Color &matchValue,
                               const scene_rdl2::math::Color *nonMatchValue,
@@ -950,7 +933,6 @@ bool aovAccumLightAovsBundled(pbr::TLState *pbrTls,
 
 bool aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                                    const AovSchema &aovSchema,
-                                   int cameraId,
                                    const LightAovs &lightAovs,
                                    const scene_rdl2::math::Vec2f &value,
                                    int lpeStateId,
@@ -969,7 +951,6 @@ void aovAccumExtraAovs(pbr::TLState *pbrTls,
                        const PathVertex &pv,
                        const shading::Intersection &isect,
                        const scene_rdl2::rdl2::Material *mat,
-                       int cameraId,
                        float *dest);
 
 void aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
@@ -989,7 +970,6 @@ void aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
 void aovAccumPostScatterExtraAovs(pbr::TLState *pbrTls,
                                   const FrameState &fs,
                                   const PathVertex &pv,
-                                  int cameraId,
                                   const shading::Bsdf &bsdf,
                                   float *dest);
 
@@ -998,7 +978,6 @@ void aovAccumPostScatterExtraAovs(pbr::TLState *pbrTls,
 void aovAccumBackgroundExtraAovs(pbr::TLState *pbrTls,
                                  const FrameState &fs,
                                  const PathVertex &pv,
-                                 int cameraId,
                                  float *dest);
 
 void aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
@@ -1029,7 +1008,6 @@ void aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
                                     const mcrt_common::RayDifferential &ray,
                                     const uint32_t aovTypeMask,
                                     const float *aovValues,
-                                    const int cameraId,
                                     uint32_t pixel,
                                     uint32_t deepDataHandle,
                                     uint32_t film);
