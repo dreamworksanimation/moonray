@@ -2740,7 +2740,7 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
         fs->mMaxSamplesPerPixel = unsigned(numSamplesPerPixel * mMaxPixelSampleValue);
         fs->mMinSamplesPerPixel = fs->mMaxSamplesPerPixel;
         fs->mTargetAdaptiveError = 0.f;
-        fs->mPixelSampleMap = MNRY_VERIFY(mPixelSampleMap.get());
+        fs->mPixelSampleMap = mPixelSampleMap.get();
 
     } else {
 
