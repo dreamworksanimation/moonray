@@ -2056,7 +2056,7 @@ RenderContext::createPbrScene()
     RenderTimer timer(mRenderStats->mLoadPbrTime);
 
     MNRY_ASSERT(!mPbrScene, "Trying to load PBR library but the library is already loaded.");
-    MNRY_ASSERT(mCameras.size() > 0, "Must have a valid camera to load PBR library.");
+    MNRY_ASSERT(mCamera, "Must have a valid camera to load PBR library.");
 
     const scene_rdl2::rdl2::SceneContext* constSceneContext = mSceneContext.get();
     const scene_rdl2::rdl2::Layer* constLayer = mLayer;

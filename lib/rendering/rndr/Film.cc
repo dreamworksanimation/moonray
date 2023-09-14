@@ -573,7 +573,6 @@ Film::addAovSamplesToBuffer(std::vector<scene_rdl2::fb_util::VariablePixelBuffer
                             const std::vector<pbr::AovSchema::Entry> &aovEntries,
                             unsigned px, unsigned py, const float depth, const float *aovs)
 {
-    MNRY_ASSERT(depths);
     for (size_t b = 0; b < aovBuf.size(); ++b) {
         scene_rdl2::fb_util::VariablePixelBuffer &buf = aovBuf[b];
         const pbr::AovFilter &filter = aovEntries[b].filter();
