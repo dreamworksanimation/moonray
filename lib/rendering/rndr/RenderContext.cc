@@ -52,6 +52,7 @@
 #include <scene_rdl2/common/except/exceptions.h>
 #include <scene_rdl2/scene/rdl2/rdl2.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
+#include <scene_rdl2/scene/rdl2/ValueContainerEnq.h>
 #include <scene_rdl2/render/util/Files.h>
 #include <scene_rdl2/render/logging/logging.h>
 #include <scene_rdl2/render/util/Strings.h>
