@@ -33,6 +33,7 @@ public:
         RANDOM,             // 5
         SPIRAL_SQUARE,      // 6
         SPIRAL_RECT,        // 7
+        MORTON_SHIFTFLIP,   // 8
         NUM_TILE_SCHEDULER_TYPES,
     };
 
@@ -180,6 +181,34 @@ public:
                                      unsigned numTilesY,
                                      uint32_t *tileIndices,
                                      uint32_t seed) const override;
+};
+
+class MortonShiftFlipTileScheduler : public TileScheduler
+{
+public:
+    MortonShiftFlipTileScheduler() : TileScheduler(TileScheduler::MORTON_SHIFTFLIP) {}
+    virtual void generateTileIndices(scene_rdl2::alloc::Arena *arena,
+                                     unsigned numTilesX,
+                                     unsigned numTilesY,
+                                     uint32_t *tileIndices,
+                                     uint32_t seed) const override;
+
+    void set(unsigned shiftX, // tile count
+             unsigned shiftY, // tile count
+             bool flipX,
+             bool flipY)
+    {
+        mShiftX = shiftX;
+        mShiftY = shiftY;
+        mFlipX = flipX;
+        mFlipY = flipY;
+    };
+
+private:
+    unsigned mShiftX {0}; // tile count
+    unsigned mShiftY {0}; // tile count
+    bool mFlipX {false};
+    bool mFlipY {false};
 };
 
 //-----------------------------------------------------------------------------

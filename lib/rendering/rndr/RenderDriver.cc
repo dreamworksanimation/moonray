@@ -39,6 +39,12 @@
 #define MAX_REALTIME_FRAME_STATS_TO_RECORD  1024
 #define REALTIME_FRAME_STATS_LOGFILE        "./RealtimeFrameStats_Machine%03d_Save%02d.csv"
 
+// This is a directive to switch multi-machine tile schedule. We have to select one of them.
+// DETERMINISTIC_SHIFT is better at this moment but we also keep RANDOM_SHIFT version for
+// future enhancement/comparison reasons
+//#define MULTI_MACHINE_TILE_SCHEDULE_RANDOM_SHIFT
+#define MULTI_MACHINE_TILE_SCHEDULE_DETERMINISTIC_SHIFT
+
 using namespace scene_rdl2::util;
 // using namespace scene_rdl2::math; // can't use this as it breaks openvdb in clang.
 using scene_rdl2::logging::Logger;
@@ -754,6 +760,14 @@ RenderDriver::startFrame(const FrameState &fs)
     // Update the tile scheduler if necessary.
     if (!mTileScheduler || (mTileScheduler->getType() != fs.mTileSchedulerType)) {
         mTileScheduler = TileScheduler::create((TileScheduler::Type)fs.mTileSchedulerType);
+        if (fs.mTileSchedulerType == TileScheduler::MORTON_SHIFTFLIP) {
+            if (fs.mNumRenderNodes == 1) {
+                MortonShiftFlipTileScheduler* tileScheduler = (MortonShiftFlipTileScheduler*)(mTileScheduler.get());
+                tileScheduler->set(0, 0, false, false); // same as normal MortonTileScheduler
+            } else {
+                setupMultiMachineTileScheduler(w, h);
+            }
+        }
         updated = true;
     }
 
@@ -804,6 +818,7 @@ RenderDriver::startFrame(const FrameState &fs)
 
     if (mFs.mNumRenderNodes <= 1) {
         mParallelInitFrameUpdate = false; // disable parallel init frame update when single moonray context
+        mMultiMachineCheckpointMainLoop = false;
     } else {
         mParallelInitFrameUpdate = true; // enable parallel init frame update for multiple moonray context
         if (!mParallelInitFrameUpdateMcrtCount) {
@@ -812,6 +827,7 @@ RenderDriver::startFrame(const FrameState &fs)
             // computes them in parallel.
             mParallelInitFrameUpdateMcrtCount = mFs.mNumRenderNodes;
         }
+        mMultiMachineCheckpointMainLoop = true;
     }
 
     std::vector<Pass> passes;
@@ -898,6 +914,89 @@ RenderDriver::startFrame(const FrameState &fs)
     // Kick off the frame.
     mRenderThreadState.set(READY_TO_RENDER, REQUEST_RENDER, std::memory_order_release);
 }
+
+#ifdef MULTI_MACHINE_TILE_SCHEDULE_RANDOM_SHIFT
+void
+RenderDriver::setupMultiMachineTileScheduler(unsigned pixW, unsigned pixH)
+{
+    int flipId = mFs.mRenderNodeIdx % 4;
+
+    // flipId flipX flipY
+    //    0   false false
+    //    1   true  false
+    //    2   false true
+    //    3   true  true
+    bool flipX = (flipId & 0x1) != 0x0;
+    bool flipY = (flipId & 0x2) != 0x0;
+                
+    auto randIntRange = [](int maxVal) {
+        std::random_device rnd;
+        std::mt19937 mt(rnd());
+        std::uniform_int_distribution<> randRange(0, maxVal);
+        return randRange(mt);
+    };
+
+    int numTilesX = ((pixW + 7) & ~7) >> 3;
+    int numTilesY = ((pixH + 7) & ~7) >> 3;
+    unsigned shiftX = (unsigned)randIntRange(numTilesX - 1);
+    unsigned shiftY = (unsigned)randIntRange(numTilesY - 1);
+
+    MortonShiftFlipTileScheduler* tileScheduler = (MortonShiftFlipTileScheduler*)(mTileScheduler.get());
+    tileScheduler->set(shiftX, shiftY, flipX, flipY);
+
+    std::cerr << ">> RenderDriver.cc setupMultiMachineTileScheduler() random_shift"
+              << " shiftX:" << shiftX
+              << " shiftY:" << shiftY
+              << " flipX:" << scene_rdl2::str_util::boolStr(flipX)
+              << " flipY:" << scene_rdl2::str_util::boolStr(flipY) << '\n';
+}
+#endif // end MULTI_MACHINE_TILE_SCHEDULE_RANDOM_SHIFT
+
+#ifdef MULTI_MACHINE_TILE_SCHEDULE_DETERMINISTIC_SHIFT
+void
+RenderDriver::setupMultiMachineTileScheduler(unsigned pixW, unsigned pixH)
+{
+    int flipId = mFs.mRenderNodeIdx % 4;
+
+    // flipId flipX flipY
+    //    0   false false
+    //    1   true  false
+    //    2   false true
+    //    3   true  true
+    bool flipX = (flipId & 0x1) != 0x0;
+    bool flipY = (flipId & 0x2) != 0x0;
+                
+    unsigned numRenderNodes = mFs.mNumRenderNodes;
+    unsigned halfNumRenderNodes = numRenderNodes / 2;
+
+    unsigned shiftX {0};
+    unsigned shiftY {0};
+    if (mFs.mRenderNodeIdx <= halfNumRenderNodes - 1) {
+        // shift x direction
+        unsigned shiftId = mFs.mRenderNodeIdx;
+        unsigned numTilesX = ((pixW + 7) & ~7) >> 3;
+        unsigned stepShift = numTilesX / halfNumRenderNodes;
+
+        shiftX = stepShift * shiftId;
+    } else {
+        // shift y direction
+        unsigned shiftId = mFs.mRenderNodeIdx - halfNumRenderNodes;
+        unsigned numTilesY = ((pixH + 7) & ~7) >> 3;
+        unsigned stepShift = numTilesY / (numRenderNodes - halfNumRenderNodes);
+
+        shiftY = stepShift * shiftId;
+    }
+
+    MortonShiftFlipTileScheduler* tileScheduler = (MortonShiftFlipTileScheduler*)(mTileScheduler.get());
+    tileScheduler->set(shiftX, shiftY, flipX, flipY);
+
+    std::cerr << ">> RenderDriver.cc setupMultiMachineTileScheduler() deterministic_shift"
+              << " shiftX:" << shiftX
+              << " shiftY:" << shiftY
+              << " flipX:" << scene_rdl2::str_util::boolStr(flipX)
+              << " flipY:" << scene_rdl2::str_util::boolStr(flipY) << '\n';
+}
+#endif // end MULTI_MACHINE_TILE_SCHEDULE_DETERMINISTIC_SHIFT
 
 void
 RenderDriver::requestStop()
@@ -1028,6 +1127,12 @@ RenderDriver::getOverallProgressFraction(bool activeRendering, size_t *submitted
     }
 
     return progressFraction;
+}
+
+void
+RenderDriver::setMultiMachineGlobalProgressFraction(float fraction)
+{
+    mMultiMachineGlobalProgressFraction = fraction;
 }
 
 RealtimeFrameStats &
@@ -2483,27 +2588,57 @@ RenderDriver::parserConfigure()
 {
     mParser.description("RenderDriver command");
     mParser.opt("initFrame", "...command...", "initial frame control command",
-                [&](Arg& arg) -> bool { return mParserInitFrameControl.main(arg.childArg()); });
+                [&](Arg& arg) { return mParserInitFrameControl.main(arg.childArg()); });
     mParser.opt("tileWorkQueue", "...command...", "tileWorkQueue command",
-                [&](Arg& arg) -> bool { return mTileWorkQueue.getParser().main(arg.childArg()); });
+                [&](Arg& arg) { return mTileWorkQueue.getParser().main(arg.childArg()); });
+    mParser.opt("multiMachine", "...command...", "multi-machine related renderDriver command",
+                [&](Arg& arg) { return mParserMultiMachineControl.main(arg.childArg()); });
 
     //------------------------------
 
     Parser& iniParser = mParserInitFrameControl;
     iniParser.description("initial frame control command under arras context");
     iniParser.opt("parallel", "<on|off>", "set special parallel initial frame update mode",
-                  [&](Arg& arg) -> bool {
+                  [&](Arg& arg) {
                       mParallelInitFrameUpdate = (arg++).as<bool>(0);
                       mCheckpointEstimationTime.reset();
                       return arg.msg(scene_rdl2::str_util::boolStr(mParallelInitFrameUpdate) + '\n');
                   });
     iniParser.opt("max", "<total>", "set parallel execution host count",
-                  [&](Arg& arg) -> bool {
+                  [&](Arg& arg) {
                       mParallelInitFrameUpdateMcrtCount = (arg++).as<unsigned>(0);
                       return arg.fmtMsg("max:%d\n", mParallelInitFrameUpdateMcrtCount);
                   });
     iniParser.opt("show", "", "show current information",
-                  [&](Arg& arg) -> bool { return arg.msg(showInitFrameControl() + '\n'); });
+                  [&](Arg& arg) { return arg.msg(showInitFrameControl() + '\n'); });
+
+    //------------------------------
+
+    Parser& parserMm = mParserMultiMachineControl;
+    parserMm.description("multi-machine related renderDriver command");
+    parserMm.opt("active", "<on|off|show>", "set multi-machine mode for renderDriver",
+                 [&](Arg& arg) {
+                     if (arg() == "show") arg++;
+                     else mMultiMachineCheckpointMainLoop = (arg++).as<bool>(0);
+                     return arg.msg(scene_rdl2::str_util::boolStr(mMultiMachineCheckpointMainLoop) + '\n');
+                 });
+    parserMm.opt("budgetShort", "<sec>", "set multi-machine frame budget for initial short stint",
+                 [&](Arg& arg) {
+                     mMultiMachineFrameBudgetSecShort = (arg++).as<float>(0);
+                     return arg.msg(showMultiMachineCheckpointMainLoopInfo() + '\n');
+                 });
+    parserMm.opt("quickPhaseLength", "<sec>", "set multi-machine quick phase length",
+                 [&](Arg& arg) {
+                     mMultiMachineQuickPhaseLengthSec = (arg++).as<float>(0);
+                     return arg.msg(showMultiMachineCheckpointMainLoopInfo() + '\n');
+                 });
+    parserMm.opt("budgetLong", "<sec>", "set multi-machine frame budget for main long stint",
+                 [&](Arg& arg) {
+                     mMultiMachineFrameBudgetSecLong = (arg++).as<float>(0);
+                     return arg.msg(showMultiMachineCheckpointMainLoopInfo() + '\n');
+                 });
+    parserMm.opt("show", "", "show multi-machine renderDriver setup",
+                 [&](Arg& arg) { return arg.msg(showMultiMachineCheckpointMainLoopInfo() + '\n'); });
 }
 
 std::string
@@ -2519,6 +2654,23 @@ RenderDriver::showInitFrameControl() const
          << "  mCheckpointEstimationStage:" << boolStr(mCheckpointEstimationStage) << '\n'
          << "  mRenderPrepTime.getAvg():" << secStr(mRenderPrepTime.getAvg()) << '\n'
          << "  mCheckpointEstimationTime.getAvg():" << secStr(mCheckpointEstimationTime.getAvg()) << '\n'
+         << "}";
+    return ostr.str();
+}
+
+std::string
+RenderDriver::showMultiMachineCheckpointMainLoopInfo() const
+{
+    using scene_rdl2::str_util::boolStr;
+    using scene_rdl2::str_util::secStr;
+
+    std::ostringstream ostr;
+    ostr << "multiMachine checkpointMainLoop info {\n"
+         << "  mMultiMachineCheckpointMainLoop:" << boolStr(mMultiMachineCheckpointMainLoop) << '\n'
+         << "  mMultiMachineFrameBudgetSecShort:" << secStr(mMultiMachineFrameBudgetSecShort) << '\n'
+         << "  mMultiMachineQuickPhaseLengthSec:" << secStr(mMultiMachineQuickPhaseLengthSec) << '\n'
+         << "  mMultiMachineFrameBudgetSecLong:" << secStr(mMultiMachineFrameBudgetSecLong) << '\n'
+         << "  mMultiMachineGlobalProgressFraction:" << mMultiMachineGlobalProgressFraction << '\n'
          << "}";
     return ostr.str();
 }

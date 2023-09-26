@@ -77,7 +77,7 @@ private:
     double mPureGapInterval;      // sec : last frame's gap interval (= mLastTiem - mGapStartTime)
     double mOverrun;              // sec : last frame's overrun sec (delta from predict frame end timing)
     double mAdjustDuration;       // sec : adjust duration which related to geometry data message receiving timing
-    double mPredictFrameInterval; // sec : time badget of next frame.
+    double mPredictFrameInterval; // sec : time budget of next frame.
     double mGapInterval;          // sec : updated (might be extended) gap interval for next frame. (see isFrameComplete())
 
     void initIntervalArray() {

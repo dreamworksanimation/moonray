@@ -139,14 +139,15 @@ TileScheduler::create(TileScheduler::Type type)
     std::unique_ptr<TileScheduler> tileScheduler;
 
     switch (type) {
-    case TOP:           tileScheduler.reset(new TopTileScheduler);           break;
-    case BOTTOM:        tileScheduler.reset(new BottomTileScheduler);        break;
-    case LEFT:          tileScheduler.reset(new LeftTileScheduler);          break;
-    case RIGHT:         tileScheduler.reset(new RightTileScheduler);         break;
-    case MORTON:        tileScheduler.reset(new MortonTileScheduler);        break;
-    case RANDOM:        tileScheduler.reset(new RandomTileScheduler);        break;
-    case SPIRAL_SQUARE: tileScheduler.reset(new SpiralSquareTileScheduler);  break;
-    case SPIRAL_RECT:   tileScheduler.reset(new SpiralRectTileScheduler);    break;
+    case TOP:              tileScheduler.reset(new TopTileScheduler);             break;
+    case BOTTOM:           tileScheduler.reset(new BottomTileScheduler);          break;
+    case LEFT:             tileScheduler.reset(new LeftTileScheduler);            break;
+    case RIGHT:            tileScheduler.reset(new RightTileScheduler);           break;
+    case MORTON:           tileScheduler.reset(new MortonTileScheduler);          break;
+    case RANDOM:           tileScheduler.reset(new RandomTileScheduler);          break;
+    case SPIRAL_SQUARE:    tileScheduler.reset(new SpiralSquareTileScheduler);    break;
+    case SPIRAL_RECT:      tileScheduler.reset(new SpiralRectTileScheduler);      break;
+    case MORTON_SHIFTFLIP: tileScheduler.reset(new MortonShiftFlipTileScheduler); break;
     default:
         MNRY_ASSERT(0);
     }
@@ -221,11 +222,19 @@ RightTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
 }
 
 void
-MortonTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
-                                         unsigned numTilesX, unsigned numTilesY,
-                                         uint32_t *tileIndices, uint32_t seed) const
+mortonTileOrderGen(scene_rdl2::alloc::Arena* arena,
+                   unsigned numTilesX,
+                   unsigned numTilesY,
+                   uint32_t* tileIndices,
+                   unsigned shiftX, // tile count
+                   unsigned shiftY, // tile count
+                   bool flipX,
+                   bool flipY)
 {
     unsigned totalTiles = numTilesX * numTilesY;
+
+    unsigned currShiftX = shiftX % numTilesX;
+    unsigned currShiftY = shiftY % numTilesY;
 
     unsigned pow2TilesX = scene_rdl2::util::roundUpToPowerOfTwo(numTilesX);
     unsigned pow2TilesY = scene_rdl2::util::roundUpToPowerOfTwo(numTilesY);
@@ -238,16 +247,29 @@ MortonTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
 
     unsigned tilesFound = 0;
     for (unsigned tileY = 0; tileY < pow2TilesY; ++tileY) {
-        if (tileY >= numTilesY) {
-            continue;
+        unsigned y;
+        if (!flipY) {
+            if (tileY >= numTilesY) continue;
+            y = (tileY + numTilesY - currShiftY) % numTilesY;
+        } else {
+            if (tileY < (pow2TilesY - numTilesY)) continue;
+            y = ((pow2TilesY - 1 - tileY) + currShiftY) % numTilesY;
         }
 
         for (unsigned tileX = 0; tileX < pow2TilesX; ++tileX) {
-            if (tileX >= numTilesX) {
-                continue;
+            unsigned x;
+            if (!flipX) {
+                if (tileX >= numTilesX) continue;
+                x = (tileX + numTilesX - currShiftX) % numTilesX;
+            } else {
+                if (tileX < (pow2TilesX - numTilesX)) continue;
+                x = ((pow2TilesX - 1 - tileX) + currShiftX) % numTilesX;
             }
-            swizzleRemap[scene_rdl2::util::convertCoordToSwizzledIndex(tileX, tileY,
-                                    pow2TilesX, pow2TilesY)] = tilesFound++;
+            
+            swizzleRemap[scene_rdl2::util::convertCoordToSwizzledIndex(x,
+                                                                       y,
+                                                                       pow2TilesX,
+                                                                       pow2TilesY)] = tilesFound++;
         }
     }
 
@@ -261,6 +283,28 @@ MortonTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
             }
         }
     }
+}
+
+void
+MortonTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
+                                         unsigned numTilesX, unsigned numTilesY,
+                                         uint32_t *tileIndices, uint32_t seed) const
+//
+// Standard Morton tile scheduler
+//
+{
+    mortonTileOrderGen(arena, numTilesX, numTilesY, tileIndices, 0, 0, false, false);
+}
+
+void
+MortonShiftFlipTileScheduler::generateTileIndices(scene_rdl2::alloc::Arena *arena,
+                                                  unsigned numTilesX, unsigned numTilesY,
+                                                  uint32_t *tileIndices, uint32_t seed) const
+//
+// Added flip and tile shift operations to the standard Morton tile scheduler
+//
+{
+    mortonTileOrderGen(arena, numTilesX, numTilesY, tileIndices, mShiftX, mShiftY, mFlipX, mFlipY);
 }
 
 void

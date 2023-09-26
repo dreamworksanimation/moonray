@@ -690,6 +690,13 @@ RenderDriver::progressCheckpointRenderFrame(RenderDriver *driver, const FrameSta
     // checkpoint stint loop
     //
     driver->mCheckpointController.reset();
+    double frameBudgetBase = fs.mCheckpointInterval * 60.0f; // convert to second from minute
+    int quickPhaseTotal = 0;
+    if (driver->mMultiMachineCheckpointMainLoop) {
+        frameBudgetBase = driver->mMultiMachineFrameBudgetSecShort;
+        quickPhaseTotal = driver->mMultiMachineQuickPhaseLengthSec / frameBudgetBase;
+        if (quickPhaseTotal < 1) quickPhaseTotal = 1;
+    }
     for (size_t checkpointStintId = 0; ; ++checkpointStintId) {
         double durationSec = scene_rdl2::util::getSeconds() - renderStart;
         if (fs.mCheckpointTimeCap > 0.0f && durationSec / 60.0 > (double)fs.mCheckpointTimeCap) {
@@ -761,7 +768,26 @@ RenderDriver::progressCheckpointRenderFrame(RenderDriver *driver, const FrameSta
         // not completed. Let's record start time for next checkpoint stint
         fs.mRenderContext->getResumeHistoryMetaData()->setMCRTStintStartTime();
 
-        frameBudget = fs.mCheckpointInterval * 60.0f; // convert to secound from minute
+        frameBudget = frameBudgetBase;
+        if (driver->mMultiMachineCheckpointMainLoop) {
+            // Change frameBudget (time length) depending on the globalProgressFraction
+            // under multi-machine configuration. This makes better CPU utilization and
+            // also better MCRT stage stop response.
+            if (driver->mMultiMachineGlobalProgressFraction < 0.5f) {
+                if (checkpointStintId >= quickPhaseTotal - 1) {
+                    frameBudgetBase = driver->mMultiMachineFrameBudgetSecLong;
+                }
+            } else if (driver->mMultiMachineGlobalProgressFraction > 0.9f) {
+                frameBudgetBase = driver->mMultiMachineQuickPhaseLengthSec;
+            } else {
+                frameBudgetBase *= 0.5f;
+
+                if (frameBudgetBase <= driver->mMultiMachineQuickPhaseLengthSec) {
+                    frameBudgetBase = driver->mMultiMachineQuickPhaseLengthSec;
+                }
+            }
+            std::cerr << ">> RenderFrameCheckpointResume.cc frameBudgetBase:" << frameBudgetBase << '\n';
+        }
 
 #       ifdef PRINT_DEBUG_MESSAGE_PROGRESS_CHECKPOINT
         recTime.start();

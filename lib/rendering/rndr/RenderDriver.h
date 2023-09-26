@@ -400,6 +400,14 @@ public:
     float getOverallProgressFraction(bool activeRendering, size_t *submitted, size_t *total) const;
 
     //
+    // globalProgressFraction is the whole progress fraction value under multi-machine configuration.
+    // Each mcrt_computation receives a globalProgressFraction update from merge computation with
+    // reasonable latency (~200ms range).
+    //
+    void setMultiMachineGlobalProgressFraction(float fraction);
+    float getMultiMachineGlobalProgressFraction() const { return mMultiMachineGlobalProgressFraction; }
+
+    //
     // Various stages of recording debug rays. Each state can only be set by a
     // single thread so no mutex needed.
     //
@@ -515,6 +523,9 @@ private:
     void                setReadyForDisplay();
     void                setCoarsePassesComplete();
     void                setFrameComplete();
+
+    // Special tile scheduler setup function for multi-machine configuration
+    void setupMultiMachineTileScheduler(unsigned pixW, unsigned pixH);
 
     // snapshot renderBuffer or renderBufferOdd
     void snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::RenderBuffer *outputBuffer,
@@ -712,6 +723,7 @@ private:
     void parserConfigure();
 
     std::string showInitFrameControl() const;
+    std::string showMultiMachineCheckpointMainLoopInfo() const;
 
     //------------------------------
 
@@ -867,6 +879,12 @@ private:
     std::string mCheckpointPostScript; // post checkpoint lua script name
 
     CheckpointController mCheckpointController;
+    bool mMultiMachineCheckpointMainLoop {false};
+    float mMultiMachineFrameBudgetSecShort {1.0f}; // sec
+    float mMultiMachineQuickPhaseLengthSec {2.0f};
+    float mMultiMachineFrameBudgetSecLong {30.0f}; // sec
+
+    float mMultiMachineGlobalProgressFraction {0.0f};
 
     // Condition rendering should stop at pass boundary. Only used under arras multi mcrt computation context
     bool mRenderStopAtPassBoundary;
@@ -902,6 +920,7 @@ private:
 
     Parser mParser;
     Parser mParserInitFrameControl;
+    Parser mParserMultiMachineControl;
 
     DISALLOW_COPY_OR_ASSIGNMENT(RenderDriver);
 };
