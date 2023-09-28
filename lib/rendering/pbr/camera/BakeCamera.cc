@@ -85,7 +85,7 @@ PosMapBuilder::PosMapBuilder(unsigned int width,
     mHeight(height),
     mUdim(udim),
     mStKey(stKey.empty()?
-           shading::StandardAttributes::sSurfaceST :
+           shading::StandardAttributes::sSt :
            shading::TypedAttributeKey<scene_rdl2::math::Vec2f>(stKey)),
     mPosResult(posResult),
     mNrmResult(nrmResult)
