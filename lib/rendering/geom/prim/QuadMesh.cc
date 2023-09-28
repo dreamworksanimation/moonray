@@ -1034,14 +1034,20 @@ QuadMesh::getQuadST(int baseFaceId, int tessFaceId,
 {
     if (!getQuadAttributes(StandardAttributes::sSurfaceST,
         baseFaceId, tessFaceId, st1, st2, st3, 0.0f, isFirst)) {
-        if (isFirst) {
-            st1 = Vec2f(0.0f, 0.0f);
-            st2 = Vec2f(1.0f, 0.0f);
-            st3 = Vec2f(0.0f, 1.0f);
-        } else {
-            st1 = Vec2f(1.0f, 1.0f);
-            st2 = Vec2f(0.0f, 1.0f);
-            st3 = Vec2f(1.0f, 0.0f);
+        if (!getQuadAttributes(StandardAttributes::sSt,
+            baseFaceId, tessFaceId, st1, st2, st3, 0.0f, isFirst)) {
+            if (!getQuadAttributes(StandardAttributes::sUv,
+                baseFaceId, tessFaceId, st1, st2, st3, 0.0f, isFirst)) {
+                if (isFirst) {
+                    st1 = Vec2f(0.0f, 0.0f);
+                    st2 = Vec2f(1.0f, 0.0f);
+                    st3 = Vec2f(0.0f, 1.0f);
+                } else {
+                    st1 = Vec2f(1.0f, 1.0f);
+                    st2 = Vec2f(0.0f, 1.0f);
+                    st3 = Vec2f(1.0f, 0.0f);
+                }
+            }
         }
     }
 }

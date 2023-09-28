@@ -131,7 +131,10 @@ Points::postIntersect(mcrt_common::ThreadLocalState& tls,
     // The St value is read from the explicit "uv" primitive
     // attribute if it exists.
     Vec2f St(1.0f, 1.0f);
-    if (primitiveAttributes->isSupported(shading::StandardAttributes::sUv)) {
+    if (primitiveAttributes->isSupported(shading::StandardAttributes::sSt)) {
+        interpolator.interpolate(shading::StandardAttributes::sSt,
+            reinterpret_cast<char*>(&St));
+    } else if (primitiveAttributes->isSupported(shading::StandardAttributes::sUv)) {
         interpolator.interpolate(shading::StandardAttributes::sUv,
             reinterpret_cast<char*>(&St));
     }

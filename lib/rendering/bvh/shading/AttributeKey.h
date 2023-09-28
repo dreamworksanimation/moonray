@@ -141,6 +141,7 @@ public:
     };
 
     // Standard attributes
+    static TypedAttributeKey<scene_rdl2::math::Vec2f> sSt;
     static TypedAttributeKey<scene_rdl2::math::Vec2f> sUv;
     // hair coordinates for the point closest to it on the surface geo
     static TypedAttributeKey<scene_rdl2::math::Vec2f> sClosestSurfaceST;
@@ -414,6 +415,7 @@ StandardAttributes::init()
     // program startup time
 #pragma warning push
 #pragma warning disable 1711
+    sSt = TypedAttributeKey<scene_rdl2::math::Vec2f>("st");
     sUv = TypedAttributeKey<scene_rdl2::math::Vec2f>("uv");
     sClosestSurfaceST = TypedAttributeKey<scene_rdl2::math::Vec2f>("closest_surface_uv");
     sSurfaceST = TypedAttributeKey<scene_rdl2::math::Vec2f>("surface_st");
