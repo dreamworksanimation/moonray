@@ -351,7 +351,7 @@ RdlMeshProcedural::getVertexData(
         shading::AttributeRate attrRate(
             pickRate(rdlMeshGeometry, getName(rdlMeshGeometry, attrUVs), procUVList.size(), rates));
         std::vector<Vec2f> textureUV(procUVList.begin(), procUVList.end());
-        primitiveAttributeTable.addAttribute(shading::StandardAttributes::sSt,
+        primitiveAttributeTable.addAttribute(shading::StandardAttributes::sSurfaceST,
                                              attrRate, std::move(textureUV));
     }
 

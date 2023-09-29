@@ -398,8 +398,7 @@ RdlCurveProcedural::generate(
                                         useSecondFrame);
 
     // try to add UVs if we haven't already
-    if (!primitiveAttributeTable.hasAttribute(shading::StandardAttributes::sSt) &&
-        !primitiveAttributeTable.hasAttribute(shading::StandardAttributes::sUv)) {
+    if (!primitiveAttributeTable.hasAttribute(shading::StandardAttributes::sUv)) {
         const rdl2::Vec2fVector& stList = rdlGeometry->get(attrUVs);
         if (!stList.empty()) {
             primitiveAttributeTable.addAttribute(shading::StandardAttributes::sUv,

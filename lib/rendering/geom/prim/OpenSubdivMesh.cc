@@ -2022,13 +2022,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
         // we already explicitly store texture st in its own container,
         // remove it from primitiveAttributeTable to avoid duplicated
         // memory usage
-        if (primitiveAttributeTable.hasAttribute(StandardAttributes::sSurfaceST)) {
-            primitiveAttributeTable.erase(StandardAttributes::sSurfaceST);
-        } else if (primitiveAttributeTable.hasAttribute(StandardAttributes::sSt)) {
-            primitiveAttributeTable.erase(StandardAttributes::sSt);
-        } else if (primitiveAttributeTable.hasAttribute(StandardAttributes::sUv)) {
-            primitiveAttributeTable.erase(StandardAttributes::sUv);
-        }
+        primitiveAttributeTable.erase(StandardAttributes::sSurfaceST);
     }
     int controlVertexCount = mControlMeshData->mVertices.size();
     // extract out face varying attributes. At this moment the Attributes API
@@ -2723,9 +2717,7 @@ OpenSubdivMesh::bakePosMap(int width, int height, int udim,
 
         // texture coordinates for this quad
         Vec2f st0, st1, st2, st3;
-        if (stKey == StandardAttributes::sSurfaceST ||
-            stKey == StandardAttributes::sSt ||
-            stKey == StandardAttributes::sUv) {
+        if (stKey == StandardAttributes::sSurfaceST) {
             st0 = mSurfaceSt(vid0);
             st1 = mSurfaceSt(vid1);
             st2 = mSurfaceSt(vid2);
@@ -2855,13 +2847,11 @@ OpenSubdivMesh::getControlVertexBuffer()
 bool
 OpenSubdivMesh::hasAttribute(AttributeKey key) const
 {
-    // sSurfaceST/sSt/sUv got explicitly stored in mSurfaceSt
+    // sSurfaceST got explicitly stored in mSurfaceSt
     // face varying attributes got explicitly stored in mFaceVaryingAttributes
-    return key == StandardAttributes::sSurfaceST ||
-           key == StandardAttributes::sSt ||
-           key == StandardAttributes::sUv ||
-           getAttributes()->hasAttribute(key) ||
-           mFaceVaryingAttributes->hasAttribute(key);
+    return (key == StandardAttributes::sSurfaceST) ||
+        getAttributes()->hasAttribute(key) ||
+        mFaceVaryingAttributes->hasAttribute(key);
 }
 
 void
@@ -3045,12 +3035,7 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
     // we already explicitly store texture st in its own container
     if (table->requests(StandardAttributes::sSurfaceST)) {
         intersection.setAttribute(StandardAttributes::sSurfaceST, St);
-    } else if (table->requests(StandardAttributes::sSt)) {
-        intersection.setAttribute(StandardAttributes::sSt, St);
-    } else if (table->requests(StandardAttributes::sUv)) {
-        intersection.setAttribute(StandardAttributes::sUv, St);
     }
-
     // motion vectors
     if (table->requests(StandardAttributes::sMotion)) {
         const Vec3f motion = computeMotion(mTessellatedVertices, isecId1, isecId2, isecId3, w, u, v, ray);
