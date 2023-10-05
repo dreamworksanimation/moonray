@@ -5,12 +5,12 @@
 
 #include <moonray/rendering/geom/prim/Instance.h>
 
-#include "GPUMath.h"
-#include "GPUParams.h"
-#include "GPUPrimitive.h"
-#include "GPUPrimitiveGroup.h"
-#include "GPUSBTRecord.h"
-#include "GPUUtils.h"
+#include "OptixGPUMath.h"
+#include "OptixGPUParams.h"
+#include "OptixGPUPrimitive.h"
+#include "OptixGPUPrimitiveGroup.h"
+#include "OptixGPUSBTRecord.h"
+#include "OptixGPUUtils.h"
 
 #include <moonray/rendering/geom/Types.h>
 #include <moonray/rendering/geom/prim/Primitive.h>
@@ -23,17 +23,17 @@ namespace rt {
 
 // Also in EmbreeAccelerator.cc
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<GPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
+        tbb::atomic<OptixGPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
 
 
-class GPUAcceleratorImpl
+class OptixGPUAccelerator
 {
 public:
-    GPUAcceleratorImpl(const scene_rdl2::rdl2::Layer *layer,
-                       const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
-                       const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
-                       std::string* errorMsg);
-    ~GPUAcceleratorImpl();
+    OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
+                        const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
+                        const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                        std::string* errorMsg);
+    ~OptixGPUAccelerator();
 
     std::string getGPUDeviceName() const;
 
@@ -71,7 +71,7 @@ private:
     OptixModule mRoundCubicBsplineCurvesMBModule;
 
     // Specifies the programs to call for ray generation and for each different type of
-    // geometry (GPUPrimitive):
+    // geometry (OptixGPUPrimitive):
     // "intersection" , "closest hit" and "any hit" programs called during BVH traversal.
     std::map<std::string, OptixProgramGroup> mProgramGroups;
 
@@ -81,23 +81,23 @@ private:
 
     // Geometry is contained in primitive groups.  The root group is the root (non-shared/instanced)
     // geometry.  The shared groups are the same as the shared "scenes" in the CPU-side
-    // EmbreeAccelerator.  These are referenced by GPUInstances.
+    // EmbreeAccelerator.  These are referenced by OptixGPUInstances.
     // For instancing/multi-level instancing, a primitive group may contain instances
     // that reference other primitive groups.
-    GPUPrimitiveGroup* mRootGroup;
+    OptixGPUPrimitiveGroup* mRootGroup;
     SharedGroupMap mSharedGroups;
 
-    // The Shader Binding Table provides data (records) for each of the GPUPrimitives that is
+    // The Shader Binding Table provides data (records) for each of the OptixGPUPrimitives that is
     // used in the various programs (intersection, closest hit, any hit.)  It maps 1:1
-    // to the GPUPrimitives in the GAS objects above.  If you get these out of sync, you will
+    // to the OptixGPUPrimitives in the GAS objects above.  If you get these out of sync, you will
     // have a bad day.
     OptixShaderBindingTable mSBT;
 
     // Buffers for the records in the Shader Binding Table.  Note how these match the
     // program groups.
-    GPUBuffer<RaygenRecord> mRaygenRecordBuf;
-    GPUBuffer<MissRecord> mMissRecordBuf;
-    GPUBuffer<HitGroupRecord> mHitGroupRecordBuf;
+    OptixGPUBuffer<RaygenRecord> mRaygenRecordBuf;
+    OptixGPUBuffer<MissRecord> mMissRecordBuf;
+    OptixGPUBuffer<HitGroupRecord> mHitGroupRecordBuf;
 
     // Buffers needed to pass rays to the GPU and read back intersection results.
     // The rays buffer size is the same as the ray queue size in RenderDriver::createXPUQueue()
@@ -108,11 +108,11 @@ private:
     // when copying occlusion results from the GPU
     mutable unsigned char* mOutputOcclusionBuf;
 
-    mutable GPUBuffer<GPUOcclusionRay> mRaysBuf;
-    mutable GPUBuffer<unsigned char> mIsOccludedBuf;
+    mutable OptixGPUBuffer<GPUOcclusionRay> mRaysBuf;
+    mutable OptixGPUBuffer<unsigned char> mIsOccludedBuf;
 
     // A parameters object that is globally available on the GPU side.
-    mutable GPUBuffer<GPUParams> mParamsBuf;
+    mutable OptixGPUBuffer<OptixGPUParams> mParamsBuf;
 };
 
 } // namespace rt

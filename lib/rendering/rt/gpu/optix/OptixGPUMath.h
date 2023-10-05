@@ -345,12 +345,12 @@ float3 evalBsplineDerivative(const float4 cp[4], const float t)
 namespace moonray {
 namespace rt {
 
-struct GPUXform
+struct OptixGPUXform
 {
-    GPUXform() = default;
+    OptixGPUXform() = default;
 
     __host__ __device__
-    static GPUXform identityXform()
+    static OptixGPUXform identityXform()
     {
         return {1.f, 0.f, 0.f, 0.f,
                 0.f, 1.f, 0.f, 0.f,
@@ -358,7 +358,7 @@ struct GPUXform
     }
 
     __host__ __device__
-    static GPUXform rotateToZAxisXform(const float3& dir)
+    static OptixGPUXform rotateToZAxisXform(const float3& dir)
     {
         // transform to space where dir.z is the +Z axis
         float3 vz = normalize(dir);

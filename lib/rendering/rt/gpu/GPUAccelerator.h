@@ -93,7 +93,7 @@ plus the default values tend to be zero so you only need to set the non-defaults
 
 ***** Memory management:
 
-The GPUBuffer class is used everywhere to manage GPU data.  You create an GPUBuffer
+The OptixGPUBuffer class is used everywhere to manage GPU data.  You create an OptixGPUBuffer
 object on the host side and it creates/manages a buffer on the GPU.  It has methods
 for easily copying to/from the GPU buffer.  It will automatically release the GPU
 buffer in its destructor which helps prevent GPU memory leaks.
@@ -117,7 +117,7 @@ namespace rt {
 // all of the CUDA/Optix headers to the rest of Moonray.  All this needs to expose
 // to the outside world is an occluded() method and a constructor that takes a scene.
 
-class GPUAcceleratorImpl;
+class OptixGPUAccelerator;
 
 class GPUAccelerator
 {
@@ -144,7 +144,7 @@ public:
 private:
 
 #ifdef MOONRAY_USE_CUDA
-    std::unique_ptr<GPUAcceleratorImpl> mImpl;
+    std::unique_ptr<OptixGPUAccelerator> mImpl;
 #endif
 
 };

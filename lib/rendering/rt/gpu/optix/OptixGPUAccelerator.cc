@@ -1,8 +1,8 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUAcceleratorImpl.h"
-#include "Math2GPUMath.h"
+#include "OptixGPUAccelerator.h"
+#include "Math2OptixGPUMath.h"
 
 #include <moonray/rendering/geom/PolygonMesh.h>
 #include <moonray/rendering/geom/PrimitiveVisitor.h>
@@ -40,15 +40,15 @@ static void optixMessageCallback(unsigned int level,
 }
 
 
-class GPUBVHBuilder : public geom::PrimitiveVisitor
+class OptixGPUBVHBuilder : public geom::PrimitiveVisitor
 {
 public:
     // Extremely similar to EmbreeAccelerator.cc BVHBuilder.  This is intentional so
     // it behaves the same and is easy to maintain and debug.
 
-    GPUBVHBuilder(const scene_rdl2::rdl2::Layer* layer,
+    OptixGPUBVHBuilder(const scene_rdl2::rdl2::Layer* layer,
                   const scene_rdl2::rdl2::Geometry* geometry,
-                  GPUPrimitiveGroup* parentGroup,
+                  OptixGPUPrimitiveGroup* parentGroup,
                   SharedGroupMap& groups) :
         mFailed(false),
         mLayer(layer),
@@ -190,8 +190,8 @@ public:
         const auto& ref = i.getReference();
         // visit the referenced Primitive if it's not visited yet
         if (mSharedGroups.insert(std::make_pair(ref, nullptr)).second) {
-            GPUPrimitiveGroup *group = new GPUPrimitiveGroup();
-            GPUBVHBuilder builder(mLayer, mGeometry, group, mSharedGroups);
+            OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
+            OptixGPUBVHBuilder builder(mLayer, mGeometry, group, mSharedGroups);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -251,26 +251,26 @@ private:
     void createSphere(const geom::internal::Sphere& geomSphere);
 
     void createInstance(const geom::internal::Instance& instance,
-                        GPUPrimitiveGroup* group);
+                        OptixGPUPrimitiveGroup* group);
 
     unsigned int resolveVisibilityMask(const geom::internal::NamedPrimitive& np) const;
 
     bool getShadowLinking(const geom::internal::NamedPrimitive& np,
-                          GPUBuffer<int>& assignmentIdsBuf,
-                          GPUBuffer<unsigned long long>& lightIdsBuf) const;
+                          OptixGPUBuffer<int>& assignmentIdsBuf,
+                          OptixGPUBuffer<unsigned long long>& lightIdsBuf) const;
 
     bool mFailed;
     std::string mWhyFailed;
     const scene_rdl2::rdl2::Layer* mLayer;
     const scene_rdl2::rdl2::Geometry* mGeometry;
-    GPUPrimitiveGroup* mParentGroup;
+    OptixGPUPrimitiveGroup* mParentGroup;
     SharedGroupMap& mSharedGroups;
 };
 
 void
-GPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
+OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
 {
-    GPUBox* gpuBox = new GPUBox();
+    OptixGPUBox* gpuBox = new OptixGPUBox();
     mParentGroup->mCustomPrimitives.push_back(gpuBox);
 
     // Boxes only have one motion sample
@@ -296,22 +296,22 @@ GPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
         return;
     }
 
-    gpuBox->mL2P = mat43ToGPUXform(geomBox.getL2P());
-    gpuBox->mP2L = mat43ToGPUXform(geomBox.getP2L());
+    gpuBox->mL2P = mat43ToOptixGPUXform(geomBox.getL2P());
+    gpuBox->mP2L = mat43ToOptixGPUXform(geomBox.getP2L());
     gpuBox->mLength = geomBox.getLength();
     gpuBox->mWidth = geomBox.getWidth();
     gpuBox->mHeight = geomBox.getHeight();
 }
 
 void
-GPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
+OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
                             const geom::Curves::Type curvesType,
                             const int tessellationRate)
 {
     geom::internal::Curves::Spans spans;
     geomCurves.getTessellatedSpans(spans);
 
-    GPUCurve* gpuCurve = new GPUCurve();
+    OptixGPUCurve* gpuCurve = new OptixGPUCurve();
     mParentGroup->mCustomPrimitives.push_back(gpuCurve);
 
     gpuCurve->mInputFlags = 0;
@@ -388,7 +388,7 @@ GPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
 }
 
 void
-GPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
+OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
                                  const geom::Curves::Type curvesType)
 {
     if (curvesType == geom::Curves::Type::BEZIER) {
@@ -409,7 +409,7 @@ GPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
     geom::internal::Curves::Spans spans;
     geomCurves.getTessellatedSpans(spans);
 
-    GPURoundCurves* gpuCurve = new GPURoundCurves();
+    OptixGPURoundCurves* gpuCurve = new OptixGPURoundCurves();
     if (!motionBlur) {
         mParentGroup->mRoundCurves.push_back(gpuCurve);
     } else {
@@ -507,9 +507,9 @@ GPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
 }
 
 void
-GPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
+OptixGPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
 {
-    GPUPoints* gpuPoints = new GPUPoints();
+    OptixGPUPoints* gpuPoints = new OptixGPUPoints();
     mParentGroup->mCustomPrimitives.push_back(gpuPoints);
 
     gpuPoints->mInputFlags = 0;
@@ -558,7 +558,7 @@ GPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
 }
 
 void
-GPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
+OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 {
     geom::internal::Mesh::TessellatedMesh mesh;
     geomMesh.getTessellatedMesh(mesh);
@@ -573,7 +573,7 @@ GPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         return;
     }
 
-    GPUTriMesh* gpuMesh = new GPUTriMesh();
+    OptixGPUTriMesh* gpuMesh = new OptixGPUTriMesh();
     gpuMesh->mName = geomMesh.getName();
     if (enableMotionBlur) {
         mParentGroup->mTriMeshesMB.push_back(gpuMesh);
@@ -745,9 +745,9 @@ GPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 }
 
 void
-GPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
+OptixGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
 {
-    GPUSphere* gpuSphere = new GPUSphere();
+    OptixGPUSphere* gpuSphere = new OptixGPUSphere();
     mParentGroup->mCustomPrimitives.push_back(gpuSphere);
 
     // Spheres only have one motion sample
@@ -773,8 +773,8 @@ GPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
         return;
     }
 
-    gpuSphere->mL2P = mat43ToGPUXform(geomSphere.getL2P());
-    gpuSphere->mP2L = mat43ToGPUXform(geomSphere.getP2L());
+    gpuSphere->mL2P = mat43ToOptixGPUXform(geomSphere.getL2P());
+    gpuSphere->mP2L = mat43ToOptixGPUXform(geomSphere.getP2L());
     gpuSphere->mRadius = geomSphere.getRadius();
     gpuSphere->mPhiMax = geomSphere.getPhiMax();
     gpuSphere->mZMin = geomSphere.getZMin();
@@ -782,12 +782,12 @@ GPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
 }
 
 void
-GPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
-                              GPUPrimitiveGroup* group)
+OptixGPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
+                              OptixGPUPrimitiveGroup* group)
 {
     const geom::internal::MotionTransform& l2pXform = instance.getLocal2Parent();
 
-    scene_rdl2::math::Xform3f xforms[GPUInstance::sNumMotionKeys];
+    scene_rdl2::math::Xform3f xforms[OptixGPUInstance::sNumMotionKeys];
     bool hasMotionBlur;
     if (!l2pXform.isMotion()) {
         xforms[0] = l2pXform.getStaticXform();
@@ -796,8 +796,8 @@ GPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
         // eval() the l2pXform at sNumMotionKeys discrete timesteps between time [0, 1].
         // Optix can't slerp() between matrices so we need to generate smaller
         // timesteps it can lerp() between.
-        for (int i = 0; i < GPUInstance::sNumMotionKeys; i++) {
-            float t = i / static_cast<float>(GPUInstance::sNumMotionKeys - 1);
+        for (int i = 0; i < OptixGPUInstance::sNumMotionKeys; i++) {
+            float t = i / static_cast<float>(OptixGPUInstance::sNumMotionKeys - 1);
             xforms[i] = l2pXform.eval(t);
         }
         hasMotionBlur = true;
@@ -831,23 +831,23 @@ GPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
         return;
     }
 
-    GPUInstance* gpuInstance = new GPUInstance();
+    OptixGPUInstance* gpuInstance = new OptixGPUInstance();
     mParentGroup->mInstances.push_back(gpuInstance);
     gpuInstance->mGroup = group;
 
     if (hasMotionBlur) {
-        for (int i = 0; i < GPUInstance::sNumMotionKeys; i++) {
-            gpuInstance->mXforms[i] = mat43ToGPUXform(xforms[i]);
+        for (int i = 0; i < OptixGPUInstance::sNumMotionKeys; i++) {
+            gpuInstance->mXforms[i] = mat43ToOptixGPUXform(xforms[i]);
         }
     } else {
-        gpuInstance->mXforms[0] = mat43ToGPUXform(xforms[0]);
+        gpuInstance->mXforms[0] = mat43ToOptixGPUXform(xforms[0]);
     }
 
     gpuInstance->mHasMotionBlur = hasMotionBlur;
 }
 
 unsigned int
-GPUBVHBuilder::resolveVisibilityMask(const geom::internal::NamedPrimitive& np) const
+OptixGPUBVHBuilder::resolveVisibilityMask(const geom::internal::NamedPrimitive& np) const
 {
     unsigned int mask = 0;
     if (np.hasSurfaceAssignment(mLayer)) {
@@ -862,9 +862,9 @@ GPUBVHBuilder::resolveVisibilityMask(const geom::internal::NamedPrimitive& np) c
 }
 
 bool
-GPUBVHBuilder::getShadowLinking(const geom::internal::NamedPrimitive& np,
-                                GPUBuffer<int>& assignmentIdsBuf,
-                                GPUBuffer<unsigned long long>& lightIdsBuf) const
+OptixGPUBVHBuilder::getShadowLinking(const geom::internal::NamedPrimitive& np,
+                                OptixGPUBuffer<int>& assignmentIdsBuf,
+                                OptixGPUBuffer<unsigned long long>& lightIdsBuf) const
 {
     std::vector<int> assignmentIds;
     std::vector<unsigned long long> lightIds;
@@ -894,7 +894,7 @@ GPUBVHBuilder::getShadowLinking(const geom::internal::NamedPrimitive& np,
 
 
 
-GPUAcceleratorImpl::GPUAcceleratorImpl(const scene_rdl2::rdl2::Layer *layer,
+OptixGPUAccelerator::OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
                                        const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                                        const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
                                        std::string* errorMsg) :
@@ -936,7 +936,7 @@ GPUAcceleratorImpl::GPUAcceleratorImpl(const scene_rdl2::rdl2::Layer *layer,
         OPTIX_PRIMITIVE_TYPE_FLAGS_ROUND_CUBIC_BSPLINE);
 
     const std::string moonrayRootPath = scene_rdl2::util::getenv<std::string>("REZ_MOONRAY_ROOT");
-    const std::string ptxPath = moonrayRootPath + "/shaders/GPUPrograms.ptx";
+    const std::string ptxPath = moonrayRootPath + "/shaders/OptixGPUPrograms.ptx";
     scene_rdl2::logging::Logger::info("GPU: Loading .ptx: ", ptxPath);
 
     OptixModuleCompileOptions moduleCompileOptions = {
@@ -1056,7 +1056,7 @@ GPUAcceleratorImpl::GPUAcceleratorImpl(const scene_rdl2::rdl2::Layer *layer,
     scene_rdl2::logging::Logger::info("GPU: Setup complete");
 }
 
-GPUAcceleratorImpl::~GPUAcceleratorImpl()
+OptixGPUAccelerator::~OptixGPUAccelerator()
 {
     scene_rdl2::logging::Logger::info("GPU: Freeing accelerator");
 
@@ -1104,7 +1104,7 @@ GPUAcceleratorImpl::~GPUAcceleratorImpl()
 }
 
 std::string
-GPUAcceleratorImpl::getGPUDeviceName() const
+OptixGPUAccelerator::getGPUDeviceName() const
 {
     return mGPUDeviceName;
 }
@@ -1112,7 +1112,7 @@ GPUAcceleratorImpl::getGPUDeviceName() const
 bool
 buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
                     scene_rdl2::rdl2::Geometry* geometry,
-                    GPUPrimitiveGroup* rootGroup,
+                    OptixGPUPrimitiveGroup* rootGroup,
                     SharedGroupMap& groups,
                     std::unordered_set<scene_rdl2::rdl2::Geometry*>& visitedGeometry,
                     std::string* errorMsg)
@@ -1152,8 +1152,8 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
         const std::shared_ptr<geom::SharedPrimitive>& ref =
             procedural->getReference();
         if (groups.insert(std::make_pair(ref, nullptr)).second) {
-            GPUPrimitiveGroup *group = new GPUPrimitiveGroup();
-            GPUBVHBuilder builder(layer, geometry, group, groups);
+            OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
+            OptixGPUBVHBuilder builder(layer, geometry, group, groups);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -1161,7 +1161,7 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
             groups[ref] = group;
         }
     } else {
-        GPUBVHBuilder geomBuilder(layer,
+        OptixGPUBVHBuilder geomBuilder(layer,
                                   geometry,
                                   rootGroup,
                                   groups);
@@ -1177,7 +1177,7 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
 }
 
 bool
-GPUAcceleratorImpl::build(CUstream cudaStream,
+OptixGPUAccelerator::build(CUstream cudaStream,
                           OptixDeviceContext context,
                           const scene_rdl2::rdl2::Layer *layer,
                           const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
@@ -1186,7 +1186,7 @@ GPUAcceleratorImpl::build(CUstream cudaStream,
 {
     // See embree EmbreeAccelerator::build()
 
-    mRootGroup = new GPUPrimitiveGroup();
+    mRootGroup = new OptixGPUPrimitiveGroup();
 
     std::unordered_set<scene_rdl2::rdl2::Geometry*> visitedGeometry;
     for (const auto& geometrySet : geometrySets) {
@@ -1210,7 +1210,7 @@ GPUAcceleratorImpl::build(CUstream cudaStream,
     unsigned int sbtOffset = 0;
     mRootGroup->setSBTOffset(sbtOffset);
     for (auto& groupEntry : mSharedGroups) {
-        GPUPrimitiveGroup *group = groupEntry.second;
+        OptixGPUPrimitiveGroup *group = groupEntry.second;
         group->setSBTOffset(sbtOffset);
     }
 
@@ -1223,9 +1223,9 @@ GPUAcceleratorImpl::build(CUstream cudaStream,
 }
 
 bool
-GPUAcceleratorImpl::createProgramGroups(std::string* errorMsg)
+OptixGPUAccelerator::createProgramGroups(std::string* errorMsg)
 {
-    // See GPUPrograms.cu for the implementations of the programs.
+    // See OptixGPUPrograms.cu for the implementations of the programs.
 
     OptixProgramGroup pg;
     if (!createOptixRaygenProgramGroup(mContext,
@@ -1393,7 +1393,7 @@ GPUAcceleratorImpl::createProgramGroups(std::string* errorMsg)
 }
 
 bool
-GPUAcceleratorImpl::createShaderBindingTable(std::string* errorMsg)
+OptixGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
 {
     mSBT = {}; // zero initialize
 
@@ -1423,7 +1423,7 @@ GPUAcceleratorImpl::createShaderBindingTable(std::string* errorMsg)
         std::vector<HitGroupRecord> hitgroupRecs;
         mRootGroup->getSBTRecords(mProgramGroups, hitgroupRecs);
         for (auto& groupEntry : mSharedGroups) {
-            GPUPrimitiveGroup *group = groupEntry.second;
+            OptixGPUPrimitiveGroup *group = groupEntry.second;
             group->getSBTRecords(mProgramGroups, hitgroupRecs);
         }
 
@@ -1443,14 +1443,14 @@ GPUAcceleratorImpl::createShaderBindingTable(std::string* errorMsg)
 }
 
 void
-GPUAcceleratorImpl::occluded(const unsigned numRays, const GPUOcclusionRay* rays) const
+OptixGPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* rays) const
 {
     // std::cout << "occluded(): " << numRays << std::endl;
 
     MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);
 
     // Setup the global GPU parameters
-    GPUParams params;
+    OptixGPUParams params;
     params.mAccel = mRootGroup->mTopLevelIAS;
     params.mNumRays = numRays;
     params.mRaysBuf = mRaysBuf.ptr();

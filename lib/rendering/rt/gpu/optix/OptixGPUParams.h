@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "GPUOcclusionRay.h"
+#include "../GPUOcclusionRay.h"
 
 #include <optix.h>
 
@@ -12,7 +12,7 @@ namespace rt {
 
 // Global parameters passed to the GPU
 
-struct GPUParams
+struct OptixGPUParams
 {
     OptixTraversableHandle mAccel;
 

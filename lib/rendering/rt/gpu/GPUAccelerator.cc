@@ -3,7 +3,7 @@
 
 #ifdef MOONRAY_USE_CUDA
 
-#include "GPUAcceleratorImpl.h"
+#include "optix/OptixGPUAccelerator.h"
 #include "GPUAccelerator.h"
 
 // This header must be included in exactly one .cc file for the link to succeed
@@ -17,7 +17,7 @@ GPUAccelerator::GPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
                                const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
                                std::string* errorMsg)
 {
-    mImpl.reset(new GPUAcceleratorImpl(layer, geometrySets, g2s, errorMsg));
+    mImpl.reset(new OptixGPUAccelerator(layer, geometrySets, g2s, errorMsg));
     if (!errorMsg->empty()) {
         // Something went wrong so free everything
         // Output the error to Logger::error so we are guaranteed to see it
@@ -51,7 +51,7 @@ GPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* rays) co
 unsigned int
 GPUAccelerator::getRaysBufSize()
 {
-    return GPUAcceleratorImpl::getRaysBufSize();
+    return OptixGPUAccelerator::getRaysBufSize();
 }
 
 } // namespace rt

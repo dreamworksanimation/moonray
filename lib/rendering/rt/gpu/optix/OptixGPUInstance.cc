@@ -1,15 +1,15 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUInstance.h"
-#include "GPUPrimitiveGroup.h"
-#include "GPUUtils.h"
+#include "OptixGPUInstance.h"
+#include "OptixGPUPrimitiveGroup.h"
+#include "OptixGPUUtils.h"
 
 namespace moonray {
 namespace rt {
 
 bool
-GPUInstance::build(CUstream cudaStream,
+OptixGPUInstance::build(CUstream cudaStream,
                    OptixDeviceContext context,
                    std::string* errorMsg)
 {

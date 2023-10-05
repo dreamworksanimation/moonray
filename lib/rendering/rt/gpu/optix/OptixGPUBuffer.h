@@ -12,20 +12,20 @@
 namespace moonray {
 namespace rt {
 
-// GPUBuffer manages a buffer on the GPU, with methods to copy to/from that
+// OptixGPUBuffer manages a buffer on the GPU, with methods to copy to/from that
 // GPU buffer.  You can't manipulate GPU memory directly from the host side.
 
 template <typename T>
-class GPUBuffer
+class OptixGPUBuffer
 {
 public:
-    GPUBuffer() :
+    OptixGPUBuffer() :
         mCount {0},
         mPtr {nullptr}
     {}
 
     // move constructor and assignment
-    GPUBuffer(GPUBuffer&& other)
+    OptixGPUBuffer(OptixGPUBuffer&& other)
     {
         mCount = other.mCount;
         mPtr = other.mPtr;
@@ -33,7 +33,7 @@ public:
         other.mPtr = nullptr;
     }
 
-    GPUBuffer& operator=(GPUBuffer&& other)
+    OptixGPUBuffer& operator=(OptixGPUBuffer&& other)
     {
         if (this != &other) {
             free();
@@ -46,10 +46,10 @@ public:
     }
 
     // non-copyable
-    GPUBuffer(const GPUBuffer&) = delete;
-    GPUBuffer& operator=(const GPUBuffer&) = delete;
+    OptixGPUBuffer(const OptixGPUBuffer&) = delete;
+    OptixGPUBuffer& operator=(const OptixGPUBuffer&) = delete;
 
-    ~GPUBuffer()
+    ~OptixGPUBuffer()
     {
         free();
     }

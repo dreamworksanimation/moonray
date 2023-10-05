@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "GPUBuffer.h"
-#include "GPUMath.h"
+#include "OptixGPUBuffer.h"
+#include "OptixGPUMath.h"
 
 #include <cuda.h>
 #include <vector>
@@ -16,10 +16,10 @@ namespace rt {
 // Typically this is a few parameters and a set of buffers that live on the
 // GPU (as it is up to the host to manage the GPU memory.)
 
-class GPUPrimitive
+class OptixGPUPrimitive
 {
 public:
-    virtual ~GPUPrimitive() {}
+    virtual ~OptixGPUPrimitive() {}
 
     std::string mName;
     unsigned int mInputFlags;
@@ -28,34 +28,34 @@ public:
     bool mVisibleShadow;
 
     // per sub-primitive (or just one item if no sub-primitives)
-    GPUBuffer<int> mAssignmentIds;
-    GPUBuffer<int> mShadowLinkAssignmentIds;
-    GPUBuffer<unsigned long long> mShadowLinkLightIds;
+    OptixGPUBuffer<int> mAssignmentIds;
+    OptixGPUBuffer<int> mShadowLinkAssignmentIds;
+    OptixGPUBuffer<unsigned long long> mShadowLinkLightIds;
 };
 
 // Basic triangle mesh geometry.  Each triangle has 3 verts.  Moonray quads
 // have been tessellated into tris.
 // Triangle meshes are hardware accelerated and do not have intersection programs.
 
-class GPUTriMesh : public GPUPrimitive
+class OptixGPUTriMesh : public OptixGPUPrimitive
 {
 public:
-    GPUBuffer<float3>          mVertices;
+    OptixGPUBuffer<float3>       mVertices;
     // We need to keep a pointer to each motion sample's vertex buffer. If there is no motion blur, both pointers
     // will point to the same buffer.
-    std::array<CUdeviceptr, 2> mVerticesPtrs;
-    size_t                     mNumVertices;
+    std::array<CUdeviceptr, 2>   mVerticesPtrs;
+    size_t                       mNumVertices;
 
-    GPUBuffer<unsigned int>    mIndices;
-    size_t                     mNumFaces;
+    OptixGPUBuffer<unsigned int> mIndices;
+    size_t                       mNumFaces;
 
-    bool                       mEnableMotionBlur;
+    bool                         mEnableMotionBlur;
 };
 
 // Linear or BSpline round curves.  This is supported as a built-in type by Optix 7.1,
 // thus they do not need an intersection program specified.
 
-class GPURoundCurves : public GPUPrimitive
+class OptixGPURoundCurves : public OptixGPUPrimitive
 {
 public:
     OptixPrimitiveType mType;
@@ -63,25 +63,25 @@ public:
     int mMotionSamplesCount; // 1 or 2 - a current limitation of RoundCurves
 
     // each index points to the first control point in a curve segment
-    GPUBuffer<unsigned int> mIndices;
+    OptixGPUBuffer<unsigned int> mIndices;
 
     int mNumControlPoints;
     // We need to keep a pointer to each motion sample's vertex buffer. If there is no motion blur, both pointers
     // will point to the same buffer.
     std::array<CUdeviceptr, 2> mVerticesPtrs;
-    GPUBuffer<float3> mVertices;
+    OptixGPUBuffer<float3> mVertices;
     std::array<CUdeviceptr, 2> mWidthsPtrs;
-    GPUBuffer<float> mWidths; // radius, but Optix calls it width
+    OptixGPUBuffer<float> mWidths; // radius, but Optix calls it width
 };
 
 // Custom primitives for non-trimesh geometry.  These have custom intersection
 // programs on the GPU.  You cannot mix trimeshes and custom primitives in the
 // same traversable (BVH) so they are treated separately throughout the GPU code.
 
-class GPUCustomPrimitive : public GPUPrimitive
+class OptixGPUCustomPrimitive : public OptixGPUPrimitive
 {
 public:
-    virtual ~GPUCustomPrimitive() {}
+    virtual ~OptixGPUCustomPrimitive() {}
 
     // Optix needs the Aabb(s) to put the custom primitive into the BVH.
     // If this is something simple like a sphere, there are no sub-primitives and
@@ -95,19 +95,19 @@ public:
     virtual void freeHostMemory() {}
 };
 
-class GPUBox : public GPUCustomPrimitive
+class OptixGPUBox : public OptixGPUCustomPrimitive
 {
 public:
     void getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const override;
 
-    GPUXform mL2P;  // Local to Primitive
-    GPUXform mP2L;  // Primitive to Local
+    OptixGPUXform mL2P;  // Local to Primitive
+    OptixGPUXform mP2L;  // Primitive to Local
     float mLength;
     float mHeight;
     float mWidth;
 };
 
-class GPUCurve : public GPUCustomPrimitive
+class OptixGPUCurve : public OptixGPUCustomPrimitive
 {
 public:
     void getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const override;
@@ -128,13 +128,13 @@ public:
     std::vector<float4> mHostControlPoints;
 
     // GPU-side copy of the indices
-    GPUBuffer<unsigned int> mIndices;
+    OptixGPUBuffer<unsigned int> mIndices;
 
     // GPU-side copy of the control points
-    GPUBuffer<float4> mControlPoints;
+    OptixGPUBuffer<float4> mControlPoints;
 };
 
-class GPUPoints : public GPUCustomPrimitive
+class OptixGPUPoints : public OptixGPUCustomPrimitive
 {
 public:
     void getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const override;
@@ -147,16 +147,16 @@ public:
     std::vector<float4> mHostPoints;
 
     // GPU-side copy of the points
-    GPUBuffer<float4> mPoints;
+    OptixGPUBuffer<float4> mPoints;
 };
 
-class GPUSphere : public GPUCustomPrimitive
+class OptixGPUSphere : public OptixGPUCustomPrimitive
 {
 public:
     void getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const override;
 
-    GPUXform mL2P;  // Local to Primitive
-    GPUXform mP2L;  // Primitive to Local
+    OptixGPUXform mL2P;  // Local to Primitive
+    OptixGPUXform mP2L;  // Primitive to Local
     float mRadius;
     float mPhiMax;
     float mZMin;

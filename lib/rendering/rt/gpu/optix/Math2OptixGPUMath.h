@@ -1,24 +1,24 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-// Math type conversion functions that we can't include in GPUMath.h
+// Math type conversion functions that we can't include in OptixGPUMath.h
 // because they would pull in the regular MoonRay headers into the GPU-only code.
 
 #pragma once
 
-#include "GPUMath.h"
+#include "OptixGPUMath.h"
 #include <moonray/rendering/geom/Types.h>
 
 namespace moonray {
 namespace rt {
 
-inline GPUXform
-mat43ToGPUXform(const geom::Mat43& mat)
+inline OptixGPUXform
+mat43ToOptixGPUXform(const geom::Mat43& mat)
 {
     // Note that Mat43 is a 4x3 matrix with the translation as the bottom row,
-    // while GPUXform is a 3x4 matrix with the translation as the last column.
+    // while OptixGPUXform is a 3x4 matrix with the translation as the last column.
     // The core 3x3 part of the matrix is transposed.
-    GPUXform xf;
+    OptixGPUXform xf;
     xf.m[0][0] = mat.row0().x;
     xf.m[0][1] = mat.row1().x;
     xf.m[0][2] = mat.row2().x;

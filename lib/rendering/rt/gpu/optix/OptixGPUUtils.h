@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "GPUBuffer.h"
+#include "OptixGPUBuffer.h"
 
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -17,9 +17,9 @@
 namespace moonray {
 namespace rt {
 
-class GPUTriMesh;
-class GPURoundCurves;
-class GPUCustomPrimitive;
+class OptixGPUTriMesh;
+class OptixGPURoundCurves;
+class OptixGPUCustomPrimitive;
 
 bool
 getNVIDIADriverVersion(int* major, int* minor);
@@ -97,7 +97,7 @@ createOptixAccel(OptixDeviceContext context,
                  const OptixAccelBuildOptions& accelOptions,
                  const std::vector<OptixBuildInput>& inputs,
                  bool compact,
-                 GPUBuffer<char>* accelBuf,
+                 OptixGPUBuffer<char>* accelBuf,
                  OptixTraversableHandle* accelHandle,
                  std::string* errorMsg);
 
@@ -105,17 +105,17 @@ createOptixAccel(OptixDeviceContext context,
 bool
 createTrianglesGAS(CUstream cudaStream,
                    OptixDeviceContext optixContext,
-                   const std::vector<GPUTriMesh*>& triMeshes,
+                   const std::vector<OptixGPUTriMesh*>& triMeshes,
                    OptixTraversableHandle* accel,
-                   GPUBuffer<char>* accelBuf,
+                   OptixGPUBuffer<char>* accelBuf,
                    std::string* errorMsg);
 
 bool
 createRoundCurvesGAS(CUstream cudaStream,
                      OptixDeviceContext optixContext,
-                     const std::vector<GPURoundCurves*>& roundCurves,
+                     const std::vector<OptixGPURoundCurves*>& roundCurves,
                      OptixTraversableHandle* accel,
-                     GPUBuffer<char>* accelBuf,
+                     OptixGPUBuffer<char>* accelBuf,
                      std::string* errorMsg);
 
 // Custom primitives -> any non-triangle geometry as triangles are built-in
@@ -123,9 +123,9 @@ createRoundCurvesGAS(CUstream cudaStream,
 bool
 createCustomPrimitivesGAS(CUstream cudaStream,
                           OptixDeviceContext optixContext,
-                          const std::vector<GPUCustomPrimitive*>& primitives,
+                          const std::vector<OptixGPUCustomPrimitive*>& primitives,
                           OptixTraversableHandle* accel,
-                          GPUBuffer<char>* accelBuf,
+                          OptixGPUBuffer<char>* accelBuf,
                           std::string* errorMsg);
 
 } // namespace rt

@@ -1,14 +1,14 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUMath.h"
-#include "GPUParams.h"
-#include "GPUOcclusionRay.h"
-#include "GPUSBTRecord.h"
+#include "../GPUOcclusionRay.h"
+#include "OptixGPUMath.h"
+#include "OptixGPUParams.h"
+#include "OptixGPUSBTRecord.h"
 
 using namespace moonray::rt;
 
-extern "C" __constant__ static GPUParams params;
+extern "C" __constant__ static OptixGPUParams params;
 
 
 // Each occlusion ray has a PerRayData associated with it that is globally
@@ -240,7 +240,7 @@ void projectCurveControlPoints(const float4* cp,
                                float4* cp2d)
 {
     // Rotate curve control points to Z plane perpendicular to ray
-    GPUXform curve2DXform = GPUXform::rotateToZAxisXform(rayDir);
+    OptixGPUXform curve2DXform = OptixGPUXform::rotateToZAxisXform(rayDir);
     for (int i = 0; i < numPoints; i++) {
         float3 pos2d = curve2DXform.transformVector(make_float3(cp[i]) - rayOrg);
         cp2d[i] = make_float4(pos2d, cp[i].w);

@@ -1,10 +1,10 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUUtils.h"
+#include "OptixGPUUtils.h"
 
-#include "GPUBuffer.h"
-#include "GPUPrimitive.h"
+#include "OptixGPUBuffer.h"
+#include "OptixGPUPrimitive.h"
 
 #undef min  // or compile error with std::min in optix_stack_size.h
 #undef max
@@ -339,7 +339,7 @@ createOptixAccel(OptixDeviceContext context,
                  const OptixAccelBuildOptions& accelOptions,
                  const std::vector<OptixBuildInput>& inputs,
                  bool compact,
-                 GPUBuffer<char>* accelBuf,
+                 OptixGPUBuffer<char>* accelBuf,
                  OptixTraversableHandle* accelHandle,
                  std::string* errorMsg)
 {
@@ -353,7 +353,7 @@ createOptixAccel(OptixDeviceContext context,
         return false;
     }
 
-    GPUBuffer<uint64_t> compactedSizeBuffer;
+    OptixGPUBuffer<uint64_t> compactedSizeBuffer;
     if (compactedSizeBuffer.alloc(1) != cudaSuccess) {
         *errorMsg = "Unable to allocate Optix compacted size buffer";
         return false;
@@ -363,13 +363,13 @@ createOptixAccel(OptixDeviceContext context,
     emitDesc.type   = OPTIX_PROPERTY_TYPE_COMPACTED_SIZE;
     emitDesc.result = compactedSizeBuffer.deviceptr();
 
-    GPUBuffer<char> tempBuffer;
+    OptixGPUBuffer<char> tempBuffer;
     if (tempBuffer.alloc(accelBufferSizes.tempSizeInBytes) != cudaSuccess) {
         *errorMsg = "Unable to allocate Optix accel temporary buffer";
         return false;
     }
 
-    GPUBuffer<char> outputBuffer;
+    OptixGPUBuffer<char> outputBuffer;
     if (outputBuffer.alloc(accelBufferSizes.outputSizeInBytes) != cudaSuccess) {
         *errorMsg = "Unable to allocate Optix accel output buffer";
         return false;
@@ -423,9 +423,9 @@ createOptixAccel(OptixDeviceContext context,
 bool
 createTrianglesGAS(CUstream cudaStream,
                    OptixDeviceContext optixContext,
-                   const std::vector<GPUTriMesh*>& triMeshes,
+                   const std::vector<OptixGPUTriMesh*>& triMeshes,
                    OptixTraversableHandle* accel,
-                   GPUBuffer<char>* accelBuf,
+                   OptixGPUBuffer<char>* accelBuf,
                    std::string* errorMsg)
 {
     std::vector<OptixBuildInput> inputs;
@@ -479,9 +479,9 @@ createTrianglesGAS(CUstream cudaStream,
 bool
 createRoundCurvesGAS(CUstream cudaStream,
                      OptixDeviceContext optixContext,
-                     const std::vector<GPURoundCurves*>& roundCurves,
+                     const std::vector<OptixGPURoundCurves*>& roundCurves,
                      OptixTraversableHandle* accel,
-                     GPUBuffer<char>* accelBuf,
+                     OptixGPUBuffer<char>* accelBuf,
                      std::string* errorMsg)
 {
     std::vector<OptixBuildInput> inputs;
@@ -535,9 +535,9 @@ createRoundCurvesGAS(CUstream cudaStream,
 bool
 createCustomPrimitivesGAS(CUstream cudaStream,
                           OptixDeviceContext optixContext,
-                          const std::vector<GPUCustomPrimitive*>& primitives,
+                          const std::vector<OptixGPUCustomPrimitive*>& primitives,
                           OptixTraversableHandle* accel,
-                          GPUBuffer<char>* accelBuf,
+                          OptixGPUBuffer<char>* accelBuf,
                           std::string* errorMsg)
 {
     // Temporary data that is freed when this function returns
@@ -545,7 +545,7 @@ createCustomPrimitivesGAS(CUstream cudaStream,
     {
         unsigned int mInputFlags;
         unsigned int mNumPrimitives;
-        GPUBuffer<OptixAabb> mAabbs;  // per primitive
+        OptixGPUBuffer<OptixAabb> mAabbs;  // per primitive
         CUdeviceptr mAabbsPtr;
     };
     std::vector<CustomPrimitiveBuildData> buildDatas;
