@@ -218,6 +218,8 @@ RenderContext::RenderContext(RenderOptions& options, std::stringstream* initMess
     mHasBeenInit(false),
     mSceneLoaded(false),
     mLogTime(true),
+    mInfoLoggingEnabled(false),
+    mDebugLoggingEnabled(false),
     mGeometryManagerOptions(new rt::GeometryManagerOptions()),
     mRenderStats(nullptr),
     mRenderPrepTimingStats(nullptr),
@@ -374,12 +376,12 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 
     scene_rdl2::rdl2::SceneVariables& sceneVars = mSceneContext->getSceneVariables();
 
-    const bool infoLogging = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sInfoKey);
-    const bool debugLogging = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sDebugKey);
-    if (debugLogging) {
+    mInfoLoggingEnabled = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sInfoKey);
+    mDebugLoggingEnabled = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sDebugKey);
+    if (mDebugLoggingEnabled) {
         // debug logging includes info logging
         scene_rdl2::logging::Logger::setDebugLevel();
-    } else if (infoLogging) {
+    } else if (mInfoLoggingEnabled) {
         // This is subtle: scene_rdl2::logging::Logger::init is called at load time
         // before we ever hit main(). It captures the arguments passed to main.
         // Intentionally or not, we use "-info" on the command line for
@@ -394,7 +396,7 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
         scene_rdl2::logging::Logger::setInfoLevel();
     }
 
-    mRenderStats->openInfoStream(infoLogging || debugLogging);
+    mRenderStats->openInfoStream(mInfoLoggingEnabled || mDebugLoggingEnabled);
     mRenderStats->openStatsStream(sceneVars.get(scene_rdl2::rdl2::SceneVariables::sStatsFile));
 
 #ifndef DEBUG
@@ -1090,7 +1092,7 @@ RenderContext::stopFrame()
             mRenderStats->logSamplingStats(*mPbrStatistics, *mGeomStatistics);
 
             mRenderStats->logInfoEmptyLine();
-            mRenderStats->logTexturingStats(*texture::getTextureSampler());
+            mRenderStats->logTexturingStats(*texture::getTextureSampler(), mDebugLoggingEnabled);
 
             mRenderStats->logRenderingStats(*mPbrStatistics,
                 static_cast<mcrt_common::ExecutionMode>(mDriver->getFrameState().mExecutionMode),

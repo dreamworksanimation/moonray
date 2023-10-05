@@ -1277,7 +1277,7 @@ RenderStats::logSamplingStats(const pbr::Statistics& pbrStats, const geom::inter
 
 
 void
-RenderStats::logTexturingStats(texture::TextureSampler& texturesampler)
+RenderStats::logTexturingStats(texture::TextureSampler& texturesampler, bool verbose)
 {
     if (getLogAthena()) {
         texturesampler.getStatisticsForCsv(mAthenaStream, true);
@@ -1288,7 +1288,7 @@ RenderStats::logTexturingStats(texture::TextureSampler& texturesampler)
     }
 
     if (getLogInfo()) {
-        texturesampler.getStatistics(getPrependString(), mInfoStream);
+        texturesampler.getStatistics(getPrependString(), mInfoStream, verbose);
         texturesampler.getMainCacheInfo(getPrependString(), mInfoStream);
     }
 }
