@@ -795,18 +795,13 @@ RenderContext::startFrame()
 
     case ExecutionMode::XPU:
         // XPU mode inherits the same limitations of vector mode
+        executionModeString = "Executing an xpu render since execution mode was set to xpu.";
         if (!vecSupport) {
-            executionModeString = "Executing a scalar render since execution mode was set to xpu.";
-            executionModeString += "  The following features are missing xpu/vector mode support: ";
+            executionModeString += "  The following features will be missing: ";
             executionModeString += missingVecFeatures;
             executionModeString += ".";
-            executionMode = ExecutionMode::SCALAR;
-        } else {
-            executionModeString = "Executing an xpu render since execution mode was set to xpu.";
-            executionMode = ExecutionMode::XPU;
-            // XPU may still fall back to vector mode later on if it fails to start up, but this is fine
-            // because we know that it's safe to run in vector mode.
         }
+        executionMode = ExecutionMode::XPU;
     break;
 
     case ExecutionMode::AUTO:
@@ -3358,6 +3353,7 @@ RenderContext::canRunVectorized(std::string &reason) const
     // The issues will still be reported in alphabetical order.
     bool hasVarianceBuffers = false;
     bool hasDeepOutput = false;
+    bool hasRefractCrypto = false;
     const scene_rdl2::rdl2::SceneContext::RenderOutputVector &ros = mSceneContext->getAllRenderOutputs();
     for (auto roItr = ros.cbegin(); roItr != ros.cend(); ++roItr) {
         const scene_rdl2::rdl2::RenderOutput *ro = *roItr;
@@ -3367,6 +3363,10 @@ RenderContext::canRunVectorized(std::string &reason) const
             }
             if (ro->getOutputType() == "deep") {
                 hasDeepOutput = true;
+            }
+            if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE &&
+                ro->getCryptomatteEnableRefract()) {
+                hasRefractCrypto = true;
             }
         }
     }
@@ -3401,6 +3401,11 @@ RenderContext::canRunVectorized(std::string &reason) const
                 break; // no reason to keep looping
             }
         }
+    }
+
+    // Refractive crypto: MOONRAY-5074
+    if (hasRefractCrypto) {
+        fail("refractive cryptomattes");
     }
 
     return result;

@@ -14,13 +14,76 @@ using scene_rdl2::logging::Logger;
 namespace moonray {
 namespace geom {
 
+// These first two internal pickRate functions take an explicit rate.
+// If the explicit rate is set to "auto" we fall back to the public
+// pickRate function which guesses the rate based on the number of
+// values and geometry components.
 AttributeRate
-pickRate(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size0,
-    size_t size1,
-    const geom::RateCounts& rates)
+pickRate(const scene_rdl2::rdl2::SceneObject* object,
+         int explicitRate,
+         const std::string& keyName,
+         size_t size,
+         const RateCounts& rates)
+{
+    switch (explicitRate) {
+    case scene_rdl2::rdl2::UserData::Rate::AUTO:
+        return pickRate(object, keyName, size, rates);
+    case scene_rdl2::rdl2::UserData::Rate::CONSTANT:
+        if (size == 1) return AttributeRate::RATE_CONSTANT;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'constant' rate of 1 value");
+        return AttributeRate::RATE_UNKNOWN;
+    case scene_rdl2::rdl2::UserData::Rate::PART:
+        if (size == rates.partCount) return AttributeRate::RATE_PART;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'part' rate of ", rates.partCount, " values");
+        return AttributeRate::RATE_UNKNOWN;
+    case scene_rdl2::rdl2::UserData::Rate::UNIFORM:
+        if (size == rates.uniformCount) return AttributeRate::RATE_UNIFORM;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'uniform' rate of ", rates.uniformCount, " values");
+        return AttributeRate::RATE_UNKNOWN;
+    case scene_rdl2::rdl2::UserData::Rate::VERTEX:
+        if (size == rates.vertexCount) return AttributeRate::RATE_VERTEX;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'vertex' rate of ", rates.vertexCount, " values");
+        return AttributeRate::RATE_UNKNOWN;
+    case scene_rdl2::rdl2::UserData::Rate::VARYING:
+        if (size == rates.varyingCount) return AttributeRate::RATE_VARYING;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'varying' rate of ", rates.varyingCount, " values");
+        return AttributeRate::RATE_UNKNOWN;
+    case scene_rdl2::rdl2::UserData::Rate::FACE_VARYING:
+        if (size == rates.faceVaryingCount) return AttributeRate::RATE_FACE_VARYING;
+        Logger::warn(object->getName(), '.', keyName, ": size: ", size,
+                     " does not match selected 'face varying' rate of ", rates.faceVaryingCount, " values");
+        return AttributeRate::RATE_UNKNOWN;
+    default:
+        return AttributeRate::RATE_UNKNOWN;
+    }
+}
+
+AttributeRate
+pickRate(const scene_rdl2::rdl2::SceneObject* object,
+         int explicitRate,
+         const std::string& keyName,
+         size_t size0,
+         size_t size1,
+         const RateCounts& rates)
+{
+    if (size0 != size1) {
+        Logger::warn(object->getName(), '.', keyName, ": time samples not equal size, ", size0, " != ", size1);
+        if (size1 < size0) size0 = size1;
+    }
+    return pickRate(object, explicitRate, keyName, size0, rates);
+}
+
+AttributeRate
+pickRate(const scene_rdl2::rdl2::SceneObject* object,
+         const std::string& keyName,
+         size_t size0,
+         size_t size1,
+         const geom::RateCounts& rates)
 {
     if (size0 != size1) {
         Logger::warn(object->getName(), '.', keyName, ": time samples not equal size, ", size0, " != ", size1);
@@ -30,11 +93,10 @@ pickRate(
 }
 
 AttributeRate
-pickRate(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size,
-    const geom::RateCounts& rates)
+pickRate(const scene_rdl2::rdl2::SceneObject* object,
+         const std::string& keyName,
+         size_t size,
+         const geom::RateCounts& rates)
 {
     if (size == 0) {
         Logger::warn(object->getName(), '.', keyName, ": invalid size 0");
@@ -81,11 +143,10 @@ pickRate(
     return rate;
 }
 
-bool sizeCheck(
-    const scene_rdl2::rdl2::SceneObject* object,
-    const std::string& keyName,
-    size_t size,
-    size_t correctSize)
+bool sizeCheck(const scene_rdl2::rdl2::SceneObject* object,
+               const std::string& keyName,
+               size_t size,
+               size_t correctSize)
 {
     if (size == correctSize) return true;
     if (size) {
@@ -96,13 +157,12 @@ bool sizeCheck(
 
 
 void
-processArbitraryData(
-    const scene_rdl2::rdl2::SceneObject* geometry,
-    const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObjectVector> attributeKey,
-    shading::PrimitiveAttributeTable& primitiveAttributeTable,
-    const geom::RateCounts& rates,
-    bool useFirstFrame,
-    bool useSecondFrame)
+processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
+                     const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObjectVector> attributeKey,
+                     shading::PrimitiveAttributeTable& primitiveAttributeTable,
+                     const geom::RateCounts& rates,
+                     bool useFirstFrame,
+                     bool useSecondFrame)
 {
     const scene_rdl2::rdl2::SceneObjectVector& arbitraryData = geometry->get(attributeKey);
     for (auto sceneObject : arbitraryData) {
@@ -110,6 +170,7 @@ processArbitraryData(
         if (!userData) {
             continue;
         }
+        const int explicitRate = userData->getRate();
 
         if (userData->hasBoolData()) {
             shading::TypedAttributeKey<scene_rdl2::rdl2::Bool> key(userData->getBoolKey());
@@ -118,7 +179,7 @@ processArbitraryData(
             std::vector<scene_rdl2::rdl2::Bool> data(constData.begin(), constData.end());
             primitiveAttributeTable.addAttribute(
                 key,
-                pickRate(geometry, key.getName(), data.size(), rates),
+                pickRate(geometry, explicitRate, key.getName(), data.size(), rates),
                 std::move(data));
         }
 
@@ -127,7 +188,7 @@ processArbitraryData(
             scene_rdl2::rdl2::IntVector data = userData->getIntValues();
             primitiveAttributeTable.addAttribute(
                 key,
-                pickRate(geometry, key.getName(), data.size(), rates),
+                pickRate(geometry, explicitRate, key.getName(), data.size(), rates),
                 std::move(data));
         }
 
@@ -145,7 +206,7 @@ processArbitraryData(
                 size_t size1 = samples.size() > 1 ? samples[1].size() : size0;
                 primitiveAttributeTable.addAttribute(
                     key,
-                    pickRate(geometry, key.getName(), size0, size1, rates),
+                    pickRate(geometry, explicitRate, key.getName(), size0, size1, rates),
                     std::move(samples));
             }
         }
@@ -155,7 +216,7 @@ processArbitraryData(
             scene_rdl2::rdl2::StringVector data = userData->getStringValues();
             primitiveAttributeTable.addAttribute(
                 key,
-                pickRate(geometry, key.getName(), data.size(), rates),
+                pickRate(geometry, explicitRate, key.getName(), data.size(), rates),
                 std::move(data));
         }
 
@@ -173,7 +234,7 @@ processArbitraryData(
                 size_t size1 = samples.size() > 1 ? samples[1].size() : size0;
                 primitiveAttributeTable.addAttribute(
                     key,
-                    pickRate(geometry, key.getName(), size0, size1, rates),
+                    pickRate(geometry, explicitRate, key.getName(), size0, size1, rates),
                     std::move(samples));
             }
         }
@@ -192,7 +253,7 @@ processArbitraryData(
                 size_t size1 = samples.size() > 1 ? samples[1].size() : size0;
                 primitiveAttributeTable.addAttribute(
                     key,
-                    pickRate(geometry, key.getName(), size0, size1, rates),
+                    pickRate(geometry, explicitRate, key.getName(), size0, size1, rates),
                     std::move(samples));
             }
         }
@@ -211,7 +272,7 @@ processArbitraryData(
                 size_t size1 = samples.size() > 1 ? samples[1].size() : size0;
                 primitiveAttributeTable.addAttribute(
                     key,
-                    pickRate(geometry, key.getName(), size0, size1, rates),
+                    pickRate(geometry, explicitRate, key.getName(), size0, size1, rates),
                     std::move(samples));
             }
         }
@@ -230,7 +291,7 @@ processArbitraryData(
                 size_t size1 = samples.size() > 1 ? samples[1].size() : size0;
                 primitiveAttributeTable.addAttribute(
                     key,
-                    pickRate(geometry, key.getName(), size0, size1, rates),
+                    pickRate(geometry, explicitRate, key.getName(), size0, size1, rates),
                     std::move(samples));
             }
         }
