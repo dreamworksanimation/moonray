@@ -31,9 +31,9 @@ getNVIDIADriverVersion(int* major, int* minor)
     *major = 0;
     *minor = 0;
     bool success = false;
-    FILE *fp = fopen("/proc/driver/nvidia/version", "r");
+    FILE *fp = fopen("/sys/module/nvidia/version", "r");
     if (fp != NULL) {
-        if (fscanf(fp, "NVRM version: NVIDIA UNIX x86_64 Kernel Module  %d.%d", major, minor) == 2) {
+        if (fscanf(fp, "%d.%d", major, minor) == 2) {
             success = true;
         }
         fclose(fp);
