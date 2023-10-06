@@ -45,12 +45,12 @@ pickRate(
         return AttributeRate::RATE_FACE_VARYING;
     } else if (size == rates.partCount) {
         return AttributeRate::RATE_PART;
-    } else if (size == rates.uniformCount) {
-        return AttributeRate::RATE_UNIFORM;
     } else if (size == rates.vertexCount) {
         return AttributeRate::RATE_VERTEX;
     } else if (size == rates.varyingCount) {
         return AttributeRate::RATE_VARYING;
+    } else if (size == rates.uniformCount) {
+        return AttributeRate::RATE_UNIFORM;
     }
     // Pick one that fits. Tried in assumed largest->smallest order. Some geometry
     // may produce a different order but it is probably ok that the interpolation
