@@ -15,23 +15,23 @@ using namespace scene_rdl2;
 using namespace scene_rdl2::math;
 
 bool RodLightFilter::sAttributeKeyInitialized;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Mat4d> RodLightFilter::sNodeXformKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sWidthKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sDepthKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sHeightKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sRadiusKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sEdgeKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Rgb> RodLightFilter::sColorKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sIntensityKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> RodLightFilter::sDensityKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> RodLightFilter::sInvertKey;
-scene_rdl2::rdl2::AttributeKey<rdl2::FloatVector> RodLightFilter::sRampInKey;
-scene_rdl2::rdl2::AttributeKey<rdl2::FloatVector> RodLightFilter::sRampOutKey;
-scene_rdl2::rdl2::AttributeKey<rdl2::IntVector> RodLightFilter::sRampInterpolationTypesKey;
+rdl2::AttributeKey<rdl2::Mat4d> RodLightFilter::sNodeXformKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sWidthKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sDepthKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sHeightKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sRadiusKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sEdgeKey;
+rdl2::AttributeKey<rdl2::Rgb> RodLightFilter::sColorKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sIntensityKey;
+rdl2::AttributeKey<rdl2::Float> RodLightFilter::sDensityKey;
+rdl2::AttributeKey<rdl2::Bool> RodLightFilter::sInvertKey;
+rdl2::AttributeKey<rdl2::FloatVector> RodLightFilter::sRampInKey;
+rdl2::AttributeKey<rdl2::FloatVector> RodLightFilter::sRampOutKey;
+rdl2::AttributeKey<rdl2::IntVector> RodLightFilter::sRampInterpolationTypesKey;
 
 HUD_VALIDATOR(RodLightFilter);
 
-RodLightFilter::RodLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter) :
+RodLightFilter::RodLightFilter(const rdl2::LightFilter* rdlLightFilter) :
     LightFilter(rdlLightFilter)
 {
     if (mRdlLightFilter) {
@@ -42,7 +42,7 @@ RodLightFilter::RodLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilt
 }
 
 void
-RodLightFilter::initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc)
+RodLightFilter::initAttributeKeys(const rdl2::SceneClass &sc)
 {
     if (sAttributeKeyInitialized) {
         return;
@@ -52,20 +52,20 @@ RodLightFilter::initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc)
 
     sAttributeKeyInitialized = true;
 
-    sNodeXformKey = sc.getAttributeKey<scene_rdl2::rdl2::Mat4d>("node_xform");
-    sWidthKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("width");
-    sDepthKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("depth");
-    sHeightKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("height");
-    sRadiusKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("radius");
-    sEdgeKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("edge");
-    sColorKey = sc.getAttributeKey<scene_rdl2::rdl2::Rgb>("color");
-    sIntensityKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("intensity");
-    sDensityKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("density");
-    sInvertKey = sc.getAttributeKey<scene_rdl2::rdl2::Bool>("invert");
+    sNodeXformKey = sc.getAttributeKey<rdl2::Mat4d>("node_xform");
+    sWidthKey = sc.getAttributeKey<rdl2::Float>("width");
+    sDepthKey = sc.getAttributeKey<rdl2::Float>("depth");
+    sHeightKey = sc.getAttributeKey<rdl2::Float>("height");
+    sRadiusKey = sc.getAttributeKey<rdl2::Float>("radius");
+    sEdgeKey = sc.getAttributeKey<rdl2::Float>("edge");
+    sColorKey = sc.getAttributeKey<rdl2::Rgb>("color");
+    sIntensityKey = sc.getAttributeKey<rdl2::Float>("intensity");
+    sDensityKey = sc.getAttributeKey<rdl2::Float>("density");
+    sInvertKey = sc.getAttributeKey<rdl2::Bool>("invert");
 
-    sRampInKey = sc.getAttributeKey<scene_rdl2::rdl2::FloatVector>("ramp_in_distances");
-    sRampOutKey = sc.getAttributeKey<scene_rdl2::rdl2::FloatVector>("ramp_out_distances");
-    sRampInterpolationTypesKey = sc.getAttributeKey<scene_rdl2::rdl2::IntVector>("ramp_interpolation_types");
+    sRampInKey = sc.getAttributeKey<rdl2::FloatVector>("ramp_in_distances");
+    sRampOutKey = sc.getAttributeKey<rdl2::FloatVector>("ramp_out_distances");
+    sRampInterpolationTypesKey = sc.getAttributeKey<rdl2::IntVector>("ramp_interpolation_types");
 
     MOONRAY_FINISH_NON_THREADSAFE_STATIC_WRITE
 }
@@ -118,9 +118,9 @@ RodLightFilter::updateParamAndTransforms(const Mat4f &local2Render0,
 
     // setup mMb
     mMb = LIGHTFILTER_MB_NONE;
-    const scene_rdl2::rdl2::SceneVariables &vars =
+    const rdl2::SceneVariables &vars =
         mRdlLightFilter->getSceneClass().getSceneContext()->getSceneVariables();
-    const bool mb = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableMotionBlur) &&
+    const bool mb = vars.get(rdl2::SceneVariables::sEnableMotionBlur) &&
         !isEqual(local2Render0, local2Render1);
 
     if (mb) {
@@ -146,8 +146,8 @@ RodLightFilter::update(const LightFilterMap& /*lightFilters*/,
         return;
     }
 
-    const Mat4d l2w0 = mRdlLightFilter->get<scene_rdl2::rdl2::Mat4d>(sNodeXformKey, 0.0f);
-    const Mat4d l2w1 = mRdlLightFilter->get<scene_rdl2::rdl2::Mat4d>(sNodeXformKey, 1.0f);
+    const Mat4d l2w0 = mRdlLightFilter->get<rdl2::Mat4d>(sNodeXformKey, 0.0f);
+    const Mat4d l2w1 = mRdlLightFilter->get<rdl2::Mat4d>(sNodeXformKey, 1.0f);
 
     const Mat4f local2Render0 = toFloat(l2w0 * world2render);
     const Mat4f local2Render1 = toFloat(l2w1 * world2render);
@@ -156,17 +156,17 @@ RodLightFilter::update(const LightFilterMap& /*lightFilters*/,
         return;
     }
 
-    mWidth = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sWidthKey);
-    mDepth = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sDepthKey);
-    mHeight = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sHeightKey);
-    mRadius = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sRadiusKey);
-    mEdge = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sEdgeKey);
+    mWidth = mRdlLightFilter->get<rdl2::Float>(sWidthKey);
+    mDepth = mRdlLightFilter->get<rdl2::Float>(sDepthKey);
+    mHeight = mRdlLightFilter->get<rdl2::Float>(sHeightKey);
+    mRadius = mRdlLightFilter->get<rdl2::Float>(sRadiusKey);
+    mEdge = mRdlLightFilter->get<rdl2::Float>(sEdgeKey);
     mEdgeInv = mEdge ? 1.f/mEdge : 1.f;
-    mColor = mRdlLightFilter->get<scene_rdl2::rdl2::Rgb>(sColorKey);
-    mIntensity = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sIntensityKey);
+    mColor = mRdlLightFilter->get<rdl2::Rgb>(sColorKey);
+    mIntensity = mRdlLightFilter->get<rdl2::Float>(sIntensityKey);
     mColor *= mIntensity;
-    mDensity = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sDensityKey);
-    mInvert = mRdlLightFilter->get<scene_rdl2::rdl2::Bool>(sInvertKey);
+    mDensity = clamp(mRdlLightFilter->get<rdl2::Float>(sDensityKey), 0.f, 1.f);
+    mInvert = mRdlLightFilter->get<rdl2::Bool>(sInvertKey);
     mBoxCorner = abs(Vec3f(mWidth, mHeight, mDepth)*0.5f);
     mRender2LocalRotAndScale = mRender2LocalRot0.l * mRender2LocalScale0;
     mRadiusEdgeSum = mRadius+mEdge;

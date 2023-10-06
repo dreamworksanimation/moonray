@@ -209,6 +209,11 @@ LightAccelerator::init(const Light*const* lights, int lightCount, const RTCDevic
         rtcSetGeometryUserData(rtcGeom, (void *)const_cast<Light**>(mBoundedLights));
         rtcSetGeometryBoundsFunction(rtcGeom, boundsCallback, nullptr);
         rtcSetGeometryIntersectFunction(rtcGeom, intersectCallback);
+        // The default mask is 0x00000001.  We need to set it to all 1s because we use
+        //  the mask to mask light types instead of geometry.  If we don't, geometry 
+        //  will incorrectly be ignored for certain light types.  We want all geometry
+        //  to be tested for intersection regardless of the light type mask.
+        rtcSetGeometryMask(rtcGeom, 0xffffffff);
         rtcAttachGeometry(mRtcScene, rtcGeom);
         rtcCommitGeometry(rtcGeom);
         rtcReleaseGeometry(rtcGeom);

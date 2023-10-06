@@ -302,7 +302,7 @@ CookieLightFilter_v2::update(const LightFilterMap& /*lightFilters*/,
 
     mOutsideProjection = mRdlLightFilter->get<rdl2::Int>(sOutsideProjection);
 
-    mDensity = mRdlLightFilter->get<rdl2::Float>(sDensityKey);
+    mDensity = clamp(mRdlLightFilter->get<rdl2::Float>(sDensityKey), 0.f, 1.f);
     mInvert = mRdlLightFilter->get<rdl2::Bool>(sInvertKey);
 
     std::string textureFilename = mRdlLightFilter->get<rdl2::String>(sTextureKey);

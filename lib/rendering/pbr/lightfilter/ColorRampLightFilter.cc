@@ -116,7 +116,7 @@ ColorRampLightFilter::update(const LightFilterMap& /*lightFilters*/,
         ispc::COLOR_RAMP_CONTROL_SPACE_RGB);
 
     mIntensity = mRdlLightFilter->get<rdl2::Float>(sIntensityKey);
-    mDensity = mRdlLightFilter->get<rdl2::Float>(sDensityKey);
+    mDensity = clamp(mRdlLightFilter->get<rdl2::Float>(sDensityKey), 0.f, 1.f);
     mMode = mRdlLightFilter->get<rdl2::Int>(sModeKey);
     mWrapMode = mRdlLightFilter->get<rdl2::Int>(sWrapModeKey);
 }

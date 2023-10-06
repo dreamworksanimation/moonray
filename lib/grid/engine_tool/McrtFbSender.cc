@@ -1562,7 +1562,7 @@ McrtFbSender::showRenderBufferPix(const unsigned sx, const unsigned sy) const
         return ostr.str();
     }            
 
-    bool activePixFlag = mActivePixels.getActivePixelCondition(sx, sy);
+    bool activePixFlag = mActivePixels.isActivePixel(sx, sy);
 
     scene_rdl2::fb_util::Tiler tiler(getWidth(), getHeight());
     unsigned px, py;

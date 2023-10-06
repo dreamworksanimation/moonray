@@ -53,6 +53,7 @@
 #include <scene_rdl2/common/except/exceptions.h>
 #include <scene_rdl2/scene/rdl2/rdl2.h>
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
+#include <scene_rdl2/scene/rdl2/ValueContainerEnq.h>
 #include <scene_rdl2/render/util/Files.h>
 #include <scene_rdl2/render/logging/logging.h>
 #include <scene_rdl2/render/util/Strings.h>
@@ -808,7 +809,7 @@ RenderContext::startFrame()
 
     // Log information as to whether we're executing in scalar, vectorized, or xpu mode
     // and the reason why.
-    mExecutionMode = executionMode; // for debugConsole command
+    mExecutionMode = executionMode; // for debugConsole command and McrtNodeInfo update
     mExecutionModeString = executionModeString; // for debugConsole command
     mRenderStats->logExecModeConfiguration(executionMode);
     Logger::info(executionModeString);
@@ -1705,6 +1706,21 @@ RenderContext::getFrameProgressFraction(std::size_t* submitted, std::size_t* tot
     bool activeRendering = isFrameRendering() && !isFrameComplete();
 
     return mDriver->getOverallProgressFraction(activeRendering, submitted, total);
+}
+
+void
+RenderContext::setMultiMachineGlobalProgressFraction(float fraction)
+{
+    mMultiMachineGlobalProgressFraction = fraction;
+    if (mDriver) {
+        mDriver->setMultiMachineGlobalProgressFraction(fraction);
+    }
+}
+
+float
+RenderContext::getMultiMachineGlobalProgressFraction() const
+{
+    return mMultiMachineGlobalProgressFraction;
 }
 
 RenderProgressEstimation *
@@ -2919,7 +2935,13 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
 #endif
         break;
     case RenderMode::PROGRESS_CHECKPOINT:
-        fs->mTileSchedulerType = (unsigned)vars.get(scene_rdl2::rdl2::SceneVariables::sCheckpointTileOrder);
+        if (fs->mNumRenderNodes == 1) {
+            fs->mTileSchedulerType = (unsigned)vars.get(scene_rdl2::rdl2::SceneVariables::sCheckpointTileOrder);
+        } else {
+            // This reduces image update visual imbalance artifacts and achieves a better balanced progressive
+            // update feeling under multi-machine especially many mcrtTotal condition.
+            fs->mTileSchedulerType = TileScheduler::MORTON_SHIFTFLIP;
+        }
         break;
     default:
         MNRY_ASSERT(0);
@@ -3437,6 +3459,8 @@ RenderContext::parserConfigure()
                 [&](Arg& arg) -> bool { return saveSceneCommand(arg); });
     mParser.opt("showExecMode", "", "show rendering execMode and the reason why",
                 [&](Arg& arg) -> bool { return arg.msg(showExecModeAndReason() + '\n'); });
+    mParser.opt("showNumThread", "", "show number of thread info",
+                [&](Arg& arg) { return arg.fmtMsg("numTBBThread:%d\n", mcrt_common::getNumTBBThreads()); });
 }
 
 void

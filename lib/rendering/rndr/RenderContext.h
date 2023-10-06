@@ -450,6 +450,9 @@ public:
     float getFrameProgressFraction(std::size_t* submitted, std::size_t* total) const;
     RenderProgressEstimation *getFrameProgressEstimation() const;
 
+    void setMultiMachineGlobalProgressFraction(float fraction); // for multi-machine configuration
+    float getMultiMachineGlobalProgressFraction() const;
+
     bool isVectorizationDesired() const {
         return mOptions.getDesiredExecutionMode() == mcrt_common::ExecutionMode::VECTORIZED;
     }
@@ -558,6 +561,8 @@ public:
     std::string execTrackerCancelInfoEncode() const; // for debug console
     void execTrackerCancelInfoDecode(const std::string &data);  // for debug console
 
+    mcrt_common::ExecutionMode getCurrentExecutionMode() const { return mExecutionMode; }
+
     std::string getOiioStats(int level) const; // level=1~5
 
 private:
@@ -649,6 +654,8 @@ private:
     // The render driver which handles the details of rendering tiles and pixels.
     // Not owned by this render context.
     std::shared_ptr<RenderDriver> mDriver;
+
+    float mMultiMachineGlobalProgressFraction {0.0f};
 
     /// GeometryManager manages all geometries in the scene for ray tracing.
     /// It handles proper update for changes and provides acceleration data
@@ -751,7 +758,7 @@ private:
     Parser mParser;
 
     // final rendering execution mode and the reason why
-    mcrt_common::ExecutionMode mExecutionMode; // for debugConsole command
+    mcrt_common::ExecutionMode mExecutionMode; // for debugConsole command and McrtNodeInfo update
     std::string mExecutionModeString; // for debugConsole command
 };
 
