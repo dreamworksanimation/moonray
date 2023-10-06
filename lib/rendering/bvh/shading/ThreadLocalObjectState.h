@@ -26,7 +26,8 @@ namespace shading {
 class CACHE_ALIGN ThreadLocalObjectState
 {
  public:
-    static ThreadLocalObjectState *alignedAlloc(int num) {
+    static ThreadLocalObjectState *alignedAlloc(int num)
+    {
         void *memptr;
         if (auto err = posix_memalign(&memptr, 64, sizeof(ThreadLocalObjectState)*num)) {
             throw std::bad_alloc();
@@ -40,7 +41,8 @@ class CACHE_ALIGN ThreadLocalObjectState
         return result;
     }
 
-    static void deallocate(int num, ThreadLocalObjectState *tlos) {
+    static void deallocate(int num, ThreadLocalObjectState *tlos)
+    {
         if (tlos == nullptr) return;
         for (int i = 0; i < num; i++) {
             tlos[i].~ThreadLocalObjectState();
@@ -48,11 +50,10 @@ class CACHE_ALIGN ThreadLocalObjectState
         free(tlos);
     }
 
-    scene_rdl2::logging::ObjectLogs mLogs;
     moonray::util::InclusiveExclusiveAverage<int64> mShaderCallStat;
 
-    void clear() {
-        mLogs.clear();
+    void clear()
+    {
         mShaderCallStat.reset();
     }
 };

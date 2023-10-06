@@ -225,7 +225,7 @@ sample(const uniform Map* uniform map,
         // compute udim index
         udim = UDIM_TEXTURE_compute_udim(me->mUdimTexture, tls, st);
         if (udim == -1) {
-            logEvent(map, tls, me->mImageMapDataPtr->sErrorInvalidUdimCoord);
+            logEvent(map, me->mImageMapDataPtr->sErrorInvalidUdimCoord);
             return Color_ctor(me->mUdimTexture->mFatalColor.r,
                               me->mUdimTexture->mFatalColor.g,
                               me->mUdimTexture->mFatalColor.b);

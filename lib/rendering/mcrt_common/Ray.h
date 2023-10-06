@@ -11,7 +11,7 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/math/Xform.h>
 
-#include <embree3/rtcore.h>
+#include <embree4/rtcore.h>
 
 namespace scene_rdl2 {
 
@@ -395,10 +395,10 @@ struct IntersectContext
 {
     IntersectContext(): mRayExtension(nullptr)
     {
-        rtcInitIntersectContext(&mRtcContext);
+        rtcInitRayQueryContext(&mRtcContext);
     }
 
-    RTCIntersectContext mRtcContext; // this should always be the first memeber!
+    RTCRayQueryContext mRtcContext; // this should always be the first member!
     RayExtension* mRayExtension;
 };
 

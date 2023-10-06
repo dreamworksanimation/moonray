@@ -10,8 +10,8 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <moonray/rendering/pbr/sampler/IntegratorSample.h>
 
-#include <embree3/rtcore.h>
-#include <embree3/rtcore_ray.h>
+#include <embree4/rtcore.h>
+#include <embree4/rtcore_ray.h>
 
 
 namespace moonray {

@@ -24,6 +24,7 @@ if 'icc' in env['CC']:
     env['CXXFLAGS'].append('-wd869')  # warning: parameter was never referenced (frontend bug with variadic templates)
 
 public_headers = [
+            'Atomic.h',      # needed by general API
             'Average.h',     # needed by general API
             'ProcessStats.h',# needed by general API
             'StringPool.h', # needed by PrimitiveAttribute.h

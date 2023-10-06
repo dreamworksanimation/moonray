@@ -144,7 +144,7 @@ AttributeMap::createLogEvent(const std::string& primAttrType,
         << "', using default value";
 
     mData.mMissingAttributeEvent =
-        mLogEventRegistry.createEvent(scene_rdl2::logging::WARN_LEVEL, os.str());
+        sLogEventRegistry.createEvent(scene_rdl2::logging::WARN_LEVEL, os.str());
 }
 
 void
@@ -194,14 +194,14 @@ AttributeMap::sample(const scene_rdl2::rdl2::Map* self, moonray::shading::TLStat
                 // and use the default value
                 *sample = evalColor(me, attrDefaultValue, tls, state);
                 if (me->get(attrWarnWhenUnavailable)) {
-                    moonray::shading::logEvent(me, tls, me->mData.mMissingAttributeEvent);
+                    moonray::shading::logEvent(me, me->mData.mMissingAttributeEvent);
                 }
             }
         } else {
             // the primitive attribute is unavailable
             *sample = evalColor(me, attrDefaultValue, tls, state);
             if (me->get(attrWarnWhenUnavailable)) {
-                moonray::shading::logEvent(me, tls, me->mData.mMissingAttributeEvent);
+                moonray::shading::logEvent(me, me->mData.mMissingAttributeEvent);
             }
         }
     } else if (me->get(attrMapType) == ispc::AttributeMapType::P) {

@@ -13,9 +13,11 @@
 #include <moonray/rendering/bvh/shading/ThreadLocalObjectState.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
-#include <scene_rdl2/render/util/stdmemory.h>
 
 #include <OpenImageIO/texture.h>
+
+#include <memory>
+#include <mutex>
 
 namespace moonray {
 namespace shading {
@@ -69,7 +71,7 @@ class BasicTexture::Impl
 {
 public:
     Impl(scene_rdl2::rdl2::Shader *shader,
-         scene_rdl2::logging::LogEventRegistry& logEventRegistry) :
+         scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry) :
          mShader(shader),
          mWidth(0),
          mHeight(0),
@@ -99,13 +101,17 @@ public:
         // to allow for the possibility that we may someday create image maps
         // on multiple threads, we'll protect the writes of the class statics
         // with a mutex.
-        static tbb::mutex errorMutex;
-        tbb::mutex::scoped_lock lock(errorMutex);
+        static std::mutex errorMutex;
+        std::lock_guard<std::mutex> lock(errorMutex);
         MOONRAY_START_THREADSAFE_STATIC_WRITE
 
         mIspc.mBasicTextureStaticDataPtr = &sBasicTextureStaticData;
         sBasicTextureStaticData.mStartAccumulator = (intptr_t)CPP_startOIIOAccumulator;
         sBasicTextureStaticData.mStopAccumulator = (intptr_t)CPP_stopOIIOAccumulator;
+
+        sBasicTextureStaticData.sErrorSampleFail =
+            logEventRegistry.createEvent(scene_rdl2::logging::ERROR_LEVEL,
+                                          "unknown oiio sample failure");
 
         MOONRAY_FINISH_THREADSAFE_STATIC_WRITE
     }
@@ -249,6 +255,7 @@ public:
             result[2] = tmp[2];
             result[3] = tmp[3];
         } else {
+            logEvent(mIspc.mBasicTextureStaticDataPtr->sErrorSampleFail);
             result[0] = result[1] = result[2] = result[3] = 0.f;
         }
 
@@ -280,10 +287,9 @@ public:
     }
 
     void
-    logEvent(const shading::TLState *tls, int error) const
+    logEvent(int error) const
     {
-        int threadIndex = mcrt_common::getThreadIdx(tls);
-        mShader->getThreadLocalObjectState()[threadIndex].mLogs.log(error);
+        scene_rdl2::rdl2::Shader::getLogEventRegistry().log(mShader, error);
     }
 
     ispc::BASIC_TEXTURE_Data mIspc;
@@ -301,8 +307,8 @@ public:
 
 BasicTexture::BasicTexture(
     scene_rdl2::rdl2::Shader *shader,
-    scene_rdl2::logging::LogEventRegistry& logEventRegistry) :
-    mImpl(fauxstd::make_unique<Impl>(shader, logEventRegistry))
+    scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry) :
+    mImpl(std::make_unique<Impl>(shader, logEventRegistry))
 {}
 
 BasicTexture::~BasicTexture()
@@ -411,6 +417,8 @@ void CPP_oiioTexture(const ispc::BASIC_TEXTURE_Data *tx,
             // don't gamma the alpha channel
         }
     } else {
+        scene_rdl2::rdl2::Shader* const shader = reinterpret_cast<scene_rdl2::rdl2::Shader*>(tx->mShader);
+        scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, tx->mBasicTextureStaticDataPtr->sErrorSampleFail);
         result[0] = result[1] = result[2] = result[3] = 0.f;
     }
 }

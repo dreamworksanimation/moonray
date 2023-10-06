@@ -8,8 +8,8 @@
 
 #include <scene_rdl2/common/platform/IspcUtil.isph>
 
-#include <embree3/rtcore.isph>
-#include <embree3/rtcore_ray.isph>
+#include <embree4/rtcore.isph>
+#include <embree4/rtcore_ray.isph>
 
 //----------------------------------------------------------------------------
 
@@ -323,20 +323,11 @@ MeshLight_intersect(const uniform Light * uniform li,
     rayHit.hit.primID = RTC_INVALID_GEOMETRY_ID;
     rayHit.hit.instID[0] = RTC_INVALID_GEOMETRY_ID;
 
-    uniform RTCIntersectContext context;
-    // rtcInitIntersectContext causes a compile failure:
-    // Error: Undefined behavior: all program instances are writing to the same location!
-    // so fill in the field manually.
-    //rtcInitIntersectContext(&context);
-    context.flags = RTC_INTERSECT_CONTEXT_FLAG_INCOHERENT;
-    context.filter = NULL;
-#if RTC_MAX_INSTANCE_LEVEL_COUNT > 1
-    context->instStackSize = 0;
-#endif
-    for(uniform uint32_t l = 0; l < RTC_MAX_INSTANCE_LEVEL_COUNT; ++l) {
-        context.instID[l] = RTC_INVALID_GEOMETRY_ID;
-    }
-    rtcIntersectV(light->mRtcScene, &context, &rayHit);
+    uniform RTCIntersectArguments args;
+    rtcInitIntersectArguments(&args);
+    args.flags = RTC_RAY_QUERY_FLAG_INCOHERENT;
+
+    rtcIntersectV(light->mRtcScene, &rayHit, &args);
 
     if (rayHit.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
         return false;

@@ -14,7 +14,7 @@
 #include <scene_rdl2/common/platform/HybridUniformData.h>
 #include <scene_rdl2/scene/rdl2/rdl2.h>
 
-#include <embree3/rtcore.h>
+#include <embree4/rtcore.h>
 
 
 // Forward declaration of the ISPC types
@@ -351,10 +351,10 @@ struct LightIntersectContext {
         mNumHits(nullptr),
         mLightIdMap(nullptr)
     {
-        rtcInitIntersectContext(&mRtcContext);
+        rtcInitRayQueryContext(&mRtcContext);
     }
 
-    RTCIntersectContext mRtcContext;
+    RTCRayQueryContext mRtcContext;
     float* mData0;
     float* mData1;
     float* mDistance;
@@ -373,10 +373,10 @@ struct LightIntersectContext {
 struct LightOccludeContext {
     LightOccludeContext(): mSelf(nullptr)
     {
-        rtcInitIntersectContext(&mRtcContext);
+        rtcInitRayQueryContext(&mRtcContext);
     }
 
-    RTCIntersectContext mRtcContext;
+    RTCRayQueryContext mRtcContext;
     const Light* mSelf;
 };
 

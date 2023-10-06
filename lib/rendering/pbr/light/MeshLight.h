@@ -6,7 +6,7 @@
 #include "Light.h"
 
 #include <scene_rdl2/scene/rdl2/rdl2.h>
-#include <embree3/rtcore.h>
+#include <embree4/rtcore.h>
 
 // Forward declaration of the ISPC types
 namespace ispc {

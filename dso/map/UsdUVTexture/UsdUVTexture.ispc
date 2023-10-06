@@ -70,7 +70,7 @@ sample(const uniform Map* uniform map,
         varying int udim = UDIM_TEXTURE_compute_udim(me->mUdimTexture,
                                                      tls, st);
         if (udim == -1) {
-            logEvent(map, tls, me->mUsdUVTextureDataPtr->sErrorInvalidUdimCoord);
+            logEvent(map, me->mUsdUVTextureDataPtr->sErrorInvalidUdimCoord);
             return me->mUdimTexture->mFatalColor;
         }
 

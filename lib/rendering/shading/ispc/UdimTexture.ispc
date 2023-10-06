@@ -35,13 +35,11 @@ UDIM_TEXTURE_compute_udim(
 {
     if (st.x < 0.f || st.x > 10) {
         logEvent((const uniform SceneObject * uniform) tx->mShader,
-                 tls,
                  tx->mErrorUdimOutOfRangeU);
         return -1;
     }
     if (st.y < 0.f) {
         logEvent((const uniform SceneObject * uniform) tx->mShader,
-                 tls,
                  tx->mErrorUdimOutOfRangeV);
         return -1;
     }

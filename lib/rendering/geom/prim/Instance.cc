@@ -141,7 +141,11 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
             rayExtension.volumeInstanceState = fsm.transition(state, instance);
         }
 
-        rtcIntersect1(referenceScene, &context->mRtcContext, &localRay);
+        RTCIntersectArguments args;
+        rtcInitIntersectArguments(&args);
+        args.context = &(context->mRtcContext);
+
+        rtcIntersect1(referenceScene, &localRay, &args);
 
         if (localRay.hit.geomID == RTC_INVALID_GEOMETRY_ID) {
             // no new intersection found, restore original intersection state
@@ -252,7 +256,13 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
         localRay.mask  = RTCRayN_mask(rays, N, index);
         localRay.id    = RTCRayN_id(rays, N, index);
         context->mRtcContext.instID[0] = instance->getGeomID();
-        rtcOccluded1(referenceScene, &context->mRtcContext, &localRay);
+
+        RTCOccludedArguments oargs;
+        rtcInitOccludedArguments(&oargs);
+        oargs.context = &(context->mRtcContext);
+
+        rtcOccluded1(referenceScene, &localRay, &oargs);
+
         context->mRtcContext.instID[0] = RTC_INVALID_GEOMETRY_ID;
         RTCRayN_tfar(rays, N, index) = localRay.tfar;
     }

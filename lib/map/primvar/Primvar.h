@@ -19,7 +19,7 @@ void
 createLogEvent(const std::string& primAttrType,
                const std::string& primAttrName,
                int& missingAttributeEvent,
-               scene_rdl2::logging::LogEventRegistry& logEventRegistry);
+               scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry);
 
 bool
 getPosition(moonray::shading::TLState* tls,

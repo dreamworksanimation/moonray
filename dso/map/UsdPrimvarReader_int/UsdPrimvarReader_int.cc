@@ -61,7 +61,7 @@ UsdPrimvarReader_int::update()
         ::moonshine::primvar::createLogEvent("int",
                                              varname,
                                              mIspc.mMissingAttributeEvent,
-                                             mLogEventRegistry);
+                                             sLogEventRegistry);
     }
 }
 
@@ -84,7 +84,7 @@ UsdPrimvarReader_int::sample(const scene_rdl2::rdl2::Map *self, moonray::shading
         sample->g = v;
         sample->b = v;
         if (me->get(attrWarnWhenUnavailable)) {
-            moonray::shading::logEvent(me, tls, me->mIspc.mMissingAttributeEvent);
+            moonray::shading::logEvent(me, me->mIspc.mMissingAttributeEvent);
         }
     }
 }
