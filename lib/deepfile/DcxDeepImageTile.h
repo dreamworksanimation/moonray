@@ -15,7 +15,7 @@
 
 #ifdef __ICC
 // disable icc remark #1572: 'floating-point equality and inequality comparisons are unreliable'
-//   this is coming from OpenEXR/half.h...
+//   this is coming from Imath/half.h...
 #  pragma warning(disable:2557)
 #endif
 #include <OpenEXR/ImfDeepImage.h>

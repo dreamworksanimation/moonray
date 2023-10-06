@@ -14,10 +14,10 @@
 
 #ifdef __ICC
 // disable icc remark #1572: 'floating-point equality and inequality comparisons are unreliable'
-//   this is coming from OpenEXR/half.h...
+//   this is coming from Imath/half.h...
 #   pragma warning(disable:1572)
 #endif
-#include <OpenEXR/half.h>  // For Pixelh
+#include <Imath/half.h>  // For Pixelh
 
 #include <string.h> // for memset in some compilers
 #include <iostream>

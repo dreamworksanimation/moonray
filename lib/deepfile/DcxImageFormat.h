@@ -7,7 +7,7 @@
 #include "DcxAPI.h"
 
 #include <OpenEXR/ImfHeader.h>
-#include <OpenEXR/ImathMatrix.h>
+#include <Imath/ImathMatrix.h>
 
 #include <string>
 #include <iostream>
