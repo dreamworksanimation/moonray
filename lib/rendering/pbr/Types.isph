@@ -65,7 +65,6 @@ struct BundledOcclRayData
 
 void BundledOcclRayData_init(uniform BundledOcclRayData * varying this,
                              uint32_t flags,
-                             uint32_t cameraId,
                              const uniform Light * varying light);
 
 struct BundledOcclRay

@@ -332,7 +332,7 @@ RenderDriver::snapshotDeltaPixelInfo(unsigned filmIdx,
             scene_rdl2::fb_util::PixelInfo *dst = dstPixelInfoBuffer->getData() + pixId;
             float *dstW = dstPixelInfoWeightBuffer->getData() + pixId;
             // primary camera only for now
-            const scene_rdl2::fb_util::PixelInfo *src = film.getPixelInfoBuffer(0)->getData() + pixId;
+            const scene_rdl2::fb_util::PixelInfo *src = film.getPixelInfoBuffer()->getData() + pixId;
             const float *srcW = film.getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask = scene_rdl2::fb_util::SnapshotUtil::snapshotTilePixelInfoWeight((uint32_t *)dst,

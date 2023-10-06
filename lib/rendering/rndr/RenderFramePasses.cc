@@ -393,20 +393,18 @@ struct RenderSamplesParams
     unsigned            mFilmIdx; // index of mFilm of driver->mFilms[]
     Film *              mFilm;
 
-    int                 mNumCameras;
-
     unsigned            mTileIdx; // index of current processed tileId
 
     unsigned            mPx;
     unsigned            mPy;
 
-    pbr::Sampler *      mSamplers[MAX_CAMERAS];
+    pbr::Sampler *      mSampler;
 
     unsigned            mConsistentSamplesPerPixel;
     unsigned            mTotalNumSamples;
     unsigned            mRealtimeSampleOfs;
 
-    float               mShutterBias[MAX_CAMERAS];
+    float               mShutterBias;
     unsigned            mRenderNodeTotal;
     unsigned            mRenderNodeSampleOfs;
 
@@ -462,11 +460,8 @@ RenderDriver::renderTiles(RenderDriver *driver,
 
         params.mConsistentSamplesPerPixel = fs.mRenderContext->getNumConsistentSamples();
 
-        params.mNumCameras = fs.mScene->getCameraCount();
-        for (int i = 0; i < params.mNumCameras; i++) {
-            // shutter bias modifies the time of the primary ray sample
-            params.mShutterBias[i] = fs.mScene->getCamera(i)->getShutterBias();
-        }
+        // shutter bias modifies the time of the primary ray sample
+        params.mShutterBias = fs.mScene->getCamera()->getShutterBias();
 
         params.mRenderNodeTotal = fs.mNumRenderNodes;
         params.mRenderNodeSampleOfs = fs.mRenderNodeIdx;
@@ -708,7 +703,7 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
         SCOPED_MEM(pixelArena);
 
         // update pixelInfo(=pixel center depth) if required
-        computePixelInfo(driver, tls, film, params.mNumCameras, px, py);
+        computePixelInfo(driver, tls, film, px, py);
 
         unsigned currStartSampleIdx = startSampleIdx;
         unsigned currEndSampleIdx = endSampleIdx;
@@ -757,17 +752,15 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
         params.mPy = py;
         params.mTotalNumSamples = totalNumSamples;
 
-        // Each pixel + camera gets its own sampler.
-        pbr::Sampler samplers[params.mNumCameras];
-        for (int cameraId = 0; cameraId < params.mNumCameras; cameraId++) {
-            const auto stereo = fs.mScene->getCamera(cameraId)->getStereoView();
-            pbr::DeepBuffer *deepBuffer = film.getDeepBuffer();
-            bool use8x8Grid = deepBuffer ?
-                (deepBuffer->getFormat() == pbr::DeepFormat::OpenDCX2_0) : false;
-            samplers[cameraId] = pbr::Sampler(pbr::PixelScramble(px, py, fs.mFrameNumber, stereo),
-                              fs.mPixelFilter, use8x8Grid, totalNumSamples);
-            params.mSamplers[cameraId] = &samplers[cameraId];
-        }
+        // Each pixel gets its own sampler.
+        pbr::Sampler sampler;
+        const auto stereo = fs.mScene->getCamera()->getStereoView();
+        pbr::DeepBuffer *deepBuffer = film.getDeepBuffer();
+        bool use8x8Grid = deepBuffer ?
+            (deepBuffer->getFormat() == pbr::DeepFormat::OpenDCX2_0) : false;
+        sampler = pbr::Sampler(pbr::PixelScramble(px, py, fs.mFrameNumber, stereo),
+                          fs.mPixelFilter, use8x8Grid, totalNumSamples);
+        params.mSampler = &sampler;
 
         // Used for generating good sampling index values in the case of realtime.
         params.mRealtimeSampleOfs = (fs.mRenderMode == RenderMode::REALTIME) ? ipix : 0;
@@ -840,10 +833,7 @@ RenderDriver::renderPixelScalarSamples(pbr::TLState *pbrTls,
 
     float *localAovs = params->mLocalAovs;
     float *deepAovs = params->mDeepAovs;
-    float localDepths[params->mNumCameras];
-    for (int cameraId = 0; cameraId < params->mNumCameras; cameraId++) {
-        localDepths[cameraId] = scene_rdl2::math::pos_inf;
-    }
+    float localDepth = scene_rdl2::math::pos_inf;
 
     const rndr::FrameState &fs = *reinterpret_cast<const rndr::FrameState *>(pbrTls->mFs);
     const auto& schema = *fs.mAovSchema;
@@ -862,206 +852,194 @@ RenderDriver::renderPixelScalarSamples(pbr::TLState *pbrTls,
     DebugSamplesRecArray *debugSamplesRecArray = film->getDebugSamplesRecArray();
 #endif // end DEBUG_SAMPLE_REC_MODE
 
-    // loop over all cameras for this pixel
-    for (int cameraId = 0; cameraId < params->mNumCameras; cameraId++) {
-        // Loop over samples in current pixel. It is important to note that all samples within
-        // a single pass are guaranteed to be executed on the same thread. No single tile can
-        // be executed on different threads at one point in time (the TileWorkQueue ensures
-        // this), so we don't need to do any locking here.
-        for (unsigned isamp = startSampleIdx; isamp != endSampleIdx; ++isamp) {
+    // Loop over samples in current pixel. It is important to note that all samples within
+    // a single pass are guaranteed to be executed on the same thread. No single tile can
+    // be executed on different threads at one point in time (the TileWorkQueue ensures
+    // this), so we don't need to do any locking here.
+    for (unsigned isamp = startSampleIdx; isamp != endSampleIdx; ++isamp) {
 
-            // This line is for supporting the pixel sample map functionality.
-            if (isamp >= params->mTotalNumSamples) break;
+        // This line is for supporting the pixel sample map functionality.
+        if (isamp >= params->mTotalNumSamples) break;
 
-            CHECK_CANCELLATION(pbrTls, return false);
+        CHECK_CANCELLATION(pbrTls, return false);
 
-            // Push/pop memory arena for each sample.
-            SCOPED_MEM(arena);
+        // Push/pop memory arena for each sample.
+        SCOPED_MEM(arena);
 
-            if (aovs) {
-                fs.mAovSchema->initFloatArray(aovs);
-                fs.mAovSchema->initFloatArray(deepAovs);
-            }
+        if (aovs) {
+            fs.mAovSchema->initFloatArray(aovs);
+            fs.mAovSchema->initFloatArray(deepAovs);
+        }
 
-            float depth = scene_rdl2::math::pos_inf;
-            float *depthPtr = nullptr;
-            if (schema.hasClosestFilter()) {
-                // we'll need a depth result
-                depthPtr = &depth;
-            }
+        float depth = scene_rdl2::math::pos_inf;
+        float *depthPtr = nullptr;
+        if (schema.hasClosestFilter()) {
+            // we'll need a depth result
+            depthPtr = &depth;
+        }
 
-            pbr::ComputeRadianceAovParams aovParams { /* alpha = */ 0.f,
-                depthPtr, aovs, deepAovs, params->mDeepVolumeAovs };
+        pbr::ComputeRadianceAovParams aovParams { /* alpha = */ 0.f,
+            depthPtr, aovs, deepAovs, params->mDeepVolumeAovs };
 
-            // We add offset based on the machineId under multi-machine context.
-            // This is a core idea of how do we compute images by multi-machine.
-            // (relataed United States Patent : 11,176,721 : Nov/16/2021)
-            unsigned offset =
-                (isamp + params->mRealtimeSampleOfs) * params->mRenderNodeTotal
-                + params->mRenderNodeSampleOfs;
+        // We add offset based on the machineId under multi-machine context.
+        // This is a core idea of how do we compute images by multi-machine.
+        // (relataed United States Patent : 11,176,721 : Nov/16/2021)
+        unsigned offset =
+            (isamp + params->mRealtimeSampleOfs) * params->mRenderNodeTotal
+            + params->mRenderNodeSampleOfs;
 
-            const pbr::Sample sample =
-                params->mSamplers[cameraId]->getPrimarySample(px, py,
-                                                              fs.mFrameNumber,
-                                                              offset,
-                                                              fs.mDofEnabled,
-                                                              params->mShutterBias[cameraId]);
+        const pbr::Sample sample =
+            params->mSampler->getPrimarySample(px, py,
+                                               fs.mFrameNumber,
+                                               offset,
+                                               fs.mDofEnabled,
+                                               params->mShutterBias);
 
-            ACCUMULATOR_UNPAUSE(*(params->mNonRenderDriverAccumulator));
+        ACCUMULATOR_UNPAUSE(*(params->mNonRenderDriverAccumulator));
 
-            scene_rdl2::math::Color subSample =
-                fs.mIntegrator->computeRadiance(pbrTls,
-                                                px, py,
-                                                int(offset),
-                                                cameraId,
-                                                params->mTotalNumSamples,
-                                                sample,
-                                                aovParams,
-                                                film->getDeepBuffer(),
-                                                film->getCryptomatteBuffer());
+        scene_rdl2::math::Color subSample =
+            fs.mIntegrator->computeRadiance(pbrTls,
+                                            px, py,
+                                            int(offset),
+                                            params->mTotalNumSamples,
+                                            sample,
+                                            aovParams,
+                                            film->getDeepBuffer(),
+                                            film->getCryptomatteBuffer());
 
-            ACCUMULATOR_PAUSE(*(params->mNonRenderDriverAccumulator));
+        ACCUMULATOR_PAUSE(*(params->mNonRenderDriverAccumulator));
 
 #ifdef DEBUG_SAMPLE_REC_MODE
-            if (debugSamplesRecArray) {
-                debugSamplesRecArray->pixSamples(px, py, isamp,
-                                                subSample.r, subSample.g, subSample.b,
-                                                aovParams.mAlpha); // for debug
-            }
-            if (film->getAdaptiveRenderTilesTable()->isDebugPixByPos(px, py)) {
-                std::cerr << ">> RenderFrame.cc computeRadiance() result debug-pix(" << px << ',' << py << ')'
-                        << " isamp:" << isamp
-                        << " c(" << subSample.r << ',' << subSample.g << ',' << subSample.b << ')'
-                        << " a:" << aovParams.mAlpha << std::endl;
-            }
+        if (debugSamplesRecArray) {
+            debugSamplesRecArray->pixSamples(px, py, isamp,
+                                            subSample.r, subSample.g, subSample.b,
+                                            aovParams.mAlpha); // for debug
+        }
+        if (film->getAdaptiveRenderTilesTable()->isDebugPixByPos(px, py)) {
+            std::cerr << ">> RenderFrame.cc computeRadiance() result debug-pix(" << px << ',' << py << ')'
+                    << " isamp:" << isamp
+                    << " c(" << subSample.r << ',' << subSample.g << ',' << subSample.b << ')'
+                    << " a:" << aovParams.mAlpha << std::endl;
+        }
 #endif // end DEBUG_SAMPLE_REC_MODE
 
-            // If alpha is negative then we're dealing with an
-            // invalid sample and we should skip adding it and
-            // incrementing the sampleCount.
-            const float alpha = aovParams.mAlpha;
+        // If alpha is negative then we're dealing with an
+        // invalid sample and we should skip adding it and
+        // incrementing the sampleCount.
+        const float alpha = aovParams.mAlpha;
 
-            if (alpha < 0.f) continue;
-            if (cameraId == 0) {
-                // Render buffer values are only computed by the primary camera
+        if (alpha < 0.f) continue;
+        // copy color from unaligned subSample into
+        // aligned sample
+        scene_rdl2::fb_util::RenderColor sampleResult(subSample.r, subSample.g, subSample.b, alpha);
 
-                // copy color from unaligned subSample into
-                // aligned sample
-                scene_rdl2::fb_util::RenderColor sampleResult(subSample.r, subSample.g, subSample.b, alpha);
+        accRadiance += sampleResult;
 
-                accRadiance += sampleResult;
+        // Record odd indexed samples in a secondary radiance buffer.
+        if (isamp & 1) {
+            accRadiance2 += sampleResult;
+        }
 
-                // Record odd indexed samples in a secondary radiance buffer.
-                if (isamp & 1) {
-                    accRadiance2 += sampleResult;
+        ++numAccSamples;
+
+        if (params->mAovNumFloats) {
+            unsigned aovFloatIndex = 0;
+
+            // Fill in the AOVs
+
+            for (std::size_t entryIdx = 0; entryIdx < schema.size(); ++entryIdx) {
+                const pbr::AovSchema::Entry& entry = schema[entryIdx];
+                aovFloatIndex += (entryIdx > 0) ? schema[entryIdx - 1].numChannels() : 0;
+
+
+#ifdef DEBUG_SAMPLE_REC_MODE
+                if (debugSamplesRecArray &&
+                    debugSamplesRecArray->mode() == DebugSamplesRecArray::Mode::LOAD) {
+                    if (entry.type() == pbr::AOV_TYPE_BEAUTY) {
+                        std::memcpy((void *)(aovs + aovFloatIndex),
+                                    (const void *)&sampleResult, sizeof(float) * 3);
+                    }
+                    if (entry.type() == pbr::AOV_TYPE_ALPHA) {
+                        aovs[aovFloatIndex] = alpha;
+                    }
+                }
+#endif // end DEBUG_SAMPLE_REC_MODE
+
+                if (schema.hasVarianceEntry(entryIdx)) {
+                    // This entry has another aov keeping track of its variance. Let's add its variance.
+
+                    // Map from aov to variance aov
+                    for (auto varidx : schema.getSourceToVarianceAOVs(entryIdx)) {
+                        MNRY_ASSERT(varidx >= 0);
+                        film->addSampleStatistics(px, py, varidx, aovs + aovFloatIndex);
+                    }
                 }
 
-                ++numAccSamples;
-            }
+                // if entry IS variance...skip. Its values
+                // get added through addSampleStatistics*
+                // calls.
+                if (schema.isVarianceEntry(entryIdx)) {
+                    continue;
+                }
 
-            if (params->mAovNumFloats) {
-                unsigned aovFloatIndex = 0;
-
-                // Fill in the AOVs
-
-                for (std::size_t entryIdx = 0; entryIdx < schema.size(); ++entryIdx) {
-                    const pbr::AovSchema::Entry& entry = schema[entryIdx];
-                    aovFloatIndex += (entryIdx > 0) ? schema[entryIdx - 1].numChannels() : 0;
-
-                    if (cameraId != entry.cameraId()) {
-                        // This AOV is rendered with a different camera, skip.
-                        continue;
+                if (!schema.hasAovFilter()) {
+                    // if there is no special aov filter, sum
+                    // the values
+                    for (unsigned j = 0; j < entry.numChannels(); ++j) {
+                        const unsigned i = aovFloatIndex + j;
+                        localAovs[i] += aovs[i];
                     }
-
-#ifdef DEBUG_SAMPLE_REC_MODE
-                    if (debugSamplesRecArray &&
-                        debugSamplesRecArray->mode() == DebugSamplesRecArray::Mode::LOAD) {
-                        if (entry.type() == pbr::AOV_TYPE_BEAUTY) {
-                            std::memcpy((void *)(aovs + aovFloatIndex),
-                                        (const void *)&sampleResult, sizeof(float) * 3);
-                        }
-                        if (entry.type() == pbr::AOV_TYPE_ALPHA) {
-                            aovs[aovFloatIndex] = alpha;
-                        }
-                    }
-#endif // end DEBUG_SAMPLE_REC_MODE
-
-                    if (schema.hasVarianceEntry(entryIdx)) {
-                        // This entry has another aov keeping track of its variance. Let's add its variance.
-
-                        // Map from aov to variance aov
-                        for (auto varidx : schema.getSourceToVarianceAOVs(entryIdx)) {
-                            MNRY_ASSERT(varidx >= 0);
-                            film->addSampleStatistics(px, py, varidx, aovs + aovFloatIndex);
-                        }
-                    }
-
-                    // if entry IS variance...skip. Its values
-                    // get added through addSampleStatistics*
-                    // calls.
-                    if (schema.isVarianceEntry(entryIdx)) {
-                        continue;
-                    }
-
-                    if (!schema.hasAovFilter()) {
-                        // if there is no special aov filter, sum
-                        // the values
-                        for (unsigned j = 0; j < entry.numChannels(); ++j) {
-                            const unsigned i = aovFloatIndex + j;
-                            localAovs[i] += aovs[i];
-                        }
-                    } else {
-                        switch (entry.filter()) {
-                            case pbr::AOV_FILTER_AVG:
-                            case pbr::AOV_FILTER_SUM:
+                } else {
+                    switch (entry.filter()) {
+                        case pbr::AOV_FILTER_AVG:
+                        case pbr::AOV_FILTER_SUM:
+                            for (unsigned j = 0; j < entry.numChannels(); ++j) {
+                                const unsigned i = aovFloatIndex + j;
+                                localAovs[i] += aovs[i];
+                            }
+                            break;
+                        case pbr::AOV_FILTER_MIN:
+                            for (unsigned j = 0; j < entry.numChannels(); ++j) {
+                                const unsigned i = aovFloatIndex + j;
+                                localAovs[i] = std::min(localAovs[i], aovs[i]);
+                            }
+                            break;
+                        case pbr::AOV_FILTER_MAX:
+                            for (unsigned j = 0; j < entry.numChannels(); ++j) {
+                                const unsigned i = aovFloatIndex + j;
+                                localAovs[i] = std::max(localAovs[i], aovs[i]);
+                            }
+                            break;
+                        case pbr::AOV_FILTER_FORCE_CONSISTENT_SAMPLING:
+                            if (isamp < params->mConsistentSamplesPerPixel) {
                                 for (unsigned j = 0; j < entry.numChannels(); ++j) {
                                     const unsigned i = aovFloatIndex + j;
                                     localAovs[i] += aovs[i];
                                 }
-                                break;
-                            case pbr::AOV_FILTER_MIN:
+                            }
+                            break;
+                        case pbr::AOV_FILTER_CLOSEST:
+                            if (depth < localDepth) {
                                 for (unsigned j = 0; j < entry.numChannels(); ++j) {
                                     const unsigned i = aovFloatIndex + j;
-                                    localAovs[i] = std::min(localAovs[i], aovs[i]);
+                                    localAovs[i] = aovs[i];
                                 }
-                                break;
-                            case pbr::AOV_FILTER_MAX:
-                                for (unsigned j = 0; j < entry.numChannels(); ++j) {
-                                    const unsigned i = aovFloatIndex + j;
-                                    localAovs[i] = std::max(localAovs[i], aovs[i]);
-                                }
-                                break;
-                            case pbr::AOV_FILTER_FORCE_CONSISTENT_SAMPLING:
-                                if (isamp < params->mConsistentSamplesPerPixel) {
-                                    for (unsigned j = 0; j < entry.numChannels(); ++j) {
-                                        const unsigned i = aovFloatIndex + j;
-                                        localAovs[i] += aovs[i];
-                                    }
-                                }
-                                break;
-                            case pbr::AOV_FILTER_CLOSEST:
-                                if (depth < localDepths[cameraId]) {
-                                    for (unsigned j = 0; j < entry.numChannels(); ++j) {
-                                        const unsigned i = aovFloatIndex + j;
-                                        localAovs[i] = aovs[i];
-                                    }
-                                }
-                                break;
-                            default:
-                                MNRY_ASSERT(0 && "unexpected filter type");
-                                break;
-                        }
+                            }
+                            break;
+                        default:
+                            MNRY_ASSERT(0 && "unexpected filter type");
+                            break;
                     }
                 }
+            }
 
-                // update localDepth after all aovs are filled
-                if (depth < localDepths[cameraId]) {
-                    localDepths[cameraId] = depth;
-                }
+            // update localDepth after all aovs are filled
+            if (depth < localDepth) {
+                localDepth = depth;
+            }
 
-            }  // if (params->mAovNumFloats) {
-        }  // end sample loop
-    }  // end camera loop
+        }  // if (params->mAovNumFloats) {
+    }  // end sample loop
 
     if (numAccSamples) {
         // Update frame buffer. Scale the weights so that they are in
@@ -1074,7 +1052,7 @@ RenderDriver::renderPixelScalarSamples(pbr::TLState *pbrTls,
         // update aovs
         if (params->mAovNumFloats) {
             EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-            film->addSamplesToAovBuffer(px, py, localDepths, localAovs);
+            film->addSamplesToAovBuffer(px, py, localDepth, localAovs);
         }
     }
 
@@ -1107,9 +1085,7 @@ RenderDriver::renderPixelScalarSamplesFast(pbr::TLState *pbrTls,
 
     float *localAovs = params->mLocalAovs;
     float *deepAovs = params->mDeepAovs;
-    float localDepths[params->mNumCameras];
-    // We only need primary camera for fast mode
-    localDepths[0] = scene_rdl2::math::pos_inf;
+    float localDepth = scene_rdl2::math::pos_inf;
 
     const rndr::FrameState &fs = *reinterpret_cast<const rndr::FrameState *>(pbrTls->mFs);
     const auto& schema = *fs.mAovSchema;
@@ -1161,11 +1137,11 @@ RenderDriver::renderPixelScalarSamplesFast(pbr::TLState *pbrTls,
             + params->mRenderNodeSampleOfs;
 
         const pbr::Sample sample =
-            params->mSamplers[0]->getPrimarySample(px, py,
-                                                    fs.mFrameNumber,
-                                                    offset,
-                                                    fs.mDofEnabled,
-                                                    params->mShutterBias[0]);
+            params->mSampler->getPrimarySample(px, py,
+                                               fs.mFrameNumber,
+                                               offset,
+                                               fs.mDofEnabled,
+                                               params->mShutterBias);
 
         ACCUMULATOR_UNPAUSE(*(params->mNonRenderDriverAccumulator));
 
@@ -1173,7 +1149,6 @@ RenderDriver::renderPixelScalarSamplesFast(pbr::TLState *pbrTls,
             fs.mIntegrator->computeColorFromIntersection(pbrTls,
                                                          px, py,
                                                          int(offset),
-                                                         0,
                                                          params->mTotalNumSamples,
                                                          sample,
                                                          aovParams,
@@ -1210,7 +1185,7 @@ RenderDriver::renderPixelScalarSamplesFast(pbr::TLState *pbrTls,
         // update aovs
         if (params->mAovNumFloats) {
             EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-            film->addSamplesToAovBuffer(px, py, localDepths, localAovs);
+            film->addSamplesToAovBuffer(px, py, localDepth, localAovs);
         }
     }
 
@@ -1238,105 +1213,98 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
     // Bundled execution start:
     //
 
-    // loop over all cameras for this pixel
-    for (int cameraId = 0; cameraId < params->mNumCameras; cameraId++) {
+    uint32_t pixel = pbr::pixelLocationToUint32(px, py);
 
-        uint32_t pixel = pbr::pixelLocationToUint32(px, py);
-
-        // Loop over samples in current pixel.
-        unsigned numSamples = endSampleIdx - startSampleIdx;
-        if (params->mTotalNumSamples < endSampleIdx) {
-            numSamples = params->mTotalNumSamples - startSampleIdx;
+    // Loop over samples in current pixel.
+    unsigned numSamples = endSampleIdx - startSampleIdx;
+    if (params->mTotalNumSamples < endSampleIdx) {
+        numSamples = params->mTotalNumSamples - startSampleIdx;
+    }
+    pbr::RayState **rayStates;
+    if (numSamples > 0) {
+        rayStates = pbrTls->allocRayStates(numSamples);
+        for (unsigned i = 0; i < numSamples; i++) {
+            pbr::RayState *rs = rayStates[i];
+            rs->mDeepDataHandle = pbr::nullHandle;
+            rs->mCryptomatteDataHandle = pbr::nullHandle;
+            rs->mCryptomatteDataHandle2 = pbr::nullHandle;
         }
-        pbr::RayState **rayStates;
-        if (numSamples > 0) {
-            rayStates = pbrTls->allocRayStates(numSamples);
-            for (unsigned i = 0; i < numSamples; i++) {
-                pbr::RayState *rs = rayStates[i];
-                rs->mDeepDataHandle = pbr::nullHandle;
-                rs->mCryptomatteDataHandle = pbr::nullHandle;
-                rs->mCryptomatteDataHandle2 = pbr::nullHandle;
-            }
+    }
+
+    // invalid ray states will not be queued, we need to keep
+    // a list of these and free them in bulk.
+    scene_rdl2::alloc::Arena *arena = pbrTls->mArena;
+    SCOPED_MEM(arena);
+    pbr::RayState **rayStatesToFree = arena->allocArray<pbr::RayState*>(numSamples);
+    unsigned numRayStatesToFree = 0;
+
+    for (unsigned isub = startSampleIdx; isub != endSampleIdx; ++isub) {
+
+    if (isub >= params->mTotalNumSamples) break;
+
+        CHECK_CANCELLATION(pbrTls, return false);
+
+        // We add offset based on the machineId under multi-machine context.
+        // This is a core idea of how do we compute images by multi-machine.
+        // (relataed United States Patent : 11,176,721 : Nov/16/2021)
+        unsigned offset =
+            (isub + params->mRealtimeSampleOfs) * params->mRenderNodeTotal
+            + params->mRenderNodeSampleOfs;
+
+        float shutterBias = fs.mScene->getCamera()->getShutterBias();
+        const pbr::Sample sample =
+            params->mSampler->getPrimarySample(px, py,
+                                               fs.mFrameNumber,
+                                               offset,
+                                               fs.mDofEnabled,
+                                               shutterBias);
+
+        pbr::RayState *rs = rayStates[isub - startSampleIdx];
+
+        // Partially fill in RayState data.
+        rs->mSubpixel.mPixel = pixel;
+        rs->mSubpixel.mSubpixelX = sample.pixelX;
+        rs->mSubpixel.mSubpixelY = sample.pixelY;
+        rs->mTilePassAndFilm = pbr::makeTilePassAndFilm(params->mTileIdx, group.mPassIdx, params->mFilmIdx);
+
+        if (deepBuffer != nullptr) {
+            rs->mDeepDataHandle = pbrTls->allocList(sizeof(pbr::DeepData), 1);
+            pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
+            deepData->mRefCount = 1;
+            deepData->mHitDeep = 0;
+            deepData->mLayer = 0;
         }
 
-        // invalid ray states will not be queued, we need to keep
-        // a list of these and free them in bulk.
-        scene_rdl2::alloc::Arena *arena = pbrTls->mArena;
-        SCOPED_MEM(arena);
-        pbr::RayState **rayStatesToFree = arena->allocArray<pbr::RayState*>(numSamples);
-        unsigned numRayStatesToFree = 0;
+        if (cryptomatteBuffer != nullptr) {
+            rs->mCryptomatteDataHandle = pbrTls->allocList(sizeof(pbr::CryptomatteData), 1);
+            pbr::CryptomatteData *cryptomatteData =
+                        static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
+            cryptomatteData->init(cryptomatteBuffer);
 
-        for (unsigned isub = startSampleIdx; isub != endSampleIdx; ++isub) {
+            rs->mCryptomatteDataHandle2 = pbrTls->allocList(sizeof(pbr::CryptomatteData2), 1);
+            pbr::CryptomatteData2 *cryptomatteData2 =
+                        static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2, 0));
+            cryptomatteData2->init();
+        }
 
-            if (isub >= params->mTotalNumSamples) break;
+        // Queue up new primary ray.
+        ACCUMULATOR_UNPAUSE(*(params->mNonRenderDriverAccumulator));
+        bool queued =
+            fs.mIntegrator->queuePrimaryRay(pbrTls,
+                                            px, py,
+                                            int(offset),
+                                            params->mTotalNumSamples,
+                                            sample,
+                                            fs, rs);
+        if (!queued) {
+            rayStatesToFree[numRayStatesToFree++] = rs;
+        }
+        ACCUMULATOR_PAUSE(*(params->mNonRenderDriverAccumulator));
+    } // isub
 
-            CHECK_CANCELLATION(pbrTls, return false);
+    // Bulk free of raystates that were not queued
+    pbrTls->freeRayStates(numRayStatesToFree, rayStatesToFree);
 
-            // We add offset based on the machineId under multi-machine context.
-            // This is a core idea of how do we compute images by multi-machine.
-            // (relataed United States Patent : 11,176,721 : Nov/16/2021)
-            unsigned offset =
-                (isub + params->mRealtimeSampleOfs) * params->mRenderNodeTotal
-                + params->mRenderNodeSampleOfs;
-
-            float shutterBias = fs.mScene->getCamera(cameraId)->getShutterBias();
-            const pbr::Sample sample =
-                params->mSamplers[cameraId]->getPrimarySample(px, py,
-                                                              fs.mFrameNumber,
-                                                              offset,
-                                                              fs.mDofEnabled,
-                                                              shutterBias);
-
-            pbr::RayState *rs = rayStates[isub - startSampleIdx];
-
-            // Partially fill in RayState data.
-            rs->mCameraId = cameraId;
-            rs->mSubpixel.mPixel = pixel;
-            rs->mSubpixel.mSubpixelX = sample.pixelX;
-            rs->mSubpixel.mSubpixelY = sample.pixelY;
-            rs->mTilePassAndFilm = pbr::makeTilePassAndFilm(params->mTileIdx, group.mPassIdx, params->mFilmIdx);
-
-            if (deepBuffer != nullptr) {
-                rs->mDeepDataHandle = pbrTls->allocList(sizeof(pbr::DeepData), 1);
-                pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
-                deepData->mRefCount = 1;
-                deepData->mHitDeep = 0;
-                deepData->mLayer = 0;
-            }
-
-            if (cryptomatteBuffer != nullptr) {
-                rs->mCryptomatteDataHandle = pbrTls->allocList(sizeof(pbr::CryptomatteData), 1);
-                pbr::CryptomatteData *cryptomatteData =
-                            static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
-                cryptomatteData->init(cryptomatteBuffer);
-
-                rs->mCryptomatteDataHandle2 = pbrTls->allocList(sizeof(pbr::CryptomatteData2), 1);
-                pbr::CryptomatteData2 *cryptomatteData2 =
-                            static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2, 0));
-                cryptomatteData2->init();
-            }
-
-            // Queue up new primary ray.
-            ACCUMULATOR_UNPAUSE(*(params->mNonRenderDriverAccumulator));
-            bool queued =
-                fs.mIntegrator->queuePrimaryRay(pbrTls,
-                                                px, py,
-                                                int(offset),
-                                                cameraId,
-                                                params->mTotalNumSamples,
-                                                sample,
-                                                fs,
-                                                rs);
-            if (!queued) {
-                rayStatesToFree[numRayStatesToFree++] = rs;
-            }
-            ACCUMULATOR_PAUSE(*(params->mNonRenderDriverAccumulator));
-        } // isub
-
-        // Bulk free of raystates that were not queued
-        pbrTls->freeRayStates(numRayStatesToFree, rayStatesToFree);
-
-    } // end cameras loop
     //
     // Bundled execution end!
     //
@@ -1348,7 +1316,6 @@ void
 RenderDriver::computePixelInfo(RenderDriver *driver,
                                mcrt_common::ThreadLocalState *tls,
                                Film &film,
-                               int numCameras,
                                const unsigned px,
                                const unsigned py)
 {
@@ -1357,11 +1324,9 @@ RenderDriver::computePixelInfo(RenderDriver *driver,
     // Update pixel info data (pixel center depth) buffer if required.
     if (film.hasPixelInfoBuffer() &&
         (!driver->mCoarsePassesComplete || fs.mRenderMode == RenderMode::BATCH)) {
-        for (int cameraId = 0; cameraId < numCameras; cameraId++) {
             // Calculate the depth and add it to mPixelInfoBuffer
-            float depth = moonray::pbr::computeOpenGLDepth(tls, fs.mScene, cameraId, px, py);
-            film.setPixelInfo(cameraId, px, py, scene_rdl2::fb_util::PixelInfo(depth));
-        }
+        float depth = moonray::pbr::computeOpenGLDepth(tls, fs.mScene, px, py);
+        film.setPixelInfo(px, py, scene_rdl2::fb_util::PixelInfo(depth));
     }
 }
 
@@ -1370,8 +1335,8 @@ unsigned
 RenderDriver::computeTotalNumSamples(const rndr::FrameState &fs, const unsigned ifilm, unsigned px, unsigned py)
 {
     unsigned totalNumSamples = fs.mMaxSamplesPerPixel;
-    if (fs.mPixelSampleMaps) {
-        const scene_rdl2::fb_util::FloatBuffer *pixelSampleMap = fs.mPixelSampleMaps->at(ifilm);
+    if (fs.mPixelSampleMap) {
+        const scene_rdl2::fb_util::FloatBuffer *pixelSampleMap = fs.mPixelSampleMap;
         if (pixelSampleMap) {
             totalNumSamples = unsigned(scene_rdl2::math::floor(fs.mOriginalSamplesPerPixel *
                                                    scene_rdl2::math::max(0.0f, pixelSampleMap->getPixel(px,py))));

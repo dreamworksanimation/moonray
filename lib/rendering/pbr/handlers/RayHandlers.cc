@@ -346,7 +346,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
         RayState &rs = *rayStates[i];
         const mcrt_common::Ray &ray = rs.mRay;
         const Subpixel &sp = rs.mSubpixel;
-        const int cameraId = rs.mCameraId;
         PathVertex &pv = rs.mPathVertex;
         const int lobeType = pv.nonMirrorDepth == 0 ? 0 : pv.lobeType;
         const unsigned sequenceID = rs.mSequenceID;
@@ -356,7 +355,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
         VolumeTransmittance vt;
         vt.reset();
         float volumeSurfaceT = scene_rdl2::math::sMaxValue;
-        rs.mVolHit = fs.mIntegrator->computeRadianceVolume(pbrTls, ray, sp, cameraId, pv, lobeType,
+        rs.mVolHit = fs.mIntegrator->computeRadianceVolume(pbrTls, ray, sp, pv, lobeType,
             rs.mVolRad, sequenceID, vt, aovs, deepParams, &rs, &volumeSurfaceT);
         rs.mVolTr = vt.mTransmittanceE;
         rs.mVolTh = vt.mTransmittanceH;
@@ -449,7 +448,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     rad.mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs.mCryptomatteDataHandle);
                     rad.mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs.mCryptomatteDataHandle2);
                     rad.mTilePassAndFilm = rs.mTilePassAndFilm;
-                    rad.mCameraId = rs.mCameraId;
                     pbrTls->addRadianceQueueEntries(1, &rad);
                 }
             }
@@ -518,7 +516,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
                     SequenceIDIntegrator sid(rs->mSubpixel.mPixel,
                                              rs->mSubpixel.mSubpixelIndex,
-                                             fs.mInitialSeed[rs->mCameraId]);
+                                             fs.mInitialSeed);
                     IntegratorSample1D lightChoiceSamples(sid);
                     hitLight = fs.mScene->intersectVisibleLight(rs->mRay,
                         sInfiniteLightDistance, lightChoiceSamples, hitLightIsect, numHits);
@@ -577,7 +575,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 rad->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 rad->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
                 rad->mTilePassAndFilm = rs->mTilePassAndFilm;
-                rad->mCameraId = rs->mCameraId;
 
                 // LPE
                 if (!fs.mAovSchema->empty()) {
@@ -590,7 +587,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     if (rs->mRay.getDepth() == 0 && rs->mVolHit && rs->mVolumeSurfaceT < scene_rdl2::math::sMaxValue) {
                         aovSetStateVarsVolumeOnly(pbrTls,
                                                   *fs.mAovSchema,
-                                                  rs->mCameraId,
                                                   rs->mVolumeSurfaceT,
                                                   rs->mRay,
                                                   *fs.mScene,
@@ -601,7 +597,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                        rs->mRay,
                                                        AOV_TYPE_STATE_VAR,
                                                        aovs,
-                                                       rs->mCameraId,
                                                        rs->mSubpixel.mPixel,
                                                        rs->mDeepDataHandle,
                                                        pbr::getFilm(rs->mTilePassAndFilm));
@@ -639,7 +634,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     if (lpeStateId >= 0) {
                         // accumulate results. As this has to do with directly hitting a light, we don't have
                         // to worry about pre-occlusion LPEs here.
-                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, rs->mCameraId,
+                        aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                                  lightAovs, radiance, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
                                                  rad->mPixel, rad->mDeepDataHandle,
                                                  pbr::getFilm(rad->mTilePassAndFilm));

@@ -27,14 +27,12 @@ FrameState_hudValidation(uniform bool verbose)
 void
 BundledOcclRayData_init(uniform BundledOcclRayData * varying this,
                         uint32_t flags,
-                        uint32_t cameraId,
                         const uniform Light * varying light)
 {
     this->mFlags = flags;
     this->mLpeRadiance = sBlack;
     this->mLpeStateId = 0;
     this->mRayEpsilon = 0.f;
-    this->mCameraId = cameraId;
     this->mLight = light;
 }
 

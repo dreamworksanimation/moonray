@@ -106,7 +106,6 @@ public:
     using Parser = scene_rdl2::grid_util::Parser;
 
     Impl(const RenderContext *renderContext);
-    void updateActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &activeCameras);
 
     void setFinalMaxSamplesPerPix(unsigned v) { mFinalMaxSamplesPerPixel = v; }
 

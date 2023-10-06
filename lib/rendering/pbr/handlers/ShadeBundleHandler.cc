@@ -180,7 +180,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
             SequenceIDIntegrator sid(rs->mSubpixel.mPixel,
                                      rs->mSubpixel.mSubpixelIndex,
-                                     fs.mInitialSeed[rs->mCameraId]);
+                                     fs.mInitialSeed);
             IntegratorSample1D lightChoiceSamples(sid);
             hitLight = scene->intersectVisibleLight(*ray, ray->getEnd(), lightChoiceSamples, hitLightIsect, numHits);
 
@@ -247,7 +247,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
                 currRadiance->mTilePassAndFilm = rs->mTilePassAndFilm;
-                currRadiance->mCameraId = rs->mCameraId;
 
                 // To maintain parity with scalar mode, specify that we hit something with an Id of 0 when we hit
                 // a light for cryptomattes:
@@ -271,7 +270,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, hitLight);
 
                     // accumulate matching aovs.
-                    aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, rs->mCameraId,
+                    aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                              lightAovs, radiance, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
                                              rs->mSubpixel.mPixel,
                                              rs->mDeepDataHandle,
@@ -303,7 +302,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                        isSubsurfaceAllowed,
                                        pv.minRoughness,
                                        -ray->getDirection());
-            isectMemory[i].setCameraId(rs->mCameraId);
 
             shading::Intersection *isect = &isectMemory[i];
 
@@ -320,7 +318,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
                 currRadiance->mTilePassAndFilm = rs->mTilePassAndFilm;
-                currRadiance->mCameraId = rs->mCameraId;
                 ++currRadiance;
 
                 rayStatesToFree[numRayStatesToFree++] = rs;
@@ -414,7 +411,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     fs.mAovSchema->initFloatArray(aovs);
                     aovSetStateVars(pbrTls,
                                      *fs.mAovSchema,
-                                     rs->mCameraId,
                                      *isect,
                                      rs->mVolumeSurfaceT,
                                      *ray,
@@ -423,7 +419,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                      aovs);
                     aovSetPrimAttrs(pbrTls,
                                      *fs.mAovSchema,
-                                     rs->mCameraId,
                                      ext->getAovFlags(),
                                      *isect,
                                      pv.pathPixelWeight,

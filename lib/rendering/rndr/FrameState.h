@@ -56,7 +56,7 @@ struct FrameState : public pbr::FrameState
     const pbr::PixelFilter *mPixelFilter;
 
     // This functionality is mutually exclusive with adaptive sampling.
-    std::vector<scene_rdl2::fb_util::PixelBuffer<float> *> *mPixelSampleMaps;
+    scene_rdl2::fb_util::PixelBuffer<float> *mPixelSampleMap;
 
     int                     mDeepFormat;
     float                   mDeepCurvatureTolerance;

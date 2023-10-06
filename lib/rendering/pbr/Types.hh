@@ -7,8 +7,6 @@
 #include <scene_rdl2/common/platform/HybridUniformData.hh>
 #include <scene_rdl2/common/platform/HybridVaryingData.hh>
 
-#define MAX_CAMERAS 8  // also in shading_util/ispc/Xform.isph
-
 // Bundled occlusion rays can be forced to unconditionally be unoccluded, instead of invoking the standard occlusion
 // test. This functionality is used by the "ray termination color" feature.
 enum OcclTestType
@@ -67,7 +65,6 @@ enum OcclTestType
     HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, Color), mLpeRadiance);   \
     HUD_MEMBER(int, mLpeStateId);                                       \
     HUD_MEMBER(float, mRayEpsilon);                                     \
-    HUD_MEMBER(float, mCameraId);                                       \
     HUD_PTR(const Light *, mLight)
 
 #define BUNDLED_OCCL_RAY_DATA_VALIDATION                \
@@ -76,7 +73,6 @@ enum OcclTestType
     HUD_VALIDATE(BundledOcclRayData, mLpeRadiance);     \
     HUD_VALIDATE(BundledOcclRayData, mLpeStateId);      \
     HUD_VALIDATE(BundledOcclRayData, mRayEpsilon);      \
-    HUD_VALIDATE(BundledOcclRayData, mCameraId);        \
     HUD_VALIDATE(BundledOcclRayData, mLight);           \
     HUD_END_VALIDATION
 
@@ -99,8 +95,7 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
     HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
-    HVD_MEMBER(uint32_t, mCameraId);                                \
-    HUD_ARRAY(int, mPad1, 4);
+    HUD_ARRAY(int, mPad1, 5);
 
 #else
 
@@ -113,8 +108,7 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
     HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
-    HVD_MEMBER(uint32_t, mCameraId);                                \
-    HUD_ARRAY(int, mPad, 4)
+    HUD_ARRAY(int, mPad, 5)
 
 #endif
 
@@ -130,7 +124,6 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
     HVD_VALIDATE(BundledRadiance, mTilePassAndFilm);       \
-    HVD_VALIDATE(BundledRadiance, mCameraId);              \
     HVD_VALIDATE(BundledRadiance, mPad1);                  \
     HVD_END_VALIDATION
 
@@ -146,7 +139,6 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
     HVD_VALIDATE(BundledRadiance, mTilePassAndFilm);       \
-    HVD_VALIDATE(BundledRadiance, mCameraId);              \
     HVD_VALIDATE(BundledRadiance, mPad);                   \
     HVD_END_VALIDATION
 
@@ -268,7 +260,7 @@ enum OcclTestType
     HUD_MEMBER(bool,     mLockFrameNoise);                                  \
     HUD_MEMBER(uint32_t, mShadingWorkloadChunkSize);                        \
     HUD_MEMBER(uint32_t, mFrameNumber);                                     \
-    HUD_ARRAY(uint32_t, mInitialSeed, MAX_CAMERAS);                         \
+    HUD_MEMBER(uint32_t, mInitialSeed);                                     \
     HUD_MEMBER(int, mMaxPresenceDepth);                                     \
     HUD_MEMBER(float, mPresenceThreshold);                                  \
     HUD_PTR(const float *, mSamples1D);                                     \

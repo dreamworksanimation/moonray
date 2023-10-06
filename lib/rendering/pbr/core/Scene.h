@@ -106,9 +106,7 @@ public:
           const scene_rdl2::rdl2::Layer *rdlLayer, int hardcodedLobeCount);
     ~Scene();
 
-    /// There is limited support for switching cameras as deltas
-    /// cameras[0] defines render space
-    void updateActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &cameras);
+    void updateActiveCamera(const scene_rdl2::rdl2::Camera *rdlCamera);
 
     /// Called in pre-frame / before a shading process is done / post-frame
     /// Update light list, camera and other scene properties
@@ -213,15 +211,9 @@ public:
         return mRdlSceneContext;
     }
 
-    /// Get to the cameras
-    finline size_t getCameraCount() const
+    finline const Camera *getCamera() const
     {
-        return mCameras.size();
-    }
-
-    finline Camera *getCamera(int i) const
-    {
-        return mCameras[i].get();
+        return mCamera.get();
     }
 
     /// Get the world <--> render space transforms. These are initialized
@@ -333,7 +325,7 @@ private:
     const rt::EmbreeAccelerator *mEmbreeAccel;
 
     // Owned members
-    std::vector<std::unique_ptr<Camera>> mCameras;
+    std::unique_ptr<Camera> mCamera;
 
     // A map from rdl light filters to pbr light filters
     LightFilterMap mLightFilters;

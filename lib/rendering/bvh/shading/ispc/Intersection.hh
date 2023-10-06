@@ -76,7 +76,7 @@ enum AttributeStatus
                                                                             \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mMinRoughness);      \
     HVD_MEMBER(float, mMediumIor);                                          \
-    HVD_MEMBER(int32_t, mCameraId);                                         \
+    HVD_MEMBER(int32_t, mPad0);                                             \
                                                                             \
     /* ----- Cache line 4 -----*/                                           \
                                                                             \
@@ -112,9 +112,9 @@ enum AttributeStatus
     HVD_VALIDATE(Intersection, mdNds);                                      \
     HVD_VALIDATE(Intersection, mdNdt);                                      \
     HVD_VALIDATE(Intersection, mMinRoughness);                              \
-    HVD_VALIDATE(Intersection, mWo);                                        \
     HVD_VALIDATE(Intersection, mMediumIor);                                 \
-    HVD_VALIDATE(Intersection, mCameraId);                                  \
+    HVD_VALIDATE(Intersection, mPad0);                                      \
+    HVD_VALIDATE(Intersection, mWo);                                        \
     HVD_END_VALIDATION
 
 

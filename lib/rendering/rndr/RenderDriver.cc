@@ -712,7 +712,6 @@ RenderDriver::startFrame(const FrameState &fs)
             mFilms[i].init(w, h,
                            mFs.mViewport,
                            filmFlags,
-                           mFs.mScene->getCameraCount(),
                            mFs.mDeepFormat,
                            mFs.mDeepCurvatureTolerance,
                            mFs.mDeepZTolerance,
@@ -1336,7 +1335,7 @@ RenderDriver::snapshotPixelInfoBuffer(unsigned filmIdx,
                                       bool parallel) const
 {
     // can only snapshot primary camera for now
-    const scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer = getFilm(filmIdx).getPixelInfoBuffer(0);
+    const scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer = getFilm(filmIdx).getPixelInfoBuffer();
 
     if (pixelInfoBuffer) {
         std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);

@@ -643,8 +643,6 @@ accumulateRayPresence(pbr::TLState *pbrTls,
                                          false, // subsurface allowed
                                          scene_rdl2::math::Vec2f(0.0f, 0.0f), // minRoughness
                                          -currentShadowRay.getDirection());
-            isect.setCameraId(0); // not used for material presence query
-
             // get the presence value from the material
             const scene_rdl2::rdl2::Material* material = isect.getMaterial()->asA<scene_rdl2::rdl2::Material>();
             MNRY_ASSERT(material != nullptr);
@@ -1029,7 +1027,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
             // see note in integrateBundled (PathIntegratorBundled.ispc)
             pv.subsurfaceDepth += 1;
             radiance += pathIntegrator->computeRadianceDiffusionSubsurface(
-                    pbrTls, bsdf, sp, rs->mCameraId, pv, ray, isect, slice, *bssrdf, *lightSet,
+                    pbrTls, bsdf, sp, pv, ray, isect, slice, *bssrdf, *lightSet,
                     doIndirect[i], rayEpsilon[i], shadowRayEpsilon[i], sequenceID[i], ssAov, aovs);
         }
         if (volumeSubsurface) {
@@ -1039,7 +1037,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
             // see note in integrateBundled (PathIntegratorBundled.ispc)
             pv.subsurfaceDepth += 1;
             radiance += pathIntegrator->computeRadiancePathTraceSubsurface(
-                    pbrTls, bsdf, sp, rs->mCameraId, pv, ray, isect, *volumeSubsurface, *lightSet,
+                    pbrTls, bsdf, sp, pv, ray, isect, *volumeSubsurface, *lightSet,
                     doIndirect[i], rayEpsilon[i], shadowRayEpsilon[i], sequenceID[i], ssAov, aovs);
         }
 

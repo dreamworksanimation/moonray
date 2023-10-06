@@ -28,7 +28,7 @@ namespace pbr {
 
 finline void
 PathIntegrator::addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
-        const Subpixel &sp, int cameraId, const PathVertex &pv,
+        const Subpixel &sp, const PathVertex &pv,
         const BsdfSampler &bSampler, int lobeIndex, bool doIndirect, const BsdfSample &bsmp,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
@@ -100,10 +100,10 @@ PathIntegrator::addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
         lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
         // accumulate matching aovs
         if (fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded)) {
-            aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, bsmp.tDirect, 
+            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, bsmp.tDirect, 
                               &contrib, AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
         } else {
-            aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contrib, 
+            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contrib, 
                               nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
         }
     }
@@ -130,7 +130,7 @@ PathIntegrator::addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
 
 void
 PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
-        const Subpixel &sp, int cameraId, const PathVertex &pv,
+        const Subpixel &sp, const PathVertex &pv,
         const BsdfSampler &bSampler, bool doIndirect, const BsdfSample *bsmp,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
@@ -143,7 +143,7 @@ PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
         const int lobeSampleCount = bSampler.getLobeSampleCount(lobeIndex);
         for (int i = 0; i < lobeSampleCount; ++i, ++s) {
             if (bsmp[s].isValid() && bsmp[s].didHitLight()) {
-                addDirectVisibleBsdfLobeSampleContribution(pbrTls, sp, cameraId, pv, bSampler,
+                addDirectVisibleBsdfLobeSampleContribution(pbrTls, sp, pv, bSampler,
                     lobeIndex, doIndirect, bsmp[s], parentRay, rayEpsilon, shadowRayEpsilon,
                     radiance, sequenceID, aovs, isect);
             }
@@ -153,7 +153,7 @@ PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
 
 void
 PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
-        Subpixel const& sp, int cameraId, const PathVertex &pv,
+        Subpixel const& sp, const PathVertex &pv,
         const LightSetSampler &lSampler, const LightSample *lsmp,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
@@ -238,7 +238,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
 
                             // visibility aov
                             if (addVisibility) {
-                                if (aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                                     scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs)) {
                                     // add visibility aov at most once per shadow ray
                                     addVisibility = false;
@@ -249,7 +249,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                             if (hasUnoccludedFlag) {
                                 // If it's occluded but we have the unoccluded flag set, only contribute this to any 
                                 // pre-occlusion aovs.
-                                aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeVal, nullptr,
+                                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, nullptr,
                                                   AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                             }
                         }
@@ -286,17 +286,17 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                         if (hasUnoccludedFlag) {
                             // If the unoccluded flag is set we have to add occluded and unoccluded 
                             // (without presence and volume transmittance) separately.
-                            aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedLobeVal, &lobeVal, 
+                            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, &lobeVal, 
                                               AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                         } else {
                             // Otherwise, just add the contribution to all non-pre-occlusion aovs.
-                            aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, lobeVal, nullptr, 
+                            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lobeVal, nullptr, 
                                               AovSchema::sLpePrefixNone, lpeStateId, aovs);
                         }
 
                         // visibility aov
                         if (addVisibility) {
-                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                                 scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f),
                                 lpeStateId, aovs)) {
                                 // add visibility aov at most once per shadow ray
@@ -331,7 +331,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
 void
 PathIntegrator::addIndirectOrDirectVisibleContributions(
     pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &parentPv, const BsdfSampler &bSampler,
+    const Subpixel &sp, const PathVertex &parentPv, const BsdfSampler &bSampler,
     const BsdfSample *bsmp, const mcrt_common::RayDifferential &parentRay,
     float rayEpsilon, float shadowRayEpsilon,
     const shading::Intersection &isect, shading::BsdfLobe::Type indirectFlags,
@@ -370,7 +370,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
 
             // If this sample hit a light, compute direct lighting contribution only
             if (bsmp[s].didHitLight()) {
-                addDirectVisibleBsdfLobeSampleContribution(pbrTls, sp, cameraId, parentPv, bSampler,
+                addDirectVisibleBsdfLobeSampleContribution(pbrTls, sp, parentPv, bSampler,
                     lobeIndex, doIndirect, bsmp[s], parentRay, rayEpsilon, shadowRayEpsilon,
                     radiance, sequenceID, aovs, isect);
             }
@@ -437,7 +437,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 pv.lpeStateId = lightAovs.scatterEventTransition(pbrTls, parentPv.lpeStateId, bsdf, *lobe);
 
                 // Accumulate post scatter extra aovs
-                aovAccumPostScatterExtraAovs(pbrTls, fs, pv, cameraId, bsdf, aovs);
+                aovAccumPostScatterExtraAovs(pbrTls, fs, pv, bsdf, aovs);
             }
             // Prepare a mcrt_common::RayDifferential
             mcrt_common::RayDifferential ray(parentRay, start, end);
@@ -509,7 +509,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
 
             bool isStereoscopic = false;
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
-                    pbrTls, ray, ray, sp, cameraId,
+                    pbrTls, ray, ray, sp,
                     pv, lobe, radianceIndirect, transparencyIndirect,
                     vtIndirect, sequenceID, aovs, nullptr, nullptr, nullptr, 
                     newRefractCryptomatteParams, false, hitVolume, isStereoscopic);
@@ -538,7 +538,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                     lpeStateId = lightAovs.lightEventTransition(pbrTls,
                         lpeStateId, bsmp[s].lp.light);
                     // accumulate matching aovs.
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs,
                             bsmp[s].tDirect, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
             }
@@ -548,7 +548,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
-    const Subpixel &sp, int cameraId, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
+    const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
     const shading::Intersection &isect, const shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
     bool doIndirect, const shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
     int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
@@ -613,7 +613,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
         const FrameState &fs = *pbrTls->mFs;
         const AovSchema &aovSchema = *fs.mAovSchema;
         const Scene *scene = MNRY_VERIFY(pbrTls->mFs->mScene);
-        aovSetMaterialAovs(pbrTls, aovSchema, cameraId, *fs.mLightAovs, *fs.mMaterialAovs,
+        aovSetMaterialAovs(pbrTls, aovSchema, *fs.mLightAovs, *fs.mMaterialAovs,
                            isect, ray, *scene, bsdf, ssAov,
                            &bSampler, bsmp, pv.aovPathPixelWeight, pv.lpeStateId, aovs);
     }
@@ -647,18 +647,18 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     if (doIndirect) {
 
         // Note: This will recurse
-        addIndirectOrDirectVisibleContributions(pbrTls, sp, cameraId, pv, bSampler, bsmp,
+        addIndirectOrDirectVisibleContributions(pbrTls, sp, pv, bSampler, bsmp,
                 ray, rayEpsilon, shadowRayEpsilon, isect, indirectFlags, newPriorityList, newPriorityListCount,
                 radiance, sequenceID, aovs, refractCryptomatteParams);
         checkForNan(radiance, "Direct or indirect contributions", sp, pv, ray,
                 isect);
     } else {
         // TODO: Incorrect transparency if there is no indirect
-        addDirectVisibleBsdfSampleContributions(pbrTls, sp, cameraId, pv, bSampler, false, bsmp, ray,
+        addDirectVisibleBsdfSampleContributions(pbrTls, sp, pv, bSampler, false, bsmp, ray,
             rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
         checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
     }
-    addDirectVisibleLightSampleContributions(pbrTls, sp, cameraId, pv, lSampler, lsmp, ray,
+    addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, ray,
             rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
     checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
 

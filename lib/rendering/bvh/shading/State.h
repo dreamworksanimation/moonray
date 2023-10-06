@@ -84,8 +84,6 @@ public:
 
     float getMediumIor() const;
 
-    int  getCameraId() const;
-
     scene_rdl2::math::Vec3f adaptNormal(const scene_rdl2::math::Vec3f &Ns) const;
     // adaptToonNormal differs by checking if the integrator has
     // indicated that no light culling should be performed. If so,

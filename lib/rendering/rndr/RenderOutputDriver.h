@@ -47,9 +47,6 @@ public:
     explicit RenderOutputDriver(const RenderContext *renderContext);
     ~RenderOutputDriver();
 
-    /// We support changing active camera Ids on AOVS
-    void updateActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &cameras);
-
     /// Storeet final maxSamplesPerPix count for output file metadata
     void setFinalMaxSamplesPerPix(unsigned v);
 

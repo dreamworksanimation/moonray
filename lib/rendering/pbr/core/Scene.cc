@@ -100,23 +100,19 @@ Scene::Scene(
     mLightFilterNeedsSamples(false)
 {
     std::vector<const rdl2::Camera *> cameras = rdlSceneContext->getActiveCameras();
-    updateActiveCameras(cameras);
+    updateActiveCamera(cameras[0]);
 }
 
 void
-Scene::updateActiveCameras(const std::vector<const rdl2::Camera *> &cameras)
+Scene::updateActiveCamera(const scene_rdl2::rdl2::Camera *rdlCamera)
 {
-    mCameras.clear();
-
-    // Render space == Primary (0) camera space at the first specified motion step.
-    mRender2World = cameras[0]->get(rdl2::Node::sNodeXformKey);
+    // Render space == camera space at the first specified motion step.
+    mRender2World = rdlCamera->get(rdl2::Node::sNodeXformKey);
     mWorld2Render = rtInverse(mRender2World);
 
-    for (auto rdlCamera : cameras) {
-        std::unique_ptr<Camera> camera = cameraFactory(rdlCamera);
-        camera->update(getWorld2Render());
-        mCameras.push_back(std::move(camera));
-    }
+    std::unique_ptr<Camera> camera = cameraFactory(rdlCamera);
+    camera->update(getWorld2Render());
+    mCamera = std::move(camera);
 }
 
 
@@ -235,9 +231,7 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
             rdl2::SceneVariables::sPropagateVisibilityBounceType);
 
     // Update camera info
-    for (auto& camera : mCameras) {
-        camera->update(getWorld2Render());
-    }
+    mCamera->update(getWorld2Render());
 
     // Update light-list
     // Updating lights needs to happen after the mCamera->update() above
@@ -338,9 +332,7 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     mVisibleLightSet.setAccelerator(acc, mVisibleLightAcceleratorIndexMap.get());
 
     // If we need any uv bake maps, now is the time.
-    for (size_t i = 0; i < mCameras.size(); i++) {
-        mCameras[i]->bakeUvMaps();
-    }
+    mCamera->bakeUvMaps();
 
     // Build a volumeId to labelId mapping for LPE aov support
     const geom::internal::VolumeAssignmentTable * volumeAssignmentTable =

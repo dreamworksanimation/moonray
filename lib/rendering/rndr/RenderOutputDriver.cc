@@ -604,22 +604,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
                         varianceIndexMap.emplace(entry.mRenderOutput->getReferenceOutput(), aovBuffer);
                     }
 
-                    // Assign the camera number to the aov
-                    const scene_rdl2::rdl2::Camera* cam = entry.mRenderOutput->getCamera();
-                    if (cam == nullptr) {
-                        // Render output doesn't specify a camera, use the primary camera (0)
-                        data.cameraId = 0;
-                    } else {
-                        const scene_rdl2::rdl2::SceneContext& ctx = renderContext->getSceneContext();
-                        std::vector<const scene_rdl2::rdl2::Camera*> cameras = ctx.getActiveCameras();
-                        for (size_t id = 0; id < cameras.size(); id++) {
-                            if (cam == cameras[id]) {
-                                data.cameraId = id;
-                                break;
-                            }
-                        }
-                    }
-
                     schemaData.push_back(data);
                     ++aovBuffer;
 
@@ -755,35 +739,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
         std::cerr << ">> RenderOutputDriver.cc " << ostr.str() << std::endl;
     }
 #endif // end DEBUG_DUMP_ENTRIES_AND_FILES
-}
-
-void
-RenderOutputDriver::Impl::updateActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &activeCameras)
-{
-    // create a camera * to cameraId lookup
-    std::unordered_map<const scene_rdl2::rdl2::Camera *, int> cameraIds;
-    for (unsigned int i = 0; i < activeCameras.size(); ++i) {
-        cameraIds[activeCameras[i]] = i;
-    }
-
-    // Loop over all our entries.  AOV entries store their relevant cameraId,
-    // so we need to update those ids if the active camera list has changed.
-    for (unsigned int i = 0; i < mEntries.size(); ++i) {
-        const int aovBuffer = mAovBuffers[i];
-        if (aovBuffer != -1) {
-            // this is an aov, assume it uses the primary camera
-            int cameraId = 0;
-            const scene_rdl2::rdl2::Camera *entryCam = mEntries[i]->mRenderOutput->getCamera();
-            if (entryCam) {
-                std::unordered_map<const scene_rdl2::rdl2::Camera *, int>::const_iterator camId =
-                    cameraIds.find(entryCam);
-                if (camId != cameraIds.end()) {
-                    cameraId = camId->second;
-                }
-            }
-            mAovSchema[aovBuffer].updateCameraId(cameraId);
-        }
-    }
 }
 
 unsigned int
@@ -2176,12 +2131,6 @@ RenderOutputDriver::RenderOutputDriver(const RenderContext *renderContext)
 
 RenderOutputDriver::~RenderOutputDriver()
 {
-}
-
-void
-RenderOutputDriver::updateActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &cameras)
-{
-    mImpl->updateActiveCameras(cameras);
 }
 
 void

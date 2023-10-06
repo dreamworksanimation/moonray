@@ -137,7 +137,6 @@ prepareOcclusionTestRays(
         (uniform BundledOcclRayData * varying)PbrTLState_getListItem(
         pbrTls, bundledOcclRayData, 0);
 
-    b->mCameraId = rayState.mCameraId;
     rayEpsilon = max(rayEpsilon, shadowRayEpsilon);
     float maxT;
 
@@ -246,7 +245,6 @@ addDirectVisibleBsdfLobeSampleContributionBundled( const uniform PathIntegrator 
                     b->mLpeRadiance = currSamp->tDirect; // Scatter required
                     b->mLpeStateId = lpeStateId;
                     b->mFlags = LPE;
-                    b->mCameraId = rayState.mCameraId;
                 }
             }
         }
@@ -396,13 +394,11 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                         b->mFlags = LPE | LIGHT_SAMPLE;
                         b->mLpeRadiance = lp.t[i]; // Scatter required
                         b->mLpeStateId = lpeStateId[i];
-                        b->mCameraId = rayState.mCameraId;
                         ++next;
                         if (next < numItems) {
                             b = (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, next);
                             b->mFlags = LPE | LIGHT_SAMPLE;
                             b->mLpeStateId = 0;
-                            b->mCameraId = rayState.mCameraId;
                         }
                     }
                 }
@@ -668,7 +664,6 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             rayState->mSubpixel.mSampleClampingValue = sp.mSampleClampingValue;
             rayState->mSubpixel.mPrimaryRayDiffScale = sp.mPrimaryRayDiffScale;
             rayState->mSubpixel.mTextureDiffScale = sp.mTextureDiffScale;
-            rayState->mCameraId = parentRayState.mCameraId;
             rayState->mTilePassAndFilm = parentRayState.mTilePassAndFilm;
             rayState->mDeepDataHandle = parentRayState.mDeepDataHandle;
             // Since cryptomatte records radiance information, its handle actually also needs to be acquired
@@ -787,7 +782,7 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
     if (aovs) {
         const uniform LightAovs &lightAovs = *((const uniform LightAovs * uniform) fs.mLightAovs);
         const uniform MaterialAovs &materialAovs = *((const uniform MaterialAovs * uniform) fs.mMaterialAovs);
-        aovAccumMaterialAovs(pbrTls, aovSchema, rs->mCameraId, lightAovs, materialAovs,
+        aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs,
                              isect, ray, fs.mScene, bsdf, ssAov,
                              &bSampler, bsmp, pv.aovPathPixelWeight, sp.mPixel,
                              rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);

@@ -470,7 +470,7 @@ public:
     scene_rdl2::math::HalfOpenViewport getRezedApertureWindow() const;
     scene_rdl2::math::HalfOpenViewport getRezedSubViewport() const;
 
-    const std::vector<const scene_rdl2::rdl2::Camera*>& getCameras() { return mCameras; }
+    const scene_rdl2::rdl2::Camera* getCamera() { return mCamera; }
 
     // Returns a read-only view into the RDL2 SceneContext.
     const scene_rdl2::rdl2::SceneContext& getSceneContext() const;
@@ -571,8 +571,8 @@ private:
     // Helper function which creates a PBR scene.
     void createPbrScene();
 
-    // Helper function that sets the list of active cameras
-    void initActiveCameras(const std::vector<const scene_rdl2::rdl2::Camera *> &cameras);
+    // Helper function that sets the active camera
+    void initActiveCamera(const scene_rdl2::rdl2::Camera *camera);
 
     // Goes through all the provided Shaders and builds the primitive-
     // attribute table that describes all the primitive attributes that are
@@ -667,19 +667,17 @@ private:
     float mCachedPixelFilterWidth;
     std::unique_ptr<pbr::PixelFilter> mPixelFilter;
 
-    // The pixel sample maps are image maps
-    // used to multiply the number of samples per pixel
-    std::unique_ptr<std::vector<scene_rdl2::fb_util::PixelBuffer<float> *> > mPixelSampleMaps;
-    std::vector<std::string> mCachedPixelSampleMapNames;
-    std::vector<float> mMaxPixelSampleValues;
+    // The pixel sample map is used to multiply the number of samples per pixel
+    std::unique_ptr<scene_rdl2::fb_util::PixelBuffer<float>> mPixelSampleMap;
+    std::string mCachedPixelSampleMapName;
+    float mMaxPixelSampleValue;
 
     // The integrator. computeRadiance is called by multiple threads.
     std::unique_ptr<pbr::PathIntegrator> mIntegrator;
 
-    // The active RDL Cameras we're looking through. The RenderContext does not
-    // own these pointers, and should not delete it.  The primary camera is
-    // mCameras[0].  Does not contain additional cameras that do not have a render output.
-    std::vector<const scene_rdl2::rdl2::Camera*> mCameras;
+    // The active RDL Camera we're looking through. The RenderContext does not
+    // own this pointer, and should not delete it.
+    const scene_rdl2::rdl2::Camera* mCamera;
 
     // The active RDL Layer we're rendering from. The RenderContext does not
     // own this pointer, and should not delete it.

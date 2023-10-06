@@ -70,6 +70,7 @@ sampleMapShader(uniform ShadingTLState * uniform tls,
     state.mdSdy = 0.f;
     state.mdTdx = 0.f;
     state.mdTdy = 0.f;
+    Flags_clearAll(&(state.mFlags));
 
     int64 * uniform ptr = (int64 * uniform) *(mapObjPtr + (MAP_SAMPLEFUNCV_OFFSET / 8));
 

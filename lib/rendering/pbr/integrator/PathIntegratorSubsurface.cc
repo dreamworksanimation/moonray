@@ -91,7 +91,7 @@ canSubstituteSubsurface(float sssRadius,
 // transmissionFresnel, if any, to the contribution of the samples.
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
-        const Bsdf &bsdf, const Subpixel &sp, int cameraId,
+        const Bsdf &bsdf, const Subpixel &sp,
         const PathVertex &pv, const RayDifferential &parentRay,
         const scene_rdl2::math::Vec3f &dNdx, const scene_rdl2::math::Vec3f &dNdy,
         const scene_rdl2::math::Color &pathThroughput, const Fresnel *transmissionFresnel,
@@ -104,7 +104,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
 {
     scene_rdl2::math::Color radiance = scene_rdl2::math::sBlack;
     // Estimate emissive volume region energy contribution
-    radiance += computeRadianceEmissiveRegionsSSS(pbrTls, sp, cameraId, pv, parentRay,
+    radiance += computeRadianceEmissiveRegionsSSS(pbrTls, sp, pv, parentRay,
         pathThroughput, transmissionFresnel, bsdf, lobe, slice, P, N,
         subsurfaceSplitFactor, subsurfaceIndex,
         rayEpsilon, sssSampleID, isLocal, aovs);
@@ -244,7 +244,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                     lpeStateId = lightAovs.lightEventTransition(pbrTls,
                         lpeStateId, light);
                     // accumulate matching aovs
-                    aovAccumVisibilityAovs(pbrTls, *fs.mAovSchema, cameraId, lightAovs,
+                    aovAccumVisibilityAovs(pbrTls, *fs.mAovSchema, lightAovs,
                         scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs);
                 }
                 continue;
@@ -281,9 +281,9 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                 // lobe event (see MOONRAY-1957).
                 lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
                 // accumulate matching aovs
-                aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contribution, nullptr, 
+                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contribution, nullptr, 
                                   AovSchema::sLpePrefixNone, lpeStateId, aovs);
-                aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                     scene_rdl2::math::Vec2f((1.0f - presence) * reduceTransparency(volumeTransmittance), 1.0f),
                     lpeStateId, aovs);
             }
@@ -465,7 +465,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
 
             bool isStereoscopic = false;
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
-                    pbrTls, ray, ray, sp, cameraId, nextPv, &lobe,
+                    pbrTls, ray, ray, sp, nextPv, &lobe,
                     contribution, transparency, vt,
                     sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, false, hitVolume,
                     isStereoscopic);
@@ -500,7 +500,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                     lpeStateId = lightAovs.lightEventTransition(pbrTls,
                         lpeStateId, hitLight);
                     // accumulate matching aovs
-                    aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                    aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                         scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs);
 
                     // unoccluded prefix LPEs
@@ -508,7 +508,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                         // If it's occluded but we have the unoccluded flag set, only contribute this to any 
                         // pre-occlusion aovs.
                         scene_rdl2::math::Color contribution = pt * Li * fresnel * f / bsdfPdf * powerHeuristic(bsdfPdf, lightPdf);
-                        aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contribution, nullptr,
+                        aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contribution, nullptr,
                                           AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                     }
                 }
@@ -534,7 +534,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                 int lpeStateId = nextPv.lpeStateId;
                 lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, hitLight);
                 // accumulate matching aovs
-                aovAccumVisibilityAovs(pbrTls, aovSchema, cameraId, lightAovs,
+                aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
                     scene_rdl2::math::Vec2f((1-presence) * reduceTransparency(vt.mTransmittanceE), 1.0f),
                     lpeStateId, aovs);
 
@@ -542,11 +542,11 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
                 if (hasUnoccludedFlag) {
                     // If the unoccluded flag is set we have to add occluded and unoccluded 
                     // (without presence and volume transmittance) separately.
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, unoccludedContribution, &contribution, 
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedContribution, &contribution, 
                                       AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
                 } else {
                     // Otherwise, just add the contribution to all non-pre-occlusion aovs.
-                    aovAccumLightAovs(pbrTls, aovSchema, cameraId, lightAovs, contribution, nullptr, 
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, contribution, nullptr, 
                                       AovSchema::sLpePrefixNone, lpeStateId, aovs);
                 }
             }
@@ -569,7 +569,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
-        const Bsdf &bsdf, const Subpixel &sp, int cameraId, const PathVertex &pv,
+        const Bsdf &bsdf, const Subpixel &sp, const PathVertex &pv,
         const RayDifferential &ray, const Intersection &isect,
         const BsdfSlice &slice, const Bssrdf &bssrdf,
         const LightSet &lightSet, bool doIndirect,
@@ -638,7 +638,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
 
         // Lambertian Reflection instead of SSS
         radiance += computeRadianceSubsurfaceSample(
-            pbrTls, bsdf, sp, cameraId, pv,
+            pbrTls, bsdf, sp, pv,
             ray, isect.getdNdx(), isect.getdNdy(), throughput,
             transmissionFresnel, lightSet, lobeLocal, sliceLocal, P, N,
             subsurfaceSplitFactor,           //subsurfaceSplitFactor
@@ -649,7 +649,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
 
         // We cannot approximate the forward scattering with a
         // Lambertian lobe, so evaluate this explicitly.
-        radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, cameraId, pv,
+        radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, pv,
             ray, isect, slice, transmissionFresnel, scaleFresnelWo, lightSet,
             bssrdf, P, N, localF, subsurfaceSplitFactor, doIndirect,
             rayEpsilon, shadowRayEpsilon, sequenceID, sequenceID, ssAov, aovs);
@@ -769,7 +769,6 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
                                      isSubsurfaceAllowed(pv.subsurfaceDepth),
                                      pv.minRoughness,
                                      -rayProj.getDirection());
-        isectProj.setCameraId(cameraId);
         RayDifferential rayDiff(ray, isectProj.getEpsilonHint(), rayProj.tfar);
         isectProj.transferAndComputeDerivatives(pbrTls->mTopLevelTls, &rayDiff,
             sp.mTextureDiffScale);
@@ -861,7 +860,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
 
         // TODO: Need to pass rayProj and updated pv instead of ray, pv
         radiance += computeRadianceSubsurfaceSample(
-            pbrTls, bsdf, sp, cameraId, pv, ray,
+            pbrTls, bsdf, sp, pv, ray,
             subsurfaceSamples[i].mdNdx, subsurfaceSamples[i].mdNdy,
             subsurfaceSamples[i].mBssrdfEval * areaCompensationFactor,
             transmissionFresnel, lightSet, lobeLocal, sliceLocal,
@@ -873,7 +872,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
     }
 
     /// Back-scattering Term
-    radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, cameraId, pv, ray,
+    radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, pv, ray,
         isect, slice, transmissionFresnel, scaleFresnelWo, lightSet, bssrdf,
         P, N, localF, subsurfaceSplitFactor, doIndirect, rayEpsilon, shadowRayEpsilon,
         sssSampleID, sequenceID, ssAov, aovs);
@@ -883,7 +882,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
 
 scene_rdl2::math::Color
 PathIntegrator::computeDiffusionForwardScattering(pbr::TLState *pbrTls, const Bsdf &bsdf,
-        const Subpixel &sp, int cameraId, const PathVertex &pv,
+        const Subpixel &sp, const PathVertex &pv,
         const RayDifferential &ray, const Intersection &isect,
         const BsdfSlice &slice, const Fresnel *transmissionFresnel,
         const scene_rdl2::math::Color& scaleFresnelWo, const LightSet &lightSet,
@@ -992,7 +991,6 @@ PathIntegrator::computeDiffusionForwardScattering(pbr::TLState *pbrTls, const Bs
                                      pv.minRoughness,
                                      -rayBack.getDirection());
         RayDifferential rayDiff(ray, isectBack.getEpsilonHint(), rayBack.tfar);
-        isectBack.setCameraId(cameraId);
         isectBack.transferAndComputeDerivatives(pbrTls->mTopLevelTls, &rayDiff,
             sp.mTextureDiffScale);
 
@@ -1045,7 +1043,7 @@ PathIntegrator::computeDiffusionForwardScattering(pbr::TLState *pbrTls, const Bs
         LambertBsdfLobe lobeGlobal(NiMap, scene_rdl2::math::sWhite, true);
         // TODO: Need to pass rayBack and updated pv instead of ray, pv
         radiance += computeRadianceSubsurfaceSample(pbrTls, bsdf,
-            sp, cameraId, nextPv, ray, isectBack.getdNdx(), isectBack.getdNdy(),
+            sp, nextPv, ray, isectBack.getdNdx(), isectBack.getdNdy(),
             pt, transmissionFresnel, lightSet, lobeGlobal, sliceGlobal,
             Pi, NiMap, subsurfaceSplitFactor, computeRadianceSplitFactor,
             sampleIndex, doIndirect, rayEpsilon, shadowRayEpsilon,
@@ -1233,7 +1231,7 @@ isValidIntersection(const Intersection& isect,
 
 scene_rdl2::math::Color
 PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
-        const Bsdf& bsdf, const Subpixel &sp, int cameraId, const PathVertex &pv,
+        const Bsdf& bsdf, const Subpixel &sp, const PathVertex &pv,
         const RayDifferential& ray, const Intersection& isect,
         const VolumeSubsurface& volumeSubsurface, const LightSet& lightSet,
         bool doIndirect, float rayEpsilon, float shadowRayEpsilon, unsigned &sequenceID,
@@ -1474,7 +1472,6 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                             -sssRay.dir);
                     nOut = -isectOut.getN();
                 }
-                isectOut.setCameraId(cameraId);
                 // used for subsurface material aovs
                 ssAov += pt;
                 reachSurface = true;
@@ -1489,7 +1486,7 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                 const bool isReflection = true;
                 LambertBsdfLobe lobeLocal(nOut, scene_rdl2::math::sWhite, isReflection);
                 radiance += computeRadianceSubsurfaceSample(
-                    pbrTls, bsdf, sp, cameraId, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
+                    pbrTls, bsdf, sp, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
                     pt, transmissionFresnel, lightSet, lobeLocal, sliceLocal, pOut, nOut,
                     nSubsurfaceSample, 1, s, doIndirect,  rayEpsilon, shadowRayEpsilon,
                     sequenceID, sequenceID, true, aovs, isect);
@@ -1635,7 +1632,6 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                             -sssRay.dir);
                     nOut = -isectOut.getN();
                 }
-                isectOut.setCameraId(cameraId);
                 break;
             } else {
                 // Scatter Event
@@ -1705,7 +1701,7 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
         const bool isReflection = true;
         LambertBsdfLobe lobeLocal(nOut, scene_rdl2::math::sWhite, isReflection);
         radiance += computeRadianceSubsurfaceSample(
-            pbrTls, bsdf, sp, cameraId, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
+            pbrTls, bsdf, sp, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
             pt, transmissionFresnel, lightSet, lobeLocal, sliceLocal, pOut, nOut,
             nSubsurfaceSample, 1, s, doIndirect,  rayEpsilon, shadowRayEpsilon,
             sequenceID, sequenceID, true, aovs, isect);

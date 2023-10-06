@@ -129,16 +129,15 @@ Xform::precalculateMatrices(const rdl2::SceneObject *shader,
 
     // Pre-calculate various xforms and their inverse xforms
     std::vector<const rdl2::Camera*> cameras = ctx->getActiveCameras();
-    for (size_t i = 0; i < cameras.size(); i++) {
-        // Use current active camera, if custom camera is not provided
-        // Render to Camera
-        const rdl2::Camera* cam = (customCamera == nullptr) ? cameras[i] : customCamera;
-        math::asCpp(mIspc.mR2C[i]) = math::xform<math::Xform3f>(getR2W(ctx) * getW2C(cam));
-        math::asCpp(mIspc.mR2CInv[i]) = math::asCpp(mIspc.mR2C[0]).inverse();
-        // Render to screen
-        math::asCpp(mIspc.mR2S[i]) = toFloat(getR2W(ctx) * getW2C(cam)) * getC2S(cam, window);
-        math::asCpp(mIspc.mR2SInv[i]) = math::asCpp(mIspc.mR2S[i]).inverse();
-    }
+
+    // Use current active camera, if custom camera is not provided
+    // Render to Camera
+    const rdl2::Camera* cam = (customCamera == nullptr) ? cameras[0] : customCamera;
+    math::asCpp(mIspc.mR2C) = math::xform<math::Xform3f>(getR2W(ctx) * getW2C(cam));
+    math::asCpp(mIspc.mR2CInv) = math::asCpp(mIspc.mR2C).inverse();
+    // Render to screen
+    math::asCpp(mIspc.mR2S) = toFloat(getR2W(ctx) * getW2C(cam)) * getC2S(cam, window);
+    math::asCpp(mIspc.mR2SInv) = math::asCpp(mIspc.mR2S).inverse();
 
     // Render to world
     math::asCpp(mIspc.mR2W) = math::xform<math::Xform3f>(getR2W(ctx));
@@ -163,7 +162,6 @@ Xform::transformPoint(const int srcSpace,
 {
     math::Vec3f rPoint;
     math::Vec3f result;
-    int cameraId = state.getCameraId();
 
     // Transform to render space if necessary
     switch(srcSpace) {
@@ -171,13 +169,13 @@ Xform::transformPoint(const int srcSpace,
         rPoint = inPoint;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        rPoint = math::transformPoint(math::asCpp(mIspc.mR2CInv[cameraId]), inPoint);
+        rPoint = math::transformPoint(math::asCpp(mIspc.mR2CInv), inPoint);
         break;
     case ispc::SHADING_SPACE_WORLD:
         rPoint = math::transformPoint(math::asCpp(mIspc.mR2WInv), inPoint);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        rPoint = math::transformH(math::asCpp(mIspc.mR2SInv[cameraId]), inPoint);
+        rPoint = math::transformH(math::asCpp(mIspc.mR2SInv), inPoint);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {
@@ -201,13 +199,13 @@ Xform::transformPoint(const int srcSpace,
         result = rPoint;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        result = math::transformPoint(math::asCpp(mIspc.mR2C[cameraId]), rPoint);
+        result = math::transformPoint(math::asCpp(mIspc.mR2C), rPoint);
         break;
     case ispc::SHADING_SPACE_WORLD:
         result = math::transformPoint(math::asCpp(mIspc.mR2W), rPoint);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        result = math::transformH(math::asCpp(mIspc.mR2S[cameraId]), rPoint);
+        result = math::transformH(math::asCpp(mIspc.mR2S), rPoint);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {
@@ -236,7 +234,6 @@ Xform::transformNormal(const int srcSpace,
 {
     math::Vec3f rNormal;
     math::Vec3f result;
-    int cameraId = state.getCameraId();
 
     // Transform to render space if necessary
     // Normal transform requires inverse transpose of a point xform matrix
@@ -246,13 +243,13 @@ Xform::transformNormal(const int srcSpace,
         rNormal = inNormal;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        rNormal = math::transformNormal(math::asCpp(mIspc.mR2C[cameraId]), inNormal);
+        rNormal = math::transformNormal(math::asCpp(mIspc.mR2C), inNormal);
         break;
     case ispc::SHADING_SPACE_WORLD:
         rNormal = math::transformNormal(math::asCpp(mIspc.mR2W), inNormal);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        rNormal = math::transformNormal(math::asCpp(mIspc.mR2S[cameraId]), inNormal);
+        rNormal = math::transformNormal(math::asCpp(mIspc.mR2S), inNormal);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {
@@ -276,13 +273,13 @@ Xform::transformNormal(const int srcSpace,
         result = rNormal;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        result = math::transformNormal(math::asCpp(mIspc.mR2CInv[cameraId]), rNormal);
+        result = math::transformNormal(math::asCpp(mIspc.mR2CInv), rNormal);
         break;
     case ispc::SHADING_SPACE_WORLD:
         result = math::transformNormal(math::asCpp(mIspc.mR2WInv), rNormal);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        result = math::transformNormal(math::asCpp(mIspc.mR2SInv[cameraId]), rNormal);
+        result = math::transformNormal(math::asCpp(mIspc.mR2SInv), rNormal);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {
@@ -311,7 +308,6 @@ Xform::transformVector(const int srcSpace,
 {
     math::Vec3f rVector;
     math::Vec3f result;
-    int cameraId = state.getCameraId();
 
     // Transform to render space if necessary
     switch(srcSpace) {
@@ -319,13 +315,13 @@ Xform::transformVector(const int srcSpace,
         rVector = inVector;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        rVector = math::transformVector(math::asCpp(mIspc.mR2CInv[cameraId]), inVector);
+        rVector = math::transformVector(math::asCpp(mIspc.mR2CInv), inVector);
         break;
     case ispc::SHADING_SPACE_WORLD:
         rVector = math::transformVector(math::asCpp(mIspc.mR2WInv), inVector);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        rVector = math::transformVector(math::asCpp(mIspc.mR2SInv[cameraId]), inVector);
+        rVector = math::transformVector(math::asCpp(mIspc.mR2SInv), inVector);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {
@@ -349,13 +345,13 @@ Xform::transformVector(const int srcSpace,
         result = rVector;
         break;
     case ispc::SHADING_SPACE_CAMERA:
-        result = math::transformVector(math::asCpp(mIspc.mR2C[cameraId]), rVector);
+        result = math::transformVector(math::asCpp(mIspc.mR2C), rVector);
         break;
     case ispc::SHADING_SPACE_WORLD:
         result = math::transformVector(math::asCpp(mIspc.mR2W), rVector);
         break;
     case ispc::SHADING_SPACE_SCREEN:
-        result = math::transformVector(math::asCpp(mIspc.mR2S[cameraId]), rVector);
+        result = math::transformVector(math::asCpp(mIspc.mR2S), rVector);
         break;
     case ispc::SHADING_SPACE_OBJECT:
         {

@@ -92,7 +92,7 @@
     HVD_MEMBER(PathVertex, mPathVertex);                                    \
     HVD_MEMBER(uint32_t, mSequenceID);                                      \
     HVD_MEMBER(Subpixel, mSubpixel);                                        \
-    HVD_MEMBER(uint32_t, mCameraId);                                        \
+    HVD_MEMBER(uint32_t, mPad0);                                            \
     HVD_MEMBER(uint32_t, mTilePassAndFilm);                                 \
     HVD_MEMBER(uint32_t, mRayStateIdx);                                     \
     HVD_ISPC_PAD(mPad1, 4);                                                 \
@@ -116,7 +116,7 @@
     HVD_VALIDATE(RayState, mPathVertex);                                    \
     HVD_VALIDATE(RayState, mSequenceID);                                    \
     HVD_VALIDATE(RayState, mSubpixel);                                      \
-    HVD_VALIDATE(RayState, mCameraId);                                      \
+    HVD_VALIDATE(RayState, mPad0);                                          \
     HVD_VALIDATE(RayState, mTilePassAndFilm);                               \
     HVD_VALIDATE(RayState, mRayStateIdx);                                   \
     HVD_VALIDATE(RayState, mAOSIsect);                                      \
