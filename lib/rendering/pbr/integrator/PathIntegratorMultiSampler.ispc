@@ -326,15 +326,14 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
 
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
-        // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
-        // terminating ray paths too early. We exclude them from light samples because these samples represent
-        // natural ends to light paths.
-        if (Light_getIsRayTerminator(light)) {
-            s += reduce_max(lightSampleCount);
-            continue;
-        }
-
         for (uniform int is = 0; is < lightSampleCount; s++, is++) {
+
+            // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
+            // terminating ray paths too early. To accomplish this, we force the occlusion test result to unoccluded.
+            varying OcclTestType occlTestType = STANDARD;
+            if (Light_getIsRayTerminator(light)) {
+                occlTestType = FORCE_NOT_OCCLUDED;
+            }
 
             varying LightSample *uniform currSamp = &lsmp[s];
 
@@ -403,7 +402,6 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                     }
                 }
 
-                varying OcclTestType occlTestType = STANDARD;
                 prepareOcclusionTestRays(pbrTls, light, rayState, parentRay,
                     rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->t, currSamp->distance,
                     data, srcRayIndices,
