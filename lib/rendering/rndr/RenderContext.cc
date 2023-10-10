@@ -2593,13 +2593,17 @@ RenderContext::accumulatePbrStatistics() const
 void
 RenderContext::reportShadingLogs()
 {
-    // Use the number of tbb threads here so we're not counting data from the
-    // main thread or GUI thread.
-    int numRenderThreads = getNumTBBThreads();
+    auto formatter = [](const scene_rdl2::rdl2::Shader* p, unsigned count, const std::string& description) {
+        std::ostringstream oss;
+        oss << p->getSceneClass().getName() << R"((")" << p->getName() << R"("): )" << '(' << count << " times) " << description;
+        const std::string result = oss.str();
+        return result;
+    };
+    scene_rdl2::rdl2::Shader::getLogEventRegistry().outputReports(formatter);
 
     std::for_each(mSceneContext->beginSceneObject(),
                   mSceneContext->endSceneObject(),
-        [numRenderThreads](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
+        [](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
             scene_rdl2::rdl2::SceneObject *obj = entry.second;
             MNRY_ASSERT(obj);
             if (obj->isA<scene_rdl2::rdl2::Shader>()) {
@@ -2607,9 +2611,6 @@ RenderContext::reportShadingLogs()
                 // fatal only applies to the current frame
                 auto* const shader = obj->asA<scene_rdl2::rdl2::Shader>();
                 shader->setFataled(false);
-                scene_rdl2::rdl2::Shader::getLogEventRegistry().outputReport(shader,
-                                                                             obj->getName(),
-                                                                             obj->getSceneClass().getName());
             }
         });
 }
