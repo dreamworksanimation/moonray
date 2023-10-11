@@ -753,7 +753,7 @@ RenderContext::startFrame()
     }
 
     // Determine if to render this frame in scalar, vectorized, or xpu mode.
-    ExecutionMode executionMode = ExecutionMode::VECTORIZED;
+    ExecutionMode executionMode = ExecutionMode::XPU;
     ExecutionMode desiredExecutionMode = mOptions.getDesiredExecutionMode();
     std::string executionModeString;
     std::string missingVecFeatures;
@@ -785,6 +785,8 @@ RenderContext::startFrame()
             executionModeString += ".";
         }
         executionMode = ExecutionMode::XPU;
+        // If there is an error setting up the GPU, we will fall back to vector mode
+        // in GeometryManager::updateGPUAccelerator().
     break;
 
     case ExecutionMode::AUTO:
@@ -796,8 +798,10 @@ RenderContext::startFrame()
             executionModeString += ".";
             executionMode = ExecutionMode::SCALAR;
         } else {
-            executionModeString = "Executing a vectorized render since execution mode was set to auto.";
-            executionMode = ExecutionMode::VECTORIZED;
+            executionModeString = "Executing an XPU render since execution mode was set to auto.";
+            executionMode = ExecutionMode::XPU;
+            // If there is an error setting up the GPU, we will fall back to vector mode
+            // in GeometryManager::updateGPUAccelerator().
         }    
     }
 
