@@ -55,8 +55,8 @@ createOptixContext(OptixLogCallback logCallback,
         *errorMsg = "Unable to query NVIDIA driver version";
         return false;
     }
-    if (major < 470) {
-        *errorMsg = "NVIDIA driver too old, must be >= 470";
+    if (major < 525) {
+        *errorMsg = "NVIDIA driver too old, must be >= 525";
         return false;
     }
 
