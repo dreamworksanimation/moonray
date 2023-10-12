@@ -409,8 +409,7 @@ RdlMeshProcedural::createSubdMesh(
     if (faceVertexCount.empty()) {
         return nullptr;
     }
-    size_t vc = (faceCount == vertCount) ? 0 : vertCount; // make it prefer faces over vertices if they match
-    const moonray::geom::RateCounts rates{partCount, faceCount, vc, vc, faceVaryingCount};
+    const moonray::geom::RateCounts rates{partCount, faceCount, vertCount, vertCount, faceVaryingCount};
 
     // Get the vertices, velocities, uvs, normals etc.
     SubdivisionMesh::VertexBuffer vertices = getVertexData(rdlGeometry, primitiveAttributeTable, rates);
@@ -579,7 +578,7 @@ RdlMeshProcedural::createPolyMesh(
     if (faceVertexCount.empty()) {
         return nullptr;
     }
-    const moonray::geom::RateCounts rates{partCount, faceCount, 0, vertCount, faceVaryingCount};
+    const moonray::geom::RateCounts rates{partCount, faceCount, vertCount, vertCount, faceVaryingCount};
 
     // Get the vertices, velocities, uvs, normals etc.
     PolygonMesh::VertexBuffer vertices = getVertexData(rdlGeometry, primitiveAttributeTable, rates);
