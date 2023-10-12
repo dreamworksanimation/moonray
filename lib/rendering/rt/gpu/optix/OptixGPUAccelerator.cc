@@ -1031,7 +1031,7 @@ OptixGPUAccelerator::OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
         return;
     }
 
-    scene_rdl2::logging::Logger::info("GPU: Allocating ray buffers");
+    scene_rdl2::logging::Logger::info("GPU: Allocating rays buffer");
 
     if (mRaysBuf.alloc(mRaysBufSize) != cudaSuccess) {
         *errorMsg = "GPU: Error allocating rays buffer";
@@ -1443,7 +1443,13 @@ OptixGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
 }
 
 void
-OptixGPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* rays) const
+OptixGPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*/) const
+{
+    // TODO
+}
+
+void
+OptixGPUAccelerator::occluded(const unsigned numRays, const GPURay* rays) const
 {
     // std::cout << "occluded(): " << numRays << std::endl;
 
@@ -1455,6 +1461,7 @@ OptixGPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* ray
     params.mNumRays = numRays;
     params.mRaysBuf = mRaysBuf.ptr();
     params.mIsOccludedBuf = mIsOccludedBuf.ptr();
+    params.mIsectBuf = nullptr;
     mParamsBuf.upload(&params);
 
     // Upload the rays to the GPU

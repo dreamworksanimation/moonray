@@ -5,7 +5,7 @@
 #include <moonray/rendering/pbr/Types.h>
 #include <moonray/rendering/mcrt_common/Bundle.h>
 #include <moonray/rendering/pbr/core/PbrTLState.h>
-#include <moonray/rendering/rt/gpu/GPUOcclusionRay.h>
+#include <moonray/rendering/rt/gpu/GPURay.h>
 
 // warning #1684: conversion from pointer to
 // same-sized integral type (potential portability problem)
@@ -68,7 +68,7 @@ public:
     typedef void (*GPUHandler)(mcrt_common::ThreadLocalState *tls,
                                unsigned numEntries,
                                EntryType *entryData,
-                               const rt::GPUOcclusionRay *gpuRays,
+                               const rt::GPURay *gpuRays,
                                tbb::spin_mutex& mutex);
 
     XPUAcceleratorQueue(unsigned numCPUThreads,
@@ -204,10 +204,10 @@ protected:
 
             pbr::TLState *pbrTls = tls->mPbrTls.get();
             scene_rdl2::alloc::Arena *arena = &tls->mArena;
-            rt::GPUOcclusionRay* gpuRays = arena->allocArray<rt::GPUOcclusionRay>(numRays, CACHE_LINE_SIZE);
+            rt::GPURay* gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
 
             // Now that the thread knows it's running on the GPU, it still needs to wait its
-            // turn for the GPU.  Before waiting, it needs to prepare the GPUOcclusionRays.
+            // turn for the GPU.  Before waiting, it needs to prepare the GPURays.
             for (size_t i = 0; i < numRays; ++i) {
                 const BundledOcclRay &occlRay = rays[i];
                 MNRY_ASSERT(occlRay.isValid());

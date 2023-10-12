@@ -37,9 +37,13 @@ public:
 
     std::string getGPUDeviceName() const;
 
-    unsigned char* getOutputOcclusionBuf() const { return mOutputOcclusionBuf; }
+    void intersect(const unsigned numRays, const GPURay* rays) const;
 
-    void occluded(const unsigned numRays, const GPUOcclusionRay* rays) const;
+    GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
+
+    void occluded(const unsigned numRays, const GPURay* rays) const;
+
+    unsigned char* getOutputOcclusionBuf() const { return mOutputOcclusionBuf; }
 
     static unsigned int getRaysBufSize() { return mRaysBufSize; }
 
@@ -103,12 +107,13 @@ private:
     // The rays buffer size is the same as the ray queue size in RenderDriver::createXPUQueue()
     // and was determined empirically through performance testing.
     static const unsigned int mRaysBufSize = 262144;
+    mutable OptixGPUBuffer<GPURay> mRaysBuf;
 
     // pinned host memory to avoid an extra copy in the GPU driver
     // when copying occlusion results from the GPU
     mutable unsigned char* mOutputOcclusionBuf;
 
-    mutable OptixGPUBuffer<GPUOcclusionRay> mRaysBuf;
+    // occluded() results
     mutable OptixGPUBuffer<unsigned char> mIsOccludedBuf;
 
     // A parameters object that is globally available on the GPU side.

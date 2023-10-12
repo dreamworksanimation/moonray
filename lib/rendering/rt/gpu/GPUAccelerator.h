@@ -102,7 +102,7 @@ buffer in its destructor which helps prevent GPU memory leaks.
 
 #pragma once
 
-#include "GPUOcclusionRay.h"
+#include "GPURay.h"
 #include <moonray/rendering/rt/rt.h>
 
 #include <scene_rdl2/common/platform/Platform.h>
@@ -134,10 +134,15 @@ public:
 
     std::string getGPUDeviceName() const;
 
+    void intersect(const unsigned numRays, const GPURay* rays) const;
+
+    // output intersect results are placed in here
+    GPURayIsect* getOutputIsectBuf() const;
+
+    void occluded(const unsigned numRays, const GPURay* rays) const;
+
     // output occlusion results are placed in here
     unsigned char* getOutputOcclusionBuf() const;
-
-    void occluded(const unsigned numRays, const GPUOcclusionRay* rays) const;
 
     static unsigned int getRaysBufSize();
 

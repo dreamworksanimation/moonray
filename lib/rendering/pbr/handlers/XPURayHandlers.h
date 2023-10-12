@@ -4,7 +4,7 @@
 #pragma once
 
 #include "RayHandlers.h"
-#include <moonray/rendering/rt/gpu/GPUOcclusionRay.h>
+#include <moonray/rendering/rt/gpu/GPURay.h>
 #include <tbb/spin_mutex.h>
 
 namespace moonray {
@@ -14,7 +14,7 @@ namespace pbr {
 void xpuOcclusionQueryBundleHandlerGPU(mcrt_common::ThreadLocalState *tls,
                                        unsigned numRays,
                                        BundledOcclRay *rays,
-                                       const rt::GPUOcclusionRay *gpuRays,
+                                       const rt::GPURay *gpuRays,
                                        tbb::spin_mutex& mutex);
 
 // This is called when the GPU is busy and can't process any more rays.

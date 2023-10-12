@@ -36,16 +36,28 @@ GPUAccelerator::getGPUDeviceName() const
     return mImpl->getGPUDeviceName();
 }
 
+void
+GPUAccelerator::intersect(const unsigned numRays, const GPURay* rays) const
+{
+    mImpl->intersect(numRays, rays);
+}
+
+GPURayIsect*
+GPUAccelerator::getOutputIsectBuf() const
+{
+    return mImpl->getOutputIsectBuf();
+}
+
+void
+GPUAccelerator::occluded(const unsigned numRays, const GPURay* rays) const
+{
+    mImpl->occluded(numRays, rays);
+}
+
 unsigned char*
 GPUAccelerator::getOutputOcclusionBuf() const
 {
     return mImpl->getOutputOcclusionBuf();
-}
-
-void
-GPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* rays) const
-{
-    mImpl->occluded(numRays, rays);
 }
 
 unsigned int
@@ -83,15 +95,26 @@ GPUAccelerator::getGPUDeviceName() const
     return "";
 }
 
-unsigned char*
-GPUAccelerator::getOutputOcclusionBuf() const
+void
+GPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*/) const
+{
+}
+
+GPURayIsect*
+GPUAccelerator::getOutputIsectBuf() const
 {
     return nullptr;
 }
 
 void
-GPUAccelerator::occluded(const unsigned /*numRays*/, const GPUOcclusionRay* /*rays*/) const
+GPUAccelerator::occluded(const unsigned /*numRays*/, const GPURay* /*rays*/) const
 {
+}
+
+unsigned char*
+GPUAccelerator::getOutputOcclusionBuf() const
+{
+    return nullptr;
 }
 
 unsigned int

@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../GPUOcclusionRay.h"
+#include "../GPURay.h"
 
 #include <optix.h>
 
@@ -16,14 +16,15 @@ struct OptixGPUParams
 {
     OptixTraversableHandle mAccel;
 
-    // The input rays we are passing to the GPU for occlusion testing
+    // The input rays we are passing to the GPU
     unsigned mNumRays;
-    moonray::rt::GPUOcclusionRay* mRaysBuf;
+    moonray::rt::GPURay* mRaysBuf;
 
-    // The output results buffer
-    unsigned char* mIsOccludedBuf;
+    // One of these output buffers will be nullptr -
+    //  we can distinguish intersect() vs occluded() in the CUDA code
+    GPURayIsect* mIsectBuf;        // The output results buffer for intersect()
+    unsigned char* mIsOccludedBuf; // The output results buffer for occluded()
 };
 
 } // namespace rt
 } // namespace moonray
-
