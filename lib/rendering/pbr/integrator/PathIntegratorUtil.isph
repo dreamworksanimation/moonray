@@ -87,7 +87,8 @@ void drawLightSetSamples(
         const varying Subpixel &sp, const varying PathVertex &pv,
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
-        uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint);
+        uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
+        const varying RayState* uniform rs);
 
 void applyRussianRoulette(
         uniform PbrTLState * uniform pbrTls,

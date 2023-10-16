@@ -410,6 +410,27 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         }
     }
 
+    // Prevent aliasing in the visibility aov by accounting for 
+    // primary rays that don't hit anything
+    if (ray.getDepth() == 0 && !hitGeom) {
+        
+        // If we're on the edge of the geometry, some rays should count as "hits", some as "misses". Here, 
+        // we're adding light_sample_count * lights number of "misses" to the visibility aov to account for 
+        // the light samples that couldn't be taken because the primary ray doesn't hit anything. 
+        // This improves aliasing on the edges.
+        if (aovs) {
+            const LightAovs &lightAovs = *fs.mLightAovs;
+            const AovSchema &aovSchema = *fs.mAovSchema;
+            // predict the number of light samples that would have been taken if the ray hit geom
+            int totalLightSamples = mLightSamples * scene->getLightCount();
+
+            // Doesn't matter what the lpe is -- if there are subpixels that hit a surface that isn't included
+            // in the lpe, this would be black anyway. If there are subpixels that DO hit a surface that is
+            // included in the lpe, this addition prevents aliasing. 
+            aovAccumVisibilityAttempts(pbrTls, aovSchema, lightAovs, totalLightSamples, aovs);
+        }
+    }
+
     // Set the cryptomatte information
     float cryptoId = 0.f;
     scene_rdl2::math::Vec2f cryptoUV = isect.getSt();

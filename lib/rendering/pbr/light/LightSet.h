@@ -9,6 +9,7 @@
 #pragma once
 
 #include "Light.h"
+#include "LightAccelerator.h"
 #include "LightSet.hh"
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/pbr/sampler/IntegratorSample.h>
@@ -79,6 +80,16 @@ public:
     finline const LightFilterList *getLightFilterList(int index) const
     {
         return mLightFilterLists[index];
+    }
+
+    finline void addInactiveLightsToVisibilityAov(
+        const std::function<void(const Light* const)>& addMissesToVisibilityAov) const
+    {
+        for (int i = 0; i < mAccelerator->getLightCount(); ++i) {
+            if (mAcceleratorLightIdMap[i] == -1) {
+                addMissesToVisibilityAov(mAccelerator->getLight(i));
+            }
+        }
     }
 
     // Returns the light index of a light chosen randomly from among those that

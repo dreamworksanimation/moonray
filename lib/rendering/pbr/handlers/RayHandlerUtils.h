@@ -19,6 +19,9 @@ void accumLightAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay, const F
 void accumVisibilityAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
                          const FrameState& fs, const int numItems, float value);
 
+void CPP_accumVisibilityAovs(float value, const pbr::TLState& pbrTls, const FrameState& fs, const BsdfSampler& bSampler, 
+                         const LightSetSampler& lSampler, const PathVertex& pv, const RayState& rs);
+
 void accumVisibilityAovsHit(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
                             const FrameState& fs, const int numItems);
 

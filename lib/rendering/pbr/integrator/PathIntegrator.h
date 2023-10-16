@@ -261,6 +261,9 @@ public:
     bool getEnableShadowing() const { return mEnableShadowing; }
     bool getEnablePathGuide() const;
 
+    // mLightSamples is the user parameter "light_sample_count" squared
+    int getLightSampleCount() const { return mLightSamples; }
+
     const std::vector<int>& getDeepIDAttrIdxs() const { return mDeepIDAttrIdxs; }
     int getDeepMaxLayers() const { return mDeepMaxLayers; }
     float getDeepLayerBias() const { return mDeepLayerBias; }

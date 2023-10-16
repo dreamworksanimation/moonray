@@ -788,7 +788,7 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
 
     drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
                         cullingNormal, Ray_getTime(ray), sequenceID, lsmp,
-                        this->mSampleClampingDepth, sp.mSampleClampingValue, Ray_getDirFootprint(ray));
+                        this->mSampleClampingDepth, sp.mSampleClampingValue, Ray_getDirFootprint(ray), rs);
 
     snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_COUNTER_B);
 

@@ -3645,13 +3645,14 @@ aovAccumLpeAovs(pbr::TLState *pbrTls,
                 const VALUE *nonMatchSampleValue, // if null, the sample value does not exist and will not be accumulated
                 int prefixFlags,
                 int lpeStateId,
+                bool lpePassthrough,              // disregard lpe when adding samples
                 float *dest)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
     bool success = false;
     for (const auto &entry: aovSchema) {
         if (entry.type() == type) {
-            if (lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
+            if (lpePassthrough || lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
                 // Make sure to keep (== prefixFlags) as this statement should always hold true when prefixFlags == 0.
                 const bool aovMatchPrefixFlags = (entry.lpePrefixFlags() & prefixFlags) == prefixFlags;
                 if (aovMatchPrefixFlags || (nonMatchValue && nonMatchSampleValue)) {
@@ -3706,7 +3707,8 @@ aovAccumLightAovs(pbr::TLState *pbrTls,
                   float *dest)
 {
     return aovAccumLpeAovs<AOV_TYPE_LIGHT_AOV, Color>(pbrTls, aovSchema,
-        lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags, lpeStateId, dest);
+        lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags, 
+        lpeStateId, /* lpePassthrough */ false, dest);
 }
 
 bool
@@ -3719,7 +3721,22 @@ aovAccumVisibilityAovs(pbr::TLState *pbrTls,
 {
     return aovAccumLpeAovs<AOV_TYPE_VISIBILITY_AOV, Vec2f>(pbrTls, aovSchema,
         lightAovs, value, value, /* nonMatchValue = */ nullptr, /* nonMatchSampleValue = */nullptr, 
-        AovSchema::sLpePrefixNone, lpeStateId, dest);
+        AovSchema::sLpePrefixNone, lpeStateId, /* lpePassthrough */ false, dest);
+}
+
+/// This function is a wrapper around aovAccumLpeAovs -- it adds a specified number of "misses" to the visibility
+/// aov, disregarding the lpe
+bool
+aovAccumVisibilityAttempts(pbr::TLState *pbrTls,
+                           const AovSchema &aovSchema,
+                           const LightAovs &lightAovs,
+                           const float value,
+                           float *dest)
+{
+    scene_rdl2::math::Vec2f vecValue(0.f, value);
+    return aovAccumLpeAovs<AOV_TYPE_VISIBILITY_AOV, Vec2f>(pbrTls, aovSchema,
+        lightAovs, vecValue, vecValue, /* nonMatchValue = */ nullptr, /* nonMatchSampleValue = */nullptr, 
+        AovSchema::sLpePrefixNone, /* lpeStateId */ -1, /* lpePassthrough */ true, dest);
 }
 
 template<AovType type, typename VALUE>
@@ -3737,7 +3754,8 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
                        int lpeStateId,
                        uint32_t pixel,
                        uint32_t deepDataHandle,
-                       uint32_t film)
+                       uint32_t film,
+                       bool lpePassthrough)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
     bool success = false;
@@ -3752,7 +3770,7 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
     for (const auto &entry: aovSchema) {
 
         if (entry.type() == type) {
-            if (lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
+            if (lpePassthrough || lightAovs.isValid(pbrTls, lpeStateId, entry.id())) {
                 // Make sure to keep (== prefixFlags) as this statement should always hold true when prefixFlags == 0.
                 const bool aovMatchPrefixFlags = (entry.lpePrefixFlags() & prefixFlags) == prefixFlags;
                 if (aovMatchPrefixFlags || (nonMatchValue && nonMatchSampleValue)) {
@@ -3829,22 +3847,56 @@ aovAccumLightAovsBundled(pbr::TLState *pbrTls,
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls, aovSchema,
         lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags,
-        lpeStateId, pixel, deepDataHandle, film);
+        lpeStateId, pixel, deepDataHandle, film, /* lpePassthrough */ false);
 }
 
 bool
 aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
-                         const AovSchema &aovSchema,
-                         const LightAovs &lightAovs,
-                         const Vec2f &value,
-                         int lpeStateId,
-                         uint32_t pixel,
-                         uint32_t deepDataHandle,
-                         uint32_t film)
+                              const AovSchema &aovSchema,
+                              const LightAovs &lightAovs,
+                              const Vec2f &value,
+                              int lpeStateId,
+                              uint32_t pixel,
+                              uint32_t deepDataHandle,
+                              uint32_t film,
+                              bool lpePassthrough)
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_VISIBILITY_AOV, Vec2f>(
         pbrTls, aovSchema, lightAovs, value, value, /* nonMatchValue = */ nullptr,
-        /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, film);
+        /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, 
+        film, lpePassthrough);
+}
+
+extern "C" bool
+CPP_aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
+                                  const AovSchema &aovSchema,
+                                  const LightAovs &lightAovs,
+                                  const Vec2f &value,
+                                  int lpeStateId,
+                                  uint32_t pixel,
+                                  uint32_t deepDataHandle,
+                                  uint32_t film,
+                                  bool lpePassthrough)
+{
+    return aovAccumVisibilityAovsBundled(pbrTls, aovSchema, lightAovs, value, lpeStateId, pixel, 
+                                         deepDataHandle, film, lpePassthrough);
+}
+
+/// This function is a wrapper around aovAccumLpeAovs -- it adds a specified number of "misses" to the visibility
+/// aov, disregarding the lpe
+bool aovAccumVisibilityAttemptsBundled(pbr::TLState *pbrTls,
+                                       const AovSchema &aovSchema,
+                                       const LightAovs &lightAovs,
+                                       int attempts,
+                                       uint32_t pixel,
+                                       uint32_t deepDataHandle,
+                                       uint32_t film)
+{
+    scene_rdl2::math::Vec2f value(0.f, attempts);
+    return aovAccumLpeAovsBundled<AOV_TYPE_VISIBILITY_AOV, Vec2f>(
+        pbrTls, aovSchema, lightAovs, value, value, /* nonMatchValue = */ nullptr,
+        /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, /* lpeStateId */-1, pixel, 
+        deepDataHandle, film, /* lpePassthrough */ true);
 }
 
 // Computes and accumulates extra aovs
@@ -3888,6 +3940,7 @@ aovAccumExtraAovs(pbr::TLState *pbrTls,
                                                                /* nonMatchSampleValue = */ nullptr,
                                                                AovSchema::sLpePrefixNone,
                                                                lpeStateId,
+                                                               /* lpePassthrough */ false,
                                                                dest)));
     }
 }
@@ -3961,7 +4014,8 @@ aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
                                                                                   lpeStateIds[idx],
                                                                                   pixel,
                                                                                   deepDataHandle,
-                                                                                  film)));
+                                                                                  film,
+                                                                                  /* lpePassthrough */ false)));
                 }
             }
         }
@@ -3997,6 +4051,7 @@ aovAccumPostScatterExtraAovs(pbr::TLState *pbrTls,
                                                                        /* nonMatchSampleValue = */ nullptr,
                                                                        AovSchema::sLpePrefixNone,
                                                                        lpeStateId,
+                                                                       /* lpePassthrough */ false,
                                                                        dest)));
             }
         }
@@ -4035,6 +4090,7 @@ aovAccumBackgroundExtraAovs(pbr::TLState *pbrTls,
                                                                /* nonMatchSampleValue = */ nullptr,
                                                                AovSchema::sLpePrefixNone,
                                                                lpeStateId,
+                                                               /* lpePassthrough */ false,
                                                                dest)));
     }
 }
@@ -4088,7 +4144,8 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
                                                                       lpeStateId,
                                                                       pixel,
                                                                       deepDataHandle,
-                                                                      film)));
+                                                                      film,
+                                                                      /* lpePassthrough */ false)));
     }
 }
 
@@ -4136,7 +4193,8 @@ CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
                                                                       lpeStateId,
                                                                       pixel,
                                                                       deepDataHandle,
-                                                                      film)));
+                                                                      film,
+                                                                      /* lpePassthrough */ false)));
     }
 }
  

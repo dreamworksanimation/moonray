@@ -164,6 +164,25 @@ LightSetSampler_getLightFromSample(const varying LightSetSampler * uniform lSamp
     return LightSetSampler_getLight(lSampler, lightIndex);
 }
 
+// The following funcs are intended to give info on lights regardless of whether they're active/inactive
+inline uniform int
+LightSetSampler_getAccLightCount(const varying LightSetSampler * uniform lSampler)
+{
+    return LightSet_getAccLightCount(lSampler->mLightSet);
+}
+
+inline bool
+LightSetSampler_lightIsActive(const varying LightSetSampler * uniform lSampler, uniform int i)
+{
+    return LightSet_lightIsActive(lSampler->mLightSet, i);
+}
+
+inline const uniform Light *
+LightSetSampler_getLightFromAcc(const varying LightSetSampler * uniform lSampler, uniform int i)
+{
+    return LightSet_getLightFromAcc(lSampler->mLightSet, i);
+}
+
 /// Draws a sample for light with index given lightIndex, checks that the light
 /// sample is not intersected by another light in the LightSet, and computes the
 /// light sample contribution. All results are stored in the LightSample.

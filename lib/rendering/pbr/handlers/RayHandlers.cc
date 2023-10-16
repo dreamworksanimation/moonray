@@ -404,6 +404,30 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
             sortedEntry.mRsIdx = rayStates[i] - baseRayState;
             sortedEntry.mMaterial = nullptr;
             ++numSortedEntries;
+
+            // Prevent aliasing in the visibility aov by accounting for 
+            // primary rays that don't hit anything 
+            if (ray.getDepth() == 0) {
+                const AovSchema &aovSchema = *fs.mAovSchema;
+
+                // If we're on the edge of the geometry, some rays should count as "hits", some as "misses". Here, 
+                // we're adding light_sample_count * lights number of "misses" to the visibility aov to account for 
+                // the light samples that couldn't be taken because the primary ray doesn't hit anything. 
+                // This improves aliasing on the edges.
+                if (!aovSchema.empty()) {
+                    const LightAovs &lightAovs = *fs.mLightAovs;
+                    
+                    // predict the number of light samples that would have been taken if the ray hit geom
+                    int totalLightSamples = fs.mIntegrator->getLightSampleCount() * fs.mScene->getLightCount();
+
+                    // Doesn't matter what the lpe is -- if there are subpixels that hit a surface that isn't included
+                    // in the lpe, this would be black anyway. If there are subpixels that DO hit a surface that is
+                    // included in the lpe, this addition prevents aliasing. 
+                    aovAccumVisibilityAttemptsBundled(pbrTls, aovSchema, lightAovs, totalLightSamples, 
+                                                      rayStates[i]->mSubpixel.mPixel, rayStates[i]->mDeepDataHandle, 
+                                                      pbr::getFilm(rayStates[i]->mTilePassAndFilm));
+                }
+            }
         } else {
             geom::internal::BVHUserData* userData =
                 static_cast<geom::internal::BVHUserData*>(ray.ext.userData);
