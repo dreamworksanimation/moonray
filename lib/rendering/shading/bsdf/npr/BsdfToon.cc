@@ -37,37 +37,36 @@ HairToonSpecularBsdfLobe::HairToonSpecularBsdfLobe(const Vec3f &N,
                                                    const float* rampPositions,
                                                    const ispc::RampInterpolatorMode* rampInterpolators,
                                                    const float* rampValues,
-                                                   HairRLobe* directHairLobe) :
+                                                   const bool enableIndirectReflections,
+                                                   const float indirectReflectionsRoughness,
+                                                   const float indirectReflectionsIntensity,
+                                                   const scene_rdl2::math::Vec3f &hairDir,
+                                                   const scene_rdl2::math::Vec2f &hairUV,
+                                                   const float mediumIOR,
+                                                   const float ior,
+                                                   ispc::HairFresnelType fresnelType,
+                                                   const float layerThickness,
+                                                   const float longShift,
+                                                   const float longRoughness) :
     BsdfLobe(Type(REFLECTION | GLOSSY), DifferentialFlags(0), false,
              PROPERTY_NORMAL | PROPERTY_ROUGHNESS),
     mFrame(N),
     mIntensity(intensity),
     mTint(tint),
-    mDirectHairLobe(directHairLobe),
-    mIndirectHairLobe(nullptr),
-    mIndirectReflectionsIntensity(0.0f)
-{
-    mRampControl.init(numRampPoints, rampPositions, rampValues, rampInterpolators);
-}
-
-HairToonSpecularBsdfLobe::HairToonSpecularBsdfLobe(const Vec3f &N,
-                                                   const float intensity,
-                                                   const Color& tint,
-                                                   int numRampPoints,
-                                                   const float* rampPositions,
-                                                   const ispc::RampInterpolatorMode* rampInterpolators,
-                                                   const float* rampValues,
-                                                   HairRLobe* directHairLobe,
-                                                   HairRLobe* indirectHairLobe,
-                                                   const float indirectReflectionsIntensity) :
-    BsdfLobe(Type(REFLECTION | GLOSSY), DifferentialFlags(0), false,
-             PROPERTY_NORMAL | PROPERTY_ROUGHNESS),
-    mFrame(N),
-    mIntensity(intensity),
-    mTint(tint),
-    mDirectHairLobe(directHairLobe),
-    mIndirectHairLobe(indirectHairLobe),
-    mIndirectReflectionsIntensity(indirectReflectionsIntensity)
+    mEnableIndirectReflections(enableIndirectReflections),
+    mIndirectReflectionsIntensity(indirectReflectionsIntensity),
+    mDirectHairLobe(hairDir, hairUV,
+                    mediumIOR, ior,
+                    fresnelType,
+                    layerThickness,
+                    longShift, longRoughness,
+                    tint),
+    mIndirectHairLobe(hairDir, hairUV,
+                      mediumIOR, ior,
+                      fresnelType,
+                      layerThickness,
+                      longShift, indirectReflectionsRoughness,
+                      tint)
 {
     mRampControl.init(numRampPoints, rampPositions, rampValues, rampInterpolators);
 }
@@ -79,8 +78,8 @@ HairToonSpecularBsdfLobe::sample(const BsdfSlice &slice,
                                  Vec3f &wi,
                                  float &pdf) const
 {
-    if (mIndirectHairLobe) {
-        return mIndirectHairLobe->sample(slice, r1, r2, wi, pdf) * mIndirectReflectionsIntensity;
+    if (mEnableIndirectReflections) {
+        return mIndirectHairLobe.sample(slice, r1, r2, wi, pdf) * mIndirectReflectionsIntensity;
     } else {
         pdf = 0.0f;
         return sBlack;
@@ -92,7 +91,7 @@ HairToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
                                const Vec3f &wi,
                                float *pdf) const
 {
-    const Color hairEval = mDirectHairLobe->eval(slice, wi, pdf);
+    const Color hairEval = mDirectHairLobe.eval(slice, wi, pdf);
     const float ramp = mRampControl.eval1D(scene_rdl2::math::luminance(hairEval));
     return mTint * ramp * mIntensity * scene_rdl2::math::sOneOverPi;
 }
@@ -108,8 +107,8 @@ HairToonSpecularBsdfLobe::differentials(const Vec3f &wo,
     // This function is only called if indirect reflections are enabled.
     // If that's the case we call the internal hair lobe's differentials
     // function.
-    if (mIndirectHairLobe) {
-        mIndirectHairLobe->differentials(wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
+    if (mEnableIndirectReflections) {
+        mIndirectHairLobe.differentials(wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
     }
 }
 
@@ -131,46 +130,16 @@ HairToonSpecularBsdfLobe::show(std::ostream& os,
     if (fresnel) {
         fresnel->show(os, indent + "    ");
     }
-    if (mDirectHairLobe) {
-        mDirectHairLobe->show(os, indent + "    ");
-    }
-    if (mIndirectHairLobe) {
-        mIndirectHairLobe->show(os, indent + "    ");
+    mDirectHairLobe.show(os, indent + "    ");
+    if (mEnableIndirectReflections) {
+        mIndirectHairLobe.show(os, indent + "    ");
     }
 }
 
 ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
                                            const float intensity,
-                                           const float roughness,
                                            const Color& tint,
-                                           int numRampPoints,
-                                           const float* rampPositions,
-                                           const ispc::RampInterpolatorMode* rampInterpolators,
-                                           const float* rampValues,
-                                           const float stretchU,
-                                           const float stretchV,
-                                           const scene_rdl2::math::Vec3f &dPds,
-                                           const scene_rdl2::math::Vec3f &dPdt) :
-    BsdfLobe(Type(REFLECTION | GLOSSY), DifferentialFlags(0), false,
-             PROPERTY_NORMAL | PROPERTY_ROUGHNESS),
-    mFrame(N),
-    mIntensity(intensity),
-    mRoughness(roughness),
-    mTint(tint),
-    mStretchU(stretchU),
-    mStretchV(stretchV),
-    mdPds(dPds),
-    mdPdt(dPdt),
-    mIndirectLobe(nullptr),
-    mIndirectReflectionsIntensity(0.0f)
-{    
-    mRampControl.init(numRampPoints, rampPositions, rampValues, rampInterpolators);
-}
-
-ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
-                                           const float intensity,
-                                           const float roughness,
-                                           const Color& tint,
+                                           float rampInputScale,
                                            int numRampPoints,
                                            const float* rampPositions,
                                            const ispc::RampInterpolatorMode* rampInterpolators,
@@ -179,22 +148,29 @@ ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
                                            const float stretchV,
                                            const scene_rdl2::math::Vec3f &dPds,
                                            const scene_rdl2::math::Vec3f &dPdt,
-                                           CookTorranceBsdfLobe* indirectLobe,
-                                           const float indirectReflectionsIntensity) :
+                                           const bool enableIndirectReflections,
+                                           const float indirectReflectionsRoughness,
+                                           const float indirectReflectionsIntensity,
+                                           Fresnel * fresnel) :
     BsdfLobe(Type(REFLECTION | GLOSSY), DifferentialFlags(0), false,
              PROPERTY_NORMAL | PROPERTY_ROUGHNESS),
     mFrame(N),
     mIntensity(intensity),
-    mRoughness(roughness),
     mTint(tint),
+    mRampInputScale(rampInputScale),
     mStretchU(stretchU),
     mStretchV(stretchV),
     mdPds(dPds),
     mdPdt(dPdt),
-    mIndirectLobe(indirectLobe),
-    mIndirectReflectionsIntensity(indirectReflectionsIntensity)
+    mEnableIndirectReflections(enableIndirectReflections),
+    mIndirectReflectionsIntensity(indirectReflectionsIntensity),
+    mIndirectLobe(N, indirectReflectionsRoughness)
 {    
-    mRampControl.init(numRampPoints, rampPositions, rampValues, rampInterpolators);
+    mIndirectLobe.setFresnel(fresnel);
+    mRampControl.init(numRampPoints,
+                      rampPositions,
+                      rampValues,
+                      rampInterpolators);
 }
 
 Color
@@ -204,8 +180,8 @@ ToonSpecularBsdfLobe::sample(const BsdfSlice &slice,
                              Vec3f &wi,
                              float &pdf) const
 {
-    if (mIndirectLobe) {
-        return mIndirectLobe->sample(slice, r1, r2, wi, pdf) * mIndirectReflectionsIntensity;
+    if (mEnableIndirectReflections) {
+        return mIndirectLobe.sample(slice, r1, r2, wi, pdf) * mIndirectReflectionsIntensity;
     } else {
         pdf = 0.0f;
         return sBlack;
@@ -247,13 +223,11 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
         return sBlack;
     }
 
-    // https://docs.google.com/presentation/d/10lYRt3FpQEOu8vrCoGdc_ngJnRXkzFi2B69cEUFkM48/edit
-    // Uses acos to get a more linear response for easier ramp remapping
-    R = wi - 2.0f * scene_rdl2::math::dot(wi, N) * N;
-    float specAngle = scene_rdl2::math::max(0.0f, dot(-wo, R));
-    specAngle = 1.0f - 2.0f * (scene_rdl2::math::acos(scene_rdl2::math::clamp(specAngle, -1.0f, 1.0f)) / scene_rdl2::math::sPi);
-    const float exponent = (1.0f - mRoughness) * 100.0f;
-    specAngle = scene_rdl2::math::pow(specAngle, exponent);
+    // Reflection vector using modified N
+    R = wi - 2.0f * dot(wi, N) * N;
+
+    // acos optimization to linearize dot product
+    const float specAngle = pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
 
     if (specAngle <= 0.0f) {
         return sBlack;
@@ -263,7 +237,7 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
         *pdf = 0.5f * scene_rdl2::math::sOneOverPi * specAngle;
     }
 
-    const float ramp = mRampControl.eval1D(specAngle);
+    const float ramp = mRampControl.eval1D(specAngle / mRampInputScale);
     return mTint * ramp * mIntensity * scene_rdl2::math::sOneOverPi;
 }
 
@@ -278,8 +252,8 @@ ToonSpecularBsdfLobe::differentials(const Vec3f &wo,
     // This function is only called if indirect reflections are enabled.
     // If that's the case we call the internal cook torrance lobe's
     // differentials function.
-    if (mIndirectLobe) {
-        mIndirectLobe->differentials(wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
+    if (mEnableIndirectReflections) {
+        mIndirectLobe.differentials(wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
     }
 }
 
@@ -290,10 +264,6 @@ ToonSpecularBsdfLobe::getProperty(Property property, float *dest) const
 
     switch (property)
     {
-    case PROPERTY_ROUGHNESS:
-        *dest       = mRoughness;
-        *(dest + 1) = mRoughness;
-        break;
     case PROPERTY_NORMAL:
         {
             const Vec3f &N = mFrame.getN();
@@ -323,7 +293,6 @@ ToonSpecularBsdfLobe::show(std::ostream& os,
     os << indent << "    " << "N: "
         << N.x << " " << N.y << " " << N.z << "\n";
     os << indent << "    " << "intensity: " << mIntensity << "\n";
-    os << indent << "    " << "roughness: " << mRoughness << "\n";
     os << indent << "    " << "tint: "
         << mTint.r << " " << mTint.g << " " << mTint.b << "\n";
     os << indent << "    " << "stretch u: " << mStretchU << "\n";
@@ -335,8 +304,8 @@ ToonSpecularBsdfLobe::show(std::ostream& os,
     if (fresnel) {
         fresnel->show(os, indent + "    ");
     }
-    if (mIndirectLobe) {
-        mIndirectLobe->show(os, indent + "    ");
+    if (mEnableIndirectReflections) {
+        mIndirectLobe.show(os, indent + "    ");
     }
 }
 

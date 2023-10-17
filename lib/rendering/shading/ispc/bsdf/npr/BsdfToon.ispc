@@ -79,8 +79,8 @@ HairToonSpecularBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
                                 varying Vec3f &wi, varying float &pdf)
 {
     const varying HairToonSpecularBsdfLobe * uniform hairToonSpecLobe = (const varying HairToonSpecularBsdfLobe * uniform)lobe;
-    if (hairToonSpecLobe->mIndirectHairLobe != NULL) {
-        const varying BsdfLobe * uniform indirectHairLobe = (const varying BsdfLobe * uniform)hairToonSpecLobe->mIndirectHairLobe;
+    if (hairToonSpecLobe->mEnableIndirectReflections) {
+        const varying BsdfLobe * uniform indirectHairLobe = (const varying BsdfLobe * uniform)&hairToonSpecLobe->mIndirectHairLobe;
         return HairBsdfLobe_sample(indirectHairLobe, slice, r1, r2, wi, pdf) *
                hairToonSpecLobe->mIndirectReflectionsIntensity;
     } else {
@@ -97,7 +97,7 @@ HairToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
 {
     const varying HairToonSpecularBsdfLobe * uniform hairToonSpecLobe =
         (const varying HairToonSpecularBsdfLobe * uniform) lobe;
-    const varying BsdfLobe * uniform hairLobe = (const varying BsdfLobe * uniform)hairToonSpecLobe->mDirectHairLobe;
+    const varying BsdfLobe * uniform hairLobe = (const varying BsdfLobe * uniform)&hairToonSpecLobe->mDirectHairLobe;
     const Color hairEval = HairBsdfLobe_eval(hairLobe, slice, wi, pdf);
     const float ramp = FloatRampControl_eval1D(luminance(hairEval), &hairToonSpecLobe->mRampControl);
     return hairToonSpecLobe->mTint * ramp * hairToonSpecLobe->mIntensity * sOneOverPi;
@@ -130,8 +130,8 @@ HairToonSpecularBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
     // If that's the case we call the internal hair lobe's differentials
     // function.
     const varying HairToonSpecularBsdfLobe * uniform hairToonSpecLobe = (const varying HairToonSpecularBsdfLobe * uniform)lobe;
-    if (hairToonSpecLobe->mIndirectHairLobe != NULL) {
-        const varying BsdfLobe * uniform indirectHairLobe = (const varying BsdfLobe * uniform)hairToonSpecLobe->mIndirectHairLobe;
+    if (hairToonSpecLobe->mEnableIndirectReflections) {
+        const varying BsdfLobe * uniform indirectHairLobe = (const varying BsdfLobe * uniform)&hairToonSpecLobe->mIndirectHairLobe;
         HairBsdfLobe_differentials(indirectHairLobe, wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
     }
 }
@@ -182,11 +182,10 @@ HairToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
     if (fresnel) {
         Fresnel_show(fresnel, ntab+1);
     }
-    if (me->mDirectHairLobe) {
-        HairRBsdfLobe_show((const varying BsdfLobe * uniform)me->mDirectHairLobe, ntab+1);
-    }
-    if (me->mIndirectHairLobe) {
-        HairRBsdfLobe_show((const varying BsdfLobe * uniform)me->mIndirectHairLobe, ntab+1);
+
+    HairRBsdfLobe_show((const varying BsdfLobe * uniform)&me->mDirectHairLobe, ntab+1);
+    if (me->mEnableIndirectReflections) {
+        HairRBsdfLobe_show((const varying BsdfLobe * uniform)&me->mIndirectHairLobe, ntab+1);
     }
 }
 
@@ -200,8 +199,8 @@ ToonSpecularBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
                             varying Vec3f &wi, varying float &pdf)
 {
     const varying ToonSpecularBsdfLobe * uniform toonSpecLobe = (const varying ToonSpecularBsdfLobe * uniform)lobe;
-    if (toonSpecLobe->mIndirectLobe != NULL) {
-        const varying BsdfLobe * uniform indirectLobe = (const varying BsdfLobe * uniform)toonSpecLobe->mIndirectLobe;
+    if (toonSpecLobe->mEnableIndirectReflections) {
+        const varying BsdfLobe * uniform indirectLobe = (const varying BsdfLobe * uniform)&toonSpecLobe->mIndirectLobe;
         return GGXCookTorranceBsdfLobe_sample(indirectLobe, slice, r1, r2, wi, pdf) *
                toonSpecLobe->mIndirectReflectionsIntensity;
     } else {
@@ -256,13 +255,12 @@ ToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         return sBlack;
     }
 
-    // https://docs.google.com/presentation/d/10lYRt3FpQEOu8vrCoGdc_ngJnRXkzFi2B69cEUFkM48/edit
-    // Uses acos to get a more linear response for easier ramp remapping
+
+    // Reflection vector using modified N
     R = wi - 2.0f * dot(wi, N) * N;
-    float specAngle = max(0.0f, dot(wo * -1.0f, R));
-    specAngle = 1.0f - 2.0f * (acos(clamp(specAngle, -1.0f, 1.0f)) / sPi);
-    const float exponent = (1.0f - toonSpecLobe->mRoughness) * 100.0f;
-    specAngle = pow(specAngle, exponent);
+
+    // acos optimization to linearize dot product
+    const float specAngle = pow(1.0f - clamp(dot(wo * -1.0f,  R), 0.0f, 1.0f), 0.56f);
 
     if (specAngle <= 0.0f) {
         return sBlack;
@@ -272,7 +270,7 @@ ToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         *pdf = 0.5f * sOneOverPi * specAngle;
     }
     
-    const float ramp = FloatRampControl_eval1D(specAngle, &toonSpecLobe->mRampControl);
+    const float ramp = FloatRampControl_eval1D(specAngle / toonSpecLobe->mRampInputScale, &toonSpecLobe->mRampControl);
     return toonSpecLobe->mTint * ramp * toonSpecLobe->mIntensity * sOneOverPi;
 }
 
@@ -303,8 +301,8 @@ ToonSpecularBsdfLobe_differentials(const varying BsdfLobe * uniform lobe,
     // If that's the case we call the internal cook torrance lobe's
     // differentials function.
     const varying ToonSpecularBsdfLobe * uniform toonSpecLobe = (const varying ToonSpecularBsdfLobe * uniform)lobe;
-    if (toonSpecLobe->mIndirectLobe != NULL) {
-        const varying BsdfLobe * uniform indirectLobe = (const varying BsdfLobe * uniform)toonSpecLobe->mIndirectLobe;
+    if (toonSpecLobe->mEnableIndirectReflections) {
+        const varying BsdfLobe * uniform indirectLobe = (const varying BsdfLobe * uniform)&toonSpecLobe->mIndirectLobe;
         CookTorranceBsdfLobe_differentials(indirectLobe, wo, wi, r1, r2, dNdx, dNdy, dDdx, dDdy);
     }
 }
@@ -322,10 +320,6 @@ ToonSpecularBsdfLobe_getProperty(const varying BsdfLobe * uniform lobe,
 
     switch (property)
     {
-    case BSDF_LOBE_PROPERTY_ROUGHNESS:
-        *dest =  ct->mRoughness;
-        *(dest + 1) =  ct->mRoughness;
-        break;
     case BSDF_LOBE_PROPERTY_NORMAL:
         {
             const Vec3f N = getN(ct->mFrame);
@@ -361,7 +355,6 @@ ToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
                                                  BSDF_UTIL_EXTRACT(N.y),
                                                  BSDF_UTIL_EXTRACT(N.z));
     BsdfUtil_indent(ntab+1); print("intensity: %\n", BSDF_UTIL_EXTRACT(me->mIntensity));
-    BsdfUtil_indent(ntab+1); print("roughness: %\n", BSDF_UTIL_EXTRACT(me->mRoughness));
     BsdfUtil_indent(ntab+1); print("tint: % % %\n", BSDF_UTIL_EXTRACT(me->mTint.r),
                                                     BSDF_UTIL_EXTRACT(me->mTint.g),
                                                     BSDF_UTIL_EXTRACT(me->mTint.b));
@@ -377,8 +370,9 @@ ToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
     if (fresnel) {
         Fresnel_show(fresnel, ntab+1);
     }
-    if (me->mIndirectLobe) {
-        CookTorranceBsdfLobe_show((const varying BsdfLobe * uniform)me->mIndirectLobe, ntab+1);
+
+    if (me->mEnableIndirectReflections) {
+        CookTorranceBsdfLobe_show((const varying BsdfLobe * uniform)&me->mIndirectLobe, ntab+1);
     }
 }
 

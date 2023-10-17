@@ -112,10 +112,11 @@ struct HairToonSpecularBsdfLobe
     Color mTint;
     FloatRampControl mRampControl;
 
+    bool mEnableIndirectReflections;
     float mIndirectReflectionsIntensity;
 
-    varying HairBsdfLobe * uniform mDirectHairLobe;
-    varying HairBsdfLobe * uniform mIndirectHairLobe;
+    varying HairBsdfLobe mDirectHairLobe;
+    varying HairBsdfLobe mIndirectHairLobe;
 };
 
 varying Color
@@ -165,7 +166,17 @@ HairToonSpecularBsdfLobe_init(varying HairToonSpecularBsdfLobe * uniform lobe,
                               const varying float* uniform rampPositions,
                               const varying RampInterpolatorMode* uniform rampInterpolators,
                               const varying float* uniform rampValues,
-                              varying HairBsdfLobe * uniform directHairLobe)
+                              const uniform bool enableIndirectReflections,
+                              const varying float indirectReflectionsRoughness,
+                              const varying float indirectReflectionsIntensity,
+                              const varying Vec3f& hairDir,
+                              const varying Vec2f& hairUV,
+                              const varying float mediumIOR,
+                              const varying float ior,
+                              const varying HairFresnelType fresnelType,
+                              const varying float cuticleLayers,
+                              const varying float longShift,
+                              const varying float longRoughness)
 {
     BsdfLobe_init((varying BsdfLobe * uniform) lobe,
                   /* name = */ BSDF_LOBE_HAIR_TOON,
@@ -183,53 +194,30 @@ HairToonSpecularBsdfLobe_init(varying HairToonSpecularBsdfLobe * uniform lobe,
     ReferenceFrame_init(lobe->mFrame, normal);
     lobe->mIntensity = intensity;
     lobe->mTint = tint;
+
     FloatRampControl_init(&lobe->mRampControl, 
                           numRampPoints,
                           rampPositions,
                           rampValues,
                           rampInterpolators);
-    lobe->mDirectHairLobe = directHairLobe;
-    lobe->mIndirectHairLobe = NULL;
-    lobe->mIndirectReflectionsIntensity = 0.0f;
-}
 
-inline void
-HairToonSpecularBsdfLobe_init(varying HairToonSpecularBsdfLobe * uniform lobe,
-                              uniform Arena * uniform arena,
-                              const varying Vec3f &normal,
-                              const varying float intensity,
-                              const Color& tint,
-                              const varying int numRampPoints,
-                              const varying float* uniform rampPositions,
-                              const varying RampInterpolatorMode* uniform rampInterpolators,
-                              const varying float* uniform rampValues,
-                              varying HairBsdfLobe * uniform directHairLobe,
-                              varying HairBsdfLobe * uniform indirectHairLobe,
-                              const varying float indirectReflectionsIntensity)
-{
-    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
-                  /* name = */ BSDF_LOBE_HAIR_TOON,
-                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
-                  /* differentialFlags = */ (uniform BsdfLobeDifferentialFlags)0,
-                  /* isSpherical = */ false,
-                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
-                  /* evalFn = */ HairToonSpecularBsdfLobe_eval,
-                  /* sampleFn = */ HairToonSpecularBsdfLobe_sample,
-                  /* albedoFn = */ HairToonSpecularBsdfLobe_albedo,
-                  /* differentialsFn = */ HairToonSpecularBsdfLobe_differentials,
-                  /* getPropertyFn = */HairToonSpecularBsdfLobe_getProperty,
-                  /* showFn = */ HairToonSpecularBsdfLobe_show);
-
-    ReferenceFrame_init(lobe->mFrame, normal);
-    lobe->mIntensity = intensity;
-    lobe->mTint = tint;
-    FloatRampControl_init(&lobe->mRampControl, 
-                          numRampPoints,
-                          rampPositions,
-                          rampValues,
-                          rampInterpolators);
-    lobe->mDirectHairLobe = directHairLobe;
-    lobe->mIndirectHairLobe = indirectHairLobe;
+    HairRBsdfLobe_init(&lobe->mDirectHairLobe,
+                       hairDir, hairUV,
+                       mediumIOR, ior,
+                       fresnelType,
+                       cuticleLayers,
+                       longShift,
+                       longRoughness,
+                       tint);
+    HairRBsdfLobe_init(&lobe->mIndirectHairLobe,
+                       hairDir, hairUV,
+                       mediumIOR, ior,
+                       fresnelType,
+                       cuticleLayers,
+                       longShift,
+                       indirectReflectionsRoughness,
+                       tint);
+    lobe->mEnableIndirectReflections = enableIndirectReflections;
     lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
 }
 
@@ -239,8 +227,8 @@ struct ToonSpecularBsdfLobe
 
     ReferenceFrame mFrame;
     float mIntensity;
-    float mRoughness;
     Color mTint;
+    float mRampInputScale;
     FloatRampControl mRampControl;
 
     float mStretchU;
@@ -248,8 +236,9 @@ struct ToonSpecularBsdfLobe
     Vec3f mdPds;
     Vec3f mdPdt;
 
+    bool mEnableIndirectReflections;
     float mIndirectReflectionsIntensity;
-    varying GGXCookTorranceBsdfLobe * uniform mIndirectLobe;
+    varying GGXCookTorranceBsdfLobe mIndirectLobe;
 };
 
 varying Color
@@ -294,55 +283,8 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
                           uniform Arena * uniform arena,
                           const varying Vec3f &normal,
                           const varying float intensity,
-                          const varying float roughness,
                           const Color& tint,
-                          const varying int numRampPoints,
-                          const varying float* uniform rampPositions,
-                          const varying RampInterpolatorMode* uniform rampInterpolators,
-                          const varying float* uniform rampValues,
-                          const varying float stretchU,
-                          const varying float stretchV,
-                          const varying Vec3f &dPds,
-                          const varying Vec3f &dPdt)
-{
-    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
-                  /* name = */ BSDF_LOBE_HAIR_TOON,
-                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
-                  /* differentialFlags = */ (uniform BsdfLobeDifferentialFlags)0,
-                  /* isSpherical = */ false,
-                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
-                  /* evalFn = */ ToonSpecularBsdfLobe_eval,
-                  /* sampleFn = */ ToonSpecularBsdfLobe_sample,
-                  /* albedoFn = */ ToonSpecularBsdfLobe_albedo,
-                  /* differentialsFn = */ ToonSpecularBsdfLobe_differentials,
-                  /* getPropertyFn = */ToonSpecularBsdfLobe_getProperty,
-                  /* showFn = */ ToonSpecularBsdfLobe_show);
-
-    ReferenceFrame_init(lobe->mFrame, normal);
-
-    lobe->mIntensity = intensity;
-    lobe->mRoughness = roughness;
-    lobe->mTint = tint;
-    lobe->mStretchU = stretchU;
-    lobe->mStretchV = stretchV;
-    lobe->mdPds = dPds;
-    lobe->mdPdt = dPdt;
-    FloatRampControl_init(&lobe->mRampControl, 
-                          numRampPoints,
-                          rampPositions,
-                          rampValues,
-                          rampInterpolators);
-    lobe->mIndirectLobe = NULL;
-    lobe->mIndirectReflectionsIntensity = 0.0f;
-}
-
-inline void
-ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
-                          uniform Arena * uniform arena,
-                          const varying Vec3f &normal,
-                          const varying float intensity,
-                          const varying float roughness,
-                          const Color& tint,
+                          const float rampInputScale,
                           const varying int numRampPoints,
                           const varying float* uniform rampPositions,
                           const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -351,8 +293,10 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
                           const varying float stretchV,
                           const varying Vec3f &dPds,
                           const varying Vec3f &dPdt,
-                          varying GGXCookTorranceBsdfLobe * uniform indirectLobe,
-                          const varying float indirectReflectionsIntensity)
+                          const uniform bool enableIndirectReflections,
+                          const varying float indirectReflectionsRoughness,
+                          const varying float indirectReflectionsIntensity,
+                          varying Fresnel * uniform fresnel)
 {
     BsdfLobe_init((varying BsdfLobe * uniform) lobe,
                   /* name = */ BSDF_LOBE_HAIR_TOON,
@@ -370,8 +314,8 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
     ReferenceFrame_init(lobe->mFrame, normal);
 
     lobe->mIntensity = intensity;
-    lobe->mRoughness = roughness;
     lobe->mTint = tint;
+    lobe->mRampInputScale = rampInputScale;
     lobe->mStretchU = stretchU;
     lobe->mStretchV = stretchV;
     lobe->mdPds = dPds;
@@ -381,7 +325,12 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
                           rampPositions,
                           rampValues,
                           rampInterpolators);
-    lobe->mIndirectLobe = indirectLobe;
+
+    GGXCookTorranceBsdfLobe_init(&lobe->mIndirectLobe,
+                                 normal,
+                                 indirectReflectionsRoughness);
+    lobe->mEnableIndirectReflections = enableIndirectReflections;
     lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
+    BsdfLobe_setFresnel((varying BsdfLobe * uniform)&lobe->mIndirectLobe, fresnel);
 }
 

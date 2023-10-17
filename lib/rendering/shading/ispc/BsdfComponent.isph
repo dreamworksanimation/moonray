@@ -323,8 +323,8 @@ void ToonSpecularBRDF_init(
         varying ToonSpecularBRDF& brdf,
         const varying Vec3f& N,
         const varying float intensity,
-        const varying float roughness,
         const varying Color& tint,
+        const float rampInputScale,
         const varying int numRampPoints,
         const varying float* uniform rampPositions,
         const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -776,8 +776,8 @@ struct ToonSpecularBRDF
 {
     varying Vec3f   mN;
     varying float   mIntensity;
-    varying float   mRoughness;
     varying Color   mTint;
+    varying float   mRampInputScale;
 
     varying int mRampNumPoints;
     const varying float* uniform mRampPositions;

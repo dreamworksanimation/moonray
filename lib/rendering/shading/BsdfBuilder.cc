@@ -1844,52 +1844,29 @@ public:
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
 
-        BsdfLobe * lobe;
+        // Create the fresnel early to set on GGX child lobe of ToonSpecularGGXBsdfLobe
+        Fresnel * fresnel = createFresnel(scene_rdl2::math::Color(1.5f), // eta
+                                          scene_rdl2::math::sBlack, // k
+                                          false); // is conductor
+        fresnel->setWeight(weight);
 
-        // Create a GGX cook torrance lobe for indirect reflections
-        if (component.getEnableIndirectReflections()) {
-
-            CookTorranceBsdfLobe * indirectLobe = 
-                mTls->mArena->allocWithArgs<GGXCookTorranceBsdfLobe>(
-                        adaptedNormal,
-                        component.getIndirectReflectionsRoughness());
-
-            lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
-                    adaptedNormal,
-                    component.getIntensity(),
-                    component.getRoughness(),
-                    component.getTint(),
-                    component.getRampNumPoints(),
-                    component.getRampPositions(),
-                    component.getRampInterpolators(),
-                    component.getRampValues(),
-                    component.getStretchU(),
-                    component.getStretchV(),
-                    component.getdPds(),
-                    component.getdPdt(),
-                    indirectLobe,
-                    component.getIndirectReflectionsIntensity());
-        } else {
-            lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
-                    adaptedNormal,
-                    component.getIntensity(),
-                    component.getRoughness(),
-                    component.getTint(),
-                    component.getRampNumPoints(),
-                    component.getRampPositions(),
-                    component.getRampInterpolators(),
-                    component.getRampValues(),
-                    component.getStretchU(),
-                    component.getStretchV(),
-                    component.getdPds(),
-                    component.getdPdt());
-        }
-
-        Fresnel * fresnel = applyFresnelBehavior(scene_rdl2::math::Color(1.5f), // eta
-                                                 scene_rdl2::math::sBlack, // k
-                                                 false, // is conductor
-                                                 weight,
-                                                 lobe);
+        const BsdfLobe * lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
+                adaptedNormal,
+                component.getIntensity(),
+                component.getTint(),
+                component.getRampInputScale(),
+                component.getRampNumPoints(),
+                component.getRampPositions(),
+                component.getRampInterpolators(),
+                component.getRampValues(),
+                component.getStretchU(),
+                component.getStretchV(),
+                component.getdPds(),
+                component.getdPdt(),
+                component.getEnableIndirectReflections(),
+                component.getIndirectReflectionsRoughness(),
+                component.getIndirectReflectionsIntensity(),
+                fresnel);
 
         if (isUnder(combineBehavior)) {
             // account for the non-dielectric lobes above
@@ -1904,7 +1881,7 @@ public:
             SimpleAttenuator * atten = mTls->mArena->allocWithArgs<SimpleAttenuator>(
                     mTls->mArena,
                     adaptedNormal,
-                    component.getRoughness(),
+                    component.getIndirectReflectionsRoughness(),
                     fresnel);
 
             stageAttenuator(atten);
@@ -1923,32 +1900,7 @@ public:
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
 
-        HairRLobe * directHairLobe = mTls->mArena->allocWithArgs<HairRLobe>(
-                component.getHairDir(),
-                component.getHairUV(),
-                mState.getMediumIor(),
-                component.getIOR(),
-                (ispc::HairFresnelType)component.getFresnelType(),
-                component.getCuticleLayerThickness(),
-                component.getShift(),
-                clampHairRoughness(sHairRoughnessMin, getMinRoughness(), component.getRoughness()),
-                component.getTint());
-
-        BsdfLobe * lobe;
-        if (component.getEnableIndirectReflections()) {
-            // Create a separate HairR lobe for indirect reflections
-            HairRLobe * indirectHairLobe = mTls->mArena->allocWithArgs<HairRLobe>(
-                component.getHairDir(),
-                component.getHairUV(),
-                mState.getMediumIor(),
-                component.getIOR(),
-                (ispc::HairFresnelType)component.getFresnelType(),
-                component.getCuticleLayerThickness(),
-                component.getShift(),
-                clampHairRoughness(sHairRoughnessMin, getMinRoughness(), component.getIndirectReflectionsRoughness()),
-                component.getTint());
-
-            lobe = mTls->mArena->allocWithArgs<HairToonSpecularBsdfLobe>(
+        const BsdfLobe * lobe = mTls->mArena->allocWithArgs<HairToonSpecularBsdfLobe>(
                     adaptedNormal,
                     component.getIntensity(),
                     component.getTint(),
@@ -1956,20 +1908,21 @@ public:
                     component.getRampPositions(),
                     component.getRampInterpolators(),
                     component.getRampValues(),
-                    directHairLobe,
-                    indirectHairLobe,
-                    component.getIndirectReflectionsIntensity());
-        } else {
-            lobe = mTls->mArena->allocWithArgs<HairToonSpecularBsdfLobe>(
-                    adaptedNormal,
-                    component.getIntensity(),
-                    component.getTint(),
-                    component.getRampNumPoints(),
-                    component.getRampPositions(),
-                    component.getRampInterpolators(),
-                    component.getRampValues(),
-                    directHairLobe);
-        }
+                    component.getEnableIndirectReflections(),
+                    clampHairRoughness(sHairRoughnessMin,
+                                       getMinRoughness(),
+                                       component.getIndirectReflectionsRoughness()),
+                    component.getIndirectReflectionsIntensity(),
+                    component.getHairDir(),
+                    component.getHairUV(),
+                    mState.getMediumIor(),
+                    component.getIOR(),
+                    (ispc::HairFresnelType)component.getFresnelType(),
+                    component.getCuticleLayerThickness(),
+                    component.getShift(),
+                    clampHairRoughness(sHairRoughnessMin,
+                                       getMinRoughness(),
+                                       component.getRoughness()));
 
         Fresnel * fresnel = applyFresnelBehavior(scene_rdl2::math::Color(1.5f), // eta
                                                  scene_rdl2::math::sBlack, // k

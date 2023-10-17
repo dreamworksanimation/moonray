@@ -510,8 +510,8 @@ ToonSpecularBRDF_init(
         varying ToonSpecularBRDF& me,
         const varying Vec3f& N,
         const varying float intensity,
-        const varying float roughness,
         const varying Color& tint,
+        const float rampInputScale,
         const varying int numRampPoints,
         const varying float* uniform rampPositions,
         const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -526,8 +526,8 @@ ToonSpecularBRDF_init(
 {
     me.mN = N;
     me.mIntensity = intensity;
-    me.mRoughness = roughness;
     me.mTint = tint;
+    me.mRampInputScale = rampInputScale,
     me.mRampNumPoints = numRampPoints;
     me.mRampPositions = rampPositions;
     me.mRampInterpolators = rampInterpolators;

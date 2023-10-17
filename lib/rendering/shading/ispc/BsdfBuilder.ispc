@@ -1350,63 +1350,29 @@ BsdfBuilder_addHairToonSpecularBRDF(
     const varying Vec3f adaptedNormal =
         Intersection_adaptNormal(asAnIntersection(*(me.mState)), brdf.mN);
 
-    // Allocate direct hair lobe for eval remapping
-    varying HairBsdfLobe * uniform directHairLobe = (varying HairBsdfLobe  * uniform)
-        Arena_alloc(me.mTls->mArena, sizeof(varying HairBsdfLobe));
-    HairRBsdfLobe_init(directHairLobe,
-                       brdf.mHairDir,
-                       brdf.mHairUV,
-                       getMediumIor(*me.mState),
-                       brdf.mIOR,
-                       brdf.mFresnelType,
-                       brdf.mCuticleLayerThickness,
-                       brdf.mShift,
-                       clampHairRoughness(sHairRoughnessMin, getMinRoughness(me), brdf.mRoughness),
-                       brdf.mTint);
-
     varying BsdfLobe * uniform lobe = (varying BsdfLobe * uniform)
         Arena_alloc(me.mTls->mArena, sizeof(varying HairToonSpecularBsdfLobe));
 
-    if (brdf.mEnableIndirectReflections) {
-
-        // Allocate a separate hair lobe for indirect reflections (sample, differentials)
-        varying HairBsdfLobe * uniform indirectHairLobe = (varying HairBsdfLobe  * uniform)
-            Arena_alloc(me.mTls->mArena, sizeof(varying HairBsdfLobe));
-        HairRBsdfLobe_init(indirectHairLobe,
-                           brdf.mHairDir,
-                           brdf.mHairUV,
-                           getMediumIor(*me.mState),
-                           brdf.mIOR,
-                           brdf.mFresnelType,
-                           brdf.mCuticleLayerThickness,
-                           brdf.mShift,
-                           clampHairRoughness(sHairRoughnessMin, getMinRoughness(me), brdf.mIndirectReflectionsRoughness),
-                           brdf.mTint);
-
-        HairToonSpecularBsdfLobe_init((varying HairToonSpecularBsdfLobe * uniform)lobe,
-                                      me.mTls->mArena,
-                                      brdf.mN,
-                                      brdf.mIntensity,
-                                      brdf.mTint,
-                                      brdf.mRampNumPoints,
-                                      brdf.mRampPositions,
-                                      brdf.mRampInterpolators,
-                                      brdf.mRampValues,
-                                      directHairLobe,
-                                      indirectHairLobe,
-                                      brdf.mIndirectReflectionsIntensity);
-    } else {
-        HairToonSpecularBsdfLobe_init((varying HairToonSpecularBsdfLobe * uniform)lobe,
-                                      me.mTls->mArena,
-                                      brdf.mN,
-                                      brdf.mIntensity,
-                                      brdf.mTint,
-                                      brdf.mRampNumPoints,
-                                      brdf.mRampPositions,
-                                      brdf.mRampInterpolators,
-                                      brdf.mRampValues,
-                                      directHairLobe);
-    }
+    HairToonSpecularBsdfLobe_init((varying HairToonSpecularBsdfLobe * uniform)lobe,
+                                  me.mTls->mArena,
+                                  brdf.mN,
+                                  brdf.mIntensity,
+                                  brdf.mTint,
+                                  brdf.mRampNumPoints,
+                                  brdf.mRampPositions,
+                                  brdf.mRampInterpolators,
+                                  brdf.mRampValues,
+                                  brdf.mEnableIndirectReflections,
+                                  clampHairRoughness(sHairRoughnessMin, getMinRoughness(me), brdf.mIndirectReflectionsRoughness),
+                                  brdf.mIndirectReflectionsIntensity,
+                                  brdf.mHairDir,
+                                  brdf.mHairUV,
+                                  getMediumIor(*me.mState),
+                                  brdf.mIOR,
+                                  brdf.mFresnelType,
+                                  brdf.mCuticleLayerThickness,
+                                  brdf.mShift,
+                                  clampHairRoughness(sHairRoughnessMin, getMinRoughness(me), brdf.mRoughness));
 
     varying Fresnel * uniform fresnel =
         applyFresnelBehavior(me,
@@ -1458,58 +1424,33 @@ BsdfBuilder_addToonSpecularBRDF(
     const varying Vec3f adaptedNormal =
         Intersection_adaptNormal(asAnIntersection(*(me.mState)), brdf.mN);
 
+    varying Fresnel * uniform fresnel = createFresnel(me,
+                                                      (varying Color)Color_ctor(1.5f), // eta
+                                                      (varying Color) sBlack, // k
+                                                      false, // isConductor
+                                                      weight);
+
     varying BsdfLobe * uniform lobe = (varying BsdfLobe * uniform)
         Arena_alloc(me.mTls->mArena, sizeof(varying ToonSpecularBsdfLobe));
 
-    // Create a GGX cook torrance lobe for indirect reflections
-    if (brdf.mEnableIndirectReflections) {
-        varying GGXCookTorranceBsdfLobe * uniform indirectLobe = (varying GGXCookTorranceBsdfLobe  * uniform)
-            Arena_alloc(me.mTls->mArena, sizeof(varying GGXCookTorranceBsdfLobe));
-
-        GGXCookTorranceBsdfLobe_init(indirectLobe,
-                                     adaptedNormal,
-                                     brdf.mIndirectReflectionsRoughness);
-
-        ToonSpecularBsdfLobe_init((varying ToonSpecularBsdfLobe * uniform) lobe,
-                                  me.mTls->mArena,
-                                  adaptedNormal,
-                                  brdf.mIntensity,
-                                  brdf.mRoughness,
-                                  brdf.mTint,
-                                  brdf.mRampNumPoints,
-                                  brdf.mRampPositions,
-                                  brdf.mRampInterpolators,
-                                  brdf.mRampValues,
-                                  brdf.mStretchU,
-                                  brdf.mStretchV,
-                                  brdf.mdPds,
-                                  brdf.mdPdt,
-                                  indirectLobe,
-                                  brdf.mIndirectReflectionsIntensity);
-    } else {
-        ToonSpecularBsdfLobe_init((varying ToonSpecularBsdfLobe * uniform) lobe,
-                                  me.mTls->mArena,
-                                  adaptedNormal,
-                                  brdf.mIntensity,
-                                  brdf.mRoughness,
-                                  brdf.mTint,
-                                  brdf.mRampNumPoints,
-                                  brdf.mRampPositions,
-                                  brdf.mRampInterpolators,
-                                  brdf.mRampValues,
-                                  brdf.mStretchU,
-                                  brdf.mStretchV,
-                                  brdf.mdPds,
-                                  brdf.mdPdt);
-    }
-
-    varying Fresnel * uniform fresnel =
-        applyFresnelBehavior(me,
-                             (varying Color)Color_ctor(1.5f), // eta
-                             (varying Color) sBlack, // k
-                             false,                  // isConductor
-                             weight,
-                             lobe);
+    ToonSpecularBsdfLobe_init((varying ToonSpecularBsdfLobe * uniform) lobe,
+                              me.mTls->mArena,
+                              adaptedNormal,
+                              brdf.mIntensity,
+                              brdf.mTint,
+                              brdf.mRampInputScale,
+                              brdf.mRampNumPoints,
+                              brdf.mRampPositions,
+                              brdf.mRampInterpolators,
+                              brdf.mRampValues,
+                              brdf.mStretchU,
+                              brdf.mStretchV,
+                              brdf.mdPds,
+                              brdf.mdPdt,
+                              brdf.mEnableIndirectReflections,
+                              brdf.mIndirectReflectionsRoughness,
+                              brdf.mIndirectReflectionsIntensity,
+                              fresnel);
 
     cif (isUnder(combineBehavior)) {
         // account for the non-dielectric lobes above
@@ -1526,7 +1467,7 @@ BsdfBuilder_addToonSpecularBRDF(
         SimpleAttenuator_init(atten,
                               me.mTls->mArena,
                               adaptedNormal,
-                              brdf.mRoughness,
+                              brdf.mIndirectReflectionsRoughness,
                               fresnel);
 
         stageAttenuator(me, (varying LobeAttenuator * uniform) atten);

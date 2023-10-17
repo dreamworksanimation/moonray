@@ -1532,8 +1532,8 @@ public:
     ToonSpecularBRDF(
             const scene_rdl2::math::Vec3f& N,
             float intensity,
-            const float roughness,
             const scene_rdl2::math::Color& tint,
+            const float rampInputScale,
             int numRampPoints,
             const float* rampPositions,
             const ispc::RampInterpolatorMode* rampInterpolators,
@@ -1547,8 +1547,8 @@ public:
             float indirectReflectionsRoughness) :
         mN(N),
         mIntensity(intensity),
-        mRoughness(roughness),
         mTint(tint),
+        mRampInputScale(rampInputScale),
         mRampNumPoints(numRampPoints),
         mRampPositions(rampPositions),
         mRampInterpolators(rampInterpolators),
@@ -1566,8 +1566,8 @@ public:
 
     finline const scene_rdl2::math::Vec3f& getN() const { return mN; }
     finline float getIntensity() const { return mIntensity; }
-    finline float getRoughness() const { return mRoughness; }
     finline scene_rdl2::math::Color getTint() const { return mTint; }
+    finline float getRampInputScale() const { return mRampInputScale; }
     finline int getRampNumPoints() const { return mRampNumPoints; }
     finline const float* getRampPositions() const { return mRampPositions; }
     finline const ispc::RampInterpolatorMode* getRampInterpolators() const { return mRampInterpolators; }
@@ -1583,9 +1583,9 @@ public:
 private:
     scene_rdl2::math::Vec3f mN;
     float mIntensity;
-    const float mRoughness;
     scene_rdl2::math::Color mTint;
 
+    const float mRampInputScale;
     int mRampNumPoints;
     const float* mRampPositions;
     const ispc::RampInterpolatorMode* mRampInterpolators;
