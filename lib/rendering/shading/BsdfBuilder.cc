@@ -1850,7 +1850,7 @@ public:
                                           false); // is conductor
         fresnel->setWeight(weight);
 
-        const BsdfLobe * lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
+        BsdfLobe * lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
                 adaptedNormal,
                 component.getIntensity(),
                 component.getTint(),
@@ -1900,7 +1900,7 @@ public:
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
 
-        const BsdfLobe * lobe = mTls->mArena->allocWithArgs<HairToonSpecularBsdfLobe>(
+        BsdfLobe * lobe = mTls->mArena->allocWithArgs<HairToonSpecularBsdfLobe>(
                     adaptedNormal,
                     component.getIntensity(),
                     component.getTint(),
