@@ -29,7 +29,7 @@ class DisplayFilterDriver::Impl
 public:
     Impl() = default;
     ~Impl();
-    void init(rndr::Film* films,
+    void init(rndr::Film* film,
               const rndr::RenderOutputDriver *roDriver,
               const std::vector<scene_rdl2::fb_util::Tile>* tiles,
               const uint32_t *tileIndices,
@@ -1054,14 +1054,14 @@ DisplayFilterDriver::~DisplayFilterDriver()
 }
 
 void
-DisplayFilterDriver::init(rndr::Film *films,
+DisplayFilterDriver::init(rndr::Film *film,
                           const rndr::RenderOutputDriver *roDriver,
                           const std::vector<scene_rdl2::fb_util::Tile>* tiles,
                           const uint32_t *tileIndices,
                           const scene_rdl2::math::Viewport& viewport,
                           unsigned int threadCount)
 {
-    mImpl->init(films, roDriver, tiles, tileIndices, viewport, threadCount);
+    mImpl->init(film, roDriver, tiles, tileIndices, viewport, threadCount);
 }
 
 bool

@@ -41,8 +41,7 @@ accumLightAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay, const FrameS
 
                 aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                          *fs.mLightAovs, b->mLpeRadiance * matchMultiplier,
-                                         pNonMatchValue, flags, lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle,
-                                         pbr::getFilm(occlRay.mTilePassAndFilm));
+                                         pNonMatchValue, flags, lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle);
             }
         }
     }
@@ -72,7 +71,7 @@ accumVisibilityAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
             if (lpeStateId > 0) {
                 if (aovAccumVisibilityAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     scene_rdl2::math::Vec2f(value, 1.0f), lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle,
-                    pbr::getFilm(occlRay.mTilePassAndFilm), false)) {
+                    false)) {
 
                     // we only need to add to the visibility buffer once per shadow ray
                     break;
@@ -119,7 +118,7 @@ fillBundledRadiance(pbr::TLState* pbrTls, BundledRadiance* dst, const BundledOcc
     // pixel coverage information as seen from the camera.
     dst->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(occlRay.mCryptomatteDataHandle);
     dst->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(occlRay.mCryptomatteDataHandle2);
-    dst->mTilePassAndFilm = occlRay.mTilePassAndFilm;
+    dst->mTilePass = occlRay.mTilePass;
 }
 
 scene_rdl2::math::Color

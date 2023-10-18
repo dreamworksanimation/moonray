@@ -51,7 +51,6 @@ void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                           varying float pixelWeight,
                           varying uint32_t pixel,
                           varying uint32_t deepDataHandle,
-                          varying uint32_t filmIdx,
                           varying int lpeStateId);
 
 void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
@@ -67,7 +66,6 @@ void aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                           varying float pixelWeight,
                           varying uint32_t pixel,
                           varying uint32_t deepDataHandle,
-                          varying uint32_t filmIdx,
                           varying int lpeStateId);
 
 void aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
@@ -76,8 +74,7 @@ void aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                        const varying Color &value,
                        varying int lpeStateId,
                        varying uint32_t pixel,
-                       varying uint32_t deepDataHandle,
-                       varying uint32_t filmIdx);
+                       varying uint32_t deepDataHandle);
                           
 void aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
                                   const uniform FrameState &fs,

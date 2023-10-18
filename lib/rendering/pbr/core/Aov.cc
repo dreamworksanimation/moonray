@@ -349,8 +349,7 @@ addToBundledQueue(pbr::TLState *pbrTls,
                   const uint32_t lane,
                   const uint32_t vlen,
                   uint32_t pixel,
-                  uint32_t deepDataHandle,
-                  uint32_t film)
+                  uint32_t deepDataHandle)
 {
     // sparseAovValues means that the aovValues array is laid out
     // according to the aov schema and will have space for unused data
@@ -359,7 +358,7 @@ addToBundledQueue(pbr::TLState *pbrTls,
     // are not sparse, while state and primitive attribute aovs are sparse
     unsigned int aovIdx = 0;
     unsigned int aov = 0;
-    BundledAov bundledAov(pixel, pbr::nullHandle, film);
+    BundledAov bundledAov(pixel, pbr::nullHandle);
 
     // function called when the bundledAov fills up and is added to the queue
     auto queueBundledAov = [&bundledAov, pbrTls, deepDataHandle]() {
@@ -367,8 +366,8 @@ addToBundledQueue(pbr::TLState *pbrTls,
         pbrTls->addAovQueueEntries(1, &bundledAov);
     };
     // function called to initialize bundledAov for more data
-    auto initBundledAov = [&aov, &bundledAov, pixel, film]() {
-        bundledAov.init(pixel, pbr::nullHandle, film);
+    auto initBundledAov = [&aov, &bundledAov, pixel]() {
+        bundledAov.init(pixel, pbr::nullHandle);
         aov = 0;
     };
 
@@ -444,16 +443,14 @@ addToBundledQueue(pbr::TLState *pbrTls,
                   const uint32_t lane,
                   const uint32_t materialAovLanemasks[],
                   const uint32_t pixel[],
-                  const uint32_t deepDataHandle[],
-                  const uint32_t filmIdx[])
+                  const uint32_t deepDataHandle[])
 {
     uint32_t handle = deepDataHandle[lane];
     uint32_t pix    = pixel[lane];
-    uint32_t film   = filmIdx[lane];
 
     unsigned int aovIdx = 0;
     unsigned int aov = 0;
-    BundledAov bundledAov(pix, pbr::nullHandle, film);
+    BundledAov bundledAov(pix, pbr::nullHandle);
 
     // function called when the bundledAov fills up and is added to the queue
     auto queueBundledAov = [&bundledAov, pbrTls, handle]() {
@@ -461,8 +458,8 @@ addToBundledQueue(pbr::TLState *pbrTls,
         pbrTls->addAovQueueEntries(1, &bundledAov);
     };
     // function called to initialize bundledAov for more data
-    auto initBundledAov = [&aov, &bundledAov, pix, film]() {
-        bundledAov.init(pix, pbr::nullHandle, film);
+    auto initBundledAov = [&aov, &bundledAov, pix]() {
+        bundledAov.init(pix, pbr::nullHandle);
         aov = 0;
     };
 
@@ -542,8 +539,7 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
                      const uint32_t aovTypeMask,
                      const float *aovValues,
                      uint32_t pixel,
-                     uint32_t deepDataHandle,
-                     uint32_t film)
+                     uint32_t deepDataHandle)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
@@ -565,7 +561,7 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
     }
 
     addToBundledQueue(pbrTls, aovSchema, depth, aovTypeMask, aovValues, true, 0, 1,
-                      pixel, deepDataHandle, film);
+                      pixel, deepDataHandle);
 }
 
 void
@@ -575,15 +571,14 @@ aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
                                const uint32_t aovTypeMask,
                                const float *aovValues,
                                uint32_t pixel,
-                               uint32_t deepDataHandle,
-                               uint32_t film)
+                               uint32_t deepDataHandle)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
     float depth = scene_rdl2::math::inf; // hard surface depth, not applicable here
 
     addToBundledQueue(pbrTls, aovSchema, depth, aovTypeMask, aovValues, true, 0, 1,
-                      pixel, deepDataHandle, film);
+                      pixel, deepDataHandle);
 }
 
 // ---------------------------------------------------------------------------
@@ -2995,7 +2990,6 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
                        const float pixelWeight[],
                        const uint32_t pixel[],
                        const uint32_t deepDataHandle[],
-                       const uint32_t filmIdx[],
                        const int lpeStateId[],
                        const uint32_t isPrimaryRay[],
                        const uint32_t lanemask)
@@ -3066,7 +3060,7 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
         // We need to call a version of addToBundledQueue() that passes the array of per-entry lane masks from above
         addToBundledQueue(pbrTls, aovSchema, depth,
                           buffer, lane, materialAovLanemasks, pixel,
-                          deepDataHandle, filmIdx);
+                          deepDataHandle);
     }
 }
 
@@ -3754,7 +3748,6 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
                        int lpeStateId,
                        uint32_t pixel,
                        uint32_t deepDataHandle,
-                       uint32_t film,
                        bool lpePassthrough)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
@@ -3766,7 +3759,7 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
     unsigned aovIdx = 0;
     unsigned aov = 0;
 
-    BundledAov bundledAov(pixel, pbr::nullHandle, film);
+    BundledAov bundledAov(pixel, pbr::nullHandle);
     for (const auto &entry: aovSchema) {
 
         if (entry.type() == type) {
@@ -3811,7 +3804,7 @@ aovAccumLpeAovsBundled(pbr::TLState *pbrTls,
                         if (aov == BundledAov::MAX_AOV) {
                             bundledAov.mDeepDataHandle = pbrTls->acquireDeepData(deepDataHandle);
                             pbrTls->addAovQueueEntries(1, &bundledAov);
-                            bundledAov.init(pixel, pbr::nullHandle, film);
+                            bundledAov.init(pixel, pbr::nullHandle);
                             aov = 0;
                         }
                     }
@@ -3842,12 +3835,11 @@ aovAccumLightAovsBundled(pbr::TLState *pbrTls,
                          int prefixFlags,
                          int lpeStateId,
                          uint32_t pixel,
-                         uint32_t deepDataHandle,
-                         uint32_t film)
+                         uint32_t deepDataHandle)
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_LIGHT_AOV, Color>(pbrTls, aovSchema,
         lightAovs, matchValue, matchValue, nonMatchValue, nonMatchValue, prefixFlags,
-        lpeStateId, pixel, deepDataHandle, film, /* lpePassthrough */ false);
+        lpeStateId, pixel, deepDataHandle, /* lpePassthrough */ false);
 }
 
 bool
@@ -3858,13 +3850,12 @@ aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                               int lpeStateId,
                               uint32_t pixel,
                               uint32_t deepDataHandle,
-                              uint32_t film,
                               bool lpePassthrough)
 {
     return aovAccumLpeAovsBundled<AOV_TYPE_VISIBILITY_AOV, Vec2f>(
         pbrTls, aovSchema, lightAovs, value, value, /* nonMatchValue = */ nullptr,
         /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, 
-        film, lpePassthrough);
+        lpePassthrough);
 }
 
 extern "C" bool
@@ -3875,11 +3866,10 @@ CPP_aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                                   int lpeStateId,
                                   uint32_t pixel,
                                   uint32_t deepDataHandle,
-                                  uint32_t film,
                                   bool lpePassthrough)
 {
     return aovAccumVisibilityAovsBundled(pbrTls, aovSchema, lightAovs, value, lpeStateId, pixel, 
-                                         deepDataHandle, film, lpePassthrough);
+                                         deepDataHandle, lpePassthrough);
 }
 
 /// This function is a wrapper around aovAccumLpeAovs -- it adds a specified number of "misses" to the visibility
@@ -3889,14 +3879,13 @@ bool aovAccumVisibilityAttemptsBundled(pbr::TLState *pbrTls,
                                        const LightAovs &lightAovs,
                                        int attempts,
                                        uint32_t pixel,
-                                       uint32_t deepDataHandle,
-                                       uint32_t film)
+                                       uint32_t deepDataHandle)
 {
     scene_rdl2::math::Vec2f value(0.f, attempts);
     return aovAccumLpeAovsBundled<AOV_TYPE_VISIBILITY_AOV, Vec2f>(
         pbrTls, aovSchema, lightAovs, value, value, /* nonMatchValue = */ nullptr,
         /* nonMatchSampleValue = */ nullptr, AovSchema::sLpePrefixNone, /* lpeStateId */-1, pixel, 
-        deepDataHandle, film, /* lpePassthrough */ true);
+        deepDataHandle, /* lpePassthrough */ true);
 }
 
 // Computes and accumulates extra aovs
@@ -3995,7 +3984,6 @@ aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
                     const PathVertex &pv = rayStates[ray]->mPathVertex;
                     const uint32_t pixel = rayStates[ray]->mSubpixel.mPixel;
                     const uint32_t deepDataHandle = rayStates[ray]->mDeepDataHandle;
-                    const uint32_t film = getFilm(rayStates[ray]->mTilePassAndFilm);
                     Color value(valuev.r[idx], valuev.g[idx], valuev.b[idx]);
                     // Now stuff the value in the right aov dest slots.
                     // The assert is to verify that we did not waste time
@@ -4014,7 +4002,6 @@ aovAccumExtraAovsBundled(pbr::TLState *pbrTls,
                                                                                   lpeStateIds[idx],
                                                                                   pixel,
                                                                                   deepDataHandle,
-                                                                                  film,
                                                                                   /* lpePassthrough */ false)));
                 }
             }
@@ -4115,7 +4102,6 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
 
         const uint32_t pixel = rs->mSubpixel.mPixel;
         const uint32_t deepDataHandle = rs->mDeepDataHandle;
-        const uint32_t film = getFilm(rs->mTilePassAndFilm);
         scene_rdl2::math::Color pt = pv.pathThroughput;
         if (rs->mVolHit) {
             // Volume transparency needs to be taken into account.  Unlike the scalar code,
@@ -4144,7 +4130,6 @@ aovAccumBackgroundExtraAovsBundled(pbr::TLState *pbrTls,
                                                                       lpeStateId,
                                                                       pixel,
                                                                       deepDataHandle,
-                                                                      film,
                                                                       /* lpePassthrough */ false)));
     }
 }
@@ -4157,13 +4142,12 @@ CPP_aovAccumLightAovs(pbr::TLState *pbrTls,
                       const Color &value,
                       int lpeStateId,
                       uint32_t pixel,
-                      uint32_t deepDataHandle,
-                      uint32_t film)
+                      uint32_t deepDataHandle)
 {
     // TODO: fix accumulator parameter.
     // CPP_aovAccumLightAovs doesn't have to take into account flags, so we won't include them.
     aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, value, nullptr, 
-                             AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle, film);
+                             AovSchema::sLpePrefixNone, lpeStateId, pixel, deepDataHandle);
 }
 
 extern "C" void
@@ -4175,8 +4159,7 @@ CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
                                 int pvStateId,
                                 int labelId,
                                 uint32_t pixel,
-                                uint32_t deepDataHandle,
-                                uint32_t film)
+                                uint32_t deepDataHandle)
 {
     MNRY_ASSERT(pvStateId >= 0);
     MNRY_ASSERT(labelId >= 0);
@@ -4193,7 +4176,6 @@ CPP_aovAccumPostScatterExtraAov(pbr::TLState *pbrTls,
                                                                       lpeStateId,
                                                                       pixel,
                                                                       deepDataHandle,
-                                                                      film,
                                                                       /* lpePassthrough */ false)));
     }
 }

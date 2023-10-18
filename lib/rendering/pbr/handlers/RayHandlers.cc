@@ -424,8 +424,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     // in the lpe, this would be black anyway. If there are subpixels that DO hit a surface that is
                     // included in the lpe, this addition prevents aliasing. 
                     aovAccumVisibilityAttemptsBundled(pbrTls, aovSchema, lightAovs, totalLightSamples, 
-                                                      rayStates[i]->mSubpixel.mPixel, rayStates[i]->mDeepDataHandle, 
-                                                      pbr::getFilm(rayStates[i]->mTilePassAndFilm));
+                                                      rayStates[i]->mSubpixel.mPixel, rayStates[i]->mDeepDataHandle);
                 }
             }
         } else {
@@ -471,7 +470,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     rad.mDeepDataHandle = pbrTls->acquireDeepData(rs.mDeepDataHandle);
                     rad.mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs.mCryptomatteDataHandle);
                     rad.mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs.mCryptomatteDataHandle2);
-                    rad.mTilePassAndFilm = rs.mTilePassAndFilm;
+                    rad.mTilePass = rs.mTilePass;
                     pbrTls->addRadianceQueueEntries(1, &rad);
                 }
             }
@@ -598,7 +597,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 rad->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 rad->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 rad->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
-                rad->mTilePassAndFilm = rs->mTilePassAndFilm;
+                rad->mTilePass = rs->mTilePass;
 
                 // LPE
                 if (!fs.mAovSchema->empty()) {
@@ -622,8 +621,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                        AOV_TYPE_STATE_VAR,
                                                        aovs,
                                                        rs->mSubpixel.mPixel,
-                                                       rs->mDeepDataHandle,
-                                                       pbr::getFilm(rs->mTilePassAndFilm));
+                                                       rs->mDeepDataHandle);
                     }
 
                     const LightAovs &lightAovs = *fs.mLightAovs;
@@ -660,8 +658,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         // to worry about pre-occlusion LPEs here.
                         aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                                  lightAovs, radiance, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
-                                                 rad->mPixel, rad->mDeepDataHandle,
-                                                 pbr::getFilm(rad->mTilePassAndFilm));
+                                                 rad->mPixel, rad->mDeepDataHandle);
                     }
                 }
 

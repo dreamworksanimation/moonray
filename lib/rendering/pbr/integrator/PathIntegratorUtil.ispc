@@ -281,7 +281,6 @@ CPP_aovAccumVisibilityAovsBundled(const uniform PbrTLState * uniform pbrTls,
                                   const uniform int lpeStateId,
                                   const uniform uint32_t pixel,
                                   const uniform uint32_t deepDataHandle,
-                                  const uniform uint32_t film,
                                   uniform bool lpePassthrough);
 
 /// This helper function adds "misses" to the visibility aov. We do this here because there are some light
@@ -293,7 +292,6 @@ void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
                          const varying PathVertex &pv,
                          const varying uint32_t pixel,
                          const varying uint32_t deepDataHandle,
-                         const varying uint32_t tilePassAndFilm,
                          const uniform Light * light,
                          uniform int attempts) 
 {
@@ -325,7 +323,6 @@ void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
                                                       extract(lpeStateId, lane),
                                                       extract(pixel, lane),
                                                       extract(deepDataHandle, lane),
-                                                      extract(tilePassAndFilm, lane),
                                                       false)) {
                     insert(addVisibility, lane, false);
                 }
@@ -433,7 +430,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
                 // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
                 accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
                                             pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
-                                            getFilmISPC(rs->mTilePassAndFilm), light, 1);
+                                            light, 1);
                 continue;
             }
 
@@ -466,7 +463,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
                 const uniform Light * light = LightSetSampler_getLightFromAcc(&lSampler, i);
                 accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
                                             pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
-                                            getFilmISPC(rs->mTilePassAndFilm), light, 
+                                            light, 
                                             PathIntegrator_getLightSampleCount(pbrTls->mFs->mIntegrator));
             }
         }

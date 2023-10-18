@@ -227,7 +227,6 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
     mHeatMapQueues(nullptr),
     mXPUOcclusionRayQueue(nullptr),
     mFs(nullptr),
-    mNonBundledFilmIdx(0),
     mCancellationState(DISABLED),
     mCurrentPassIdx(0),
     mRayRecorder(nullptr),
@@ -288,42 +287,35 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
         }
 
         // Allocate radiance queue.
-        const unsigned numFilms = MNRY_VERIFY(initParams.mNumFilms);
         if (initParams.mRadianceQueueSize) {
             mRadianceQueues = scene_rdl2::alignedMallocArrayCtor<RadianceQueue>
-                                  (numFilms, CACHE_LINE_SIZE);
+                                  (1, CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mRadianceQueueSize;
             mRadianceEntries = scene_rdl2::alignedMallocArray<RadianceQueue::EntryType>
-                                   (queueSize * numFilms, CACHE_LINE_SIZE);
-            for (unsigned i = 0; i < numFilms; ++i) {
-                mRadianceQueues[i].init(queueSize, mRadianceEntries + (i * queueSize));
-            }
+                                   (queueSize, CACHE_LINE_SIZE);
+            mRadianceQueues[0].init(queueSize, mRadianceEntries);
             // Radiance queue handler is setup by the RenderDriver.
         }
 
         // Allocate aov queue
         if (initParams.mAovQueueSize) {
             mAovQueues = scene_rdl2::alignedMallocArrayCtor<AovQueue>
-                                  (numFilms, CACHE_LINE_SIZE);
+                                  (1, CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mAovQueueSize;
             mAovEntries = scene_rdl2::alignedMallocArray<AovQueue::EntryType>
-                                   (queueSize * numFilms, CACHE_LINE_SIZE);
-            for (unsigned i = 0; i < numFilms; ++i) {
-                mAovQueues[i].init(queueSize, mAovEntries + (i * queueSize));
-            }
+                                   (queueSize, CACHE_LINE_SIZE);
+            mAovQueues[0].init(queueSize, mAovEntries);
             // Aov queue handler is setup by the RenderDriver.
         }
 
         // Allocate heat map queue
         if (initParams.mHeatMapQueueSize) {
             mHeatMapQueues = scene_rdl2::alignedMallocArrayCtor<HeatMapQueue>
-                                  (numFilms, CACHE_LINE_SIZE);
+                                  (1, CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mHeatMapQueueSize;
             mHeatMapEntries = scene_rdl2::alignedMallocArray<HeatMapQueue::EntryType>
-                                   (queueSize * numFilms, CACHE_LINE_SIZE);
-            for (unsigned i = 0; i < numFilms; ++i) {
-                mHeatMapQueues[i].init(queueSize, mHeatMapEntries + (i * queueSize));
-            }
+                                   (queueSize, CACHE_LINE_SIZE);
+            mHeatMapQueues[0].init(queueSize, mHeatMapEntries);
             // HeatMap queue handler is setup by the RenderDriver.
         }
     }
@@ -340,11 +332,9 @@ TLState::~TLState()
 
     delete mRayRecorder;
 
-    const unsigned numFilms = MNRY_VERIFY(gPrivate.mInitParams->mNumFilms);
-
-    scene_rdl2::alignedFreeArrayDtor(mRadianceQueues, numFilms);
-    scene_rdl2::alignedFreeArrayDtor(mAovQueues, numFilms);
-    scene_rdl2::alignedFreeArrayDtor(mHeatMapQueues, numFilms);
+    scene_rdl2::alignedFreeArrayDtor(mRadianceQueues, 1);
+    scene_rdl2::alignedFreeArrayDtor(mAovQueues, 1);
+    scene_rdl2::alignedFreeArrayDtor(mHeatMapQueues, 1);
     scene_rdl2::alignedFreeArray(mRadianceEntries);
     scene_rdl2::alignedFreeArray(mAovEntries);
     scene_rdl2::alignedFreeArray(mOcclusionEntries);
@@ -376,17 +366,14 @@ TLState::reset()
     mOcclusionQueue.reset();
     mPresenceShadowsQueue.reset();
 
-    const unsigned numFilms = MNRY_VERIFY(gPrivate.mInitParams->mNumFilms);
-    for (unsigned i = 0; i < numFilms; ++i) {
-        if (mRadianceQueues) {
-            mRadianceQueues[i].reset();
-        }
-        if (mAovQueues) {
-            mAovQueues[i].reset();
-        }
-        if (mHeatMapQueues) {
-            mHeatMapQueues[i].reset();
-        }
+    if (mRadianceQueues) {
+        mRadianceQueues[0].reset();
+    }
+    if (mAovQueues) {
+        mAovQueues[0].reset();
+    }
+    if (mHeatMapQueues) {
+        mHeatMapQueues[0].reset();
     }
 
     setAllQueueSizes(1.f);
@@ -394,8 +381,6 @@ TLState::reset()
     std::fill(mPrimaryRaysSubmitted, mPrimaryRaysSubmitted + MAX_RENDER_PASSES, 0);
 
     mFs = nullptr;
-
-    mNonBundledFilmIdx = 0;
 
     mTilesRenderedTo.clearAll();
 
@@ -596,31 +581,7 @@ TLState::addFilmQueueEntries(unsigned numEntries,
     if (!numEntries) {
         return;
     }
-
-    if (mFs->mNumActiveFilms == 1) {
-
-        // Fast path, all bundled entries are going to the same queue.
-        queues[0].addEntries(mTopLevelTls, numEntries, entries, mArena);
-
-    } else {
-        // Slow path, we need to route each bundled entry to the appropriate queue.
-        typename QueueType::EntryType *currEntry = entries;
-        typename QueueType::EntryType *endEntry = entries + numEntries;
-
-        while (currEntry != endEntry) {
-            typename QueueType::EntryType *spanStart = currEntry++;
-            unsigned currFilmIdx = spanStart->filmIdx();
-
-            // Build to a span of currEntry to submit together.
-            while (currEntry != endEntry && currFilmIdx == currEntry->filmIdx()) {
-                ++currEntry;
-            }
-
-            queues[currFilmIdx].addEntries(mTopLevelTls,
-                                           unsigned(currEntry - spanStart),
-                                           spanStart, mArena);
-        }
-    }
+    queues[0].addEntries(mTopLevelTls, numEntries, entries, mArena);
 }
 
 void
@@ -674,10 +635,7 @@ TLState::setXPUOcclusionRayQueue(XPUOcclusionRayQueue* queue)
 void
 TLState::flushRadianceQueues()
 {
-    const unsigned numFilms = MNRY_VERIFY(mFs->mNumActiveFilms);
-    for (unsigned i = 0; i < numFilms; ++i) {
-        mRadianceQueues[i].flush(mTopLevelTls, mArena);
-    }
+     mRadianceQueues[0].flush(mTopLevelTls, mArena);
 }
 
 unsigned
@@ -709,12 +667,9 @@ TLState::flushLocalQueues()
         return 0;
     }
 
-    const unsigned numFilms = MNRY_VERIFY(mFs->mNumActiveFilms);
-    for (unsigned i = 0; i < numFilms; ++i) {
-        processed += mRadianceQueues[i].flush(mTopLevelTls, mArena);
-        processed += mAovQueues[i].flush(mTopLevelTls, mArena);
-        processed += mHeatMapQueues[i].flush(mTopLevelTls, mArena);
-    }
+    processed += mRadianceQueues[0].flush(mTopLevelTls, mArena);
+    processed += mAovQueues[0].flush(mTopLevelTls, mArena);
+    processed += mHeatMapQueues[0].flush(mTopLevelTls, mArena);
 
     if (isCanceled()) {
         return 0;
@@ -742,17 +697,14 @@ TLState::areAllLocalQueuesEmpty()
         return false;
     }
 
-    const unsigned numFilms = MNRY_VERIFY(gPrivate.mInitParams->mNumFilms);
-    for (unsigned i = 0; i < numFilms; ++i) {
-        if (!mRadianceQueues[i].isEmpty()) {
-            return false;
-        }
-        if (!mAovQueues[i].isEmpty()) {
-            return false;
-        }
-        if (!mHeatMapQueues[i].isEmpty()) {
-            return false;
-        }
+    if (!mRadianceQueues[0].isEmpty()) {
+        return false;
+    }
+    if (!mAovQueues[0].isEmpty()) {
+        return false;
+    }
+    if (!mHeatMapQueues[0].isEmpty()) {
+        return false;
     }
 
     return true;
@@ -768,17 +720,14 @@ TLState::setAllQueueSizes(float t)
     setQueueSize(&mOcclusionQueue, t);
     setQueueSize(&mPresenceShadowsQueue, t);
 
-    const unsigned numFilms = MNRY_VERIFY(gPrivate.mInitParams->mNumFilms);
-    for (unsigned i = 0; i < numFilms; ++i) {
-        if (mRadianceQueues) {
-            setQueueSize(&mRadianceQueues[i], t);
-        }
-        if (mAovQueues) {
-            setQueueSize(&mAovQueues[i], t);
-        }
-        if (mHeatMapQueues) {
-            setQueueSize(&mHeatMapQueues[i], t);
-        }
+    if (mRadianceQueues) {
+        setQueueSize(&mRadianceQueues[0], t);
+    }
+    if (mAovQueues) {
+        setQueueSize(&mAovQueues[0], t);
+    }
+    if (mHeatMapQueues) {
+        setQueueSize(&mHeatMapQueues[0], t);
     }
 }
 
@@ -1194,16 +1143,14 @@ void heatMapBundledUpdate(TLState *pbrTls,
 
     BundledHeatMapSample *b = pbrTls->mArena->allocArray<BundledHeatMapSample>(numEntries, CACHE_LINE_SIZE);
     unsigned bIndx;
-    BundledHeatMapSample::initArray(b, bIndx, rayStates[0]->mSubpixel.mPixel,
-                                    pbr::getFilm(rayStates[0]->mTilePassAndFilm));
+    BundledHeatMapSample::initArray(b, bIndx, rayStates[0]->mSubpixel.mPixel);
 
     // This works best when there is some pixel coherence
     // in rayStates.  If random w.r.t pixels, then we'll
     // submit an entry for every ray state.
     for (unsigned i = 0; i < numEntries; ++i) {
         BundledHeatMapSample::addTicksToArray(b, bIndx, ticksPerEntry,
-                                              rayStates[i]->mSubpixel.mPixel,
-                                              pbr::getFilm(rayStates[i]->mTilePassAndFilm));
+                                              rayStates[i]->mSubpixel.mPixel);
     }
 
     pbrTls->addHeatMapQueueEntries(bIndx + 1, b);

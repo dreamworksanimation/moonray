@@ -48,7 +48,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
                     varying uint32_t pixel,
                     varying int subpixelIndex,
                     varying uint32_t sequenceID,
-                    varying uint32_t tilePassAndFilm,
+                    varying uint32_t tilePass,
                     varying uint32_t dataPtrHandle,
                     varying uint32_t deepDataHandle,
                     varying uint32_t cryptomatteDataHandle,
@@ -66,7 +66,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
     this->mPixel = pixel;
     this->mSubpixelIndex = subpixelIndex;
     this->mSequenceID = sequenceID;
-    this->mTilePassAndFilm = tilePassAndFilm;
+    this->mTilePass = tilePass;
     this->mDataPtrHandle = dataPtrHandle;
     this->mDeepDataHandle = deepDataHandle;
     this->mCryptomatteDataHandle = cryptomatteDataHandle;

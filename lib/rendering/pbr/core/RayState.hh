@@ -93,7 +93,7 @@
     HVD_MEMBER(uint32_t, mSequenceID);                                      \
     HVD_MEMBER(Subpixel, mSubpixel);                                        \
     HVD_MEMBER(uint32_t, mPad0);                                            \
-    HVD_MEMBER(uint32_t, mTilePassAndFilm);                                 \
+    HVD_MEMBER(uint32_t, mTilePass);                                        \
     HVD_MEMBER(uint32_t, mRayStateIdx);                                     \
     HVD_ISPC_PAD(mPad1, 4);                                                 \
     HVD_PTR(HVD_NAMESPACE(shading, Intersection) *, mAOSIsect);             \
@@ -117,7 +117,7 @@
     HVD_VALIDATE(RayState, mSequenceID);                                    \
     HVD_VALIDATE(RayState, mSubpixel);                                      \
     HVD_VALIDATE(RayState, mPad0);                                          \
-    HVD_VALIDATE(RayState, mTilePassAndFilm);                               \
+    HVD_VALIDATE(RayState, mTilePass);                                      \
     HVD_VALIDATE(RayState, mRayStateIdx);                                   \
     HVD_VALIDATE(RayState, mAOSIsect);                                      \
     HVD_VALIDATE(RayState, mDeepDataHandle);                                \

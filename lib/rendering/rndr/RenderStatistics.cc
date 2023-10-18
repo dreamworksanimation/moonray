@@ -1420,7 +1420,7 @@ void getSampleStatistics(const scene_rdl2::rdl2::SceneVariables& vars,
                          double& avgSamplesPerPixel)
 {
     const unsigned adaptiveMaxSamples = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxAdaptiveSamples);
-    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm(0);
+    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm();
     unsigned totalSamples = 0;
     unsigned nPixelsAtAdaptiveMax = 0;
     for (unsigned y = 0; y < film.getHeight(); ++y) {
@@ -1519,7 +1519,7 @@ RenderStats::logRenderingStats(const pbr::Statistics& pbrStats,
                                       moonray_stats::percentage(stat.mPercentageOfTotal/100.0));
     }
 
-    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm(0);
+    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm();
     double proportionOfPixelsAtAdaptiveMax;
     double avgSamplesPerPixel;
     getSampleStatistics(vars, proportionOfPixelsAtAdaptiveMax, avgSamplesPerPixel);

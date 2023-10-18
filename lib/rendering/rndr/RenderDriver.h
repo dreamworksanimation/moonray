@@ -122,9 +122,8 @@ public:
     unsigned            getWidth() const                { return mUnalignedW; }
     unsigned            getHeight() const               { return mUnalignedH; }
 
-    unsigned            getLastNumActiveFilms() const   { return mLastNumActiveFilms; }
-    Film &              getFilm(unsigned idx)           { MNRY_ASSERT(idx < mNumFilmsAllocated); return mFilms[idx]; }
-    const Film &        getFilm(unsigned idx) const     { MNRY_ASSERT(idx < mNumFilmsAllocated); return mFilms[idx]; }
+    Film &              getFilm()           { return *mFilm; }
+    const Film &        getFilm() const     { return *mFilm; }
 
     // This function must be called from the same thread as Start/Stop.
     // Also, the returned vector is only valid until Stop is called.
@@ -162,14 +161,12 @@ public:
     // to the calling code to do any sort of synchronization necessary. This call
     // just returns whatever is in the render buffer currently.
     //
-    void snapshotRenderBuffer(unsigned filmIdx,
-                              scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+    void snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                               bool untile,
                               bool parallel) const;
 
     // Snapshot the renderBufferOdd buffer which uses by adaptive sampling logic
-    void snapshotRenderBufferOdd(unsigned filmIdx,
-                                 scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+    void snapshotRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                  bool untile,
                                  bool parallel) const;
 
@@ -177,34 +174,29 @@ public:
     // Snapshots the weight buffer. This contains the number of samples rendered per
     // pixel so far.
     //
-    void snapshotWeightBuffer(unsigned filmIdx,
-                              scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+    void snapshotWeightBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                               bool untile,
                               bool parallel) const;
 
-    void snapshotWeightBuffer(unsigned filmIdx,
-                              scene_rdl2::fb_util::FloatBuffer *outputBuffer,
+    void snapshotWeightBuffer(scene_rdl2::fb_util::FloatBuffer *outputBuffer,
                               bool untile,
                               bool parallel) const;
 
     // Don't need to snapshot here, yet.
-    const pbr::DeepBuffer* getDeepBuffer(unsigned filmIdx) const;
+    const pbr::DeepBuffer* getDeepBuffer() const;
 
-    pbr::CryptomatteBuffer*       getCryptomatteBuffer(unsigned filmIdx);
-    const pbr::CryptomatteBuffer* getCryptomatteBuffer(unsigned filmIdx) const;
+    pbr::CryptomatteBuffer*       getCryptomatteBuffer();
+    const pbr::CryptomatteBuffer* getCryptomatteBuffer() const;
 
-    bool                snapshotPixelInfoBuffer(unsigned filmIdx,
-                                                scene_rdl2::fb_util::PixelInfoBuffer *outputBuffer,
+    bool                snapshotPixelInfoBuffer(scene_rdl2::fb_util::PixelInfoBuffer *outputBuffer,
                                                 bool untile,
                                                 bool parallel) const;
 
-    bool                snapshotHeatMapBuffer(unsigned filmIdx,
-                                              scene_rdl2::fb_util::HeatMapBuffer *outputBuffer,
+    bool                snapshotHeatMapBuffer(scene_rdl2::fb_util::HeatMapBuffer *outputBuffer,
                                               bool untile,
                                               bool parallel) const;
 
-    void snapshotAovBuffer(unsigned filmIdx,
-                           scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+    void snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                            int numConsistentSamples,
                            unsigned int aov,
                            bool untile,
@@ -212,29 +204,25 @@ public:
                            bool fulldump) const;
 
     // Snapshot the contents of an aov into a 4 channel RenderBuffer. (for denoising)
-    void snapshotAovBuffer(unsigned filmIdx,
-                           scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+    void snapshotAovBuffer(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                            int numConsistentSamples,
                            unsigned aov,
                            bool untile,
                            bool parallel) const;
 
-    void snapshotDisplayFilterBuffer(unsigned filmIdx,
-                                     scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+    void snapshotDisplayFilterBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                      unsigned int dfIdx,
                                      bool untile,
                                      bool parallel) const;
 
-    void snapshotVisibilityBuffer(unsigned filmIdx,
-                                  scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+    void snapshotVisibilityBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                   unsigned int aov,
                                   bool untile,
                                   bool parallel,
                                   bool fulldumpVisibility) const;
 
     // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-    void                snapshotVisibilityVarianceBuffer(unsigned filmIdx,
-                                                         scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+    void                snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                                          unsigned int sourceAov,
                                                          bool untile,
                                                          bool parallel) const;
@@ -271,8 +259,7 @@ public:
     // difference between current and previous renderBuffer and weightBuffer.
     // renderBuffer/weightBuffer is tiled format and renderBuffer is not normalized by weight
     //
-    void snapshotDelta(unsigned filmIdx,
-                       scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+    void snapshotDelta(scene_rdl2::fb_util::RenderBuffer *renderBuffer,
                        scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                        scene_rdl2::fb_util::ActivePixels &activePixels,
                        bool parallel) const;
@@ -285,8 +272,7 @@ public:
     // difference between current and previous renderBufferOdd and weightRenderBufferOdd.
     // renderBufferOdd/weightRenderBufferOdd is tiled format and renderBufferOdd is not normalized by weight
     //
-    void snapshotDeltaRenderBufferOdd(unsigned filmIdx,
-                                      scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
+    void snapshotDeltaRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
                                       scene_rdl2::fb_util::FloatBuffer *weightRenderBufferOdd,
                                       scene_rdl2::fb_util::ActivePixels &activePixelsRenderBufferOdd,
                                       bool parallel) const;
@@ -298,8 +284,7 @@ public:
     // difference between current and previous pixelInfoBuffer and pixelInfoWeightBuffer.
     // pixelInfoBuffer/pixelInfoWeightBuffer is tiled format.
     //
-    void snapshotDeltaPixelInfo(unsigned filmIdx,
-                                scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer,
+    void snapshotDeltaPixelInfo(scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer,
                                 scene_rdl2::fb_util::FloatBuffer *pixelInfoWeightBuffer,
                                 scene_rdl2::fb_util::ActivePixels &activePixelsPixelInfo,
                                 bool parallel) const;
@@ -312,8 +297,7 @@ public:
     // Also create heatMapSecBuffer just for active pixels only.
     // heatMapBuffer/heatMapWeightBuffer/heatMapSecBuffer are tiled format.
     //
-    void snapshotDeltaHeatMap(unsigned filmIdx,
-                              scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
+    void snapshotDeltaHeatMap(scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                               scene_rdl2::fb_util::FloatBuffer *heatMapWeightBuffer,
                               scene_rdl2::fb_util::ActivePixels &activePixelsHeatMap,
                               scene_rdl2::fb_util::FloatBuffer *heatMapSecBuffer,
@@ -326,8 +310,7 @@ public:
     // difference between current and previous weightBuffer.
     // weightBuffer is tiled format.
     //
-    void snapshotDeltaWeightBuffer(unsigned filmIdx,
-                                   scene_rdl2::fb_util::FloatBuffer *weightBuffer,
+    void snapshotDeltaWeightBuffer(scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                                    scene_rdl2::fb_util::ActivePixels &activePixelsWeightBuffer,
                                    bool parallel) const;
 
@@ -338,29 +321,25 @@ public:
     // difference between current and previous renderOutputBuffer(aovIndex) and renderOutputWeightBuffer(aovIndex).
     // renderOutputBuffer(aovIndex)/renderOutputWeightBuffer(aovIndex) are tiled format.
     //
-    void snapshotDeltaAov(unsigned filmIdx,
-                          unsigned aovIndex,
+    void snapshotDeltaAov(unsigned aovIndex,
                           scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
                           scene_rdl2::fb_util::FloatBuffer *renderOutputWeightBuffer,
                           scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                           bool parallel) const;
     // This is a specially designed Visibility AOV buffer version of snapshotDeltaAov()
-    void snapshotDeltaAovVisibility(unsigned filmIdx,
-                                    unsigned aovIndex,
+    void snapshotDeltaAovVisibility(unsigned aovIndex,
                                     scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
                                     scene_rdl2::fb_util::FloatBuffer *renderOutputWeightBuffer,
                                     scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                     bool parallel) const;
     // This is a specially designed Variance Visibility AOV buffer version of snapshotDeltaAov()
-    void snapshotDeltaAovVarianceVisibility(unsigned filmIdx,
-                                            unsigned aovIndex,
+    void snapshotDeltaAovVarianceVisibility(unsigned aovIndex,
                                             scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
                                             scene_rdl2::fb_util::FloatBuffer *renderOutputWeightBuffer,
                                             scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                             bool parallel) const;
     // This is a specially designed DisplayFilter version of snapshotDelta.
-    void snapshotDeltaDisplayFilter(unsigned filmIdx,
-                                    unsigned dfIdx,
+    void snapshotDeltaDisplayFilter(unsigned dfIdx,
                                     scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
                                     scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                     scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -528,46 +507,46 @@ private:
     void setupMultiMachineTileScheduler(unsigned pixW, unsigned pixH);
 
     // snapshot renderBuffer or renderBufferOdd
-    void snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+    void snapshotRenderBufferSub(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                  bool untile, bool parallel, bool oddBuffer) const;
 
     // snapshot delta related private functions
-    void snapshotDeltaAovFloat(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat(unsigned aovIdx,
                                scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                bool parallel) const;
-    void snapshotDeltaAovFloat2(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat2(unsigned aovIdx,
                                 scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                 scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                 scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                 bool parallel) const;
-    void snapshotDeltaAovFloat3(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat3(unsigned aovIdx,
                                 scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                 scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                 scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                 bool parallel) const;
-    void snapshotDeltaAovFloat4(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat4(unsigned aovIdx,
                                 scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                 scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                 scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                 bool parallel) const;
-    void snapshotDeltaAovFloatVariance(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloatVariance(unsigned aovIdx,
                                        scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                        scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                        scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                        bool parallel) const;
-    void snapshotDeltaAovFloat2Variance(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat2Variance(unsigned aovIdx,
                                         scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                         scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                         scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                         bool parallel) const;
-    void snapshotDeltaAovFloat3Variance(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovFloat3Variance(unsigned aovIdx,
                                         scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                         scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                         scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                         bool parallel) const;
-    void snapshotDeltaAovRgbVariance(unsigned filmIdx, unsigned aovIdx,
+    void snapshotDeltaAovRgbVariance(unsigned aovIdx,
                                      scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                      scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                      scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -576,12 +555,12 @@ private:
     void snapshotAovsForDisplayFilters(bool untile, bool parallel) const;
 
     // revert film related
-    void denormalizeAovBuffer(unsigned filmIdx, int numConsistentSamples, unsigned int aov);
-    void denormalizeBeautyOdd(unsigned filmIdx);
-    void denormalizeAlphaOdd(unsigned filmIdx);
-    void zeroWeightMaskAovBuffer(unsigned filmIdx, unsigned int aov);
-    void zeroWeightMaskVisibilityBuffer(unsigned filmIdx, unsigned int aov);
-    bool copyBeautyBuffer(unsigned filmIdx);
+    void denormalizeAovBuffer(int numConsistentSamples, unsigned int aov);
+    void denormalizeBeautyOdd();
+    void denormalizeAlphaOdd();
+    void zeroWeightMaskAovBuffer(unsigned int aov);
+    void zeroWeightMaskVisibilityBuffer(unsigned int aov);
+    bool copyBeautyBuffer();
 
     //
     // Functions which do the rendering of the actual frame:
@@ -754,13 +733,7 @@ private:
     SamplingMode               mCachedSamplingMode;
     unsigned                   mCachedDisplayFilterCount;
 
-    // For simplicity, all films shared the same properties, including buffer
-    // dimensions, passes, tiles and viewport. Camera transforms may be different
-    // between them however.
-    unsigned            mNumFilmsAllocated;
-    unsigned            mLastNumActiveFilms;    // How many films were we
-                                                // rendering to in the latest render.
-    Film *              mFilms;
+    Film *              mFilm;
 
     // tile extrapolation main logic for vectorized mode
     scene_rdl2::fb_util::TileExtrapolation mTileExtrapolation;
@@ -780,8 +753,7 @@ private:
 
     tbb::task_scheduler_init *mTaskScheduler;
 
-    // The is the per film sample count, NOT the cumulative sample count over
-    // all films.
+    // The is the sample count.
     size_t              mSamplesPerPass[MAX_RENDER_PASSES];
 
     // The number of *primary* rays submitted so far. Used for progress tracking.

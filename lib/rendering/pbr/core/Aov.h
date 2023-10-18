@@ -755,7 +755,6 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
                        const float pixelWeight[],
                        const uint32_t pixel[],
                        const uint32_t deepDataHandle[],
-                       const uint32_t filmIdx[],
                        const int lpeStateId[],
                        const uint32_t isPrimaryRay[],
                        uint32_t lanemask);
@@ -936,8 +935,7 @@ bool aovAccumLightAovsBundled(pbr::TLState *pbrTls,
                               int prefixFlags,
                               int lpeStateId,
                               uint32_t pixel,
-                              uint32_t deepDataHandle,
-                              uint32_t film);
+                              uint32_t deepDataHandle);
 
 bool aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                                    const AovSchema &aovSchema,
@@ -946,7 +944,6 @@ bool aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                                    int lpeStateId,
                                    uint32_t pixel,
                                    uint32_t deepDataHandle,
-                                   uint32_t film,
                                    bool lpePassthrough);
 
 /// Adds the specified number of "misses" to the visibility
@@ -956,8 +953,7 @@ bool aovAccumVisibilityAttemptsBundled(pbr::TLState *pbrTls,
                                        const LightAovs &lightAovs,
                                        int attempts,
                                        uint32_t pixel,
-                                       uint32_t deepDataHandle,
-                                       uint32_t film);
+                                       uint32_t deepDataHandle);
 
 // "Extra Aovs"
 // Extra aovs are a type of light aov, but rather than accumulating radiance
@@ -1017,8 +1013,7 @@ void aovAddToBundledQueue(pbr::TLState *pbrTls,
                           const uint32_t aovTypeMask,
                           const float *aovValues,
                           uint32_t pixel,
-                          uint32_t deepDataHandle,
-                          uint32_t film);
+                          uint32_t deepDataHandle);
 
 // Same as above but called when we have volume position/depth AOVs
 //  but no hard-surface isect.
@@ -1028,8 +1023,7 @@ void aovAddToBundledQueueVolumeOnly(pbr::TLState *pbrTls,
                                     const uint32_t aovTypeMask,
                                     const float *aovValues,
                                     uint32_t pixel,
-                                    uint32_t deepDataHandle,
-                                    uint32_t film);
+                                    uint32_t deepDataHandle);
 
 } // namespace pbr
 } // namespace moonray

@@ -37,7 +37,7 @@ public:
     DisplayFilterDriver();
     ~DisplayFilterDriver();
 
-    void init(rndr::Film* films,
+    void init(rndr::Film* film,
               const rndr::RenderOutputDriver *roDriver,
               const std::vector<scene_rdl2::fb_util::Tile>* tiles,
               const uint32_t *tileIndices,

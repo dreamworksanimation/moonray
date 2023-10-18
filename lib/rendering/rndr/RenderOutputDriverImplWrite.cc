@@ -121,7 +121,7 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
         // the number of samples per pixel, which can vary when using adaptive sampling.
         scene_rdl2::fb_util::PixelBuffer<unsigned> samplesCount;
         if (deepBuffer || cryptomatteBuffer) {
-            const Film& film = rndr::getRenderDriver()->getFilm(0);
+            const Film& film = rndr::getRenderDriver()->getFilm();
             film.fillPixelSampleCountBuffer(samplesCount);
         }
         if (cache) cache->timeRec(0); // record timing into position id = 0

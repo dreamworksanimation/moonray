@@ -1361,7 +1361,6 @@ CPP_aovSetMaterialAovs(uniform PbrTLState * uniform pbrTls,
                        const uniform float * uniform pixelWeight,
                        const uniform uint32_t * uniform pixel,
                        const uniform uint32_t * uniform deepDataHandle,
-                       const uniform uint32_t * uniform filmIdx,
                        const uniform int * uniform lpeStateId,
                        const uniform uint32_t * uniform isPrimaryRay,
                        uniform uint32_t laneMask);
@@ -1373,8 +1372,7 @@ CPP_aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                       const uniform Color &value,
                       uniform int lpeStateId,
                       uniform uint32_t pixel,
-                      uniform uint32_t deepDataHandle,
-                      uniform uint32_t film);
+                      uniform uint32_t deepDataHandle);
 
 extern "C" void
 CPP_aovAccumPostScatterExtraAov(uniform PbrTLState * uniform pbrTls,
@@ -1385,8 +1383,7 @@ CPP_aovAccumPostScatterExtraAov(uniform PbrTLState * uniform pbrTls,
                                 uniform int lpeStateId,
                                 uniform int labelId,
                                 uniform uint32_t pixel,
-                                uniform uint32_t deepDataHandle,
-                                uniform uint32_t film);
+                                uniform uint32_t deepDataHandle);
 
 void
 aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
@@ -1403,7 +1400,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                      varying float pixelWeight,
                      varying uint32_t pixel,
                      varying uint32_t deepDataHandle,
-                     varying uint32_t filmIdx,
                      varying int lpeStateId)
 {
     // It's easier to figure this out here per-lane, rather than in CPP_aovSetMaterialAovs().
@@ -1424,7 +1420,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                            (uniform float * uniform) &pixelWeight,
                            (uniform uint32_t * uniform) &pixel,
                            (uniform uint32_t * uniform) &deepDataHandle,
-                           (uniform uint32_t * uniform) &filmIdx,
                            (uniform int * uniform) &lpeStateId,
                            (uniform uint32_t * uniform) &isPrimaryRay,
                            lanemask());
@@ -1444,7 +1439,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                      varying float pixelWeight,
                      varying uint32_t pixel,
                      varying uint32_t deepDataHandle,
-                     varying uint32_t filmIdx,
                      varying int lpeStateId)
 {
     // It's easier to figure this out here per-lane, rather than in CPP_aovSetMaterialAovs().
@@ -1465,7 +1459,6 @@ aovAccumMaterialAovs(uniform PbrTLState * uniform pbrTls,
                            (uniform float * uniform) &pixelWeight,
                            (uniform uint32_t * uniform) &pixel,
                            (uniform uint32_t * uniform) &deepDataHandle,
-                           (uniform uint32_t * uniform) &filmIdx,
                            (uniform int * uniform) &lpeStateId,
                            (uniform uint32_t * uniform) &isPrimaryRay,
                            lanemask());
@@ -1478,18 +1471,16 @@ aovAccumLightAovs(uniform PbrTLState * uniform pbrTls,
                   const varying Color &value,
                   varying int lpeStateId,
                   varying uint32_t pixel,
-                  varying uint32_t deepDataHandle,
-                  varying uint32_t filmIdx)
+                  varying uint32_t deepDataHandle)
 {
     foreach_active(lane) {
         const uniform Color uValue = { extract(value.r, lane), extract(value.g, lane), extract(value.b, lane) };
         const uniform int uStateId = extract(lpeStateId, lane);
         const uniform uint32_t uPixel = extract(pixel, lane);
         const uniform uint32_t uDeepDataHandle = extract(deepDataHandle, lane);
-        const uniform uint32_t uFilmIdx = extract(filmIdx, lane);
 
         CPP_aovAccumLightAovs(pbrTls, aovSchema, lightAovs, uValue, uStateId, uPixel, 
-                              uDeepDataHandle, uFilmIdx);
+                              uDeepDataHandle);
     }
 }
 
@@ -1505,7 +1496,6 @@ aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
     if (numExtraAovs > 0 && pv.lpeStateId != -1) {
         const uniform int * uniform labelIds = extraAovs.mLabelIds;
         const varying Color * uniform colors = extraAovs.mColors;
-        const varying uint32_t film = getFilmISPC(rayState->mTilePassAndFilm);
         for (uniform int i = 0; i < numExtraAovs; ++i) {
             const varying Color sampleValue = colors[i];
             const varying Color value = colors[i] * pv.pathThroughput;
@@ -1525,7 +1515,6 @@ aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
                 const uniform int uStateId = extract(pv.lpeStateId, lane);
                 const uniform uint32_t uPixel = extract(rayState->mSubpixel.mPixel, lane);
                 const uniform uint32_t uDeepDataHandle = extract(rayState->mDeepDataHandle, lane);
-                const uniform uint32_t uFilm = extract(film, lane);
 
                 CPP_aovAccumPostScatterExtraAov(pbrTls,
                                                 aovSchema,
@@ -1535,8 +1524,7 @@ aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
                                                 uStateId,
                                                 labelIds[i],
                                                 uPixel,
-                                                uDeepDataHandle,
-                                                uFilm);
+                                                uDeepDataHandle);
             }
         }
     }

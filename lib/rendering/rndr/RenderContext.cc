@@ -1206,7 +1206,7 @@ void
 RenderContext::snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer, bool untile, bool parallel) const
 {
     // Request a snapshot from the render driver.
-    mDriver->snapshotRenderBuffer(0, MNRY_VERIFY(renderBuffer), untile, parallel);
+    mDriver->snapshotRenderBuffer(MNRY_VERIFY(renderBuffer), untile, parallel);
 }
 
 void
@@ -1215,26 +1215,26 @@ RenderContext::snapshotRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *render
     // This API is used for snapshot of renderBufferODD related logic.
     // We only do snapshot if renderBufferOdd is setup in the renderOutputDriver.
     if (getRenderOutputDriver()->requiresRenderBufferOdd()) {
-        mDriver->snapshotRenderBufferOdd(0, MNRY_VERIFY(renderBufferOdd), untile, parallel);
+        mDriver->snapshotRenderBufferOdd(MNRY_VERIFY(renderBufferOdd), untile, parallel);
     }
 }
 
 const pbr::DeepBuffer*
 RenderContext::getDeepBuffer() const
 {
-    return mDriver->getDeepBuffer(0);
+    return mDriver->getDeepBuffer();
 }
 
 pbr::CryptomatteBuffer*
 RenderContext::getCryptomatteBuffer()
 {
-    return mDriver->getCryptomatteBuffer(0);
+    return mDriver->getCryptomatteBuffer();
 }
 
 const pbr::CryptomatteBuffer*
 RenderContext::getCryptomatteBuffer() const
 {
-    return mDriver->getCryptomatteBuffer(0);
+    return mDriver->getCryptomatteBuffer();
 }
 
 void
@@ -1251,7 +1251,7 @@ RenderContext::snapshotDelta(scene_rdl2::fb_util::RenderBuffer *renderBuffer,
 // renderBuffer/weightBuffer is tiled format and renderBuffer is not normalized by weight.
 //
 {
-    mDriver->snapshotDelta(0, renderBuffer, weightBuffer, activePixels, parallel);
+    mDriver->snapshotDelta(renderBuffer, weightBuffer, activePixels, parallel);
 }
 
 void
@@ -1268,8 +1268,7 @@ RenderContext::snapshotDeltaRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *r
 // renderBufferOdd/weightRenderBufferOdd is tiled format and renderBufferOdd is not normalized by weight.
 //
 {
-    mDriver->snapshotDeltaRenderBufferOdd(0,
-                                          renderBufferOdd,
+    mDriver->snapshotDeltaRenderBufferOdd(renderBufferOdd,
                                           weightRenderBufferOdd,
                                           activePixelsRenderBufferOdd,
                                           parallel);
@@ -1288,8 +1287,7 @@ RenderContext::snapshotDeltaPixelInfo(scene_rdl2::fb_util::PixelInfoBuffer *pixe
 // pixelInfoBuffer/pixelInfoWeightBuffer are tiled format.
 //
 {
-    mDriver->snapshotDeltaPixelInfo(0,
-                                    pixelInfoBuffer, pixelInfoWeightBuffer,
+    mDriver->snapshotDeltaPixelInfo(pixelInfoBuffer, pixelInfoWeightBuffer,
                                     activePixelsPixelInfo,
                                     parallel);
 }
@@ -1309,8 +1307,7 @@ RenderContext::snapshotDeltaHeatMap(scene_rdl2::fb_util::HeatMapBuffer *heatMapB
 // heatMapBuffer/heatMapWeightBuffer/heatMapSecBuffer are tiled format.
 //
 {
-    mDriver->snapshotDeltaHeatMap(0,
-                                  heatMapBuffer,
+    mDriver->snapshotDeltaHeatMap(heatMapBuffer,
                                   heatMapWeightBuffer,
                                   activePixelsHeatMap,
                                   heatMapSecBuffer,
@@ -1329,8 +1326,7 @@ RenderContext::snapshotDeltaWeightBuffer(scene_rdl2::fb_util::FloatBuffer *weigh
 // weightBuffer is tiled format.
 //
 {
-    mDriver->snapshotDeltaWeightBuffer(0,
-                                       weightBuffer,
+    mDriver->snapshotDeltaWeightBuffer(weightBuffer,
                                        activePixelsWeightBuffer,
                                        parallel);
 }
@@ -1356,28 +1352,28 @@ RenderContext::snapshotDeltaRenderOutput(unsigned int rodIndex,
                   rodIndex,
                   [](const scene_rdl2::rdl2::RenderOutput * /*ro*/) {},  // non active AOV
                   [&](const int /*aovIdx*/, const int varianceSource) { // VisibilityVariance AOV
-                      mDriver->snapshotDeltaAovVarianceVisibility(0, varianceSource,
+                      mDriver->snapshotDeltaAovVarianceVisibility(varianceSource,
                                                                   renderOutputBuffer,
                                                                   renderOutputWeightBuffer,
                                                                   activePixelsRenderOutput,
                                                                   parallel);
                   },
                   [&](const int aovIdx) { // Variance AOV
-                      mDriver->snapshotDeltaAov(0, aovIdx,
+                      mDriver->snapshotDeltaAov(aovIdx,
                                                 renderOutputBuffer,
                                                 renderOutputWeightBuffer,
                                                 activePixelsRenderOutput,
                                                 parallel);
                   },
                   [&](const int aovIdx) { // Visibility AOV
-                      mDriver->snapshotDeltaAovVisibility(0, aovIdx,
+                      mDriver->snapshotDeltaAovVisibility(aovIdx,
                                                           renderOutputBuffer,
                                                           renderOutputWeightBuffer,
                                                           activePixelsRenderOutput,
                                                           parallel);
                   },
                   [&](const int aovIdx) { // regular AOV
-                      mDriver->snapshotDeltaAov(0, aovIdx,
+                      mDriver->snapshotDeltaAov(aovIdx,
                                                 renderOutputBuffer,
                                                 renderOutputWeightBuffer,
                                                 activePixelsRenderOutput,
@@ -1387,7 +1383,7 @@ RenderContext::snapshotDeltaRenderOutput(unsigned int rodIndex,
     // DisplayFilter
     const int dfIdx = mRenderOutputDriver->getDisplayFilterIndex(rodIndex);
     if (dfIdx >= 0) {
-        mDriver->snapshotDeltaDisplayFilter(0, dfIdx,
+        mDriver->snapshotDeltaDisplayFilter(dfIdx,
                                             renderOutputBuffer,
                                             renderOutputWeightBuffer,
                                             activePixelsRenderOutput,
@@ -1408,14 +1404,14 @@ void
 RenderContext::snapshotPixelInfoBuffer(scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer, bool untile, bool parallel) const
 {
     // Request a snapshot of the pixel info buffer from the render driver.
-    mDriver->snapshotPixelInfoBuffer(0, MNRY_VERIFY(pixelInfoBuffer), untile, parallel);
+    mDriver->snapshotPixelInfoBuffer(MNRY_VERIFY(pixelInfoBuffer), untile, parallel);
 }
 
 void
 RenderContext::snapshotHeatMapBuffer(scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer, bool untile, bool parallel) const
 {
     // Request a snapshot of the heat map buffer from the render driver.
-    mDriver->snapshotHeatMapBuffer(0, MNRY_VERIFY(heatMapBuffer), untile, parallel);
+    mDriver->snapshotHeatMapBuffer(MNRY_VERIFY(heatMapBuffer), untile, parallel);
 }
 
 void
@@ -1424,7 +1420,7 @@ RenderContext::snapshotVisibilityBuffer(scene_rdl2::fb_util::VariablePixelBuffer
 {
     // Request a snapshot of the visibility aov buffer from the render driver.
     bool fulldumpVisibility = mSceneContext->getResumableOutput() || mSceneContext->getResumeRender();
-    mDriver->snapshotVisibilityBuffer(0, visibilityBuffer, aov, untile, parallel, fulldumpVisibility);
+    mDriver->snapshotVisibilityBuffer(visibilityBuffer, aov, untile, parallel, fulldumpVisibility);
 }
 
 void
@@ -1433,7 +1429,7 @@ RenderContext::snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePix
 {
     // Request a snapshot of the visibility aov buffer's variance from the render driver.
     // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-    mDriver->snapshotVisibilityVarianceBuffer(0, visibilityVarianceBuffer, sourceAov, untile, parallel);
+    mDriver->snapshotVisibilityVarianceBuffer(visibilityVarianceBuffer, sourceAov, untile, parallel);
 }
 
 void
@@ -1446,7 +1442,7 @@ RenderContext::snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *aovBu
 {
     unsigned numConsistentSamples = getNumConsistentSamples();
     bool fulldump = mSceneContext->getResumableOutput() || mSceneContext->getResumeRender();
-    mDriver->snapshotAovBuffer(0, aovBuffer, numConsistentSamples, aov, untile, parallel, fulldump);
+    mDriver->snapshotAovBuffer(aovBuffer, numConsistentSamples, aov, untile, parallel, fulldump);
 }
 
 void
@@ -1454,14 +1450,14 @@ RenderContext::snapshotAovBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer
                                  bool untile, bool parallel) const
 {
     unsigned numConsistentSamples = getNumConsistentSamples();
-    mDriver->snapshotAovBuffer(0, renderBuffer, numConsistentSamples, aov, untile, parallel);
+    mDriver->snapshotAovBuffer(renderBuffer, numConsistentSamples, aov, untile, parallel);
 }
 
 void
 RenderContext::snapshotAovBuffers(std::vector<scene_rdl2::fb_util::VariablePixelBuffer> &aovBuffers,
                                   bool untile, bool parallel) const
 {
-    aovBuffers.resize(mDriver->getFilm(0).getNumAovs());
+    aovBuffers.resize(mDriver->getFilm().getNumAovs());
     crawlAllRenderOutput(*mRenderOutputDriver,
                          [](const scene_rdl2::rdl2::RenderOutput */*ro*/) {}, // non active AOV
                          [&](const int aovIdx, const int varianceSource) { // VisibilityVariance AOV
@@ -1530,7 +1526,7 @@ void
 RenderContext::snapshotDisplayFilterBuffer(scene_rdl2::fb_util::VariablePixelBuffer *displayFilterBuffer, unsigned int dfIdx,
                                            bool untile, bool parallel) const
 {
-    mDriver->snapshotDisplayFilterBuffer(0, displayFilterBuffer, dfIdx, untile, parallel);
+    mDriver->snapshotDisplayFilterBuffer(displayFilterBuffer, dfIdx, untile, parallel);
 }
 
 void
@@ -1539,7 +1535,7 @@ RenderContext::snapshotDisplayFilterBuffers(std::vector<scene_rdl2::fb_util::Var
 {
     // This is called in batch mode and checkpoint mode, so we can run the display filter driver here.
     runDisplayFiltersBatch();
-    const unsigned int displayFilterCount = mDriver->getFilm(0).getDisplayFilterCount();
+    const unsigned int displayFilterCount = mDriver->getFilm().getDisplayFilterCount();
     displayFilterBuffers.resize(displayFilterCount);
     for (unsigned int dfIdx = 0; dfIdx < displayFilterCount; ++dfIdx) {
         snapshotDisplayFilterBuffer(&displayFilterBuffers[dfIdx], dfIdx, untile, parallel);
@@ -1603,7 +1599,7 @@ void
 RenderContext::snapshotWeightBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer, bool untile, bool parallel) const
 {
     // This API is used for debug purpose. See rndr/gui/RenderGui.cc RenderGui::snapshotFrame().
-    mDriver->snapshotWeightBuffer(0, MNRY_VERIFY(outputBuffer), untile, parallel);
+    mDriver->snapshotWeightBuffer(MNRY_VERIFY(outputBuffer), untile, parallel);
 }
 
 void
@@ -1612,14 +1608,14 @@ RenderContext::snapshotWeightBuffer(scene_rdl2::fb_util::FloatBuffer *weightBuff
     // This API is used for snapshot of weightAOV related logic.
     // We only do snapshot if renderOutputDriver has weightAOV
     if (getRenderOutputDriver()->requiresWeightBuffer()) {
-        mDriver->snapshotWeightBuffer(0, MNRY_VERIFY(weightBuffer), untile, parallel);
+        mDriver->snapshotWeightBuffer(MNRY_VERIFY(weightBuffer), untile, parallel);
     }
 }
 
 bool
 RenderContext::hasPixelInfoBuffer() const
 {
-    return mDriver->getFilm(0).hasPixelInfoBuffer();
+    return mDriver->getFilm().hasPixelInfoBuffer();
 }
 
 bool
@@ -1796,7 +1792,7 @@ RenderContext::getOiioStats(int level) const
 unsigned
 RenderContext::getFilmActivity() const
 {
-    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm(0);
+    const moonray::rndr::Film &film = rndr::getRenderDriver()->getFilm();
     return film.getFilmActivity();
 }
 
@@ -2798,7 +2794,6 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
     // be set here).
     //
     fs->mExecutionMode = executionMode;
-    fs->mNumActiveFilms = 1;
     fs->mEmbreeAccel = MNRY_VERIFY(mGeometryManager->getEmbreeAccelerator());
     fs->mGPUAccel = mGeometryManager->getGPUAccelerator(); // may be nullptr if not in xpu mode
     fs->mLayer = MNRY_VERIFY(mLayer);

@@ -43,13 +43,6 @@ enum rtcMask {
   RTC_MASK_NONE                     = 0x0,
 };
 
-inline uint32_t
-getFilmISPC(uint32_t tilePassAndFilm)
-{
-    // first 3 bits encode the film
-    return tilePassAndFilm & 0x07;
-}
-
 enum BundledOcclRayDataFlags
 {
     // As a future potential optimization, we could save a pointer de-reference 
@@ -83,7 +76,7 @@ void BundledOcclRay_init(varying BundledOcclRay * uniform this,
                          varying uint32_t pixel,
                          varying int subpixelIndex,
                          varying uint32_t sequenceID,
-                         varying uint32_t tilePassAndFilm,
+                         varying uint32_t tilePass,
                          varying uint32_t dataPtrHandle,
                          varying uint32_t deepDataHandle,
                          varying uint32_t cryptomatteDataHandle,

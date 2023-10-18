@@ -117,7 +117,7 @@ areBundledEntriesValid(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
         MNRY_ASSERT(prevPixel <= pixel);
         prevPixel = pixel;
 
-        MNRY_ASSERT(pbr::getPass(br->mTilePassAndFilm) < MAX_RENDER_PASSES);
+        MNRY_ASSERT(pbr::getPass(br->mTilePass) < MAX_RENDER_PASSES);
     }
 
     return true;
@@ -961,8 +961,6 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
     unsigned entryIdx = 0;
     unsigned entriesRemaining = numEntries;
 
-    MNRY_DURING_ASSERTS(uint32_t filmIdx = pbr::getFilm(entries[0]->mTilePassAndFilm));
-
     do {
         scene_rdl2::fb_util::RenderColor accSamples     = scene_rdl2::fb_util::RenderColor(scene_rdl2::math::zero);
         scene_rdl2::fb_util::RenderColor accSamplesHalf = scene_rdl2::fb_util::RenderColor(scene_rdl2::math::zero);
@@ -973,7 +971,7 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
         unsigned px, py;
         pbr::uint32ToPixelLocation(currPixel, &px, &py);
 
-        unsigned tile = pbr::getTile(entries[entryIdx]->mTilePassAndFilm);
+        unsigned tile = pbr::getTile(entries[entryIdx]->mTilePass);
         tilesRenderedTo.setBit(tile);
 
         // Loop over all entries for this pixel (we've pre-sorted entries by
@@ -982,7 +980,6 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
             const pbr::BundledRadiance *br = entries[entryIdx];
 
             MNRY_ASSERT(br->mPixel == currPixel);
-            MNRY_ASSERT(pbr::getFilm(br->mTilePassAndFilm) == filmIdx);
 
             accSamples += br->mRadiance;
             accWeight += br->mPathPixelWeight;
@@ -1137,7 +1134,6 @@ Film::addAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
     unsigned entryIdx = 0;
     unsigned entriesRemaining = numEntries;
 
-    MNRY_DURING_ASSERTS(uint32_t filmIdx = entries[0]->filmIdx());
     MNRY_ASSERT(!film->mAovBuf.empty());
 
     SCOPED_MEM(&tls->mArena);
@@ -1157,7 +1153,6 @@ Film::addAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
             const pbr::BundledAov *ba = entries[entryIdx];
 
             MNRY_ASSERT(ba->mPixel == currPixel);
-            MNRY_ASSERT(ba->filmIdx() == filmIdx);
 
             for (unsigned aov = 0; aov < pbr::BundledAov::MAX_AOV; ++aov) {
                 const uint32_t aovIdx = ba->aovIdx(aov);
@@ -1261,7 +1256,6 @@ Film::addFilteredAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
     unsigned entryIdx = 0;
     unsigned entriesRemaining = numEntries;
 
-    MNRY_DURING_ASSERTS(uint32_t filmIdx = entries[0]->filmIdx());
     MNRY_ASSERT(!film->mAovBuf.empty());
 
     SCOPED_MEM(&tls->mArena);
@@ -1287,7 +1281,6 @@ Film::addFilteredAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
             const pbr::BundledAov *ba = entries[entryIdx];
 
             MNRY_ASSERT(ba->mPixel == currPixel);
-            MNRY_ASSERT(ba->filmIdx() == filmIdx);
 
             for (unsigned aov = 0; aov < pbr::BundledAov::MAX_AOV; ++aov) {
                 const uint32_t aovIdx = ba->aovIdx(aov);
@@ -1397,7 +1390,6 @@ Film::addHeatMapBundleHandler(mcrt_common::ThreadLocalState *tls,
     unsigned entryIdx = 0;
     unsigned entriesRemaining = numEntries;
 
-    MNRY_DURING_ASSERTS(uint32_t filmIdx = entries[0]->filmIdx());
     MNRY_ASSERT(film->mHeatMapBuf);
 
     do {
@@ -1414,7 +1406,6 @@ Film::addHeatMapBundleHandler(mcrt_common::ThreadLocalState *tls,
             const pbr::BundledHeatMapSample *b = entries[entryIdx];
 
             MNRY_ASSERT(b->mPixel == currPixel);
-            MNRY_ASSERT(b->filmIdx() == filmIdx);
 
             ticks += b->mTicks;
 

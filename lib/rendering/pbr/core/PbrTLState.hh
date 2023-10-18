@@ -22,7 +22,6 @@
 //  mXPUOcclusionRayQueue               Pointer to XPU occlusion ray queue (owned by the RenderDriver)
 //  mPrimaryRaysSubmitted               Primary rays submitted from Film index 0. This is the only film we use to track progress.
 //  mFs                                 Constant for entire frame.
-//  mNonBundledFilmIdx                  It's only valid to access this member when in non-bundled mode! Contains the index of the film we're rendering to.
 //  mTilesRenderedTo                    Tiles which have had any samples rendered to them for gui diagnostics purposes.
 //  mCancellationState
 //  mCurrentPassIdx                     The current pass we are rendering.
@@ -53,8 +52,6 @@
     HUD_PUBLIC()                                                                    \
     HUD_CPP_ARRAY(size_t, mPrimaryRaysSubmitted, MAX_RENDER_PASSES, 8000);          \
     HUD_PTR(const FrameState *, mFs);                                               \
-    HUD_MEMBER(uint32_t, mNonBundledFilmIdx);                                       \
-    HUD_ISPC_PAD(mPad, 4);                                                          \
     HUD_CPP_MEMBER(scene_rdl2::util::BitArray, mTilesRenderedTo, 16);               \
     HUD_MEMBER(CancellationState, mCancellationState);                              \
     HUD_MEMBER(uint32_t, mCurrentPassIdx);                                          \
@@ -68,7 +65,7 @@
     HUD_CPP_PTR(RadianceQueue::EntryType *, mRadianceEntries);                      \
     HUD_CPP_PTR(AovQueue::EntryType *, mAovEntries);                                \
     HUD_CPP_PTR(HeatMapQueue::EntryType *, mHeatMapEntries);                        \
-    HUD_ISPC_PAD(mPad1, 8)
+    HUD_ISPC_PAD(mPad1, 16) // required to avoid "Hybrid uniform data layout mismatch"
 
 
 #define PBR_TL_STATE_VALIDATION                                 \
@@ -87,7 +84,6 @@
     HUD_VALIDATE(PbrTLState, mXPUOcclusionRayQueue);            \
     HUD_VALIDATE(PbrTLState, mPrimaryRaysSubmitted);            \
     HUD_VALIDATE(PbrTLState, mFs);                              \
-    HUD_VALIDATE(PbrTLState, mNonBundledFilmIdx);               \
     HUD_VALIDATE(PbrTLState, mTilesRenderedTo);                 \
     HUD_VALIDATE(PbrTLState, mCancellationState);               \
     HUD_VALIDATE(PbrTLState, mCurrentPassIdx);                  \

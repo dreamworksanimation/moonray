@@ -1100,7 +1100,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
             // so no need to further check them.
             aovAddToBundledQueue(pbrTls, aovSchema, isect, ray,
                 AOV_TYPE_LIGHT_AOV | AOV_TYPE_VISIBILITY_AOV, aovs, rs->mSubpixel.mPixel,
-                rs->mDeepDataHandle, getFilm(rs->mTilePassAndFilm));
+                rs->mDeepDataHandle);
         }
 
         results[i] += radiance.r;

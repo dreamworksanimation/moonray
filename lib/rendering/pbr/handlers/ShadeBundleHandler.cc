@@ -246,7 +246,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
-                currRadiance->mTilePassAndFilm = rs->mTilePassAndFilm;
+                currRadiance->mTilePass = rs->mTilePass;
 
                 // To maintain parity with scalar mode, specify that we hit something with an Id of 0 when we hit
                 // a light for cryptomattes:
@@ -273,8 +273,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
                                              lightAovs, radiance, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
                                              rs->mSubpixel.mPixel,
-                                             rs->mDeepDataHandle,
-                                             getFilm(rs->mTilePassAndFilm));
+                                             rs->mDeepDataHandle);
                 }
 
                 rayStatesToFree[numRayStatesToFree++] = rs;
@@ -317,7 +316,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
-                currRadiance->mTilePassAndFilm = rs->mTilePassAndFilm;
+                currRadiance->mTilePass = rs->mTilePass;
                 ++currRadiance;
 
                 rayStatesToFree[numRayStatesToFree++] = rs;
@@ -430,8 +429,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                          AOV_TYPE_STATE_VAR | AOV_TYPE_PRIM_ATTR,
                                          aovs,
                                          rs->mSubpixel.mPixel,
-                                         rs->mDeepDataHandle,
-                                         pbr::getFilm(rs->mTilePassAndFilm));
+                                         rs->mDeepDataHandle);
                 }
             }
         }

@@ -13,10 +13,6 @@
 //     drain the queues when there are no more primary rays left to spawn.
 //     The queue draining time is negligible currently (we default to relative
 //     small queue sizes), so is ignored at the moment. Revisit as necessary.
-// -   In both cases, we only track progress for the very first Film object.
-//     Since all films must have the same frame buffer dimensions and pass/tile
-//     setup, this should be an accurate indicator of the overall progress when
-//     multiple films are being written to.
 // -   APIs exist to track individual per-pass progress also.
 //
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
@@ -100,8 +96,7 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
 
     moonray::util::ProcessUtilization frameStartUtilization = moonray::util::ProcessStats().getProcessUtilization();
 
-    const unsigned numActiveFilms = driver->mLastNumActiveFilms;
-    Film *films = driver->mFilms;
+    Film *film = driver->mFilm;
 
     // Initialize TLS array with data for this frame.
     // RayStatePool should be already initialized by this point.
@@ -109,15 +104,14 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
 
         if (fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
             fs.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
-            for (unsigned i = 0; i < numActiveFilms; ++i) {
-                tls->setRadianceQueueHandler(i, Film::addSampleBundleHandler, &films[i]);
-                if (fs.mAovSchema->hasAovFilter()) {
-                    tls->setAovQueueHandler(i, Film::addFilteredAovSampleBundleHandler, &films[i]);
-                } else {
-                    tls->setAovQueueHandler(i, Film::addAovSampleBundleHandler, &films[i]);
-                }
-                tls->setHeatMapQueueHandler(i, Film::addHeatMapBundleHandler, &films[i]);
+ 
+            tls->setRadianceQueueHandler(0, Film::addSampleBundleHandler, film);
+            if (fs.mAovSchema->hasAovFilter()) {
+                tls->setAovQueueHandler(0, Film::addFilteredAovSampleBundleHandler, film);
+            } else {
+                tls->setAovQueueHandler(0, Film::addAovSampleBundleHandler, film);
             }
+            tls->setHeatMapQueueHandler(0, Film::addHeatMapBundleHandler, film);
         }
 
         tls->mFs = &fs;
@@ -171,25 +165,21 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
     MNRY_ASSERT(verifyNoBundledLeaks(fs));
 
     // We are guaranteed to have copied the previous frame buffer by this point if we needed it.
-    for (unsigned i = 0; i < numActiveFilms; ++i) {
-        films[i].clearAllBuffers();
+    film->clearAllBuffers();
 
-        // Disable adjust adaptive tree update timing logic at this moment. we will enable later for checkpoint
-        films[i].disableAdjustAdaptiveTreeUpdateTiming();
+    // Disable adjust adaptive tree update timing logic at this moment. we will enable later for checkpoint
+    film->disableAdjustAdaptiveTreeUpdateTiming();
 
-        /* useful debug code for adaptive render debug pixel (w/ non resume render)
-        films[i].getAdaptiveRenderTilesTable()->setDebugPosition(*driver->getTiles()); // for debug
-        */
-    }
+    /* useful debug code for adaptive render debug pixel (w/ non resume render)
+    film->getAdaptiveRenderTilesTable()->setDebugPosition(*driver->getTiles()); // for debug
+    */
 
     // This should be before workQueue reset because revert film object might change workQueue parameters.
     unsigned progressCheckpointStartTileSampleId = revertFilmObjectAndResetWorkQueue(driver, fs);
 
     if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
         // Initialize current sampleId buffer for adaptive sampling.
-        for (unsigned i = 0; i < numActiveFilms; ++i) {
-            films[i].getCurrSampleIdBuff().init(films[i].getWeightBuffer(), fs.mMaxSamplesPerPixel);
-        }
+        film->getCurrSampleIdBuff().init(film->getWeightBuffer(), fs.mMaxSamplesPerPixel);
     }
 
     TileWorkQueue *workQueue = &driver->mTileWorkQueue;
@@ -300,7 +290,7 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
 
 #   ifdef RUNTIME_VERIFY
     if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
-        if (!films[0].getCurrSampleIdBuff().verify(films[0].getWeightBuffer())) {
+        if (!film->getCurrSampleIdBuff().verify(film->getWeightBuffer())) {
             std::cerr << ">> RenderFrame.cc sampleId verify NG\n";
         } else {
             std::cerr << ">> RenderFrame.cc sampleId verify OK\n";
@@ -310,18 +300,18 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
         const SampleIdBuff *startSampleIdBuff = nullptr;
         unsigned startSampleId = 0;
         if (fs.mRenderContext->getSceneContext().getResumeRender()) {
-            if (films[0].getResumeStartSampleIdBuff().isValid()) {
-                startSampleIdBuff = &films[0].getResumeStartSampleIdBuff();
+            if (film->getResumeStartSampleIdBuff().isValid()) {
+                startSampleIdBuff = &(film->getResumeStartSampleIdBuff());
             } else {
                 startSampleId = progressCheckpointStartTileSampleId / 64; // 64 = tileWidht * tileHeight
             }
         }
-        PixSampleSpanRuntimeVerify::get()->verify(startSampleIdBuff, startSampleId, films[0].getWeightBuffer());
+        PixSampleSpanRuntimeVerify::get()->verify(startSampleIdBuff, startSampleId, film->getWeightBuffer());
 
         std::cerr << ">> RenderFrame.cc "
                   << PixSampleSpanRuntimeVerify::get()->show(436, 106,
                                                              startSampleIdBuff, startSampleId,
-                                                             films[0].getWeightBuffer()) << '\n';
+                                                             film->getWeightBuffer()) << '\n';
     }
 #   endif // end RUNTIME_VERIFY
 
@@ -394,10 +384,10 @@ RenderDriver::batchRenderFrame(RenderDriver *driver, const FrameState &fs)
     }
 
     // This is a debug purpose code and only support fileId = 0 so far.
-    if (driver->mFilms[0].getDebugSamplesRecArray()) {
+    if (driver->mFilm->getDebugSamplesRecArray()) {
         std::cerr << ">> RenderFrame.cc batchRenderFrame completed and save DebugSamplesRecArray." << std::endl;
-        std::cerr << driver->mFilms[0].getDebugSamplesRecArray()->show("") << std::endl;
-        if (!driver->mFilms[0].getDebugSamplesRecArray()->save("./tmp.samples")) {
+        std::cerr << driver->mFilm->getDebugSamplesRecArray()->show("") << std::endl;
+        if (!driver->mFilm->getDebugSamplesRecArray()->save("./tmp.samples")) {
             std::cerr << ">> RenderFrame.cc DebugSamplesRecArray() failed." << std::endl;
         }
     }
@@ -503,7 +493,7 @@ RenderDriver::progressiveRenderFrame(RenderDriver *driver, const FrameState &fs)
     // use outdated data from neighboring tiles.
     if (driver->getDisplayFilterDriver().hasDisplayFilters()) {
         // Request to update all tiles
-        unsigned numTiles = driver->getFilm(0).getTiler().mNumTiles;
+        unsigned numTiles = driver->getFilm().getTiler().mNumTiles;
         for (unsigned tile = 0; tile < numTiles; ++tile) {
             driver->getDisplayFilterDriver().requestTileUpdate(tile);
         }

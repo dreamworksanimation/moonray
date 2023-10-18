@@ -48,9 +48,6 @@ struct TLSInitParams
     // Authoritative, pass in 0 to let the system decide.
     unsigned        mDesiredNumTBBThreads;
 
-    // The max number of Film objects we need to support.
-    unsigned        mNumFilms;
-
     scene_rdl2::alloc::ArenaBlockPool *mArenaBlockPool;
 
     // This is the total number of RayState objects allocated per thread.

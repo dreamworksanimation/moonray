@@ -419,7 +419,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                 MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
                 aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, lightAovs,
                     LDirect, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
-                    sp.mPixel, rs->mDeepDataHandle, getFilm(rs->mTilePassAndFilm));
+                    sp.mPixel, rs->mDeepDataHandle);
             }
         }
     }
@@ -1234,8 +1234,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                     } else {
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
                         aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
-                            contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
-                            getFilm(rs->mTilePassAndFilm));
+                            contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle);
                     }
                 }
             }
@@ -1311,8 +1310,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
                     } else {
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
                         aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
-                            contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
-                            getFilm(rs->mTilePassAndFilm));
+                            contribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle);
                     }
                 }
             }
@@ -1503,7 +1501,7 @@ PathIntegrator::computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::R
                         MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
                         aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                             emissionContribution, nullptr, AovSchema::sLpePrefixNone,
-                            lpeStateId, sp.mPixel, rs->mDeepDataHandle, getFilm(rs->mTilePassAndFilm));
+                            lpeStateId, sp.mPixel, rs->mDeepDataHandle);
                     }
                 }
             }
@@ -1887,7 +1885,7 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                     aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, lobeContribution,
                         nullptr, AovSchema::sLpePrefixNone,
-                        lpeStateId, sp.mPixel, rs.mDeepDataHandle, getFilm(rs.mTilePassAndFilm));
+                        lpeStateId, sp.mPixel, rs.mDeepDataHandle);
 
                 }
             }
@@ -1946,7 +1944,7 @@ PathIntegrator::computeRadianceEmissiveRegionsBundled(pbr::TLState *pbrTls, cons
                         scene->getVolumeLabelId(emissiveRegion.mVolumeId));
                     aovAccumLightAovsBundled(pbrTls, aovSchema, lightAovs, lobeContribution,
                         nullptr, AovSchema::sLpePrefixNone,
-                        lpeStateId, sp.mPixel, rs.mDeepDataHandle, getFilm(rs.mTilePassAndFilm));
+                        lpeStateId, sp.mPixel, rs.mDeepDataHandle);
                 }
             }
         }
@@ -2316,8 +2314,7 @@ PathIntegrator::computeRadianceEmissiveRegionsVolumes(pbr::TLState *pbrTls,
             } else {
                 MNRY_ASSERT(rs && fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED);
                 aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
-                    emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle,
-                    getFilm(rs->mTilePassAndFilm));
+                    emissionContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, sp.mPixel, rs->mDeepDataHandle);
             }
         }
     }

@@ -188,7 +188,7 @@ oneSamplerSubmitOcclusionRays(const uniform PathIntegrator * uniform this,
                         sp.mPixel,
                         sp.mSubpixelIndex,
                         sequenceID,
-                        rs->mTilePassAndFilm,
+                        rs->mTilePass,
                         data,
                         rs->mDeepDataHandle,
                         rs->mCryptomatteDataHandle,
@@ -717,7 +717,7 @@ computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
         const uniform MaterialAovs &materialAovs = *((const uniform MaterialAovs * uniform) fs.mMaterialAovs);
         aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs, isect, ray, fs.mScene, bsdf,
                              ssAov, slice, pv.aovPathPixelWeight, sp.mPixel, rs->mDeepDataHandle,
-                             getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);
+                             pv.lpeStateId);
     }
 
     BsdfOneSampler bsdfOneSampler;
@@ -1130,7 +1130,7 @@ computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
         nextRayState.mSubpixel.mSampleClampingValue = sp.mSampleClampingValue;
         nextRayState.mSubpixel.mPrimaryRayDiffScale = sp.mPrimaryRayDiffScale;
         nextRayState.mSubpixel.mTextureDiffScale = sp.mTextureDiffScale;
-        nextRayState.mTilePassAndFilm = rs->mTilePassAndFilm;
+        nextRayState.mTilePass = rs->mTilePass;
         nextRayState.mDeepDataHandle = rs->mDeepDataHandle;
         nextRayState.mCryptomatteDataHandle = rs->mCryptomatteDataHandle;
         nextRayState.mCryptomatteDataHandle2 = rs->mCryptomatteDataHandle2;

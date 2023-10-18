@@ -201,8 +201,7 @@ snapshotDeltaAovVariance(SRC_BUFF_TYPE srcVarianceBuffer,
 //------------------------------------------------------------------------------
 
 void
-RenderDriver::snapshotDelta(unsigned filmIdx,
-                            scene_rdl2::fb_util::RenderBuffer *dstRenderBuffer,
+RenderDriver::snapshotDelta(scene_rdl2::fb_util::RenderBuffer *dstRenderBuffer,
                             scene_rdl2::fb_util::FloatBuffer *dstWeightBuffer,
                             scene_rdl2::fb_util::ActivePixels &activePixels,
                             bool parallel) const
@@ -215,8 +214,7 @@ RenderDriver::snapshotDelta(unsigned filmIdx,
 // renderBuffer/weightBuffer is tiled format and renderBuffer is not normalized by weight
 //
 {
-    const Film &film = mFilms[filmIdx];
-    const unsigned numTiles = film.getTiler().mNumTiles;
+    const unsigned numTiles = mFilm->getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_TIMING_TEST
     static rec_time::RecTimeLog recTimeLog;
@@ -228,8 +226,8 @@ RenderDriver::snapshotDelta(unsigned filmIdx,
             unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
             scene_rdl2::fb_util::RenderColor *dst = dstRenderBuffer->getData() + pixId;
             float *dstWeight = dstWeightBuffer->getData() + pixId;
-            const scene_rdl2::fb_util::RenderColor *srcColor = film.getRenderBuffer().getData() + pixId;
-            const float *srcWeight = film.getWeightBuffer().getData() + pixId;
+            const scene_rdl2::fb_util::RenderColor *srcColor = mFilm->getRenderBuffer().getData() + pixId;
+            const float *srcWeight = mFilm->getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask =
                 scene_rdl2::fb_util::SnapshotUtil::snapshotTileColorWeight((uint32_t *)dst,
@@ -251,8 +249,7 @@ RenderDriver::snapshotDelta(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaRenderBufferOdd(unsigned filmIdx,
-                                           scene_rdl2::fb_util::RenderBuffer *dstRenderBufferOdd,
+RenderDriver::snapshotDeltaRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *dstRenderBufferOdd,
                                            scene_rdl2::fb_util::FloatBuffer *dstWeightRenderBufferOdd,
                                            scene_rdl2::fb_util::ActivePixels &activePixelsRenderBufferOdd,
                                            bool parallel) const
@@ -265,10 +262,9 @@ RenderDriver::snapshotDeltaRenderBufferOdd(unsigned filmIdx,
 // renderBufferOdd/weightRenderBufferOdd is tiled format and renderBufferOdd is not normalized by weight
 //
 {
-    const Film &film = mFilms[filmIdx];
-    const unsigned numTiles = film.getTiler().mNumTiles;
+    const unsigned numTiles = mFilm->getTiler().mNumTiles;
 
-    if (!film.getRenderBufferOdd()) {
+    if (!mFilm->getRenderBufferOdd()) {
         return;                 // skip snapshot when could not access renderBufferOdd
     }
 
@@ -282,8 +278,8 @@ RenderDriver::snapshotDeltaRenderBufferOdd(unsigned filmIdx,
             unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
             scene_rdl2::fb_util::RenderColor *dst = dstRenderBufferOdd->getData() + pixId;
             float *dstWeight = dstWeightRenderBufferOdd->getData() + pixId;
-            const scene_rdl2::fb_util::RenderColor *srcColor = film.getRenderBufferOdd()->getData() + pixId;
-            const float *srcWeight = film.getWeightBuffer().getData() + pixId;
+            const scene_rdl2::fb_util::RenderColor *srcColor = mFilm->getRenderBufferOdd()->getData() + pixId;
+            const float *srcWeight = mFilm->getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask =
                 scene_rdl2::fb_util::SnapshotUtil::snapshotTileColorWeight((uint32_t *)dst,
@@ -305,8 +301,7 @@ RenderDriver::snapshotDeltaRenderBufferOdd(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaPixelInfo(unsigned filmIdx,
-                                     scene_rdl2::fb_util::PixelInfoBuffer *dstPixelInfoBuffer,
+RenderDriver::snapshotDeltaPixelInfo(scene_rdl2::fb_util::PixelInfoBuffer *dstPixelInfoBuffer,
                                      scene_rdl2::fb_util::FloatBuffer *dstPixelInfoWeightBuffer,
                                      scene_rdl2::fb_util::ActivePixels &activePixelsPixelInfo,
                                      bool parallel) const
@@ -318,8 +313,7 @@ RenderDriver::snapshotDeltaPixelInfo(unsigned filmIdx,
 // pixelInfoBuffer/pixelInfoWeightBuffer is tiled format.
 //
 {
-    const Film &film = mFilms[filmIdx];
-    const unsigned numTiles = film.getTiler().mNumTiles;
+    const unsigned numTiles = mFilm->getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_PIXINFO_TIMING_TEST
     static rec_time::RecTimeLog recTimePixInfoLog;
@@ -332,8 +326,8 @@ RenderDriver::snapshotDeltaPixelInfo(unsigned filmIdx,
             scene_rdl2::fb_util::PixelInfo *dst = dstPixelInfoBuffer->getData() + pixId;
             float *dstW = dstPixelInfoWeightBuffer->getData() + pixId;
             // primary camera only for now
-            const scene_rdl2::fb_util::PixelInfo *src = film.getPixelInfoBuffer()->getData() + pixId;
-            const float *srcW = film.getWeightBuffer().getData() + pixId;
+            const scene_rdl2::fb_util::PixelInfo *src = mFilm->getPixelInfoBuffer()->getData() + pixId;
+            const float *srcW = mFilm->getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask = scene_rdl2::fb_util::SnapshotUtil::snapshotTilePixelInfoWeight((uint32_t *)dst,
                                                                                           (uint32_t *)dstW,
@@ -354,8 +348,7 @@ RenderDriver::snapshotDeltaPixelInfo(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaHeatMap(unsigned filmIdx,
-                                   scene_rdl2::fb_util::HeatMapBuffer *dstHeatMapBuffer,
+RenderDriver::snapshotDeltaHeatMap(scene_rdl2::fb_util::HeatMapBuffer *dstHeatMapBuffer,
                                    scene_rdl2::fb_util::FloatBuffer *dstHeatMapWeightBuffer,
                                    scene_rdl2::fb_util::ActivePixels &activePixelsHeatMap,
                                    scene_rdl2::fb_util::FloatBuffer *dstHeatMapSecBuffer,
@@ -369,8 +362,7 @@ RenderDriver::snapshotDeltaHeatMap(unsigned filmIdx,
 // heatMapBuffer/heatMapWeightBuffer/heatMapSecBuffer are tiled format.
 //
 {
-    const Film &film = mFilms[filmIdx];
-    const unsigned numTiles = film.getTiler().mNumTiles;
+    const unsigned numTiles = mFilm->getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_HEATMAP_TIMING_TEST
     static rec_time::RecTimeLog recTimeHeatMapLog;
@@ -383,8 +375,8 @@ RenderDriver::snapshotDeltaHeatMap(unsigned filmIdx,
 
             int64_t *dst = dstHeatMapBuffer->getData() + pixId;
             float *dstW = dstHeatMapWeightBuffer->getData() + pixId;
-            const int64_t *src = film.getHeatMapBuffer()->getData() + pixId;
-            const float *srcW = film.getWeightBuffer().getData() + pixId;
+            const int64_t *src = mFilm->getHeatMapBuffer()->getData() + pixId;
+            const float *srcW = mFilm->getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask =
                 scene_rdl2::fb_util::SnapshotUtil::snapshotTileHeatMapWeight((uint64_t *)dst,
@@ -417,8 +409,7 @@ RenderDriver::snapshotDeltaHeatMap(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaWeightBuffer(unsigned filmIdx,
-                                        scene_rdl2::fb_util::FloatBuffer *dstWeightBuffer,
+RenderDriver::snapshotDeltaWeightBuffer(scene_rdl2::fb_util::FloatBuffer *dstWeightBuffer,
                                         scene_rdl2::fb_util::ActivePixels &activePixelsWeightBuffer,
                                         bool parallel) const
 //
@@ -429,8 +420,7 @@ RenderDriver::snapshotDeltaWeightBuffer(unsigned filmIdx,
 // weightBuffer is tiled format.
 //
 {
-    const Film &film = mFilms[filmIdx];
-    const unsigned numTiles = film.getTiler().mNumTiles;
+    const unsigned numTiles = mFilm->getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_WEIGHTBUFFER_TIMING_TEST
     static rec_time::RecTimeLog recTimeWeightBufferLog;
@@ -442,7 +432,7 @@ RenderDriver::snapshotDeltaWeightBuffer(unsigned filmIdx,
             unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
 
             float *dst = dstWeightBuffer->getData() + pixId;
-            const float *src = film.getWeightBuffer().getData() + pixId;
+            const float *src = mFilm->getWeightBuffer().getData() + pixId;
 
             uint64_t activePixelMask = scene_rdl2::fb_util::SnapshotUtil::snapshotTileWeightBuffer((uint32_t *)dst, (const uint32_t *)src);
             activePixelsWeightBuffer.setTileMask(tileId, activePixelMask);
@@ -459,8 +449,7 @@ RenderDriver::snapshotDeltaWeightBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAov(unsigned filmIdx,
-                               unsigned aovIdx,
+RenderDriver::snapshotDeltaAov(unsigned aovIdx,
                                scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -473,28 +462,25 @@ RenderDriver::snapshotDeltaAov(unsigned filmIdx,
 // renderOutputBuffer(aovIndex)/renderOutputWeightBuffer(aovIndex) are tiled format.
 //
 {
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
 
     switch (film.getAovBuffer(aovIdx).getFormat()) {
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT :
-        snapshotDeltaAovFloat(filmIdx,
-                              aovIdx,
+        snapshotDeltaAovFloat(aovIdx,
                               dstRenderOutputBuffer,
                               dstRenderOutputWeightBuffer,
                               activePixelsRenderOutput,
                               parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2 :
-        snapshotDeltaAovFloat2(filmIdx,
-                               aovIdx,
+        snapshotDeltaAovFloat2(aovIdx,
                                dstRenderOutputBuffer,
                                dstRenderOutputWeightBuffer,
                                activePixelsRenderOutput,
                                parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3 :
-        snapshotDeltaAovFloat3(filmIdx,
-                               aovIdx,
+        snapshotDeltaAovFloat3(aovIdx,
                                dstRenderOutputBuffer,
                                dstRenderOutputWeightBuffer,
                                activePixelsRenderOutput,
@@ -504,40 +490,35 @@ RenderDriver::snapshotDeltaAov(unsigned filmIdx,
         // currently these should only be closest filter aovs
         // remove this check when/if this is no longer the case
         MNRY_ASSERT(film.getAovBufferFilter(aovIdx) == pbr::AOV_FILTER_CLOSEST);
-        snapshotDeltaAovFloat4(filmIdx,
-                               aovIdx,
+        snapshotDeltaAovFloat4(aovIdx,
                                dstRenderOutputBuffer,
                                dstRenderOutputWeightBuffer,
                                activePixelsRenderOutput,
                                parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        snapshotDeltaAovFloatVariance(filmIdx,
-                                      aovIdx,
+        snapshotDeltaAovFloatVariance(aovIdx,
                                       dstRenderOutputBuffer,
                                       dstRenderOutputWeightBuffer,
                                       activePixelsRenderOutput,
                                       parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        snapshotDeltaAovFloat2Variance(filmIdx,
-                                       aovIdx,
+        snapshotDeltaAovFloat2Variance(aovIdx,
                                        dstRenderOutputBuffer,
                                        dstRenderOutputWeightBuffer,
                                        activePixelsRenderOutput,
                                        parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        snapshotDeltaAovFloat3Variance(filmIdx,
-                                       aovIdx,
+        snapshotDeltaAovFloat3Variance(aovIdx,
                                        dstRenderOutputBuffer,
                                        dstRenderOutputWeightBuffer,
                                        activePixelsRenderOutput,
                                        parallel);
         break;
     case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        snapshotDeltaAovRgbVariance(filmIdx,
-                                    aovIdx,
+        snapshotDeltaAovRgbVariance(aovIdx,
                                     dstRenderOutputBuffer,
                                     dstRenderOutputWeightBuffer,
                                     activePixelsRenderOutput,
@@ -547,14 +528,13 @@ RenderDriver::snapshotDeltaAov(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovVisibility(unsigned filmIdx,
-                                         unsigned aovIdx,
+RenderDriver::snapshotDeltaAovVisibility(unsigned aovIdx,
                                          scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                          scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                          scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                          bool parallel) const
 {
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const unsigned numTiles = film.getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_AOV_VISIBILITY_TIMING_TEST
@@ -610,14 +590,13 @@ RenderDriver::snapshotDeltaAovVisibility(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovVarianceVisibility(unsigned filmIdx,
-                                                 unsigned aovIdx,
+RenderDriver::snapshotDeltaAovVarianceVisibility(unsigned aovIdx,
                                                  scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                                  scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                                  scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                                  bool parallel) const
 {
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const unsigned numTiles = film.getTiler().mNumTiles;
 
 #ifdef SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
@@ -672,8 +651,7 @@ RenderDriver::snapshotDeltaAovVarianceVisibility(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaDisplayFilter(unsigned filmIdx,
-                                         unsigned dfIdx,
+RenderDriver::snapshotDeltaDisplayFilter(unsigned dfIdx,
                                          scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
                                          scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                          scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -681,7 +659,7 @@ RenderDriver::snapshotDeltaDisplayFilter(unsigned filmIdx,
 {
     // Only supports FLOAT3 DisplayFilters currently
     MNRY_ASSERT(renderOutputBuffer->getFormat() == scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3);
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const unsigned numTiles = film.getTiler().mNumTiles;
     simpleLoop(parallel, 0u, numTiles, [&](unsigned tileId) {
             unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
@@ -706,8 +684,7 @@ RenderDriver::snapshotDeltaDisplayFilter(unsigned filmIdx,
 //------------------------------------------------------------------------------
 
 void
-RenderDriver::snapshotDeltaAovFloat(unsigned filmIdx,
-                                    unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat(unsigned aovIdx,
                                     scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                     scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                     scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -719,7 +696,7 @@ RenderDriver::snapshotDeltaAovFloat(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT_TIMING_TEST
 
-    snapshotDeltaAovFloatN<1>(getFilm(filmIdx),
+    snapshotDeltaAovFloatN<1>(getFilm(),
                               aovIdx,
                               dstRenderOutputBuffer,
                               dstRenderOutputWeightBuffer,
@@ -737,8 +714,7 @@ RenderDriver::snapshotDeltaAovFloat(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloat2(unsigned filmIdx,
-                                     unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat2(unsigned aovIdx,
                                      scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                      scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                      scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -750,7 +726,7 @@ RenderDriver::snapshotDeltaAovFloat2(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT2_TIMING_TEST
 
-    snapshotDeltaAovFloatN<2>(getFilm(filmIdx),
+    snapshotDeltaAovFloatN<2>(getFilm(),
                               aovIdx,
                               dstRenderOutputBuffer,
                               dstRenderOutputWeightBuffer,
@@ -768,8 +744,7 @@ RenderDriver::snapshotDeltaAovFloat2(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloat3(unsigned filmIdx,
-                                     unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat3(unsigned aovIdx,
                                      scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                      scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                      scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -783,7 +758,7 @@ RenderDriver::snapshotDeltaAovFloat3(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT3_TIMING_TEST
 
-    snapshotDeltaAovFloatN<3>(getFilm(filmIdx),
+    snapshotDeltaAovFloatN<3>(getFilm(),
                               aovIdx,
                               dstRenderOutputBuffer,
                               dstRenderOutputWeightBuffer,
@@ -801,8 +776,7 @@ RenderDriver::snapshotDeltaAovFloat3(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloat4(unsigned filmIdx,
-                                     unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat4(unsigned aovIdx,
                                      scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                      scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                      scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -816,7 +790,7 @@ RenderDriver::snapshotDeltaAovFloat4(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT4_TIMING_TEST
 
-    snapshotDeltaAovFloatN<4>(getFilm(filmIdx),
+    snapshotDeltaAovFloatN<4>(getFilm(),
                               aovIdx,
                               dstRenderOutputBuffer,
                               dstRenderOutputWeightBuffer,
@@ -834,8 +808,7 @@ RenderDriver::snapshotDeltaAovFloat4(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloatVariance(unsigned filmIdx,
-                                            unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloatVariance(unsigned aovIdx,
                                             scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                             scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                             scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -847,7 +820,7 @@ RenderDriver::snapshotDeltaAovFloatVariance(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
 
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloatVarianceBuffer();
     snapshotDeltaAovVariance(srcVarianceBuffer,
                              film,
@@ -867,8 +840,7 @@ RenderDriver::snapshotDeltaAovFloatVariance(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloat2Variance(unsigned filmIdx,
-                                             unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat2Variance(unsigned aovIdx,
                                              scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                              scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                              scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -880,7 +852,7 @@ RenderDriver::snapshotDeltaAovFloat2Variance(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
 
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloat2VarianceBuffer();
     snapshotDeltaAovVariance(srcVarianceBuffer,
                              film,
@@ -900,8 +872,7 @@ RenderDriver::snapshotDeltaAovFloat2Variance(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovFloat3Variance(unsigned filmIdx,
-                                             unsigned aovIdx,
+RenderDriver::snapshotDeltaAovFloat3Variance(unsigned aovIdx,
                                              scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                              scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                              scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -913,7 +884,7 @@ RenderDriver::snapshotDeltaAovFloat3Variance(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
 
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloat3VarianceBuffer();
     snapshotDeltaAovVariance(srcVarianceBuffer,
                              film,
@@ -933,8 +904,7 @@ RenderDriver::snapshotDeltaAovFloat3Variance(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotDeltaAovRgbVariance(unsigned filmIdx,
-                                          unsigned aovIdx,
+RenderDriver::snapshotDeltaAovRgbVariance(unsigned aovIdx,
                                           scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
                                           scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                           scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
@@ -946,7 +916,7 @@ RenderDriver::snapshotDeltaAovRgbVariance(unsigned filmIdx,
     recTime.start();
 #endif // end SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
 
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getRgbVarianceBuffer();
     snapshotDeltaAovVariance(srcVarianceBuffer,
                              film,

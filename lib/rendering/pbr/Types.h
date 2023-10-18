@@ -57,33 +57,26 @@ typedef uint32_t EmbreeId;
 typedef scene_rdl2::math::Vec4f RenderColor; // Must match rndr::RenderColor!
 
 finline uint32_t
-makeTilePassAndFilm(uint32_t tile, uint32_t pass, uint32_t film)
+makeTilePass(uint32_t tile, uint32_t pass)
 {
     // 22 bits for the tile
     // 7 bits for the pass
-    // 3 bits for the film
-    MNRY_ASSERT(tile <= 0x3fffff && pass < MAX_RENDER_PASSES && film <= 0x07);
-    return (tile << 10) | (pass << 3) | film;
+    // 3 bits are unused and can be used for future development
+    MNRY_ASSERT(tile <= 0x3fffff && pass < MAX_RENDER_PASSES);
+    return (tile << 10) | (pass << 3);
 }
 
 finline uint32_t
-getTile(uint32_t tilePassAndFilm)
+getTile(uint32_t tilePass)
 {
-    return (tilePassAndFilm >> 10) & 0x3fffff;
+    return (tilePass >> 10) & 0x3fffff;
 }
 
 finline uint32_t
-getPass(uint32_t tilePassAndFilm)
+getPass(uint32_t tilePass)
 {
-    return (tilePassAndFilm >> 3) & 0x7f;
+    return (tilePass >> 3) & 0x7f;
 }
-
-finline uint32_t
-getFilm(uint32_t tilePassAndFilm)
-{
-    return tilePassAndFilm & 0x07;
-}
-
 
 // Contains either a ray RayState pointer or a SortedRayState depending on the
 // higher level context.
@@ -152,8 +145,6 @@ struct ALIGN(64) BundledRadiance
 struct ALIGN(32) BundledRadiance
 #endif
 {
-    finline uint32_t filmIdx() const { return pbr::getFilm(mTilePassAndFilm); }
-
     BUNDLED_RADIANCE_MEMBERS;
 
     // HUD validation.
@@ -179,22 +170,18 @@ struct ALIGN(32) BundledAov
     static const unsigned MAX_AOV_IDX = 0xffe; // 0xfff indicates an unused slot
     static const unsigned AOV_NUM_BITS = 12;
     static const uint64_t AOV_ALL_BITS = 0xfff;
-    static const unsigned FILM_BITS = 4;
-    static const uint64_t FILM_ALL_BITS = 0xf;
-    static const unsigned FILM_BIT_SHIFT = 60;
     static const uint64_t AOV_ALL_UNUSED = 0xfffffffffffffff;
 
-    finline BundledAov(uint32_t pixel, uint32_t deepDataHandle, uint32_t film)
+    finline BundledAov(uint32_t pixel, uint32_t deepDataHandle)
     {
-        init(pixel, deepDataHandle, film);
+        init(pixel, deepDataHandle);
     }
-    finline void init(uint32_t pixel, uint32_t deepDataHandle, uint32_t film)
+    finline void init(uint32_t pixel, uint32_t deepDataHandle)
     {
         mPixel = pixel;
         mDeepDataHandle = deepDataHandle;
-        mIndices = ((film & FILM_ALL_BITS) << FILM_BIT_SHIFT) | AOV_ALL_UNUSED;
+        mIndices = AOV_ALL_UNUSED;
     }
-    finline uint32_t filmIdx() const { return uint32_t(mIndices >> FILM_BIT_SHIFT); }
     finline uint32_t aovIdx(unsigned aov) const
     {
         MNRY_ASSERT(aov < MAX_AOV);
@@ -228,30 +215,25 @@ MNRY_STATIC_ASSERT(sizeof(BundledAov) == 64);
 struct ALIGN(16) BundledHeatMapSample
 {
     int64_t  mTicks;
-    uint32_t mPixel;     // Screen coordinates of pixel
-    uint32_t mFilmIdx;   // Which set of film buffers are we rendering to.    
-
-    finline uint32_t filmIdx() const { return mFilmIdx; }
+    uint32_t mPixel;     // Screen coordinates of pixel 
 
     // helper function to initialize an array of bundled heat map samples
     finline static void initArray(BundledHeatMapSample *b, unsigned &bIndx,
-                                  uint32_t pixel, uint32_t filmIdx)
+                                  uint32_t pixel)
     {
         bIndx = 0;
         b[bIndx].mTicks = 0;
         b[bIndx].mPixel = pixel;
-        b[bIndx].mFilmIdx = filmIdx;
     }
 
     // helper function for adding ticks to an array of bundled heat map samples
     finline static void addTicksToArray(BundledHeatMapSample *b, unsigned &bIndx,
-                                        int64_t ticks, uint32_t pixel, uint32_t filmIdx)
+                                        int64_t ticks, uint32_t pixel)
     {
-        if (b[bIndx].mPixel != pixel || b[bIndx].mFilmIdx != filmIdx) {
+        if (b[bIndx].mPixel != pixel) {
             bIndx++;
             b[bIndx].mTicks = 0;
             b[bIndx].mPixel = pixel;
-            b[bIndx].mFilmIdx = filmIdx;
         }
         b[bIndx].mTicks += ticks;
     }

@@ -131,8 +131,6 @@ TLSInitParams::TLSInitParams()
 {
     // cppcheck-suppress memsetClassFloat // floating point memset to 0 is fine
     memset(this, 0, sizeof(TLSInitParams));
-
-    mNumFilms = 1;
 }
 
 // TODO. Client code should be fine tuning the sizes of queues in bundled mode.

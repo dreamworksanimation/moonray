@@ -267,7 +267,7 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
                 driver->transferAllProgressFromSingleTLS(tls);
 
                 if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
-                    if (driver->mFilms[0].getAdaptiveDone()) {
+                    if (driver->mFilm->getAdaptiveDone()) {
                         break;
                     }
                 }
@@ -387,7 +387,6 @@ struct RenderSamplesParams
 {
     RenderDriver *      mDriver;
 
-    unsigned            mFilmIdx; // index of mFilm of driver->mFilms[]
     Film *              mFilm;
 
     unsigned            mTileIdx; // index of current processed tileId
@@ -465,42 +464,36 @@ RenderDriver::renderTiles(RenderDriver *driver,
     }
 
     unsigned processedSampleTotalFilm0 = 0;
-    const unsigned numActiveFilms = driver->mLastNumActiveFilms;
 
-    for (unsigned ifilm = 0; ifilm != numActiveFilms; ++ifilm) {
-        params.mFilmIdx = ifilm;
-        params.mFilm = &driver->mFilms[ifilm];
-        pbrTls->mNonBundledFilmIdx = ifilm;
+    params.mFilm = driver->mFilm;
 
-        pbr::DeepBuffer *deepBuffer = params.mFilm->getDeepBuffer();
-        // This is not thread safe - it should really be done during frame setup!
-        if (deepBuffer != nullptr) {
-            unsigned totalNumSamples = fs.mMaxSamplesPerPixel;
-            deepBuffer->setSamplesPerPixel(totalNumSamples);
-            if (totalNumSamples >= 64) {
-                deepBuffer->setSubpixelRes(8);
-            } else if (totalNumSamples >= 16) {
-                deepBuffer->setSubpixelRes(4);
-            } else if (totalNumSamples >= 4) {
-                deepBuffer->setSubpixelRes(2);
-            } else {
-                deepBuffer->setSubpixelRes(1);
-            }
+    pbr::DeepBuffer *deepBuffer = params.mFilm->getDeepBuffer();
+    // This is not thread safe - it should really be done during frame setup!
+    if (deepBuffer != nullptr) {
+        unsigned totalNumSamples = fs.mMaxSamplesPerPixel;
+        deepBuffer->setSamplesPerPixel(totalNumSamples);
+        if (totalNumSamples >= 64) {
+            deepBuffer->setSubpixelRes(8);
+        } else if (totalNumSamples >= 16) {
+            deepBuffer->setSubpixelRes(4);
+        } else if (totalNumSamples >= 4) {
+            deepBuffer->setSubpixelRes(2);
+        } else {
+            deepBuffer->setSubpixelRes(1);
         }
-
-        pbr::CryptomatteBuffer *cryptomatteBuffer = params.mFilm->getCryptomatteBuffer();
-
-        // Loop over current batch of tiles, we execute tile batches in parallel.
-        unsigned processedSampleTotal = 0;
-        for (unsigned itile = group.mStartTileIdx; itile != group.mEndTileIdx; ++itile) {
-            params.mTileIdx = itile;
-            if (!renderTile(driver, tls, group, params, deepBuffer, cryptomatteBuffer, processedSampleTotal)) {
-                return 0; // cancel return
-            }
-        }
-        if (ifilm == 0) processedSampleTotalFilm0 = processedSampleTotal;
     }
 
+    pbr::CryptomatteBuffer *cryptomatteBuffer = params.mFilm->getCryptomatteBuffer();
+
+    // Loop over current batch of tiles, we execute tile batches in parallel.
+    unsigned processedSampleTotal = 0;
+    for (unsigned itile = group.mStartTileIdx; itile != group.mEndTileIdx; ++itile) {
+        params.mTileIdx = itile;
+        if (!renderTile(driver, tls, group, params, deepBuffer, cryptomatteBuffer, processedSampleTotal)) {
+            return 0; // cancel return
+        }
+    }
+    processedSampleTotalFilm0 = processedSampleTotal;
 
     return processedSampleTotalFilm0; // return processed sample total of film = 0
 }
@@ -725,7 +718,7 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
 #       endif // end RUNTIME_VERIFY1        
 
         // Get the number of samples for this pixel.
-        unsigned totalNumSamples = computeTotalNumSamples(fs, params.mFilmIdx, px, py);
+        unsigned totalNumSamples = computeTotalNumSamples(fs, 0, px, py);
         if (totalNumSamples < currStartSampleIdx) continue; // skip this pixel if it has enough samples
 
         // setup params
@@ -764,18 +757,17 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
         }
 
         // Update progress.
-        if (params.mFilmIdx == 0) {
-            pbrTls->mTilesRenderedTo.setBit(params.mTileIdx); // for moonray_gui debugging. for showTileProgress()
-            // NonCheckpoint or nonAdaptiveCheckpoint case, we uses this code for progress update
-            // Currently all adaptive sampling progress update information is provided by
-            // film.getAdaptiveRenderTilesTable()
-            unsigned samplesRendered = currEndSampleIdx - currStartSampleIdx;
-            pbrTls->mPrimaryRaysSubmitted[group.mPassIdx] += samplesRendered; // used by non checkpoint case
-            processedSampleTotal += samplesRendered;
-            if (fs.mRenderMode == RenderMode::PROGRESS_CHECKPOINT) {
-                driver->mProgressEstimation.atomicAddSamples(samplesRendered);
-            }
+        pbrTls->mTilesRenderedTo.setBit(params.mTileIdx); // for moonray_gui debugging. for showTileProgress()
+        // NonCheckpoint or nonAdaptiveCheckpoint case, we uses this code for progress update
+        // Currently all adaptive sampling progress update information is provided by
+        // film.getAdaptiveRenderTilesTable()
+        unsigned samplesRendered = currEndSampleIdx - currStartSampleIdx;
+        pbrTls->mPrimaryRaysSubmitted[group.mPassIdx] += samplesRendered; // used by non checkpoint case
+        processedSampleTotal += samplesRendered;
+        if (fs.mRenderMode == RenderMode::PROGRESS_CHECKPOINT) {
+            driver->mProgressEstimation.atomicAddSamples(samplesRendered);
         }
+
         if (film.getAdaptiveRenderTilesTable()) { // adaptive sampling case
             unsigned addedSamples = currEndSampleIdx - currStartSampleIdx;
             film.getAdaptiveRenderTilesTable()->setTileUpdate(params.mTileIdx, addedSamples); // update
@@ -1240,7 +1232,7 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
         rs->mSubpixel.mPixel = pixel;
         rs->mSubpixel.mSubpixelX = sample.pixelX;
         rs->mSubpixel.mSubpixelY = sample.pixelY;
-        rs->mTilePassAndFilm = pbr::makeTilePassAndFilm(params->mTileIdx, group.mPassIdx, params->mFilmIdx);
+        rs->mTilePass = pbr::makeTilePass(params->mTileIdx, group.mPassIdx);
 
         if (deepBuffer != nullptr) {
             rs->mDeepDataHandle = pbrTls->allocList(sizeof(pbr::DeepData), 1);

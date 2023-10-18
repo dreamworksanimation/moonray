@@ -30,7 +30,7 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mPixel);                                   \
     HVD_MEMBER(int, mSubpixelIndex);                                \
     HVD_MEMBER(uint32_t, mSequenceID);                              \
-    HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
+    HVD_MEMBER(uint32_t, mTilePass);                                \
     HVD_MEMBER(uint32_t, mDataPtrHandle);                           \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
@@ -51,7 +51,7 @@ enum OcclTestType
     HVD_VALIDATE(BundledOcclRay, mPixel);                   \
     HVD_VALIDATE(BundledOcclRay, mSubpixelIndex);           \
     HVD_VALIDATE(BundledOcclRay, mSequenceID);              \
-    HVD_VALIDATE(BundledOcclRay, mTilePassAndFilm);         \
+    HVD_VALIDATE(BundledOcclRay, mTilePass);                \
     HVD_VALIDATE(BundledOcclRay, mDataPtrHandle);           \
     HVD_VALIDATE(BundledOcclRay, mDeepDataHandle);          \
     HVD_VALIDATE(BundledOcclRay, mCryptomatteDataHandle);   \
@@ -83,7 +83,7 @@ enum OcclTestType
 // mRadiance            Alpha is in 4th component.
 // mPathPixelWeight     How much to weight this radiance in the frame buffer.
 // mPixel               Screen coordinates of pixel.
-// mTilePassAndFilm     Which tile and pass generated this radiance and the destination film.
+// mTilePass            Which tile and pass generated this radiance.
 #ifdef __AVX512F__
 
 #define BUNDLED_RADIANCE_MEMBERS                                    \
@@ -94,7 +94,7 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
-    HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
+    HVD_MEMBER(uint32_t, mTilePass);                                \
     HUD_ARRAY(int, mPad1, 5);
 
 #else
@@ -107,7 +107,7 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
-    HVD_MEMBER(uint32_t, mTilePassAndFilm);                         \
+    HVD_MEMBER(uint32_t, mTilePass);                                \
     HUD_ARRAY(int, mPad, 5)
 
 #endif
@@ -123,7 +123,7 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mDeepDataHandle);        \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
-    HVD_VALIDATE(BundledRadiance, mTilePassAndFilm);       \
+    HVD_VALIDATE(BundledRadiance, mTilePass);              \
     HVD_VALIDATE(BundledRadiance, mPad1);                  \
     HVD_END_VALIDATION
 
@@ -138,7 +138,7 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mDeepDataHandle);        \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
-    HVD_VALIDATE(BundledRadiance, mTilePassAndFilm);       \
+    HVD_VALIDATE(BundledRadiance, mTilePass);              \
     HVD_VALIDATE(BundledRadiance, mPad);                   \
     HVD_END_VALIDATION
 
@@ -221,7 +221,6 @@ enum OcclTestType
 //
 
 // mExecutionMode                   Scalar, bundled, or xpu execution?
-// mNumActiveFilms                  How many films are we currently rendering to.
 // mEmbreeAccel                     Root level Embree geometry accelerator.
 // mGPUAccel                        Root level GPU geometry accelerator.
 // mLayer                           The active RDL Layer we're rendering from this frame.
@@ -243,7 +242,6 @@ enum OcclTestType
 
 #define FRAME_STATE_MEMBERS                                                 \
     HUD_MEMBER(int, mExecutionMode);                                        \
-    HUD_MEMBER(uint32_t, mNumActiveFilms);                                  \
     HUD_CPP_PTR(const rt::EmbreeAccelerator *, mEmbreeAccel);               \
     HUD_CPP_PTR(const rt::GPUAccelerator *, mGPUAccel);                     \
     HUD_CPP_PTR(const scene_rdl2::rdl2::Layer*, mLayer);                    \
@@ -269,7 +267,6 @@ enum OcclTestType
 #define FRAME_STATE_VALIDATION                                  \
     HUD_BEGIN_VALIDATION(FrameState);                           \
     HUD_VALIDATE(FrameState, mExecutionMode);                   \
-    HUD_VALIDATE(FrameState, mNumActiveFilms);                  \
     HUD_VALIDATE(FrameState, mEmbreeAccel);                     \
     HUD_VALIDATE(FrameState, mGPUAccel);                        \
     HUD_VALIDATE(FrameState, mLayer);                           \

@@ -58,7 +58,7 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
                             rayState.mSubpixel.mPixel,
                             rayState.mSubpixel.mSubpixelIndex,
                             rayState.mSequenceID,
-                            rayState.mTilePassAndFilm,
+                            rayState.mTilePass,
                             dataPtrHandle,
                             rayState.mDeepDataHandle,
                             rayState.mCryptomatteDataHandle,
@@ -662,7 +662,7 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             rayState->mSubpixel.mSampleClampingValue = sp.mSampleClampingValue;
             rayState->mSubpixel.mPrimaryRayDiffScale = sp.mPrimaryRayDiffScale;
             rayState->mSubpixel.mTextureDiffScale = sp.mTextureDiffScale;
-            rayState->mTilePassAndFilm = parentRayState.mTilePassAndFilm;
+            rayState->mTilePass = parentRayState.mTilePass;
             rayState->mDeepDataHandle = parentRayState.mDeepDataHandle;
             // Since cryptomatte records radiance information, its handle actually also needs to be acquired
             rayState->mCryptomatteDataHandle = parentRayState.mCryptomatteDataHandle;
@@ -783,7 +783,7 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
         aovAccumMaterialAovs(pbrTls, aovSchema, lightAovs, materialAovs,
                              isect, ray, fs.mScene, bsdf, ssAov,
                              &bSampler, bsmp, pv.aovPathPixelWeight, sp.mPixel,
-                             rs->mDeepDataHandle, getFilmISPC(rs->mTilePassAndFilm), pv.lpeStateId);
+                             rs->mDeepDataHandle, pv.lpeStateId);
     }
 
     drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),

@@ -516,9 +516,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     mCachedViewport(scene_rdl2::math::Viewport(0, 0, 0, 0)),
     mCachedSamplingMode(SamplingMode::UNIFORM),
     mCachedDisplayFilterCount(0),
-    mNumFilmsAllocated(initParams.mNumFilms),
-    mLastNumActiveFilms(0),
-    mFilms(nullptr),
+    mFilm(nullptr),
     mLastCoarsePassIdx(0),
     mTileScheduler(nullptr),
     mTileSchedulerCheckpointInitEstimation(nullptr),
@@ -573,7 +571,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     // is created for it.
     mTaskScheduler = new tbb::task_scheduler_init(int(tlsInitParams.mDesiredNumTBBThreads));
 
-    mFilms = alignedMallocArrayCtor<Film>(mNumFilmsAllocated, CACHE_LINE_SIZE);
+    mFilm = alignedMallocCtor<Film>(CACHE_LINE_SIZE);
 
     if (mRenderThreadState.get() == UNINITIALIZED) {
         MNRY_ASSERT(!mRenderThread.joinable());
@@ -609,7 +607,7 @@ RenderDriver::~RenderDriver()
 
     saveRealtimeStats();
 
-    alignedFreeArrayDtor(mFilms, mNumFilmsAllocated);
+    alignedFreeDtor(mFilm);
 
     RenderThreadState state = mRenderThreadState.get();
     MNRY_ASSERT_REQUIRE(state == UNINITIALIZED || state == DEAD);
@@ -655,7 +653,6 @@ RenderDriver::startFrame(const FrameState &fs)
     //
 
     mFs = fs;
-    mLastNumActiveFilms = mFs.mNumActiveFilms;
 
     // This is set to true if either the tiles or passes were updated.
     bool updated = false;
@@ -696,42 +693,40 @@ RenderDriver::startFrame(const FrameState &fs)
             mExtrapolationBuffer.init(alignedW, alignedH);
         }
 
-        MNRY_ASSERT(mFilms);
-        for (unsigned i = 0; i < mNumFilmsAllocated; ++i) {
-            uint32_t filmFlags = 0;
-            if (mFs.mSamplingMode != SamplingMode::UNIFORM) filmFlags |= Film::USE_ADAPTIVE_SAMPLING;
-            if (mFs.mGeneratePixelInfo) filmFlags |= Film::ALLOC_PIXEL_INFO_BUFFER;
-            if (mFs.mRequiresHeatMap) filmFlags |= Film::ALLOC_HEAT_MAP_BUFFER;
-            if (mFs.mExecutionMode == mcrt_common::ExecutionMode::XPU) filmFlags |= Film::VECTORIZED_XPU;
-            else if (mFs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED) filmFlags |= Film::VECTORIZED_CPU;
-            if (mFs.mRequiresDeepBuffer) {
-                filmFlags |= Film::ALLOC_DEEP_BUFFER;
-            }
-            if (mFs.mRequiresCryptomatteBuffer) filmFlags |= Film::ALLOC_CRYPTOMATTE_BUFFER;
-            if (mFs.mRenderContext->getSceneContext().getResumableOutput()) {
-                filmFlags |= Film::RESUMABLE_OUTPUT;
-            }
-            bool cryptomatteMultiPresence = mFs.mRenderContext->getSceneContext()
-                                                      .getSceneVariables()
-                                                      .get(scene_rdl2::rdl2::SceneVariables::sCryptomatteMultiPresence);
-
-            mFilms[i].init(w, h,
-                           mFs.mViewport,
-                           filmFlags,
-                           mFs.mDeepFormat,
-                           mFs.mDeepCurvatureTolerance,
-                           mFs.mDeepZTolerance,
-                           mFs.mDeepVolCompressionRes,
-                           *(mFs.mDeepIDChannelNames),
-                           mFs.mDeepMaxLayers,
-                           mFs.mNumRenderThreads,
-                           *mFs.mAovSchema,
-                           mFs.mDisplayFilterCount,
-                           &mTileExtrapolation,
-                           mFs.mMaxSamplesPerPixel,
-                           mFs.mTargetAdaptiveError,
-                           cryptomatteMultiPresence);
+        MNRY_ASSERT(mFilm);
+        uint32_t filmFlags = 0;
+        if (mFs.mSamplingMode != SamplingMode::UNIFORM) filmFlags |= Film::USE_ADAPTIVE_SAMPLING;
+        if (mFs.mGeneratePixelInfo) filmFlags |= Film::ALLOC_PIXEL_INFO_BUFFER;
+        if (mFs.mRequiresHeatMap) filmFlags |= Film::ALLOC_HEAT_MAP_BUFFER;
+        if (mFs.mExecutionMode == mcrt_common::ExecutionMode::XPU) filmFlags |= Film::VECTORIZED_XPU;
+        else if (mFs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED) filmFlags |= Film::VECTORIZED_CPU;
+        if (mFs.mRequiresDeepBuffer) {
+            filmFlags |= Film::ALLOC_DEEP_BUFFER;
         }
+        if (mFs.mRequiresCryptomatteBuffer) filmFlags |= Film::ALLOC_CRYPTOMATTE_BUFFER;
+        if (mFs.mRenderContext->getSceneContext().getResumableOutput()) {
+            filmFlags |= Film::RESUMABLE_OUTPUT;
+        }
+        bool cryptomatteMultiPresence = mFs.mRenderContext->getSceneContext()
+                                                  .getSceneVariables()
+                                                  .get(scene_rdl2::rdl2::SceneVariables::sCryptomatteMultiPresence);
+
+        mFilm->init(w, h,
+                    mFs.mViewport,
+                    filmFlags,
+                    mFs.mDeepFormat,
+                    mFs.mDeepCurvatureTolerance,
+                    mFs.mDeepZTolerance,
+                    mFs.mDeepVolCompressionRes,
+                    *(mFs.mDeepIDChannelNames),
+                    mFs.mDeepMaxLayers,
+                    mFs.mNumRenderThreads,
+                    *mFs.mAovSchema,
+                    mFs.mDisplayFilterCount,
+                    &mTileExtrapolation,
+                    mFs.mMaxSamplesPerPixel,
+                    mFs.mTargetAdaptiveError,
+                    cryptomatteMultiPresence);
 
         updated = true;
     }
@@ -742,18 +737,17 @@ RenderDriver::startFrame(const FrameState &fs)
     // we are adaptive sampling.
     if (mFs.mSamplingMode != SamplingMode::UNIFORM) {
         mProgressEstimation.setAdaptiveSampling(true);
-        for (unsigned i = 0; i < mNumFilmsAllocated; ++i) {
-            mFilms[i].getAdaptiveRenderTilesTable()->setTargetError(mFs.mTargetAdaptiveError);
 
-            if (!updated) {
-                // We need to reset adaptiveRegions because adaptiveRegions is not initialized under
-                // re-render condition. We skip updated = true case because adaptiveRegions already
-                // initialized.
-                mFilms[i].initAdaptiveRegions(mFs.mViewport,
-                                              mFs.mTargetAdaptiveError,
-                                              (mFs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
-                                               mFs.mExecutionMode == mcrt_common::ExecutionMode::XPU));
-            }
+        mFilm->getAdaptiveRenderTilesTable()->setTargetError(mFs.mTargetAdaptiveError);
+
+        if (!updated) {
+            // We need to reset adaptiveRegions because adaptiveRegions is not initialized under
+            // re-render condition. We skip updated = true case because adaptiveRegions already
+            // initialized.
+            mFilm->initAdaptiveRegions(mFs.mViewport,
+                                       mFs.mTargetAdaptiveError,
+                                       (mFs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
+                                        mFs.mExecutionMode == mcrt_common::ExecutionMode::XPU));
         }
     }
 
@@ -812,7 +806,7 @@ RenderDriver::startFrame(const FrameState &fs)
     }
 
     // Initialize DisplayFilterDriver after Film, RenderOutputDriver, and TileScheduler have been initialized.
-    mDisplayFilterDriver.init(&mFilms[0], mFs.mRenderContext->getRenderOutputDriver(),
+    mDisplayFilterDriver.init(mFilm, mFs.mRenderContext->getRenderOutputDriver(),
                               getTiles(), mTileScheduler->getTileIndices(), mFs.mViewport, getNumTBBThreads());
 
 
@@ -1078,11 +1072,10 @@ RenderDriver::getOverallProgressFraction(bool activeRendering, size_t *submitted
 {
     // For the adaptive case, report the number of tiles complete, which
     // inherently takes into account any adaptive sampling settings.
-    if (mFilms) {
-        const Film &film = mFilms[0];
-        if (film.isAdaptive()) {
+    if (mFilm) {
+        if (mFilm->isAdaptive()) {
             // adaptive sampling (checkpoint, non-checkpoint, resume) case
-            return film.getProgressFraction(activeRendering, submitted, total);
+            return mFilm->getProgressFraction(activeRendering, submitted, total);
         }
     }
 
@@ -1265,29 +1258,26 @@ RenderDriver::switchDebugRayState(DebugRayState oldState, DebugRayState newState
 }
 
 void
-RenderDriver::snapshotRenderBuffer(unsigned filmIdx, scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+RenderDriver::snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                    bool untile, bool parallel) const
 {
-    snapshotRenderBufferSub(filmIdx, outputBuffer, untile, parallel, false);
+    snapshotRenderBufferSub(outputBuffer, untile, parallel, false);
 }
 
 void
-RenderDriver::snapshotRenderBufferOdd(unsigned filmIdx, scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+RenderDriver::snapshotRenderBufferOdd(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                       bool untile, bool parallel) const
 {
-    snapshotRenderBufferSub(filmIdx, outputBuffer, untile, parallel, true);
+    snapshotRenderBufferSub(outputBuffer, untile, parallel, true);
 }
 
 void
-RenderDriver::snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+RenderDriver::snapshotRenderBufferSub(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                       bool untile, bool parallel, bool oddBuffer) const
 {
     std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);
 
-    MNRY_ASSERT(filmIdx < mLastNumActiveFilms);
     MNRY_ASSERT(outputBuffer);
-
-    const Film &film = mFilms[filmIdx];
 
     if (untile) {
         outputBuffer->init(mUnalignedW, mUnalignedH);
@@ -1301,9 +1291,9 @@ RenderDriver::snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::Ren
 
     const scene_rdl2::fb_util::RenderBuffer *srcBuffer = nullptr;
     if (!oddBuffer) {
-        srcBuffer = &film.getRenderBuffer();
+        srcBuffer = &(mFilm->getRenderBuffer());
     } else {
-        if (!(srcBuffer = film.getRenderBufferOdd())) {
+        if (!(srcBuffer = mFilm->getRenderBufferOdd())) {
             return; // We don't have renderBufferOdd when it's non adaptive sampling situation -> skip snapshot
         }
     }
@@ -1329,33 +1319,33 @@ RenderDriver::snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::Ren
 
             if (distributed) {
                 // Only extrapolate tiles in the list.
-                film.extrapolateRenderBufferWithTileList(srcBuffer,
-                                                         normalizedBuffer,
-                                                         mTileScheduler->getTiles(),
-                                                         parallel);
+                mFilm->extrapolateRenderBufferWithTileList(srcBuffer,
+                                                          normalizedBuffer,
+                                                          mTileScheduler->getTiles(),
+                                                          parallel);
             } else {
                 MNRY_ASSERT(viewportActive);
 
                 // Synthesize each tile and clip them to the viewport.
-                film.extrapolateRenderBufferWithViewport(srcBuffer,
-                                                         normalizedBuffer,
-                                                         mCachedViewport,
-                                                         parallel);
+                mFilm->extrapolateRenderBufferWithViewport(srcBuffer,
+                                                          normalizedBuffer,
+                                                          mCachedViewport,
+                                                          parallel);
             }
         } else {
             // Fast path.
-            film.extrapolateRenderBufferFastPath(srcBuffer, normalizedBuffer, parallel);
+            mFilm->extrapolateRenderBufferFastPath(srcBuffer, normalizedBuffer, parallel);
         }
     } else {
         // No extrapolation needed, just normalize the render buffer.
         // If untile is true, use the intermediate buffer so we can
         // later untile directly into the output buffer.
-        film.normalizeRenderBuffer(srcBuffer, normalizedBuffer, parallel);
+        mFilm->normalizeRenderBuffer(srcBuffer, normalizedBuffer, parallel);
     }
 
     if (untile) {
 #if 1
-        scene_rdl2::fb_util::untile(outputBuffer, mExtrapolationBuffer, film.getTiler(), parallel,
+        scene_rdl2::fb_util::untile(outputBuffer, mExtrapolationBuffer, mFilm->getTiler(), parallel,
                         [](const scene_rdl2::fb_util::RenderColor &pixel, unsigned) -> const scene_rdl2::fb_util::RenderColor & {
             return pixel;
         });
@@ -1370,15 +1360,13 @@ RenderDriver::snapshotRenderBufferSub(unsigned filmIdx, scene_rdl2::fb_util::Ren
 }
 
 void
-RenderDriver::snapshotWeightBuffer(unsigned filmIdx,
-                                   scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+RenderDriver::snapshotWeightBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                    bool untile,
                                    bool parallel) const
 {
-    MNRY_ASSERT(filmIdx < mLastNumActiveFilms);
     MNRY_ASSERT(outputBuffer);
 
-    const scene_rdl2::fb_util::FloatBuffer *weightBuffer = &getFilm(filmIdx).getWeightBuffer();
+    const scene_rdl2::fb_util::FloatBuffer *weightBuffer = &getFilm().getWeightBuffer();
 
     outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, weightBuffer->getWidth(), weightBuffer->getHeight());
 
@@ -1393,15 +1381,13 @@ RenderDriver::snapshotWeightBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotWeightBuffer(unsigned filmIdx,
-                                   scene_rdl2::fb_util::FloatBuffer *outputBuffer,
+RenderDriver::snapshotWeightBuffer(scene_rdl2::fb_util::FloatBuffer *outputBuffer,
                                    bool untile,
                                    bool parallel) const
 {
-    MNRY_ASSERT(filmIdx < mLastNumActiveFilms);
     MNRY_ASSERT(outputBuffer);
 
-    const scene_rdl2::fb_util::FloatBuffer *weightBuffer = &getFilm(filmIdx).getWeightBuffer();
+    const scene_rdl2::fb_util::FloatBuffer *weightBuffer = &getFilm().getWeightBuffer();
 
     outputBuffer->init(weightBuffer->getWidth(), weightBuffer->getHeight());
 
@@ -1416,31 +1402,30 @@ RenderDriver::snapshotWeightBuffer(unsigned filmIdx,
 }
 
 const pbr::DeepBuffer*
-RenderDriver::getDeepBuffer(unsigned filmIdx) const
+RenderDriver::getDeepBuffer() const
 {
-    return getFilm(filmIdx).getDeepBuffer();
+    return getFilm().getDeepBuffer();
 }
 
 pbr::CryptomatteBuffer*
-RenderDriver::getCryptomatteBuffer(unsigned filmIdx)
+RenderDriver::getCryptomatteBuffer()
 {
-    return getFilm(filmIdx).getCryptomatteBuffer();
+    return getFilm().getCryptomatteBuffer();
 }
 
 const pbr::CryptomatteBuffer*
-RenderDriver::getCryptomatteBuffer(unsigned filmIdx) const
+RenderDriver::getCryptomatteBuffer() const
 {
-    return getFilm(filmIdx).getCryptomatteBuffer();
+    return getFilm().getCryptomatteBuffer();
 }
 
 bool
-RenderDriver::snapshotPixelInfoBuffer(unsigned filmIdx,
-                                      scene_rdl2::fb_util::PixelInfoBuffer *outputBuffer,
+RenderDriver::snapshotPixelInfoBuffer(scene_rdl2::fb_util::PixelInfoBuffer *outputBuffer,
                                       bool untile,
                                       bool parallel) const
 {
     // can only snapshot primary camera for now
-    const scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer = getFilm(filmIdx).getPixelInfoBuffer();
+    const scene_rdl2::fb_util::PixelInfoBuffer *pixelInfoBuffer = getFilm().getPixelInfoBuffer();
 
     if (pixelInfoBuffer) {
         std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);
@@ -1461,12 +1446,11 @@ RenderDriver::snapshotPixelInfoBuffer(unsigned filmIdx,
 }
 
 bool
-RenderDriver::snapshotHeatMapBuffer(unsigned filmIdx,
-                                    scene_rdl2::fb_util::HeatMapBuffer *outputBuffer,
+RenderDriver::snapshotHeatMapBuffer(scene_rdl2::fb_util::HeatMapBuffer *outputBuffer,
                                     bool untile,
                                     bool parallel) const
 {
-    const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer = getFilm(filmIdx).getHeatMapBuffer();
+    const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer = getFilm().getHeatMapBuffer();
 
     if (heatMapBuffer) {
         snapshotBuffer(outputBuffer,
@@ -1655,15 +1639,14 @@ snapshotVarianceVariablePixelBufferFulldump(const RenderDriver *renderDriver,
 }
 
 void
-RenderDriver::snapshotDisplayFilterBuffer(unsigned filmIdx,
-                                          scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+RenderDriver::snapshotDisplayFilterBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                           unsigned int dfIdx,
                                           bool untile,
                                           bool parallel) const
 {
     std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);
 
-    const Film &film                                        = getFilm(filmIdx);
+    const Film &film                                        = getFilm();
     const scene_rdl2::fb_util::VariablePixelBuffer &displayFilterBuffer = film.getDisplayFilterBuffer(dfIdx);
     const scene_rdl2::fb_util::VariablePixelBuffer::Format format       = displayFilterBuffer.getFormat();
     const bool extrapolate                                  = false; // There is no coarse pass for display filters yet.
@@ -1686,8 +1669,7 @@ RenderDriver::snapshotDisplayFilterBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotAovBuffer(unsigned filmIdx,
-                                scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+RenderDriver::snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                 int numConsistentSamples,
                                 unsigned int aov,
                                 bool untile,
@@ -1696,7 +1678,7 @@ RenderDriver::snapshotAovBuffer(unsigned filmIdx,
 {
     std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);
 
-    const Film &film                     = getFilm(filmIdx);
+    const Film &film                     = getFilm();
     const float *weights                 = film.getWeightBuffer().getData();
     const scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
     const pbr::AovFilter filter          = film.getAovBufferFilter(aov);
@@ -1950,8 +1932,7 @@ RenderDriver::snapshotAovBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotAovBuffer(unsigned filmIdx,
-                                scene_rdl2::fb_util::RenderBuffer *outputBuffer,
+RenderDriver::snapshotAovBuffer(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                 int numConsistentSamples,
                                 unsigned int aov,
                                 bool untile,
@@ -1960,7 +1941,7 @@ RenderDriver::snapshotAovBuffer(unsigned filmIdx,
 // Snapshot the contents of an aov into a 4 channel RenderBuffer. (for optix denoise)
 //
 {
-    const Film &film                              = getFilm(filmIdx);
+    const Film &film                              = getFilm();
     const float *weights                          = film.getWeightBuffer().getData();
     const scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
     const pbr::AovFilter filter                   = film.getAovBufferFilter(aov);
@@ -2049,8 +2030,7 @@ RenderDriver::snapshotAovBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotVisibilityBuffer(unsigned filmIdx,
-                                       scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+RenderDriver::snapshotVisibilityBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                        unsigned int aov,
                                        bool untile,
                                        bool parallel,
@@ -2058,7 +2038,7 @@ RenderDriver::snapshotVisibilityBuffer(unsigned filmIdx,
 {
     std::lock_guard<std::mutex> lock(mExtrapolationBufferMutex);
 
-    const Film &film = getFilm(filmIdx);
+    const Film &film = getFilm();
     const scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
     const bool extrapolate = !areCoarsePassesComplete();
 
@@ -2112,15 +2092,14 @@ RenderDriver::snapshotVisibilityBuffer(unsigned filmIdx,
 }
 
 void
-RenderDriver::snapshotVisibilityVarianceBuffer(unsigned filmIdx,
-                                               scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
+RenderDriver::snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                                unsigned int sourceAov,
                                                bool untile,
                                                bool parallel) const
 {
     // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
 
-    const Film &film                                        = getFilm(filmIdx);
+    const Film &film                                        = getFilm();
     const scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer           = film.getAovBuffer(sourceAov);
     const bool extrapolate                                  = !areCoarsePassesComplete();
 
@@ -2161,8 +2140,6 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
 //   Resume render start tile samples number which retrieved from resume file.
 //
 {
-    unsigned filmIdx = 0; // We only consider mFilms[0] so far at this moment.
-
     //
     // Step 1 : Revert film object data from file : This is done by multi-threaded internally.
     //
@@ -2170,7 +2147,7 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
     bool zeroWeightMask;
     bool adaptiveSampling;
     float adaptiveSampleParam[3];
-    if (!renderOutputDriver->revertFilmData(mFilms[filmIdx],
+    if (!renderOutputDriver->revertFilmData(*mFilm,
                                             resumeTileSamples, resumeNumConsistentSamples, zeroWeightMask,
                                             adaptiveSampling, adaptiveSampleParam)) {
         for (const auto &e: renderOutputDriver->getErrors()) Logger::error(e);
@@ -2201,7 +2178,7 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
     }
     if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
         // for adaptive resume, we need "Beauty Odd"
-        if (!mFilms[filmIdx].getRenderBufferOdd()) {
+        if (mFilm->getRenderBufferOdd()) {
             Logger::error("ADAPTIVE sampling resume file required \"Beauty Odd\" AOV");
             return false;
         }
@@ -2213,16 +2190,16 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
     crawlAllRenderOutput(*renderOutputDriver,
                          [&](const scene_rdl2::rdl2::RenderOutput *ro) { // non active AOV
                              if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY_AUX) {
-                                 denormalizeBeautyOdd(filmIdx);
+                                 denormalizeBeautyOdd();
                              }
                              if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_ALPHA_AUX) {
-                                 denormalizeAlphaOdd(filmIdx);
+                                 denormalizeAlphaOdd();
                              }
                              if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE) {
                                  // naively create sample count array first.
                                  scene_rdl2::fb_util::PixelBuffer<unsigned> samplesCount;
-                                 mFilms[filmIdx].fillPixelSampleCountBuffer(samplesCount);
-                                 mFilms[filmIdx].getCryptomatteBuffer()->unfinalize(samplesCount);
+                                 mFilm->fillPixelSampleCountBuffer(samplesCount);
+                                 mFilm->getCryptomatteBuffer()->unfinalize(samplesCount);
                              }
                          },
                          [](const int /*aovIdx*/, const int /*varianceSource*/) {
@@ -2232,12 +2209,12 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
                          [&](const int aovIdx) { // Variance AOV
                              // Variance AOV (non Visibility)
                              if (!zeroWeightMask) return;
-                             zeroWeightMaskAovBuffer(filmIdx, aovIdx);
+                             zeroWeightMaskAovBuffer(aovIdx);
                          },
                          [&](const int aovIdx) { // Visibility AOV
                              if (!zeroWeightMask) return;
                              // We have to set zero at zero weight pixel in this case.
-                             zeroWeightMaskVisibilityBuffer(filmIdx, aovIdx);
+                             zeroWeightMaskVisibilityBuffer(aovIdx);
                          },
                          [&](const int aovIdx) { // regular AOV
                              unsigned currNumConsistentSamples = fs.mRenderContext->getNumConsistentSamples();
@@ -2245,13 +2222,13 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
                                  // If resume file has numConsistentSamples info, pick resume file info
                                  currNumConsistentSamples = (unsigned)resumeNumConsistentSamples;
                              }
-                             denormalizeAovBuffer(filmIdx, currNumConsistentSamples, aovIdx);
+                             denormalizeAovBuffer(currNumConsistentSamples, aovIdx);
                          });
 
     //
     // Step 3 : Copy beauty buffer from aov (BEAUTY, ALPHA) : This is done by multi-threaded internally.
     //
-    if (!copyBeautyBuffer(filmIdx)) {
+    if (!copyBeautyBuffer()) {
         return false;
     }
 
@@ -2351,12 +2328,11 @@ RenderDriver::setFrameComplete()
 }
 
 void
-RenderDriver::denormalizeAovBuffer(unsigned filmIdx, int numConsistentSamples, unsigned int aov)
+RenderDriver::denormalizeAovBuffer(int numConsistentSamples, unsigned int aov)
 {
-    Film &film = mFilms[filmIdx];
-    const float *weightBuff = film.getWeightBuffer().getData();
-    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
-    const pbr::AovFilter filter = film.getAovBufferFilter(aov);
+    const float *weightBuff = mFilm->getWeightBuffer().getData();
+    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = mFilm->getAovBuffer(aov);
+    const pbr::AovFilter filter = mFilm->getAovBufferFilter(aov);
     const auto format = aovBuffer.getFormat();
 
     switch (format) {
@@ -2395,7 +2371,7 @@ RenderDriver::denormalizeAovBuffer(unsigned filmIdx, int numConsistentSamples, u
 }
 
 void
-RenderDriver::denormalizeBeautyOdd(unsigned filmIdx)
+RenderDriver::denormalizeBeautyOdd()
 {
     //
     // Essentially beautyOdd buffer should be normalized and denormalized by half weight
@@ -2410,9 +2386,8 @@ RenderDriver::denormalizeBeautyOdd(unsigned filmIdx)
     // This is a reason why we are using full weight for normalize/denormalize operation for renderBufferOdd.
     //
 
-    Film &film = mFilms[filmIdx];
-    const float *weightBuff = film.getWeightBuffer().getData();
-    scene_rdl2::fb_util::RenderBuffer *renderBufferOdd = film.getRenderBufferOdd();
+    const float *weightBuff = mFilm->getWeightBuffer().getData();
+    scene_rdl2::fb_util::RenderBuffer *renderBufferOdd = mFilm->getRenderBufferOdd();
     if (!renderBufferOdd) return; // just in case
 
     crawlAllTiledPixels([&](unsigned pixOffset) {
@@ -2423,15 +2398,14 @@ RenderDriver::denormalizeBeautyOdd(unsigned filmIdx)
 }
 
 void
-RenderDriver::denormalizeAlphaOdd(unsigned filmIdx)
+RenderDriver::denormalizeAlphaOdd()
 {
     //
     // Same as denormalizeBeautyOdd() function, we used standard weight value to normalize alphaOdd value.
     // So use standard weight value is used for denormalized as well.
     //
-    Film &film = mFilms[filmIdx];
-    const float *weightBuff = film.getWeightBuffer().getData();
-    scene_rdl2::fb_util::RenderBuffer *renderBufferOdd = film.getRenderBufferOdd();
+    const float *weightBuff = mFilm->getWeightBuffer().getData();
+    scene_rdl2::fb_util::RenderBuffer *renderBufferOdd = mFilm->getRenderBufferOdd();
     if (!renderBufferOdd) return; // just in case
 
     crawlAllTiledPixels([&](unsigned pixOffset) {
@@ -2442,11 +2416,10 @@ RenderDriver::denormalizeAlphaOdd(unsigned filmIdx)
 }
 
 void
-RenderDriver::zeroWeightMaskAovBuffer(unsigned filmIdx, unsigned int aov)
+RenderDriver::zeroWeightMaskAovBuffer(unsigned int aov)
 {
-    Film &film = mFilms[filmIdx];
-    const float *weightBuff = film.getWeightBuffer().getData();
-    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
+    const float *weightBuff = mFilm->getWeightBuffer().getData();
+    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = mFilm->getAovBuffer(aov);
     const auto format = aovBuffer.getFormat();
 
     switch (format) {
@@ -2480,11 +2453,10 @@ RenderDriver::zeroWeightMaskAovBuffer(unsigned filmIdx, unsigned int aov)
 }
 
 void
-RenderDriver::zeroWeightMaskVisibilityBuffer(unsigned filmIdx, unsigned int aov)
+RenderDriver::zeroWeightMaskVisibilityBuffer(unsigned int aov)
 {
-    Film &film = mFilms[filmIdx];
-    const float *weightBuff = film.getWeightBuffer().getData();
-    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = film.getAovBuffer(aov);
+    const float *weightBuff = mFilm->getWeightBuffer().getData();
+    scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer = mFilm->getAovBuffer(aov);
 
     zeroWeightMaskVariablePixelBuffer(this,
                                       aovBuffer.getFloat2Buffer(), // visibility is always float2 buffer
@@ -2492,12 +2464,10 @@ RenderDriver::zeroWeightMaskVisibilityBuffer(unsigned filmIdx, unsigned int aov)
 }
 
 bool
-RenderDriver::copyBeautyBuffer(unsigned filmIdx)
+RenderDriver::copyBeautyBuffer()
 {
-    Film &film = mFilms[filmIdx];
-
-    const scene_rdl2::fb_util::VariablePixelBuffer *beautyAovBuff = film.getBeautyAovBuff();
-    const scene_rdl2::fb_util::VariablePixelBuffer *alphaAovBuff = film.getAlphaAovBuff();
+    const scene_rdl2::fb_util::VariablePixelBuffer *beautyAovBuff = mFilm->getBeautyAovBuff();
+    const scene_rdl2::fb_util::VariablePixelBuffer *alphaAovBuff = mFilm->getAlphaAovBuff();
     if (!beautyAovBuff || !alphaAovBuff) {
         std::ostringstream ostr;
         ostr << "copy beauty buffer from AOV failed. Could not find beausy AOV or Alpha AOV";
@@ -2507,7 +2477,7 @@ RenderDriver::copyBeautyBuffer(unsigned filmIdx)
     const scene_rdl2::fb_util::Float3Buffer *beautyBuff = &(beautyAovBuff->getFloat3Buffer());
     const scene_rdl2::fb_util::FloatBuffer *alphaBuff = &(alphaAovBuff->getFloatBuffer());
 
-    scene_rdl2::fb_util::RenderBuffer &renderBuff = film.getRenderBuffer();
+    scene_rdl2::fb_util::RenderBuffer &renderBuff = mFilm->getRenderBuffer();
     crawlAllTiledPixels([&](unsigned pixOffset) {
             scene_rdl2::fb_util::RenderColor &currPix = *(renderBuff.getData() + pixOffset);
             const scene_rdl2::math::Vec3f &currRgb = *(beautyBuff->getData() + pixOffset);

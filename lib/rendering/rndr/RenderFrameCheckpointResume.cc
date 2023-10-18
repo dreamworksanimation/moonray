@@ -448,13 +448,9 @@ RenderDriver::revertFilmObjectAndResetWorkQueue(RenderDriver *driver, const Fram
     //
     // Resume render mode
     //
-    // So far only process filmId = 0. If we support multi films, need to consider bit more
-    //
-    int filmId = 0;
-    Film *films = driver->mFilms;
-    Film &film = films[filmId];
+    Film *film = driver->mFilm;
     unsigned progressCheckpointStartTileSampleId = 0;
-    if (!film.getResumedFromFileCondition()) {
+    if (!film->getResumedFromFileCondition()) {
         driver->mProgressEstimation.revertFilm(true);
 
         // This is a very first time to render. So we try to revert film object from file.
@@ -463,30 +459,30 @@ RenderDriver::revertFilmObjectAndResetWorkQueue(RenderDriver *driver, const Fram
         if (!driver->revertFilmData(renderOutputDriver, fs, progressCheckpointStartTileSampleId)) {
             // revert from file failed. -> fall back to standard operation.
             scene_rdl2::logging::Logger::error("Fall back on standard rendering");
-            films[0].clearAllBuffers();
+            film->clearAllBuffers();
             driver->mProgressEstimation.revertFilm(false);
             return 0;           // fall back to normal render
         }
 
         // set tried condition and skip all additional revertFilmData() regardless of
         // the result of revertFilmData()
-        film.setResumedFromFileCondition();
+        film->setResumedFromFileCondition();
 
         if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
             unsigned pixelSampleId =
-                film.getAdaptiveRenderTilesTable()->reset(film,
-                                                          *driver->getTiles(),
-                                                          fs.mMinSamplesPerPixel,
-                                                          fs.mMaxSamplesPerPixel,
-                                                          fs.mTargetAdaptiveError,
-                                                          fs.mViewport);
+                film->getAdaptiveRenderTilesTable()->reset(*film,
+                                                           *driver->getTiles(),
+                                                           fs.mMinSamplesPerPixel,
+                                                           fs.mMaxSamplesPerPixel,
+                                                           fs.mTargetAdaptiveError,
+                                                           fs.mViewport);
 
             // We need to enable adjust adaptiveTree update timing logic and execute adaptiveTreeUpdate operation by current film
             // condition before start rendering under resume adaptive sampling rendering mode.
             UIntTable adaptiveIterationPixSampleIdTable =
                 createAdaptiveIterationPixSampleIdTable(fs.mMaxSamplesPerPixel);
-            film.enableAdjustAdaptiveTreeUpdateTiming(adaptiveIterationPixSampleIdTable);
-            film.updateAdaptiveErrorAll(film.getRenderBuffer(), *film.getRenderBufferOdd());
+            film->enableAdjustAdaptiveTreeUpdateTiming(adaptiveIterationPixSampleIdTable);
+            film->updateAdaptiveErrorAll(film->getRenderBuffer(), *(film->getRenderBufferOdd()));
 
             // Adaptive sampling case, progressCheckpointStartTileSampleId is always boundary of
             // same pixel samples in the tile.
@@ -848,9 +844,7 @@ RenderDriver::progressCheckpointRenderStint(RenderDriver *driver, const FrameSta
         adaptiveIterationPixSampleIdTablePtr = &adaptiveIterationPixSampleIdTable;
 
         // We do enable adjust adaptiveTree update timing logic for checkpoint + adaptive sampling.
-        for (unsigned ifilm = 0; ifilm < driver->mLastNumActiveFilms; ++ifilm) {
-            driver->mFilms[ifilm].enableAdjustAdaptiveTreeUpdateTiming(adaptiveIterationPixSampleIdTable);
-        }
+        driver->mFilm->enableAdjustAdaptiveTreeUpdateTiming(adaptiveIterationPixSampleIdTable);
     }
 
     if (startSampleId == processStartTileSampleId) {
@@ -987,9 +981,9 @@ RenderDriver::isProgressCheckpointComplete(RenderDriver *driver, const FrameStat
 
     } else {
         //
-        // ADAPTIVE sampling mode : so far only test filmId = 0
+        // ADAPTIVE sampling mode
         //
-        if (driver->mFilms[0].getAdaptiveDone()) {
+        if (driver->mFilm->getAdaptiveDone()) {
             return true; // all tiles have been converged -> end loop
         }
     }
