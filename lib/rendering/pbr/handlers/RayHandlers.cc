@@ -312,7 +312,6 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     // By convention, if userData is null then rayState contains an array of raw
     // RayState pointers.
     RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
-    MNRY_ASSERT(handlerFlags <= RAYHANDLER_FLAGS_MASK);
 
     const FrameState &fs = *pbrTls->mFs;
 
@@ -729,7 +728,6 @@ occlusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntr
     SCOPED_MEM(arena);
 
     RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
-    MNRY_ASSERT(handlerFlags <= RAYHANDLER_FLAGS_MASK);
 
     BundledRadiance *results = arena->allocArray<BundledRadiance>(numEntries, CACHE_LINE_SIZE);
 
@@ -756,7 +754,6 @@ presenceShadowsQueryBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned n
     SCOPED_MEM(arena);
 
     RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
-    MNRY_ASSERT(handlerFlags <= RAYHANDLER_FLAGS_MASK);
 
     BundledRadiance *results = arena->allocArray<BundledRadiance>(numEntries, CACHE_LINE_SIZE);
 

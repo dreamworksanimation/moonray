@@ -231,7 +231,6 @@ xpuOcclusionQueryBundleHandlerCPU(mcrt_common::ThreadLocalState *tls,
     SCOPED_MEM(arena);
 
     RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
-    MNRY_ASSERT(handlerFlags <= RAYHANDLER_FLAGS_MASK);
 
     BundledRadiance *results = arena->allocArray<BundledRadiance>(numRays, CACHE_LINE_SIZE);
 
