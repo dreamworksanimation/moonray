@@ -41,7 +41,7 @@
     HUD_CPP_MEMBER(RayStatePool, mRayStatePool, 96);                                \
     HUD_CPP_MEMBER(CL1Pool, mCL1Pool, 96);                                          \
     HUD_CPP_MEMBER(PrimaryRayQueue, mPrimaryRayQueue, 40);                          \
-    HUD_CPP_MEMBER(IncoherentRayQueue, mIncoherentRayQueue, 48);                    \
+    HUD_CPP_MEMBER(IncoherentRayQueue, mIncoherentRayQueue, 40);                    \
     HUD_PRIVATE()                                                                   \
     HUD_CPP_MEMBER(OcclusionQueue, mOcclusionQueue, 40);                            \
     HUD_CPP_MEMBER(PresenceShadowsQueue, mPresenceShadowsQueue, 40);                \
@@ -60,6 +60,7 @@
     HUD_CPP_MEMBER(std::vector<DebugRayVertex *>, mRayVertexStack, 24);             \
     HUD_PRIVATE()                                                                   \
     HUD_CPP_PTR(PrimaryRayQueue::EntryType *, mPrimaryRayEntries);                  \
+    HUD_CPP_PTR(IncoherentRayQueue::EntryType *, mIncoherentRayEntries);            \
     HUD_CPP_PTR(OcclusionQueue::EntryType *, mOcclusionEntries);                    \
     HUD_CPP_PTR(PresenceShadowsQueue::EntryType *, mPresenceShadowsEntries);        \
     HUD_CPP_PTR(RadianceQueue::EntryType *, mRadianceEntries);                      \
@@ -91,6 +92,7 @@
     HUD_VALIDATE(PbrTLState, mRayRecorder);                     \
     HUD_VALIDATE(PbrTLState, mRayVertexStack);                  \
     HUD_VALIDATE(PbrTLState, mPrimaryRayEntries);               \
+    HUD_VALIDATE(PbrTLState, mIncoherentRayEntries);            \
     HUD_VALIDATE(PbrTLState, mOcclusionEntries);                \
     HUD_VALIDATE(PbrTLState, mPresenceShadowsEntries);          \
     HUD_VALIDATE(PbrTLState, mRadianceEntries);                 \

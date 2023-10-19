@@ -7,10 +7,11 @@
 
 #include "PbrTLState.hh"
 
-#include "IncoherentRayQueue.h"
 #include "Statistics.h"
+#include <moonray/rendering/mcrt_common/Bundle.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulator.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
+#include <moonray/rendering/pbr/Types.h>
 #include <moonray/rendering/shading/Types.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
 #include <scene_rdl2/render/logging/logging.h>
@@ -49,8 +50,8 @@ public:
     typedef uint8_t CacheLine1[1 * CACHE_LINE_SIZE];
     typedef scene_rdl2::alloc::MemPool<mcrt_common::TLSInitParams::MemBlockType, CacheLine1> CL1Pool;
 
-    // Unsorted.
     typedef mcrt_common::LocalQueue<WrappedRayState>           PrimaryRayQueue;
+    typedef mcrt_common::LocalQueue<WrappedRayState>           IncoherentRayQueue;
 
     // @@@ Does sorting by ray direction improve perf?
     typedef mcrt_common::LocalLargeEntryQueue<BundledOcclRay>  OcclusionQueue;
