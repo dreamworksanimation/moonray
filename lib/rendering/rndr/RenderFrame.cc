@@ -105,13 +105,13 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
         if (fs.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
             fs.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
  
-            tls->setRadianceQueueHandler(0, Film::addSampleBundleHandler, film);
+            tls->setRadianceQueueHandler(Film::addSampleBundleHandler, film);
             if (fs.mAovSchema->hasAovFilter()) {
-                tls->setAovQueueHandler(0, Film::addFilteredAovSampleBundleHandler, film);
+                tls->setAovQueueHandler(Film::addFilteredAovSampleBundleHandler, film);
             } else {
-                tls->setAovQueueHandler(0, Film::addAovSampleBundleHandler, film);
+                tls->setAovQueueHandler(Film::addAovSampleBundleHandler, film);
             }
-            tls->setHeatMapQueueHandler(0, Film::addHeatMapBundleHandler, film);
+            tls->setHeatMapQueueHandler(Film::addHeatMapBundleHandler, film);
         }
 
         tls->mFs = &fs;

@@ -106,8 +106,6 @@ public:
     // have no outstanding allocations.
     bool                verifyNoOutstandingAllocs();
 
-    // This function deals with routing bundled radiances through to the correct
-    // film handlers in the event that we're using multiple Film objects.
     void                addRadianceQueueEntries(unsigned numEntries, BundledRadiance *entries);
     void                addAovQueueEntries(unsigned numEntries, BundledAov *entries);
     void                addOcclusionQueueEntries(unsigned numEntries, BundledOcclRay *entries);
@@ -122,7 +120,7 @@ public:
     //
     // Queue helpers:
     //
-    void                flushRadianceQueues();
+    void                flushRadianceQueue();
     unsigned            flushLocalQueues();
     bool                areAllLocalQueuesEmpty();
 
@@ -149,14 +147,11 @@ public:
     //
     // For initialization. Should only be called from RenderDriver.
     //
-    void                setRadianceQueueHandler(unsigned queueIdx,
-                                                RadianceQueue::Handler handler,
+    void                setRadianceQueueHandler(RadianceQueue::Handler handler,
                                                 void *handlerData);
-    void                setAovQueueHandler(unsigned queueIdx,
-                                           AovQueue::Handler handler,
+    void                setAovQueueHandler(AovQueue::Handler handler,
                                            void *handlerData);
-    void                setHeatMapQueueHandler(unsigned queueIdx,
-                                               HeatMapQueue::Handler handler,
+    void                setHeatMapQueueHandler(HeatMapQueue::Handler handler,
                                                void *handlerData);
 
     // Used as a callback which is registered with TLSInitParams.

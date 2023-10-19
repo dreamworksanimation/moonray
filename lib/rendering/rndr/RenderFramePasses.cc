@@ -293,7 +293,7 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
                     // Radiance values are already computed so just write them into
                     // the frame buffer. This gives a more complete image even if
                     // a cancellation was requested (useful for progressive mode).
-                    tls->flushRadianceQueues();
+                    tls->flushRadianceQueue();
 
                 } else {
 

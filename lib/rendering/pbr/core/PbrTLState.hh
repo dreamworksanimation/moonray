@@ -16,9 +16,9 @@
 //  mPrimaryRayQueue                    All local primary rays are sent through this queue.
 //  mIncoherentRayQueue                 All local incoherent/indirect rays are sent through these queues.
 //  mOcclusionQueue                     All local occlusion queries are sent through this queue.
-//  mRadianceQueues                     All local radiance samples are sent through these queues,
-//  mAovQueues                          there is one queue per film.
-//  mHeatMapQueues
+//  mRadianceQueue                      All local radiance samples are sent through these queues.
+//  mAovQueue
+//  mHeatMapQueue
 //  mXPUOcclusionRayQueue               Pointer to XPU occlusion ray queue (owned by the RenderDriver)
 //  mPrimaryRaysSubmitted               Primary rays submitted from Film index 0. This is the only film we use to track progress.
 //  mFs                                 Constant for entire frame.
@@ -45,9 +45,9 @@
     HUD_PRIVATE()                                                                   \
     HUD_CPP_MEMBER(OcclusionQueue, mOcclusionQueue, 40);                            \
     HUD_CPP_MEMBER(PresenceShadowsQueue, mPresenceShadowsQueue, 40);                \
-    HUD_CPP_PTR(RadianceQueue *, mRadianceQueues);                                  \
-    HUD_CPP_PTR(AovQueue *, mAovQueues);                                            \
-    HUD_CPP_PTR(HeatMapQueue *, mHeatMapQueues);                                    \
+    HUD_CPP_PTR(RadianceQueue *, mRadianceQueue);                                   \
+    HUD_CPP_PTR(AovQueue *, mAovQueue);                                             \
+    HUD_CPP_PTR(HeatMapQueue *, mHeatMapQueue);                                     \
     HUD_CPP_PTR(XPUOcclusionRayQueue *, mXPUOcclusionRayQueue);                     \
     HUD_PUBLIC()                                                                    \
     HUD_CPP_ARRAY(size_t, mPrimaryRaysSubmitted, MAX_RENDER_PASSES, 8000);          \
@@ -78,9 +78,9 @@
     HUD_VALIDATE(PbrTLState, mIncoherentRayQueue);              \
     HUD_VALIDATE(PbrTLState, mOcclusionQueue);                  \
     HUD_VALIDATE(PbrTLState, mPresenceShadowsQueue);            \
-    HUD_VALIDATE(PbrTLState, mRadianceQueues);                  \
-    HUD_VALIDATE(PbrTLState, mAovQueues);                       \
-    HUD_VALIDATE(PbrTLState, mHeatMapQueues);                   \
+    HUD_VALIDATE(PbrTLState, mRadianceQueue);                   \
+    HUD_VALIDATE(PbrTLState, mAovQueue);                        \
+    HUD_VALIDATE(PbrTLState, mHeatMapQueue);                    \
     HUD_VALIDATE(PbrTLState, mXPUOcclusionRayQueue);            \
     HUD_VALIDATE(PbrTLState, mPrimaryRaysSubmitted);            \
     HUD_VALIDATE(PbrTLState, mFs);                              \

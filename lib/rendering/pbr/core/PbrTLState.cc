@@ -222,9 +222,9 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
                  bool okToAllocBundledResources) :
     BaseTLState(tls->mThreadIdx, tls->mArena, tls->mPixelArena),
     mTopLevelTls(tls),
-    mRadianceQueues(nullptr),
-    mAovQueues(nullptr),
-    mHeatMapQueues(nullptr),
+    mRadianceQueue(nullptr),
+    mAovQueue(nullptr),
+    mHeatMapQueue(nullptr),
     mXPUOcclusionRayQueue(nullptr),
     mFs(nullptr),
     mCancellationState(DISABLED),
@@ -288,34 +288,31 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
 
         // Allocate radiance queue.
         if (initParams.mRadianceQueueSize) {
-            mRadianceQueues = scene_rdl2::alignedMallocArrayCtor<RadianceQueue>
-                                  (1, CACHE_LINE_SIZE);
+            mRadianceQueue = scene_rdl2::alignedMallocCtor<RadianceQueue>(CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mRadianceQueueSize;
             mRadianceEntries = scene_rdl2::alignedMallocArray<RadianceQueue::EntryType>
                                    (queueSize, CACHE_LINE_SIZE);
-            mRadianceQueues[0].init(queueSize, mRadianceEntries);
+            mRadianceQueue->init(queueSize, mRadianceEntries);
             // Radiance queue handler is setup by the RenderDriver.
         }
 
         // Allocate aov queue
         if (initParams.mAovQueueSize) {
-            mAovQueues = scene_rdl2::alignedMallocArrayCtor<AovQueue>
-                                  (1, CACHE_LINE_SIZE);
+            mAovQueue = scene_rdl2::alignedMallocCtor<AovQueue>(CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mAovQueueSize;
             mAovEntries = scene_rdl2::alignedMallocArray<AovQueue::EntryType>
                                    (queueSize, CACHE_LINE_SIZE);
-            mAovQueues[0].init(queueSize, mAovEntries);
+            mAovQueue->init(queueSize, mAovEntries);
             // Aov queue handler is setup by the RenderDriver.
         }
 
         // Allocate heat map queue
         if (initParams.mHeatMapQueueSize) {
-            mHeatMapQueues = scene_rdl2::alignedMallocArrayCtor<HeatMapQueue>
-                                  (1, CACHE_LINE_SIZE);
+            mHeatMapQueue = scene_rdl2::alignedMallocCtor<HeatMapQueue>(CACHE_LINE_SIZE);
             unsigned queueSize = initParams.mHeatMapQueueSize;
             mHeatMapEntries = scene_rdl2::alignedMallocArray<HeatMapQueue::EntryType>
                                    (queueSize, CACHE_LINE_SIZE);
-            mHeatMapQueues[0].init(queueSize, mHeatMapEntries);
+            mHeatMapQueue->init(queueSize, mHeatMapEntries);
             // HeatMap queue handler is setup by the RenderDriver.
         }
     }
@@ -332,9 +329,9 @@ TLState::~TLState()
 
     delete mRayRecorder;
 
-    scene_rdl2::alignedFreeArrayDtor(mRadianceQueues, 1);
-    scene_rdl2::alignedFreeArrayDtor(mAovQueues, 1);
-    scene_rdl2::alignedFreeArrayDtor(mHeatMapQueues, 1);
+    scene_rdl2::alignedFreeDtor(mRadianceQueue);
+    scene_rdl2::alignedFreeDtor(mAovQueue);
+    scene_rdl2::alignedFreeDtor(mHeatMapQueue);
     scene_rdl2::alignedFreeArray(mRadianceEntries);
     scene_rdl2::alignedFreeArray(mAovEntries);
     scene_rdl2::alignedFreeArray(mOcclusionEntries);
@@ -366,14 +363,14 @@ TLState::reset()
     mOcclusionQueue.reset();
     mPresenceShadowsQueue.reset();
 
-    if (mRadianceQueues) {
-        mRadianceQueues[0].reset();
+    if (mRadianceQueue) {
+        mRadianceQueue->reset();
     }
-    if (mAovQueues) {
-        mAovQueues[0].reset();
+    if (mAovQueue) {
+        mAovQueue->reset();
     }
-    if (mHeatMapQueues) {
-        mHeatMapQueues[0].reset();
+    if (mHeatMapQueue) {
+        mHeatMapQueue->reset();
     }
 
     setAllQueueSizes(1.f);
@@ -571,35 +568,31 @@ TLState::verifyNoOutstandingAllocs()
     return true;
 }
 
-// Add entries to per-film queues (radiance, aov)
-template <typename QueueType>
 void
-TLState::addFilmQueueEntries(unsigned numEntries,
-                             typename QueueType::EntryType *entries,
-                             QueueType *queues)
+TLState::addRadianceQueueEntries(unsigned numEntries, BundledRadiance *entries)
 {
     if (!numEntries) {
         return;
     }
-    queues[0].addEntries(mTopLevelTls, numEntries, entries, mArena);
-}
-
-void
-TLState::addRadianceQueueEntries(unsigned numEntries, BundledRadiance *entries)
-{
-    addFilmQueueEntries(numEntries, entries, mRadianceQueues);
+    mRadianceQueue->addEntries(mTopLevelTls, numEntries, entries, mArena);
 }
 
 void
 TLState::addAovQueueEntries(unsigned numEntries, BundledAov *entries)
 {
-    addFilmQueueEntries(numEntries, entries, mAovQueues);
+    if (!numEntries) {
+        return;
+    }
+    mAovQueue->addEntries(mTopLevelTls, numEntries, entries, mArena);
 }
 
 void
 TLState::addHeatMapQueueEntries(unsigned numEntries, BundledHeatMapSample *entries)
 {
-    addFilmQueueEntries(numEntries, entries, mHeatMapQueues);
+    if (!numEntries) {
+        return;
+    }
+    mHeatMapQueue->addEntries(mTopLevelTls, numEntries, entries, mArena);
 }
 
 void
@@ -633,9 +626,9 @@ TLState::setXPUOcclusionRayQueue(XPUOcclusionRayQueue* queue)
 }
 
 void
-TLState::flushRadianceQueues()
+TLState::flushRadianceQueue()
 {
-     mRadianceQueues[0].flush(mTopLevelTls, mArena);
+     mRadianceQueue->flush(mTopLevelTls, mArena);
 }
 
 unsigned
@@ -667,9 +660,9 @@ TLState::flushLocalQueues()
         return 0;
     }
 
-    processed += mRadianceQueues[0].flush(mTopLevelTls, mArena);
-    processed += mAovQueues[0].flush(mTopLevelTls, mArena);
-    processed += mHeatMapQueues[0].flush(mTopLevelTls, mArena);
+    processed += mRadianceQueue->flush(mTopLevelTls, mArena);
+    processed += mAovQueue->flush(mTopLevelTls, mArena);
+    processed += mHeatMapQueue->flush(mTopLevelTls, mArena);
 
     if (isCanceled()) {
         return 0;
@@ -697,13 +690,13 @@ TLState::areAllLocalQueuesEmpty()
         return false;
     }
 
-    if (!mRadianceQueues[0].isEmpty()) {
+    if (!mRadianceQueue->isEmpty()) {
         return false;
     }
-    if (!mAovQueues[0].isEmpty()) {
+    if (!mAovQueue->isEmpty()) {
         return false;
     }
-    if (!mHeatMapQueues[0].isEmpty()) {
+    if (!mHeatMapQueue->isEmpty()) {
         return false;
     }
 
@@ -720,14 +713,14 @@ TLState::setAllQueueSizes(float t)
     setQueueSize(&mOcclusionQueue, t);
     setQueueSize(&mPresenceShadowsQueue, t);
 
-    if (mRadianceQueues) {
-        setQueueSize(&mRadianceQueues[0], t);
+    if (mRadianceQueue) {
+        setQueueSize(mRadianceQueue, t);
     }
-    if (mAovQueues) {
-        setQueueSize(&mAovQueues[0], t);
+    if (mAovQueue) {
+        setQueueSize(mAovQueue, t);
     }
-    if (mHeatMapQueues) {
-        setQueueSize(&mHeatMapQueues[0], t);
+    if (mHeatMapQueue) {
+        setQueueSize(mHeatMapQueue, t);
     }
 }
 
@@ -802,27 +795,21 @@ TLState::isIntegratorAccumulatorRunning() const
 }
 
 void
-TLState::setRadianceQueueHandler(unsigned queueIdx,
-                                 RadianceQueue::Handler handler,
-                                 void *handlerData)
+TLState::setRadianceQueueHandler(RadianceQueue::Handler handler, void *handlerData)
 {
-    mRadianceQueues[queueIdx].setHandler(handler, handlerData);
+    mRadianceQueue->setHandler(handler, handlerData);
 }
 
 void
-TLState::setAovQueueHandler(unsigned queueIdx,
-                            AovQueue::Handler handler,
-                            void *handlerData)
+TLState::setAovQueueHandler(AovQueue::Handler handler, void *handlerData)
 {
-    mAovQueues[queueIdx].setHandler(handler, handlerData);
+    mAovQueue->setHandler(handler, handlerData);
 }
 
 void
-TLState::setHeatMapQueueHandler(unsigned queueIdx,
-                                HeatMapQueue::Handler handler,
-                                void *handlerData)
+TLState::setHeatMapQueueHandler(HeatMapQueue::Handler handler, void *handlerData)
 {
-    mHeatMapQueues[queueIdx].setHandler(handler, handlerData);
+    mHeatMapQueue->setHandler(handler, handlerData);
 }
 
 std::shared_ptr<TLState>
