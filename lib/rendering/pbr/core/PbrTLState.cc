@@ -231,6 +231,7 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
     mCurrentPassIdx(0),
     mRayRecorder(nullptr),
     mPrimaryRayEntries(nullptr),
+    mIncoherentRayEntries(nullptr),
     mOcclusionEntries(nullptr),
     mPresenceShadowsEntries(nullptr),
     mRadianceEntries(nullptr),
@@ -255,14 +256,18 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
             mPrimaryRayEntries = scene_rdl2::alignedMallocArray<PrimaryRayQueue::EntryType>
                                      (queueSize, CACHE_LINE_SIZE);
             mPrimaryRayQueue.init(queueSize, mPrimaryRayEntries);
-            uint32_t rayHandlerFlags = RAYHANDLER_PRIMARY_RAYS;
+            uint32_t rayHandlerFlags = 0;
             mPrimaryRayQueue.setHandler(rayBundleHandler, (void *)((uint64_t)rayHandlerFlags));
         }
 
         // Allocate incoherent ray queue.
         if (initParams.mIncoherentRayQueueSize) {
             unsigned queueSize = initParams.mIncoherentRayQueueSize;
-            mIncoherentRayQueue.init(queueSize);
+            mIncoherentRayEntries = scene_rdl2::alignedMallocArray<IncoherentRayQueue::EntryType>
+                                     (queueSize, CACHE_LINE_SIZE);
+            mIncoherentRayQueue.init(queueSize, mIncoherentRayEntries);
+            uint32_t rayHandlerFlags = 0;
+            mIncoherentRayQueue.setHandler(rayBundleHandler, (void *)((uint64_t)rayHandlerFlags));
         }
 
         // Allocate occlusion queue.
@@ -336,6 +341,7 @@ TLState::~TLState()
     scene_rdl2::alignedFreeArray(mAovEntries);
     scene_rdl2::alignedFreeArray(mOcclusionEntries);
     scene_rdl2::alignedFreeArray(mPresenceShadowsEntries);
+    scene_rdl2::alignedFreeArray(mIncoherentRayEntries);
     scene_rdl2::alignedFreeArray(mPrimaryRayEntries);
     scene_rdl2::alignedFreeArray(mHeatMapEntries);
 

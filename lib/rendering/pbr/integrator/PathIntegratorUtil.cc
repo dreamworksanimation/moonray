@@ -1154,8 +1154,9 @@ CPP_addIncoherentRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayState
         MNRY_ASSERT(isValid(rayStates[i]));
     }
 
+    WrappedRayState *wrappedRs = reinterpret_cast<WrappedRayState *>(rayStates);
     pbrTls->mIncoherentRayQueue.addEntries(pbrTls->mTopLevelTls,
-                                           numRayStates, rayStates, arena);
+                                           numRayStates, wrappedRs, arena);
 
     pbrTls->startIspcAccumulator();
 }

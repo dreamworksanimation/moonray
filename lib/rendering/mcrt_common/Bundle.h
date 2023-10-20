@@ -27,12 +27,10 @@ class ThreadLocalState;
 //                    behavior for the RayQueue as the mechanism to avoid stalling.
 //                    If the payload is large and you don't need to support
 //                    cycles then consider using LocalLargeEntryQueue instead.
-//  -   Sorting:      Optional with an inline sortkey, sortkey not required if
-//                    sorting is off.
 //  -   Thread safe:  No. Everything is assumed to be thread local. Entries cannot
 //                    be added by threads other than ourselves.
 //
-template<typename T, bool SORTED = false, unsigned SORT_KEY_OFFSET = 0>
+template<typename T>
 class LocalQueue
 {
 public:
@@ -195,10 +193,6 @@ protected:
         MNRY_ASSERT(mNumQueued < VLEN);
         MNRY_ASSERT(mNumQueued < mQueueSize);
         MNRY_ASSERT(mNumQueued + entriesToFlush == totalEntries);
-
-        if (SORTED) {
-            scene_rdl2::util::inPlaceSort32<EntryType, SORT_KEY_OFFSET, 200>(entriesToFlush, entries, arena);
-        }
 
         // Call handler. The entries are only valid for the duration of this call.
         // Other threads may also call this handler simultaneously with different entries.

@@ -859,7 +859,8 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
                 // Trace presence continuation rays
                 if (presenceRays) {
-                    pbrTls->mIncoherentRayQueue.addEntries(pbrTls->mTopLevelTls, numPresenceRays, presenceRays, arena);
+                    WrappedRayState *wrappedRs = reinterpret_cast<WrappedRayState *>(presenceRays);
+                    pbrTls->mIncoherentRayQueue.addEntries(pbrTls->mTopLevelTls, numPresenceRays, wrappedRs, arena);
                 }
             }
 
