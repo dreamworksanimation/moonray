@@ -310,8 +310,13 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     RayState **rayStates = &wrappedRayStates[0].mRsPtr;
 
     // By convention, if userData is null then rayState contains an array of raw
-    // RayState pointers.
+    // RayState pointers, otherwise it contains an array of SortedRayStates (which
+    // need to be converted to raw RayState pointers).
     RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
+
+    if (handlerFlags & RAYHANDLER_SORTED_RAYSTATES) {
+        rayStates = decodeRayStatesInPlace(numEntries, &wrappedRayStates[0].mSortedRs);
+    }
 
     const FrameState &fs = *pbrTls->mFs;
 

@@ -23,7 +23,16 @@ union WrappedRayState;
 // the queue.
 enum RayHandlerFlags
 {
-    // Currently empty
+    // By default, assume non-primary rays, set this only for primary ray queues.
+    RAYHANDLER_PRIMARY_RAYS = 1 << 0,
+
+    // If this is set, interpret the WrappedRayStates passed into
+    // rayBundleHandler as SortedRayState objects, ortherwise treat them as
+    // normal RayState pointers.
+    RAYHANDLER_SORTED_RAYSTATES = 1 << 2,
+
+    RAYHANDLER_FLAGS_MASK = (RAYHANDLER_PRIMARY_RAYS |
+                             RAYHANDLER_SORTED_RAYSTATES)
 };
 
 //

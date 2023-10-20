@@ -276,6 +276,7 @@ target_sources(${component}
         core/DebugRay.cc
         core/DeepBuffer.cc
         core/Distribution.cc
+        core/IncoherentRayQueue.cc
         core/PbrTLState.cc
         core/RayState.cc
         core/Scene.cc

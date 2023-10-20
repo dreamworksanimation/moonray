@@ -971,6 +971,9 @@ RenderContext::startFrame()
     }
     getResumeHistoryMetaData()->setBgCheckpointWriteMode(frameState.mCheckpointBgWrite);
 
+    // Update frame bounds for ray sorting.
+    pbr::IncoherentRayQueue::setBounds(frameState.mEmbreeAccel->getBounds());
+
     // Update integrator state.
     updatePbrState(frameState);
 
