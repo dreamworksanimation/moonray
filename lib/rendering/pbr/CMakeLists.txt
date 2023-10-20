@@ -376,6 +376,13 @@ Moonray_cxx_compile_features(${component})
 Moonray_cxx_compile_options(${component})
 Moonray_link_options(${component})
 
+# Address what appears to be a compiler bug causing the pbr unit test to crash for variant 7
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION STREQUAL "6.3.1")
+    set_source_files_properties(core/PbrTLState.cc
+        PROPERTIES COMPILE_OPTIONS "$<$<CONFIG:RELWITHDEBINFO>:-O2>"
+    )
+endif()
+
 # Extra definitions needed by this target
 target_compile_definitions(${component}
     PUBLIC
