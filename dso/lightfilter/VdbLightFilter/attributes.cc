@@ -34,16 +34,16 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
         "vdb_map", rdl2::FLAGS_FILENAME, rdl2::INTERFACE_GENERIC, { "Vdb map" });
     sceneClass.setMetadata(attrVdbMap, "label", "Vdb map");
     sceneClass.setMetadata(attrVdbMap, "comment", "The path to the vdb");
-    
+
     attrDensityGridName = sceneClass.declareAttribute<rdl2::String>(
-        "density_grid_name", rdl2::FLAGS_FILENAME, rdl2::INTERFACE_GENERIC, { "Density Grid Name" });
+        "density_grid_name", rdl2::FLAGS_NONE, rdl2::INTERFACE_GENERIC, { "Density Grid Name" });
     sceneClass.setMetadata(attrDensityGridName, "label", "density grid name");
-    sceneClass.setMetadata(attrDensityGridName, "comment", 
+    sceneClass.setMetadata(attrDensityGridName, "comment",
     "The name of the grid within the .vdb file from which to sample for density"
     "(hint: use openvdb_print to see contents of .vdb file). "
     "If no grid is specified, it will use 'density' as the default"
     "In cases where there are multiple grids with the same name, the grid name can be indexed (eg. density[1])");
-    
+
     attrDensityRemapInputMin = sceneClass.declareAttribute<rdl2::Float>("density_remap_input_min", 0.f, {});
     sceneClass.setMetadata(attrDensityRemapInputMin, "label", "density remap input min");
     sceneClass.setMetadata(attrDensityRemapInputMin, "min", "-100.0");  // for UI slider
@@ -57,7 +57,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setMetadata(attrDensityRemapInputMax, "max", "100.0");
     sceneClass.setMetadata(attrDensityRemapInputMax, "disable when", "{ density_rescale_enable == 0 }");
     sceneClass.setMetadata(attrDensityRemapInputMax, "comment", "Clamp the remapped input to this max value");
-    
+
     attrDensityRemapOutputMin = sceneClass.declareAttribute<rdl2::Float>("density_remap_output_min", 0.f, {});
     sceneClass.setMetadata(attrDensityRemapOutputMin, "label", "density remap output min");
     sceneClass.setMetadata(attrDensityRemapOutputMin, "min", "-100.0");  // for UI slider
@@ -71,14 +71,14 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setMetadata(attrDensityRemapOutputMax, "max", "100.0");
     sceneClass.setMetadata(attrDensityRemapOutputMax, "disable when", "{ density_rescale_enable == 0 }");
     sceneClass.setMetadata(attrDensityRemapOutputMax, "comment", "Clamp the remapped output to this max value");
-    
+
     attrDensityRemapRescaleEnable = sceneClass.declareAttribute<rdl2::Bool>("density_rescale_enable", false, {});
     sceneClass.setMetadata(attrDensityRemapRescaleEnable, "label", "Enable Density Rescale");
     sceneClass.setMetadata(attrDensityRemapRescaleEnable, "comment", "Enable density rescaling");
-    
+
     rdl2::FloatVector densityDefaults = {0.f, 1.f};
-    
-    attrDensityRemapInputs = sceneClass.declareAttribute<rdl2::FloatVector>("density_remap_inputs", 
+
+    attrDensityRemapInputs = sceneClass.declareAttribute<rdl2::FloatVector>("density_remap_inputs",
         densityDefaults, {});
     sceneClass.setMetadata(attrDensityRemapInputs, "label", "density remap input");
     sceneClass.setMetadata(attrDensityRemapInputs, "structure_name", "ramp");
@@ -86,7 +86,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setMetadata(attrDensityRemapInputs, "structure_type", "ramp_float");
     sceneClass.setMetadata(attrDensityRemapInputs, "comment", "List of input remap curve values");
 
-    attrDensityRemapOutputs = sceneClass.declareAttribute<rdl2::FloatVector>("density_remap_outputs", 
+    attrDensityRemapOutputs = sceneClass.declareAttribute<rdl2::FloatVector>("density_remap_outputs",
         densityDefaults, {});
     // the metadata configures the UI widget
     sceneClass.setMetadata(attrDensityRemapOutputs, "label", "density remap outputs");
@@ -103,7 +103,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setMetadata(attrDensityRemapInterpolationTypes, "structure_name", "ramp");
     sceneClass.setMetadata(attrDensityRemapInterpolationTypes, "structure_path", "interpolation_types");
     sceneClass.setMetadata(attrDensityRemapInterpolationTypes, "structure_type", "ramp_float");
-    sceneClass.setMetadata(attrDensityRemapInterpolationTypes, "comment", 
+    sceneClass.setMetadata(attrDensityRemapInterpolationTypes, "comment",
         "List of density remap interpolation types");
 
     attrVdbInterpolation = sceneClass.declareAttribute<rdl2::Int>("vdb_interpolation_type", 0, rdl2::FLAGS_ENUMERABLE);
@@ -132,7 +132,7 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
 
     sceneClass.setGroup("Properties", attrVdbMap);
     sceneClass.setGroup("Properties", attrDensityGridName);
-    sceneClass.setGroup("Properties", attrVdbInterpolation);    
+    sceneClass.setGroup("Properties", attrVdbInterpolation);
     sceneClass.setGroup("Properties", attrDensityRemapInputMin);
     sceneClass.setGroup("Properties", attrDensityRemapInputMax);
     sceneClass.setGroup("Properties", attrDensityRemapOutputMin);
@@ -147,4 +147,3 @@ RDL2_DSO_ATTR_DEFINE(rdl2::LightFilter)
     sceneClass.setGroup("Properties", attrInvertDensity);
 
 RDL2_DSO_ATTR_END
-
