@@ -40,7 +40,7 @@ typedef OIIO::TextureSystem::TextureHandle TextureHandle;
 class TextureSampler
 {
     using Arg = scene_rdl2::grid_util::Arg;
-    using Parser = scene_rdl2::grid_util::Parser; 
+    using Parser = scene_rdl2::grid_util::Parser;
 
     friend class TLState;
     friend class rndr::RenderContext;
@@ -51,7 +51,7 @@ public:
 
     //------------------------------
 
-    void getStatistics(const std::string& prepend, std::ostream& outs) const;
+    void getStatistics(const std::string& prepend, std::ostream& outs, bool verbose) const;
     void getStatisticsForCsv(std::ostream& outs, bool athenaFormat) const;
 
     void resetStats() const; // All internal stats are accumulated always if we don't do resetStats().

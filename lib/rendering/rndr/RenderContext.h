@@ -712,6 +712,8 @@ private:
     bool mHasBeenInit; // Has the scene been initialized?
     bool mSceneLoaded; // Has the scene been loaded?
     bool mLogTime; // either first frame or previous frame logged timing
+    bool mInfoLoggingEnabled;
+    bool mDebugLoggingEnabled;
 
     RenderPrepExecTracker mRenderPrepExecTracker;
 

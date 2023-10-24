@@ -98,6 +98,23 @@ inline void LightSet_setAccelerator(uniform LightSet * uniform lightSet,
     lightSet->mAcceleratorLightIdMap = lightIdMap;
 }
 
+inline uniform int
+LightSet_getAccLightCount(const uniform LightSet * uniform lightSet)
+{
+    return LightAccelerator_getLightCount(lightSet->mAccelerator);
+}
+
+inline bool
+LightSet_lightIsActive(const uniform LightSet * uniform lightSet, uniform int i)
+{
+    return lightSet->mAcceleratorLightIdMap[i] != -1;
+}
+
+inline const uniform Light *
+LightSet_getLightFromAcc(const uniform LightSet * uniform lightSet, uniform int i)
+{
+    return LightAccelerator_getLight(lightSet->mAccelerator, i);
+}
 
 
 //----------------------------------------------------------------------------

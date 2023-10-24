@@ -95,6 +95,8 @@ public:
         return mLightSet.getLight(lightIndex);
     }
 
+    finline const LightSet& getLightSet() const { return mLightSet; }
+
     // Returns light filter list
     finline const LightFilterList *getLightFilterList(int lightIndex) const
     {

@@ -259,8 +259,8 @@ void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const Li
 
 void drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
-        float time, unsigned sequenceID, LightSample *lsmp,
-        int clampingDepth, float clampingValue, float rayDirFootprint);
+        float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
+        float rayDirFootprint, float* aovs);
 
 void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,

@@ -1554,6 +1554,15 @@ LightAovs_hasEntries(const uniform LightAovs * uniform lightAovs)
            lightAovs->mNextVisibilityAovSchemaId > AOV_SCHEMA_ID_VISIBILITY_AOV;
 }
 
+uniform bool
+LightAovs_hasVisibilityEntries(const uniform LightAovs * uniform lightAovs)
+{
+    // Need to keep in sync with Aov.h
+    static const uniform int AOV_SCHEMA_ID_VISIBILITY_AOV = 900;
+
+    return lightAovs->mNextVisibilityAovSchemaId > AOV_SCHEMA_ID_VISIBILITY_AOV;
+}
+
 varying int
 LightAovs_scatterEventTransition(const uniform LightAovs * uniform lightAovs,
                                  varying int lpeStateId,

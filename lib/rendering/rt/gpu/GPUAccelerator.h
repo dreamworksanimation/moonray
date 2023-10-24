@@ -93,7 +93,7 @@ plus the default values tend to be zero so you only need to set the non-defaults
 
 ***** Memory management:
 
-The GPUBuffer class is used everywhere to manage GPU data.  You create an GPUBuffer
+The OptixGPUBuffer class is used everywhere to manage GPU data.  You create an OptixGPUBuffer
 object on the host side and it creates/manages a buffer on the GPU.  It has methods
 for easily copying to/from the GPU buffer.  It will automatically release the GPU
 buffer in its destructor which helps prevent GPU memory leaks.
@@ -102,7 +102,7 @@ buffer in its destructor which helps prevent GPU memory leaks.
 
 #pragma once
 
-#include "GPUOcclusionRay.h"
+#include "GPURay.h"
 #include <moonray/rendering/rt/rt.h>
 
 #include <scene_rdl2/common/platform/Platform.h>
@@ -117,7 +117,7 @@ namespace rt {
 // all of the CUDA/Optix headers to the rest of Moonray.  All this needs to expose
 // to the outside world is an occluded() method and a constructor that takes a scene.
 
-class GPUAcceleratorImpl;
+class OptixGPUAccelerator;
 
 class GPUAccelerator
 {
@@ -134,17 +134,22 @@ public:
 
     std::string getGPUDeviceName() const;
 
+    void intersect(const unsigned numRays, const GPURay* rays) const;
+
+    // output intersect results are placed in here
+    GPURayIsect* getOutputIsectBuf() const;
+
+    void occluded(const unsigned numRays, const GPURay* rays) const;
+
     // output occlusion results are placed in here
     unsigned char* getOutputOcclusionBuf() const;
-
-    void occluded(const unsigned numRays, const GPUOcclusionRay* rays) const;
 
     static unsigned int getRaysBufSize();
 
 private:
 
 #ifdef MOONRAY_USE_CUDA
-    std::unique_ptr<GPUAcceleratorImpl> mImpl;
+    std::unique_ptr<OptixGPUAccelerator> mImpl;
 #endif
 
 };

@@ -53,12 +53,12 @@ struct HitGroupData
     // need it because each primitive type is handled by its own programs,
     // (see program groups), thus it is already known.
     // Also note that we only store raw pointers below while on the host side we
-    // use GPUBuffer objects.  These pointers are obtained from the host-side
-    // GPUBuffer objects.
+    // use OptixGPUBuffer objects.  These pointers are obtained from the host-side
+    // OptixGPUBuffer objects.
     union {
         struct {
-            GPUXform mL2P;
-            GPUXform mP2L;
+            OptixGPUXform mL2P;
+            OptixGPUXform mP2L;
             float mLength;
             float mHeight;
             float mWidth;
@@ -75,8 +75,8 @@ struct HitGroupData
             const float4* mPoints;
         } points;
         struct {
-            GPUXform mL2P;
-            GPUXform mP2L;
+            OptixGPUXform mL2P;
+            OptixGPUXform mP2L;
             float mRadius;
             float mPhiMax;
             float mZMin;

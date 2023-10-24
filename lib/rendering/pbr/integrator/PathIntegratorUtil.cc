@@ -398,12 +398,43 @@ integrateLightSetSample(const LightSetSampler &lSampler,
     }
 }
 
+/// This helper function adds "misses" to the visibility aov. We do this here because there are some light
+/// samples that are thrown out early because they are facing away from the point, and they need to be 
+/// added to the visibility aov before they are discarded.
+void accumVisibilityAovsOccluded(float* aovs, pbr::TLState* pbrTls, const LightSetSampler& lSampler,
+                                 const BsdfSampler& bSampler, const PathVertex& pv, const Light* const light,
+                                 int missCount)
+{
+    const FrameState &fs = *pbrTls->mFs;
+    const LightAovs &lightAovs = *fs.mLightAovs;
+    
+    // We only care about direct rays
+    if (aovs && lightAovs.hasVisibilityEntries() && pv.nonMirrorDepth == 0) {
+        const AovSchema &aovSchema = *fs.mAovSchema;
+
+        bool addVisibility = true;
+        for (int k = 0; k < bSampler.getLobeCount(); ++k) {
+            const shading::BsdfLobe* const lobe = bSampler.getLobe(k);
+
+            if (addVisibility) {       
+                int lpeStateId = pv.lpeStateId;
+                lpeStateId = lightAovs.scatterEventTransition(pbrTls, lpeStateId, lSampler.getBsdf(), *lobe);
+                lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, light);
+                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
+                                           scene_rdl2::math::Vec2f(0.0f, missCount), 
+                                           lpeStateId, aovs)) {
+                    addVisibility = false;
+                }
+            }
+        }
+    }
+}
 
 void
 drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
-        const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, float time,
-        unsigned sequenceID, LightSample *lsmp,
-        int clampingDepth, float clampingValue, float rayDirFootprint)
+        const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, 
+        float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
+        float rayDirFootprint, float* aovs)
 {
     IntegratorSample3D lightSamples;
     IntegratorSample2D lightFilterSamples;
@@ -498,6 +529,9 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
                                             lsmp[s], rayDirFootprint);
 
             if (lsmp[s].isInvalid()) {
+                // These samples occur on the shadow terminator -- they are invalid because they face
+                // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
+                accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, light, /* miss count */ 1);
                 continue;
             }
 
@@ -506,6 +540,21 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
 
             stats.incCounter(STATS_LIGHT_SAMPLES);
         }
+    }
+
+    // tldr; Add inactive lights to the visibility aov
+    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
+    // consider inactive lights, which are culled from the visible light set because the whole light faces away
+    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
+    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
+    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
+    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
+    if (aovs && pbrTls->mFs->mLightAovs->hasVisibilityEntries()) {
+        std::function<void(const Light* const)> accumVisibilityAovsOccludedLambda = [&] (const Light* const inLight) 
+        {
+            accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, inLight, lSampler.getLightSampleCount());
+        };
+        lSampler.getLightSet().addInactiveLightsToVisibilityAov(accumVisibilityAovsOccludedLambda);
     }
 }
 
@@ -555,7 +604,6 @@ applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         }
     }
 }
-
 
 void
 applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,

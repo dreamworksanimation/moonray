@@ -918,6 +918,14 @@ bool aovAccumVisibilityAovs(pbr::TLState *pbrTls,
                             int lpeStateId,
                             float *dest);
 
+/// Adds the specified number of "misses" to the visibility
+/// aov, disregarding the lpe
+bool aovAccumVisibilityAttempts(pbr::TLState *pbrTls,
+                                const AovSchema &aovSchema,
+                                const LightAovs &lightAovs,
+                                const float value,
+                                float *dest);
+
 // queue aov results that match lpeStateId
 // @returns true if there is a result that matches lpeStateId, false otherwise
 bool aovAccumLightAovsBundled(pbr::TLState *pbrTls,
@@ -938,7 +946,18 @@ bool aovAccumVisibilityAovsBundled(pbr::TLState *pbrTls,
                                    int lpeStateId,
                                    uint32_t pixel,
                                    uint32_t deepDataHandle,
-                                   uint32_t film);
+                                   uint32_t film,
+                                   bool lpePassthrough);
+
+/// Adds the specified number of "misses" to the visibility
+/// aov, disregarding the lpe
+bool aovAccumVisibilityAttemptsBundled(pbr::TLState *pbrTls,
+                                       const AovSchema &aovSchema,
+                                       const LightAovs &lightAovs,
+                                       int attempts,
+                                       uint32_t pixel,
+                                       uint32_t deepDataHandle,
+                                       uint32_t film);
 
 // "Extra Aovs"
 // Extra aovs are a type of light aov, but rather than accumulating radiance

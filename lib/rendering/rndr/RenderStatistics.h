@@ -161,7 +161,7 @@ public:
     // in the future we may want to dive into the OIIO data structs and
     // generate specific report data here but for now this is done for
     // completeness .
-    void logTexturingStats(texture::TextureSampler& texturesampler);
+    void logTexturingStats(texture::TextureSampler& texturesampler, bool verbose);
 
     //  log the post frame render stats
     void logRenderingStats(const pbr::Statistics& renderstats,

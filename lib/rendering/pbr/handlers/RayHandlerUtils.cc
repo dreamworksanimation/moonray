@@ -52,6 +52,9 @@ void
 accumVisibilityAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
                     const FrameState& fs, const int numItems, float value)
 {
+    // include only direct light samples
+    if (occlRay.mDepth > 1) { return; }
+
     if (!fs.mLightAovs->hasVisibilityEntries()) {
         return;
     }
@@ -69,7 +72,7 @@ accumVisibilityAovs(pbr::TLState* pbrTls, const BundledOcclRay& occlRay,
             if (lpeStateId > 0) {
                 if (aovAccumVisibilityAovsBundled(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     scene_rdl2::math::Vec2f(value, 1.0f), lpeStateId, occlRay.mPixel, occlRay.mDeepDataHandle,
-                    pbr::getFilm(occlRay.mTilePassAndFilm))) {
+                    pbr::getFilm(occlRay.mTilePassAndFilm), false)) {
 
                     // we only need to add to the visibility buffer once per shadow ray
                     break;

@@ -1,24 +1,25 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUMath.h"
-#include "GPUParams.h"
-#include "GPUOcclusionRay.h"
-#include "GPUSBTRecord.h"
+#include "../GPURay.h"
+#include "OptixGPUMath.h"
+#include "OptixGPUParams.h"
+#include "OptixGPUSBTRecord.h"
 
 using namespace moonray::rt;
 
-extern "C" __constant__ static GPUParams params;
+extern "C" __constant__ static OptixGPUParams params;
 
 
-// Each occlusion ray has a PerRayData associated with it that is globally
+// Each ray has a PerRayData associated with it that is globally
 // available in all of the programs.  Inputs and outputs are passed via this
 // struct.
 
 struct PerRayData
 {
     unsigned long long mLightId;  // light ID, used for shadow linking (input)
-    bool mIsOccluded;             // result of occlusion test (output)
+    bool mDidHitGeom;             // did ray hit geometry? (output)
+    // todo: intersect() results
 };
 
 
@@ -55,7 +56,7 @@ T *getPRD()
 
 // The __raygen__ program sets up the PerRayData and then calls optixTrace()
 // which starts the BVH traversal and calling of other programs.  It copies 
-// the prd.mIsOccluded result to the appropriate location in the output buffer.
+// the prd.mDidHitGeom result to the appropriate location in the output buffer.
 // A __raygen__ function normally implements a camera.
 
 extern "C" __global__
@@ -63,11 +64,14 @@ void __raygen__()
 {
     const uint3 idx = optixGetLaunchIndex();
 
-    const moonray::rt::GPUOcclusionRay *ray = params.mRaysBuf + idx.x;
+    const moonray::rt::GPURay *ray = params.mRaysBuf + idx.x;
+
+    // todo: differentiate between intersect() and occluded() rays by checking
+    // which params.mIsectBuf or params.mIsOccludedBuf is nullptr.
 
     PerRayData prd;
     prd.mLightId = ray->mLightId;
-    prd.mIsOccluded = false;
+    prd.mDidHitGeom = false;
     unsigned int u0, u1;
     packPointer(&prd, u0, u1);
 
@@ -78,26 +82,25 @@ void __raygen__()
                ray->mMaxT,
                ray->mTime,
                OptixVisibilityMask( 255 ),
-               OPTIX_RAY_FLAG_NONE,
+               OPTIX_RAY_FLAG_NONE, // OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT for occlusion rays?
                0,             // SBT offset
                1,             // SBT stride
                0,             // missSBTIndex 
                u0, u1);
 
-    params.mIsOccludedBuf[idx.x] = prd.mIsOccluded ? 1 : 0;
+    params.mIsOccludedBuf[idx.x] = prd.mDidHitGeom ? 1 : 0;
 }
 
 
 // The __closesthit__ program is called after optixReportIntersection() has been
 // called in one or more of the __intersection__ programs and Optix has finished 
-// its BVH traversal.  It is called once for the closest intersection.  We just
-// mark the ray as occluded.
+// its BVH traversal.  It is called once for the closest intersection.
 
 extern "C" __global__
 void __closesthit__()
 {
     PerRayData* prd = getPRD<PerRayData>();
-    prd->mIsOccluded = true;
+    prd->mDidHitGeom = true;
 }
 
 
@@ -133,14 +136,13 @@ void __anyhit__()
 
 
 // The __miss__ program is called if the ray does not intersect any geometry
-// (or all intersections have been ignored in __anyhit__).  We mark the ray as
-// not occluded.
+// (or all intersections have been ignored in __anyhit__).
 
 extern "C" __global__
 void __miss__()
 {
     PerRayData* prd = getPRD<PerRayData>();
-    prd->mIsOccluded = false;
+    prd->mDidHitGeom = false;
 }
 
 
@@ -240,7 +242,7 @@ void projectCurveControlPoints(const float4* cp,
                                float4* cp2d)
 {
     // Rotate curve control points to Z plane perpendicular to ray
-    GPUXform curve2DXform = GPUXform::rotateToZAxisXform(rayDir);
+    OptixGPUXform curve2DXform = OptixGPUXform::rotateToZAxisXform(rayDir);
     for (int i = 0; i < numPoints; i++) {
         float3 pos2d = curve2DXform.transformVector(make_float3(cp[i]) - rayOrg);
         cp2d[i] = make_float4(pos2d, cp[i].w);

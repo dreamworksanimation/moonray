@@ -85,6 +85,7 @@ void aovAccumPostScatterExtraAovs(uniform PbrTLState * uniform pbrTls,
                                   const varying Bsdf &bsdf);
 
 uniform bool LightAovs_hasEntries(const uniform LightAovs * uniform lightAovs);
+uniform bool LightAovs_hasVisibilityEntries(const uniform LightAovs * uniform lightAovs);
 
 varying int LightAovs_scatterEventTransition(const uniform LightAovs * uniform lightAovs,
                                              varying int lpeStateId,

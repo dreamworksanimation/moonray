@@ -3,7 +3,7 @@
 
 #ifdef MOONRAY_USE_CUDA
 
-#include "GPUAcceleratorImpl.h"
+#include "optix/OptixGPUAccelerator.h"
 #include "GPUAccelerator.h"
 
 // This header must be included in exactly one .cc file for the link to succeed
@@ -17,7 +17,7 @@ GPUAccelerator::GPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
                                const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
                                std::string* errorMsg)
 {
-    mImpl.reset(new GPUAcceleratorImpl(layer, geometrySets, g2s, errorMsg));
+    mImpl.reset(new OptixGPUAccelerator(layer, geometrySets, g2s, errorMsg));
     if (!errorMsg->empty()) {
         // Something went wrong so free everything
         // Output the error to Logger::error so we are guaranteed to see it
@@ -36,22 +36,34 @@ GPUAccelerator::getGPUDeviceName() const
     return mImpl->getGPUDeviceName();
 }
 
+void
+GPUAccelerator::intersect(const unsigned numRays, const GPURay* rays) const
+{
+    mImpl->intersect(numRays, rays);
+}
+
+GPURayIsect*
+GPUAccelerator::getOutputIsectBuf() const
+{
+    return mImpl->getOutputIsectBuf();
+}
+
+void
+GPUAccelerator::occluded(const unsigned numRays, const GPURay* rays) const
+{
+    mImpl->occluded(numRays, rays);
+}
+
 unsigned char*
 GPUAccelerator::getOutputOcclusionBuf() const
 {
     return mImpl->getOutputOcclusionBuf();
 }
 
-void
-GPUAccelerator::occluded(const unsigned numRays, const GPUOcclusionRay* rays) const
-{
-    mImpl->occluded(numRays, rays);
-}
-
 unsigned int
 GPUAccelerator::getRaysBufSize()
 {
-    return GPUAcceleratorImpl::getRaysBufSize();
+    return OptixGPUAccelerator::getRaysBufSize();
 }
 
 } // namespace rt
@@ -83,15 +95,26 @@ GPUAccelerator::getGPUDeviceName() const
     return "";
 }
 
-unsigned char*
-GPUAccelerator::getOutputOcclusionBuf() const
+void
+GPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*/) const
+{
+}
+
+GPURayIsect*
+GPUAccelerator::getOutputIsectBuf() const
 {
     return nullptr;
 }
 
 void
-GPUAccelerator::occluded(const unsigned /*numRays*/, const GPUOcclusionRay* /*rays*/) const
+GPUAccelerator::occluded(const unsigned /*numRays*/, const GPURay* /*rays*/) const
 {
+}
+
+unsigned char*
+GPUAccelerator::getOutputOcclusionBuf() const
+{
+    return nullptr;
 }
 
 unsigned int

@@ -223,6 +223,8 @@ RenderContext::RenderContext(RenderOptions& options, std::stringstream* initMess
     mHasBeenInit(false),
     mSceneLoaded(false),
     mLogTime(true),
+    mInfoLoggingEnabled(false),
+    mDebugLoggingEnabled(false),
     mGeometryManagerOptions(new rt::GeometryManagerOptions()),
     mRenderStats(nullptr),
     mRenderPrepTimingStats(nullptr),
@@ -381,12 +383,12 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 
     scene_rdl2::rdl2::SceneVariables& sceneVars = mSceneContext->getSceneVariables();
 
-    const bool infoLogging = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sInfoKey);
-    const bool debugLogging = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sDebugKey);
-    if (debugLogging) {
+    mInfoLoggingEnabled = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sInfoKey);
+    mDebugLoggingEnabled = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sDebugKey);
+    if (mDebugLoggingEnabled) {
         // debug logging includes info logging
         scene_rdl2::logging::Logger::setDebugLevel();
-    } else if (infoLogging) {
+    } else if (mInfoLoggingEnabled) {
         // This is subtle: scene_rdl2::logging::Logger::init is called at load time
         // before we ever hit main(). It captures the arguments passed to main.
         // Intentionally or not, we use "-info" on the command line for
@@ -401,7 +403,7 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
         scene_rdl2::logging::Logger::setInfoLevel();
     }
 
-    mRenderStats->openInfoStream(infoLogging || debugLogging);
+    mRenderStats->openInfoStream(mInfoLoggingEnabled || mDebugLoggingEnabled);
     mRenderStats->openStatsStream(sceneVars.get(scene_rdl2::rdl2::SceneVariables::sStatsFile));
 
 #ifndef DEBUG
@@ -759,7 +761,7 @@ RenderContext::startFrame()
     }
 
     // Determine if to render this frame in scalar, vectorized, or xpu mode.
-    ExecutionMode executionMode = ExecutionMode::VECTORIZED;
+    ExecutionMode executionMode = ExecutionMode::XPU;
     ExecutionMode desiredExecutionMode = mOptions.getDesiredExecutionMode();
     std::string executionModeString;
     std::string missingVecFeatures;
@@ -791,6 +793,8 @@ RenderContext::startFrame()
             executionModeString += ".";
         }
         executionMode = ExecutionMode::XPU;
+        // If there is an error setting up the GPU, we will fall back to vector mode
+        // in GeometryManager::updateGPUAccelerator().
     break;
 
     case ExecutionMode::AUTO:
@@ -802,8 +806,10 @@ RenderContext::startFrame()
             executionModeString += ".";
             executionMode = ExecutionMode::SCALAR;
         } else {
-            executionModeString = "Executing a vectorized render since execution mode was set to auto.";
-            executionMode = ExecutionMode::VECTORIZED;
+            executionModeString = "Executing an XPU render since execution mode was set to auto.";
+            executionMode = ExecutionMode::XPU;
+            // If there is an error setting up the GPU, we will fall back to vector mode
+            // in GeometryManager::updateGPUAccelerator().
         }    
     }
 
@@ -1144,7 +1150,7 @@ RenderContext::stopFrame()
             mRenderStats->logSamplingStats(*mPbrStatistics, *mGeomStatistics);
 
             mRenderStats->logInfoEmptyLine();
-            mRenderStats->logTexturingStats(*texture::getTextureSampler());
+            mRenderStats->logTexturingStats(*texture::getTextureSampler(), mDebugLoggingEnabled);
 
             mRenderStats->logRenderingStats(*mPbrStatistics,
                 static_cast<mcrt_common::ExecutionMode>(mDriver->getFrameState().mExecutionMode),
@@ -2662,13 +2668,17 @@ RenderContext::accumulatePbrStatistics() const
 void
 RenderContext::reportShadingLogs()
 {
-    // Use the number of tbb threads here so we're not counting data from the
-    // main thread or GUI thread.
-    int numRenderThreads = getNumTBBThreads();
+    auto formatter = [](const scene_rdl2::rdl2::Shader* p, unsigned count, const std::string& description) {
+        std::ostringstream oss;
+        oss << p->getSceneClass().getName() << R"((")" << p->getName() << R"("): )" << '(' << count << " times) " << description;
+        const std::string result = oss.str();
+        return result;
+    };
+    scene_rdl2::rdl2::Shader::getLogEventRegistry().outputReports(formatter);
 
     std::for_each(mSceneContext->beginSceneObject(),
                   mSceneContext->endSceneObject(),
-        [numRenderThreads](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
+        [](const std::pair<std::string, scene_rdl2::rdl2::SceneObject*>& entry) {
             scene_rdl2::rdl2::SceneObject *obj = entry.second;
             MNRY_ASSERT(obj);
             if (obj->isA<scene_rdl2::rdl2::Shader>()) {
@@ -2676,9 +2686,6 @@ RenderContext::reportShadingLogs()
                 // fatal only applies to the current frame
                 auto* const shader = obj->asA<scene_rdl2::rdl2::Shader>();
                 shader->setFataled(false);
-                scene_rdl2::rdl2::Shader::getLogEventRegistry().outputReport(shader,
-                                                                             obj->getName(),
-                                                                             obj->getSceneClass().getName());
             }
         });
 }

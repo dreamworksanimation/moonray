@@ -13,7 +13,7 @@ namespace rt {
 // code.  So, we are limited to the built-in C++ types.  Luckily we are only
 // passing a small amount of simple data.
 
-struct GPUOcclusionRay
+struct GPURay
 {
     float mOriginX, mOriginY, mOriginZ;
     float mDirX, mDirY, mDirZ;
@@ -23,6 +23,19 @@ struct GPUOcclusionRay
     unsigned long long mLightId;
 };
 
+// Used for intersect() queries but not occluded()
+struct GPURayIsect
+{
+    // geometry normal
+    float mNgX, mNgY, mNgZ;
+
+    // barycentric coords
+    float mU, mV;
+
+    unsigned int mPrimID;
+    unsigned int mGeomID;
+    unsigned int mInstID;
+};
+
 } // namespace rt
 } // namespace moonray
-

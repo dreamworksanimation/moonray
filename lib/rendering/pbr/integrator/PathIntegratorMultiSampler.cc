@@ -236,9 +236,9 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                             lpeStateId = lightAovs.lightEventTransition(pbrTls,
                                 lpeStateId, light);
 
-                            // visibility aov
-                            if (addVisibility) {
-                                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
+                            // Update visibility aov only for the first bounce
+                            if (addVisibility && parentRay.getDepth() == 0) {
+                                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
                                     scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs)) {
                                     // add visibility aov at most once per shadow ray
                                     addVisibility = false;
@@ -294,9 +294,9 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                                               AovSchema::sLpePrefixNone, lpeStateId, aovs);
                         }
 
-                        // visibility aov
-                        if (addVisibility) {
-                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs,
+                        // Update visibility aov only for the first bounce
+                        if (addVisibility && parentRay.getDepth() == 0) {
+                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
                                 scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f),
                                 lpeStateId, aovs)) {
                                 // add visibility aov at most once per shadow ray
@@ -619,7 +619,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     }
 
     drawLightSetSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, ray.getTime(),
-                        sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, ray.getDirFootprint());
+                        sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, ray.getDirFootprint(), aovs);
 
     CHECK_CANCELLATION(pbrTls, return scene_rdl2::math::sBlack );
 
@@ -645,7 +645,6 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // contributions for that sample accordingly.
 
     if (doIndirect) {
-
         // Note: This will recurse
         addIndirectOrDirectVisibleContributions(pbrTls, sp, pv, bSampler, bsmp,
                 ray, rayEpsilon, shadowRayEpsilon, isect, indirectFlags, newPriorityList, newPriorityListCount,

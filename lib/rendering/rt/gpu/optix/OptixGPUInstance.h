@@ -3,21 +3,21 @@
 
 #pragma once
 
-#include "GPUPrimitive.h"
+#include "OptixGPUPrimitive.h"
 
 namespace moonray {
 namespace rt {
 
-class GPUPrimitiveGroup;
+class OptixGPUPrimitiveGroup;
 
-// An instance just references a shared GPUPrimitiveGroup and specifies an xform
+// An instance just references a shared OptixGPUPrimitiveGroup and specifies an xform
 // for the instance.
 
-class GPUInstance
+class OptixGPUInstance
 {
 public:
-    GPUInstance() : mIsBuilt{false}, mGroup{nullptr}, mHasMotionBlur{false} {}
-    virtual ~GPUInstance() {}
+    OptixGPUInstance() : mIsBuilt{false}, mGroup{nullptr}, mHasMotionBlur{false} {}
+    virtual ~OptixGPUInstance() {}
 
     bool build(CUstream cudaStream,
                OptixDeviceContext context,
@@ -25,7 +25,7 @@ public:
 
     bool mIsBuilt;
 
-    GPUPrimitiveGroup* mGroup;
+    OptixGPUPrimitiveGroup* mGroup;
 
     bool mHasMotionBlur;
 
@@ -35,13 +35,13 @@ public:
     // instead and approximate the slerp().
     // Note that if there is no motion blur, we still use mXforms[0] as the static xform.
     static const int sNumMotionKeys = 64;
-    GPUXform mXforms[sNumMotionKeys];
+    OptixGPUXform mXforms[sNumMotionKeys];
 
-    // If there's motion blur, the referenced GPUPrimitiveGroup is the child of an
+    // If there's motion blur, the referenced OptixGPUPrimitiveGroup is the child of an
     // OptixMatrixMotionTransform, and then we use that traversable
-    // instead of the GPUPrimitiveGroup's mTopLevelIAS.
+    // instead of the OptixGPUPrimitiveGroup's mTopLevelIAS.
     OptixTraversableHandle mMMTTraversable;
-    GPUBuffer<char> mMMTTraversableBuf;      // the actual memory buffer on the GPU
+    OptixGPUBuffer<char> mMMTTraversableBuf;      // the actual memory buffer on the GPU
 };
 
 } // namespace rt

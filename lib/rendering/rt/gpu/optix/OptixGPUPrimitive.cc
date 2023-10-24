@@ -1,8 +1,8 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
-#include "GPUPrimitive.h"
-#include "GPUInstance.h"
+#include "OptixGPUPrimitive.h"
+#include "OptixGPUInstance.h"
 
 namespace moonray {
 namespace rt {
@@ -14,7 +14,7 @@ void clearMemory(std::vector<T>& v)
 }
 
 void
-GPUBox::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
+OptixGPUBox::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 {
     OptixAabb localAabb = {-mLength / 2.f, -mHeight / 2.f, -mWidth / 2.f,
                             mLength / 2.f, mHeight / 2.f, mWidth / 2.f};
@@ -22,7 +22,7 @@ GPUBox::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 }
 
 void
-GPUCurve::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
+OptixGPUCurve::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 {
     aabbs->resize(mHostIndices.size());
 
@@ -45,14 +45,14 @@ GPUCurve::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 }
 
 void
-GPUCurve::freeHostMemory()
+OptixGPUCurve::freeHostMemory()
 {
     clearMemory(mHostIndices);
     clearMemory(mHostControlPoints);
 }
 
 void
-GPUPoints::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
+OptixGPUPoints::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 {
     aabbs->resize(mHostPoints.size() / mMotionSamplesCount);
 
@@ -71,13 +71,13 @@ GPUPoints::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 }
 
 void
-GPUPoints::freeHostMemory()
+OptixGPUPoints::freeHostMemory()
 {
     clearMemory(mHostPoints);
 }
 
 void
-GPUSphere::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
+OptixGPUSphere::getPrimitiveAabbs(std::vector<OptixAabb>* aabbs) const
 {
     OptixAabb localAabb = {-mRadius, -mRadius, mZMin,
                             mRadius, mRadius, mZMax};

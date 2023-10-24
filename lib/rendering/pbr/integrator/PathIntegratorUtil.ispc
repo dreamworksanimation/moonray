@@ -3,10 +3,13 @@
 
 
 #include "PathIntegratorUtil.isph"
+#include "PathIntegrator.isph"
 #include <moonray/rendering/pbr/core/Util.isph>
+#include <moonray/rendering/pbr/core/Aov.isph>
 
 #include <moonray/rendering/mcrt_common/Ray.isph>
 #include <moonray/rendering/pbr/sampler/SequenceID.isph>
+#include <scene_rdl2/common/platform/Platform.isph>
 
 //-----------------------------------------------------------------------------
 
@@ -270,13 +273,75 @@ integrateLightSetSample(const varying LightSetSampler &lSampler,
     }
 }
 
+extern "C" bool
+CPP_aovAccumVisibilityAovsBundled(const uniform PbrTLState * uniform pbrTls,
+                                  const uniform AovSchema& aovSchema,
+                                  const uniform LightAovs& lightAovs,
+                                  const uniform Vec2f& value,
+                                  const uniform int lpeStateId,
+                                  const uniform uint32_t pixel,
+                                  const uniform uint32_t deepDataHandle,
+                                  const uniform uint32_t film,
+                                  uniform bool lpePassthrough);
+
+/// This helper function adds "misses" to the visibility aov. We do this here because there are some light
+/// samples that are thrown out early because they are facing away from the point, and they need to be 
+/// added to the visibility aov before they are discarded.
+void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
+                         const varying BsdfSampler& bSampler,
+                         const varying LightSetSampler& lSampler,
+                         const varying PathVertex &pv,
+                         const varying uint32_t pixel,
+                         const varying uint32_t deepDataHandle,
+                         const varying uint32_t tilePassAndFilm,
+                         const uniform Light * light,
+                         uniform int attempts) 
+{
+    // Only include direct light samples
+    if (pv.nonMirrorDepth > 0) { return; }
+
+    const uniform FrameState &fs = *pbrTls->mFs;
+    const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
+    const uniform LightAovs& lightAovs = *((const uniform LightAovs* uniform) fs.mLightAovs);
+
+    if (!AovSchema_empty(aovSchema) && LightAovs_hasVisibilityEntries(&lightAovs)) {
+        varying bool addVisibility = true;
+        for (uniform int k = 0; k < BsdfSampler_getLobeCount(&bSampler); ++k) {
+            if (!addVisibility) { break; }
+
+            const varying BsdfLobe& lobe = *((const varying BsdfLobe * uniform) BsdfSampler_getLobe(&bSampler, k));
+            const varying Bsdf &bsdf = *LightSetSampler_getBsdf(&lSampler);
+
+            int varying lpeStateId = pv.lpeStateId;
+            lpeStateId = LightAovs_scatterEventTransition(&lightAovs, lpeStateId, bsdf, lobe);
+            lpeStateId = LightAovs_lightEventTransition(&lightAovs, lpeStateId, light);
+    
+            foreach_active(lane) {
+                uniform Vec2f value = Vec2f_ctor(0.0f, attempts);
+                if (CPP_aovAccumVisibilityAovsBundled(pbrTls, 
+                                                      aovSchema, 
+                                                      lightAovs, 
+                                                      value,
+                                                      extract(lpeStateId, lane),
+                                                      extract(pixel, lane),
+                                                      extract(deepDataHandle, lane),
+                                                      extract(tilePassAndFilm, lane),
+                                                      false)) {
+                    insert(addVisibility, lane, false);
+                }
+            }
+        }
+    }
+}
+
 void
 drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
         const varying LightSetSampler &lSampler, const varying BsdfSampler &bSampler,
         const varying Subpixel &sp, const varying PathVertex &pv,
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
-        uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint)
+        uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
+        const varying RayState* uniform rs)
 {
     SequenceID sid, sidFilter, sidFilter3D;
     IntegratorSample3D lightSamples;
@@ -290,7 +355,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
     // Loop over each light
     uniform int s = 0;
     uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
-    int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
+    varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
 
     for (uniform int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
@@ -364,6 +429,11 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
             LightSetSampler_sampleIntersectAndEval(&lSampler, shadingTls, light, lightFilterList,
                     P, cullingNormal, lightFilterSample, time, lightSample, currSamp, rayDirFootprint);
             if (LightSample_isInvalid(&(currSamp))) {
+                // These samples occur on the shadow terminator -- they are invalid because they face
+                // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
+                accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
+                                            pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
+                                            getFilmISPC(rs->mTilePassAndFilm), light, 1);
                 continue;
             }
 
@@ -377,6 +447,30 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
             addToCounter(pbrTls->mStatistics, STATS_LIGHT_SAMPLES, getActiveLaneCount());
         }
     }
+
+    // tldr; Add inactive lights to the visibility aov
+    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
+    // consider inactive lights, which are culled from the visible light set because the whole light faces away
+    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
+    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
+    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
+    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
+    const uniform FrameState &fs = *pbrTls->mFs;
+    const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
+    const uniform LightAovs* uniform lightAovs = (const uniform LightAovs * uniform) fs.mLightAovs;
+
+    if (!AovSchema_empty(aovSchema) && LightAovs_hasVisibilityEntries(lightAovs)) {
+        uniform int totalLightCount = LightSetSampler_getAccLightCount(&lSampler); // active + inactive lights
+        for (uniform int i = 0; i < totalLightCount; ++i) {
+            if (!LightSetSampler_lightIsActive(&lSampler, i)) {
+                const uniform Light * light = LightSetSampler_getLightFromAcc(&lSampler, i);
+                accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
+                                            pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
+                                            getFilmISPC(rs->mTilePassAndFilm), light, 
+                                            PathIntegrator_getLightSampleCount(pbrTls->mFs->mIntegrator));
+            }
+        }
+    }  
 
     MNRY_ASSERT(any(s == LightSetSampler_getSampleCount(&lSampler)));
     MNRY_ASSERT(allActive(s >= LightSetSampler_getSampleCount(&lSampler)));

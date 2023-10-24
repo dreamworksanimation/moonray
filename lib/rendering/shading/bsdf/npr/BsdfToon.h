@@ -36,18 +36,17 @@ public:
                              const float* rampPositions,
                              const ispc::RampInterpolatorMode* rampInterpolators,
                              const float* rampValues,
-                             HairRLobe* directHairLobe);
-
-    HairToonSpecularBsdfLobe(const scene_rdl2::math::Vec3f &N,
-                             const float intensity,
-                             const scene_rdl2::math::Color& tint,
-                             int numRampPoints,
-                             const float* rampPositions,
-                             const ispc::RampInterpolatorMode* rampInterpolators,
-                             const float* rampValues,
-                             HairRLobe* directHairLobe,
-                             HairRLobe* indirectHairLobe,
-                             const float indirectReflectionsIntensity);
+                             const bool enableIndirectReflections,
+                             const float indirectReflectionsRoughness,
+                             const float indirectReflectionsIntensity,
+                             const scene_rdl2::math::Vec3f &hairDir,
+                             const scene_rdl2::math::Vec2f &hairUV,
+                             const float mediumIOR,
+                             const float ior,
+                             ispc::HairFresnelType fresnelType,
+                             const float layerThickness,
+                             const float longShift,
+                             const float longRoughness);
 
     ~HairToonSpecularBsdfLobe() {}
 
@@ -85,9 +84,10 @@ private:
     scene_rdl2::math::ReferenceFrame mFrame;
     float mIntensity;
     scene_rdl2::math::Color mTint;
-    HairRLobe * mDirectHairLobe;
-    HairRLobe * mIndirectHairLobe;
+    bool mEnableIndirectReflections;
     float mIndirectReflectionsIntensity;
+    HairRLobe mDirectHairLobe;
+    HairRLobe mIndirectHairLobe;
     FloatRampControl mRampControl;
 };
 
@@ -96,21 +96,8 @@ class ToonSpecularBsdfLobe : public BsdfLobe
 public:
     ToonSpecularBsdfLobe(const scene_rdl2::math::Vec3f &N,
                          const float intensity,
-                         const float roughness,
                          const scene_rdl2::math::Color& tint,
-                         int numRampPoints,
-                         const float* rampPositions,
-                         const ispc::RampInterpolatorMode* rampInterpolators,
-                         const float* rampValues,
-                         const float stretchU,
-                         const float stretchV,
-                         const scene_rdl2::math::Vec3f &dPds,
-                         const scene_rdl2::math::Vec3f &dPdt);
-
-    ToonSpecularBsdfLobe(const scene_rdl2::math::Vec3f &N,
-                         const float intensity,
-                         const float roughness,
-                         const scene_rdl2::math::Color& tint,
+                         float rampInputScale,
                          int numRampPoints,
                          const float* rampPositions,
                          const ispc::RampInterpolatorMode* rampInterpolators,
@@ -119,8 +106,10 @@ public:
                          const float stretchV,
                          const scene_rdl2::math::Vec3f &dPds,
                          const scene_rdl2::math::Vec3f &dPdt,
-                         CookTorranceBsdfLobe* indirectLobe,
-                         const float indirectReflectionsIntensity);
+                         const bool enableIndirectReflections,
+                         const float indirectReflectionsRoughness,
+                         const float indirectReflectionsIntensity,
+                         Fresnel * fresnel);
 
     ~ToonSpecularBsdfLobe() {}
 
@@ -160,14 +149,15 @@ private:
     scene_rdl2::math::ReferenceFrame mFrame;
     FloatRampControl mRampControl;
     float mIntensity;
-    float mRoughness;
     scene_rdl2::math::Color mTint;
+    float mRampInputScale;
     float mStretchU;
     float mStretchV;
     scene_rdl2::math::Vec3f mdPds;
     scene_rdl2::math::Vec3f mdPdt;
-    CookTorranceBsdfLobe * mIndirectLobe;
+    bool mEnableIndirectReflections;
     float mIndirectReflectionsIntensity;
+    CookTorranceBsdfLobe mIndirectLobe;
 };
 
 class ToonBsdfLobe : public LambertBsdfLobe

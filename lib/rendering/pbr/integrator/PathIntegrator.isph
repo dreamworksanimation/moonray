@@ -32,6 +32,12 @@ struct PathIntegrator
     PATH_INTEGRATOR_MEMBERS;
 };
 
+inline uniform int
+PathIntegrator_getLightSampleCount(const uniform PathIntegrator * uniform this)
+{
+    return this->mLightSamples;
+}
+
 void computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
                                      uniform PbrTLState * uniform pbrTls,
                                      uniform ShadingTLState * uniform shadingTls,

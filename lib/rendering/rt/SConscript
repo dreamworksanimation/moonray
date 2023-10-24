@@ -12,11 +12,11 @@ sources    = [
               'GeometryManagerExecTracker.cc',
               'IntersectionFilters.cc',
               'gpu/GPUAccelerator.cc',
-              'gpu/GPUAcceleratorImpl.cc',
-              'gpu/GPUInstance.cc',
-              'gpu/GPUPrimitive.cc',
-              'gpu/GPUPrimitiveGroup.cc',
-              'gpu/GPUUtils.cc',
+              'gpu/optix/OptixGPUAccelerator.cc',
+              'gpu/optix/OptixGPUInstance.cc',
+              'gpu/optix/OptixGPUPrimitive.cc',
+              'gpu/optix/OptixGPUPrimitiveGroup.cc',
+              'gpu/optix/OptixGPUUtils.cc',
              ]
 
 buildTarget = GetOption('target-architecture')
@@ -63,7 +63,7 @@ components = [
 
 env.AppendUnique(NVCCFLAGS=[('-arch', 'sm_61'), '--use_fast_math', ('--std', 'c++11')])
 
-env.DWAInstallPtx(env.DWACuToPtx(['gpu/GPUPrograms.cu']))
+env.DWAInstallPtx(env.DWACuToPtx(['gpu/optix/OptixGPUPrograms.cu']))
 
 # --------------------------------------------------------------------------
 

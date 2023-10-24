@@ -18,7 +18,7 @@ if (MOONRAY_USE_CUDA)
 
     target_sources(${optixLib}
         PRIVATE
-            gpu/GPUPrograms.cu
+            gpu/optix/OptixGPUPrograms.cu
     )
     set_target_properties(${optixLib}
         PROPERTIES
@@ -53,11 +53,11 @@ target_sources(${component}
 if (MOONRAY_USE_CUDA)
     target_sources(${component}
         PRIVATE
-            gpu/GPUAcceleratorImpl.cc
-            gpu/GPUInstance.cc
-            gpu/GPUPrimitive.cc
-            gpu/GPUPrimitiveGroup.cc
-            gpu/GPUUtils.cc
+            gpu/optix/OptixGPUAccelerator.cc
+            gpu/optix/OptixGPUInstance.cc
+            gpu/optix/OptixGPUPrimitive.cc
+            gpu/optix/OptixGPUPrimitiveGroup.cc
+            gpu/optix/OptixGPUUtils.cc
     )
 endif()
 

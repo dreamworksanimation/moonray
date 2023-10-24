@@ -131,9 +131,11 @@ TextureSampler::getTextureInfo(TextureHandle* handle,
 }
 
 void
-TextureSampler::getStatistics(const std::string& prepend, std::ostream& outs) const
+TextureSampler::getStatistics(const std::string& prepend, std::ostream& outs, bool verbose) const
 {
-    std::string stats = mTextureSystem->getstats(5 /* logging level 1-5 */, 
+
+    int level = verbose ? 5 : 1;
+    std::string stats = mTextureSystem->getstats(level /* logging level 1-5 */,
                                                  true /* output cache stats */);
 
     // Split apart the stats string into individual lines and prepend each line
@@ -723,7 +725,7 @@ TextureSampler::showGetStatistics() const
     std::string prepend = "showGetStatistics : ";
 
     std::ostringstream ostr;
-    getStatistics(prepend, ostr);
+    getStatistics(prepend, ostr, /* verbose */ false);
     getMainCacheInfo(prepend, ostr);
     return ostr.str();
 }
@@ -739,7 +741,7 @@ TextureSampler::parserConfigure()
                 [&](Arg& arg) -> bool { return arg.msg(showShaderToNameTable() + '\n'); });
     mParser.opt("shaderAttr", "<shaderName>", "show all shader attribute. might be pretty long",
                 [&](Arg& arg) -> bool { return arg.msg(showShaderAttrAll((arg++)()) + '\n'); });
-    mParser.opt("getMaxMemory", "", "get texture sysmte cache size",
+    mParser.opt("getMaxMemory", "", "get texture system cache size",
                 [&](Arg& arg) -> bool { return arg.msg(showMaxMemory() + '\n'); });
 
     mParser.opt("resetStats", "", "reset stats",
