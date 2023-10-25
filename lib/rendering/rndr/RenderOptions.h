@@ -281,8 +281,7 @@ private:
     // For developer profiling only, not documented or exposed to user.
     bool mHasVectorizedOverrides;
     unsigned mPerThreadRayStatePoolSize;
-    unsigned mPrimaryRayQueueSize;
-    unsigned mIncoherentRayQueueSize;
+    unsigned mRayQueueSize;
     unsigned mOcclusionQueueSize;
     unsigned mPresenceShadowsQueueSize;
     unsigned mShadeQueueSize;

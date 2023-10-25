@@ -230,8 +230,7 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
     mCancellationState(DISABLED),
     mCurrentPassIdx(0),
     mRayRecorder(nullptr),
-    mPrimaryRayEntries(nullptr),
-    mIncoherentRayEntries(nullptr),
+    mRayEntries(nullptr),
     mOcclusionEntries(nullptr),
     mPresenceShadowsEntries(nullptr),
     mRadianceEntries(nullptr),
@@ -251,23 +250,13 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
         }
 
         // Allocate primary ray queue.
-        if (initParams.mPrimaryRayQueueSize) {
-            unsigned queueSize = initParams.mPrimaryRayQueueSize;
-            mPrimaryRayEntries = scene_rdl2::alignedMallocArray<PrimaryRayQueue::EntryType>
+        if (initParams.mRayQueueSize) {
+            unsigned queueSize = initParams.mRayQueueSize;
+            mRayEntries = scene_rdl2::alignedMallocArray<RayQueue::EntryType>
                                      (queueSize, CACHE_LINE_SIZE);
-            mPrimaryRayQueue.init(queueSize, mPrimaryRayEntries);
+            mRayQueue.init(queueSize, mRayEntries);
             uint32_t rayHandlerFlags = 0;
-            mPrimaryRayQueue.setHandler(rayBundleHandler, (void *)((uint64_t)rayHandlerFlags));
-        }
-
-        // Allocate incoherent ray queue.
-        if (initParams.mIncoherentRayQueueSize) {
-            unsigned queueSize = initParams.mIncoherentRayQueueSize;
-            mIncoherentRayEntries = scene_rdl2::alignedMallocArray<IncoherentRayQueue::EntryType>
-                                     (queueSize, CACHE_LINE_SIZE);
-            mIncoherentRayQueue.init(queueSize, mIncoherentRayEntries);
-            uint32_t rayHandlerFlags = 0;
-            mIncoherentRayQueue.setHandler(rayBundleHandler, (void *)((uint64_t)rayHandlerFlags));
+            mRayQueue.setHandler(rayBundleHandler, (void *)((uint64_t)rayHandlerFlags));
         }
 
         // Allocate occlusion queue.
@@ -341,8 +330,7 @@ TLState::~TLState()
     scene_rdl2::alignedFreeArray(mAovEntries);
     scene_rdl2::alignedFreeArray(mOcclusionEntries);
     scene_rdl2::alignedFreeArray(mPresenceShadowsEntries);
-    scene_rdl2::alignedFreeArray(mIncoherentRayEntries);
-    scene_rdl2::alignedFreeArray(mPrimaryRayEntries);
+    scene_rdl2::alignedFreeArray(mRayEntries);
     scene_rdl2::alignedFreeArray(mHeatMapEntries);
 
     mRayStatePool.cleanUp();
@@ -364,8 +352,7 @@ TLState::~TLState()
 void
 TLState::reset()
 {
-    mPrimaryRayQueue.reset();
-    mIncoherentRayQueue.reset();
+    mRayQueue.reset();
     mOcclusionQueue.reset();
     mPresenceShadowsQueue.reset();
 
@@ -646,12 +633,7 @@ TLState::flushLocalQueues()
 
     unsigned processed = 0;
 
-    processed += mPrimaryRayQueue.flush(mTopLevelTls, mArena);
-    if (isCanceled()) {
-        return 0;
-    }
-
-    processed += mIncoherentRayQueue.flush(mTopLevelTls, mArena);
+    processed += mRayQueue.flush(mTopLevelTls, mArena);
     if (isCanceled()) {
         return 0;
     }
@@ -680,11 +662,7 @@ TLState::flushLocalQueues()
 bool
 TLState::areAllLocalQueuesEmpty()
 {
-    if (!mPrimaryRayQueue.isEmpty()) {
-        return false;
-    }
-
-    if (!mIncoherentRayQueue.isEmpty()) {
+    if (!mRayQueue.isEmpty()) {
         return false;
     }
 
@@ -714,8 +692,7 @@ TLState::setAllQueueSizes(float t)
 {
     MNRY_ASSERT(t >= 0.f && t <= 1.f);
 
-    setQueueSize(&mPrimaryRayQueue, t);
-    setQueueSize(&mIncoherentRayQueue, t);
+    setQueueSize(&mRayQueue, t);
     setQueueSize(&mOcclusionQueue, t);
     setQueueSize(&mPresenceShadowsQueue, t);
 

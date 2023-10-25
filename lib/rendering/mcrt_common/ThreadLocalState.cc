@@ -151,8 +151,7 @@ void TLSInitParams::setVectorizedDefaults(bool realtimeRender)
     mPerThreadCL1PoolSize = CL1_POOL_SIZE;
 
 #ifdef FORCE_SINGLE_ENTRY_QUEUES
-    mPrimaryRayQueueSize = 1;
-    mIncoherentRayQueueSize = 1;
+    mRayQueueSize = 1;
     mOcclusionQueueSize = 1;
     mPresenceShadowsQueueSize = 1;
     mShadeQueueSize = 1;
@@ -163,16 +162,14 @@ void TLSInitParams::setVectorizedDefaults(bool realtimeRender)
 
     if (!realtimeRender) {
         // BATCH mode parameters 
-        mPrimaryRayQueueSize = 512;
-        mIncoherentRayQueueSize = 1024;
+        mRayQueueSize = 1024;
         mOcclusionQueueSize = 1024;
         mPresenceShadowsQueueSize = 1024;
         mShadeQueueSize = 128;
 
     } else {
         // realtime render mode parameters
-        mPrimaryRayQueueSize = 128;
-        mIncoherentRayQueueSize = 64;
+        mRayQueueSize = 128;
         mOcclusionQueueSize = 64;
         mPresenceShadowsQueueSize = 64;
         mShadeQueueSize = 64;

@@ -65,13 +65,9 @@ struct TLSInitParams
     // by numThreads to determine the total allocation size.
     unsigned        mPerThreadCL1PoolSize;
 
-    // The number of entries in *each* thread local primary ray queue, set to
+    // The number of entries in *each* thread local ray queue, set to
     // zero if not in bundled mode.
-    unsigned        mPrimaryRayQueueSize;
-
-    // The number of entries in *each* thread local incoherent ray queue, set to
-    // zero if not in bundled mode.
-    unsigned        mIncoherentRayQueueSize;
+    unsigned        mRayQueueSize;
 
     // The number of entries in *each* thread local occlusion queue, set to zero
     // if not in bundled mode.

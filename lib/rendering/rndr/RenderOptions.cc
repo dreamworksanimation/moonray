@@ -136,8 +136,7 @@ RenderOptions::RenderOptions() :
     // For developer profiling purposes only.
     mHasVectorizedOverrides(false),
     mPerThreadRayStatePoolSize(0),
-    mPrimaryRayQueueSize(0),
-    mIncoherentRayQueueSize(0),
+    mRayQueueSize(0),
     mOcclusionQueueSize(0),
     mPresenceShadowsQueueSize(0),
     mShadeQueueSize(0),
@@ -449,7 +448,7 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
     // where:
     //  n1 = a float containing the perThreadRayStatePoolSize / 1024
     //  n2 = a float containing the primaryRayQueueSize / 1024
-    //  n3 = a float containing the incoherentRayQueueSize / 1024
+    //  n3 = unused
     //  n4 = a float containing the occlusionQueueSize / 1024
     //  n5 = a float containing the shadeQueueSize / 1024
     //  n6 = a float containing the radianceQueueSize / 1024
@@ -465,8 +464,7 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
     if (args.getFlagValues("-set_vectorized_overrides", 8, values) >= 0) {
         mHasVectorizedOverrides = true;
         float perThreadRayStatePoolSize = std::stof(values[0]);
-        float primaryRayQueueSize       = std::stof(values[1]);
-        float incoherentRayQueueSize    = std::stof(values[2]);
+        float rayQueueSize              = std::stof(values[1]);
         float occlusionQueueSize        = std::stof(values[3]);
         float shadeQueueSize            = std::stof(values[4]);
         float radianceQueueSize         = std::stof(values[5]);
@@ -474,8 +472,7 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         float presenceShadowsQueueSize  = std::stof(values[7]);
 
         mPerThreadRayStatePoolSize = unsigned(perThreadRayStatePoolSize * 1024.f);
-        mPrimaryRayQueueSize       = unsigned(primaryRayQueueSize       * 1024.f);
-        mIncoherentRayQueueSize    = unsigned(incoherentRayQueueSize    * 1024.f);
+        mRayQueueSize              = unsigned(rayQueueSize              * 1024.f);
         mOcclusionQueueSize        = unsigned(occlusionQueueSize        * 1024.f);
         mShadeQueueSize            = unsigned(shadeQueueSize            * 1024.f);
         mRadianceQueueSize         = unsigned(radianceQueueSize         * 1024.f);
@@ -765,8 +762,7 @@ RenderOptions::setupTLSInitParams(mcrt_common::TLSInitParams *params, bool realt
 
     if (mHasVectorizedOverrides) {
         params->mPerThreadRayStatePoolSize = mPerThreadRayStatePoolSize;
-        params->mPrimaryRayQueueSize       = mPrimaryRayQueueSize;
-        params->mIncoherentRayQueueSize    = mIncoherentRayQueueSize;
+        params->mRayQueueSize              = mRayQueueSize;
         params->mOcclusionQueueSize        = mOcclusionQueueSize;
         params->mPresenceShadowsQueueSize  = mPresenceShadowsQueueSize;
         params->mShadeQueueSize            = mShadeQueueSize;
@@ -774,8 +770,7 @@ RenderOptions::setupTLSInitParams(mcrt_common::TLSInitParams *params, bool realt
     }
 
     scene_rdl2::logging::Logger::info("Setting mPerThreadRayStatePoolSize to ", params->mPerThreadRayStatePoolSize);
-    scene_rdl2::logging::Logger::info("Setting mPrimaryRayQueueSize to ", params->mPrimaryRayQueueSize);
-    scene_rdl2::logging::Logger::info("Setting mIncoherentRayQueueSize to ", params->mIncoherentRayQueueSize);
+    scene_rdl2::logging::Logger::info("Setting mRayQueueSize to ", params->mRayQueueSize);
     scene_rdl2::logging::Logger::info("Setting mOcclusionQueueSize to ", params->mOcclusionQueueSize);
     scene_rdl2::logging::Logger::info("Setting mShadeQueueSize to ", params->mShadeQueueSize);
     scene_rdl2::logging::Logger::info("Setting mRadianceQueueSize to ", params->mRadianceQueueSize);
@@ -919,8 +914,7 @@ RenderOptions::show() const
          << "  mDebugConsolePort:" << mDebugConsolePort << '\n'
          << "  mHasVectorizedOverrides:" << ((mHasVectorizedOverrides) ? "true" : "false") << '\n'
          << "  mPerThreadRayStatePoolSize:" <<  mPerThreadRayStatePoolSize << '\n'
-         << "  mPrimaryRayQueueSize:" << mPrimaryRayQueueSize << '\n'
-         << "  mIncoherentRayQueueSize:" << mIncoherentRayQueueSize << '\n'
+         << "  mRayQueueSize:" << mRayQueueSize << '\n'
          << "  mOcclusionQueueSize:" << mOcclusionQueueSize << '\n'
          << "  mPresenceShadowsQueueSize:" << mPresenceShadowsQueueSize << '\n'
          << "  mShadeQueueSize:" << mShadeQueueSize << '\n'

@@ -50,12 +50,8 @@ public:
     typedef uint8_t CacheLine1[1 * CACHE_LINE_SIZE];
     typedef scene_rdl2::alloc::MemPool<mcrt_common::TLSInitParams::MemBlockType, CacheLine1> CL1Pool;
 
-    typedef mcrt_common::LocalQueue<WrappedRayState>           PrimaryRayQueue;
-    typedef mcrt_common::LocalQueue<WrappedRayState>           IncoherentRayQueue;
-
-    // @@@ Does sorting by ray direction improve perf?
+    typedef mcrt_common::LocalQueue<WrappedRayState>           RayQueue;
     typedef mcrt_common::LocalLargeEntryQueue<BundledOcclRay>  OcclusionQueue;
-
     typedef mcrt_common::LocalLargeEntryQueue<BundledOcclRay>  PresenceShadowsQueue;
 
     typedef mcrt_common::ExclusiveAccumulators    ExclusiveAccumulators;
@@ -207,7 +203,7 @@ MNRY_STATIC_ASSERT((offsetof(TLState, mExclusiveAccumulators)) == TLS_OFFSET_TO_
 
 // Shorten the TLS queue type names for convenience.
 typedef TLState::RayStatePool      RayStatePool;
-typedef TLState::PrimaryRayQueue   PrimaryRayQueue;
+typedef TLState::RayQueue          RayQueue;
 typedef TLState::OcclusionQueue    OcclusionQueue;
 typedef TLState::PresenceShadowsQueue PresenceShadowsQueue;
 typedef TLState::RadianceQueue     RadianceQueue;
