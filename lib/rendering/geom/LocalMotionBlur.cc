@@ -99,7 +99,7 @@ LocalMotionBlur::getMultiplier(const Vec3f& P,
         float ir2 = mRegions[r].mInnerRadius * mRegions[r].mInnerRadius;
         if (ir2 > r2) ir2 = r2 - sEpsilon;
         const float t = 1.0f - clamp((distSqr - ir2) / (r2 - ir2));
-        mbMult = lerp(mbMult, mRegions[r].mMultiplier, t);
+        mbMult = min(mbMult, lerp(1.0f,  mRegions[r].mMultiplier, t));
     }
     return mbMult;
 }
