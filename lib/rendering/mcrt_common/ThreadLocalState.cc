@@ -140,13 +140,12 @@ void TLSInitParams::setVectorizedDefaults(bool realtimeRender)
 
     // TLState allocList configuration
     // 64k items per thread is often way more than we need in CPU vector mode,
-    // but XPU has larger queues (65536 entries per thread) and buffers more data,
-    // especially since we added Cryptomatte data to the BundledOcclusionRays.
-    // For some production scenes, 2000K+ entries are needed.
-    // Set to 4096K entries to be safe.
+    // but XPU has larger queues and buffers more data.
+    // For some production scenes, 512k items are needed.
+    // Set to 1024k items to be safe.
     // Use the DEBUG_RECORD_PEAK_CL1_USAGE in TLState.cc to analyze.
     // number of items must fit in 24 bits (see TLSTate.cc for details)
-    const int CL1_POOL_SIZE = 4 * 1024 * 1024;
+    const int CL1_POOL_SIZE = 1024 * 1024;
     const int MAX_CL1_POOL_SIZE = 0x0FFFFFFF;
     MNRY_STATIC_ASSERT(CL1_POOL_SIZE < MAX_CL1_POOL_SIZE);
     mPerThreadCL1PoolSize = CL1_POOL_SIZE;
