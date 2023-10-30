@@ -22,11 +22,6 @@ struct Vec3f;
 // in ISPC.
 typedef int VolumeOverlapMode;
 
-enum BsdfSamplerStrategy
-{
-    BSDF_SAMPLER_STRATEGY_ENUMERATIONS
-};
-
 struct PathIntegrator
 {
     PATH_INTEGRATOR_MEMBERS;
@@ -53,23 +48,6 @@ void computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this
                                      varying float shadowRayEpsilon,
                                      const varying Color &ssAov,
                                      varying uint32_t &sequenceID);
-
-void computeRadianceBsdfOneSampler(const uniform PathIntegrator * uniform this,
-                                   uniform PbrTLState * uniform pbrTls,
-                                   uniform ShadingTLState * uniform shadingTls,
-                                   const varying RayState * uniform rs,
-                                   const varying Intersection &isect,
-                                   const varying Bsdf &bsdf,
-                                   const varying BsdfSlice &slice,
-                                   varying bool doIndirect,
-                                   varying BsdfLobeType indirectFlags,
-                                   const uniform LightSet &activeLightSet,
-                                   const varying Vec3f &cullingNormal,
-                                   uniform bool hasRayTerminatorLights,
-                                   varying float rayEpsilon,
-                                   varying float shadowRayEpsilon,
-                                   const Color &ssAov,
-                                   varying uint32_t &sequenceID);
 
 extern "C" void
 CPP_addOcclusionQueueEntries(           uniform PbrTLState *     uniform pbrTls,

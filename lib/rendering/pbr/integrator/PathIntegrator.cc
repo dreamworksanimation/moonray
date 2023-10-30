@@ -173,7 +173,6 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
     mLightSamples = params.mIntegratorLightSamplesSqrt * params.mIntegratorLightSamplesSqrt;
     mBsdfSamplesSqrt = params.mIntegratorBsdfSamplesSqrt;
     mBsdfSamples = mBsdfSamplesSqrt * mBsdfSamplesSqrt;
-    mBsdfSamplerStrategy = params.mIntegratorBsdfSamplerStrategy;
     // Currently we are using triplanar projection sampling for subsurface scattering.
     // This requires at least 2 samples.
     mBssrdfSamples = scene_rdl2::math::max(2, params.mIntegratorBssrdfSamplesSqrt * params.mIntegratorBssrdfSamplesSqrt);
@@ -982,17 +981,9 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     //---------------------------------------------------------------------
     // Setup bsdf and light samples
-    if (mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_MULTI_SAMPLE) {
-        radiance += computeRadianceBsdfMultiSampler(pbrTls, sp, pv, ray, isect, *bsdf, slice,
-            doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
-            rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs, refractCryptomatteParamsPtr);
-    } else {
-        MNRY_ASSERT(mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_SAMPLE ||
-                   mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_LOBE);
-        radiance += computeRadianceBsdfOneSampler(pbrTls, sp, pv, ray, isect,
-            *bsdf, slice, doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
-            hasRayTerminatorLights, rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs);
-    }
+    radiance += computeRadianceBsdfMultiSampler(pbrTls, sp, pv, ray, isect, *bsdf, slice,
+        doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
+        rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs, refractCryptomatteParamsPtr);
 
     // -------------------------------------------------------------------
     // Add presence fragment to cryptomatte or update beauty for other recursions 

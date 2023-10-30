@@ -46,7 +46,6 @@ set(sources01
         integrator/LightSetSampler.ispc
         integrator/PathIntegratorBundled.ispc
         integrator/PathIntegratorMultiSampler.ispc
-        integrator/PathIntegratorOneSampler.ispc
         integrator/PathIntegratorUtil.ispc)
 set(sources02
         light/CylinderLight.ispc
@@ -289,7 +288,6 @@ target_sources(${component}
         integrator/LightSetSampler.cc
         integrator/PathGuide.cc
         integrator/PathIntegrator.cc
-        integrator/PathIntegratorOneSampler.cc
         integrator/PathIntegratorMultiSampler.cc
         integrator/PathIntegratorSubsurface.cc
         integrator/PathIntegratorUtil.cc

@@ -7,16 +7,9 @@
 #pragma once
 #include <moonray/rendering/mcrt_common/ThreadLocalState.hh>
 
-#define BSDF_SAMPLER_STRATEGY_ENUMERATIONS         \
-    BSDF_SAMPLER_STRATEGY_MULTI_SAMPLE = 0,        \
-    BSDF_SAMPLER_STRATEGY_ONE_SAMPLE,              \
-    BSDF_SAMPLER_STRATEGY_ONE_LOBE,                \
-    BSDF_SAMPLER_STRATEGY_NUM_MODES
-
 #define PATH_INTEGRATOR_MEMBERS                            \
     HUD_MEMBER(int, mLightSamples);                        \
     HUD_MEMBER(int, mBsdfSamplesSqrt);                     \
-    HUD_MEMBER(BsdfSamplerStrategy, mBsdfSamplerStrategy); \
     HUD_MEMBER(int, mBsdfSamples);                         \
     HUD_MEMBER(int, mBssrdfSamples);                       \
     HUD_MEMBER(int, mMaxDepth);                            \
@@ -47,9 +40,10 @@
     HUD_MEMBER(bool, mEnableShadowing);                    \
     HUD_MEMBER(int, mDeepMaxLayers);                       \
     HUD_MEMBER(float, mDeepLayerBias);                     \
+    HUD_MEMBER(int, mPad0);                                \
     HUD_CPP_MEMBER(std::vector<int>, mDeepIDAttrIdxs, 24); \
     HUD_MEMBER(int, mCryptoUVAttrIdx);                     \
-    HUD_MEMBER(int, mPad);                                 \
+    HUD_MEMBER(int, mPad1);                                \
     HUD_CPP_MEMBER(PathGuide, mPathGuide, 8)
                 
 
@@ -57,7 +51,6 @@
     HUD_BEGIN_VALIDATION(PathIntegrator);                          \
     HUD_VALIDATE(PathIntegrator, mLightSamples);                   \
     HUD_VALIDATE(PathIntegrator, mBsdfSamplesSqrt);                \
-    HUD_VALIDATE(PathIntegrator, mBsdfSamplerStrategy);            \
     HUD_VALIDATE(PathIntegrator, mBsdfSamples);                    \
     HUD_VALIDATE(PathIntegrator, mBssrdfSamples);                  \
     HUD_VALIDATE(PathIntegrator, mMaxDepth);                       \
@@ -88,9 +81,10 @@
     HUD_VALIDATE(PathIntegrator, mEnableShadowing);                \
     HUD_VALIDATE(PathIntegrator, mDeepMaxLayers);                  \
     HUD_VALIDATE(PathIntegrator, mDeepLayerBias);                  \
+    HUD_VALIDATE(PathIntegrator, mPad0);                           \
     HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
     HUD_VALIDATE(PathIntegrator, mCryptoUVAttrIdx);                \
-    HUD_VALIDATE(PathIntegrator, mPad);                            \
+    HUD_VALIDATE(PathIntegrator, mPad1);                           \
     HUD_VALIDATE(PathIntegrator, mPathGuide);                      \
     HUD_END_VALIDATION
 

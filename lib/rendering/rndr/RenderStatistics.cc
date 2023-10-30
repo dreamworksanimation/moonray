@@ -847,7 +847,6 @@ RenderStats::logSceneVariables(const scene_rdl2::rdl2::SceneVariables &vars, std
     ssTable.emplace_back("Pixel samples sqrt", vars.get(scene_rdl2::rdl2::SceneVariables::sPixelSamplesSqrt));
     ssTable.emplace_back("Light samples sqrt", vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplesSqrt));
     ssTable.emplace_back("Bsdf samples sqrt", vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplesSqrt));
-    ssTable.emplace_back("Bsdf sampler strategy", vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplerStrategy));
     ssTable.emplace_back("Bssrdf samples sqrt", vars.get(scene_rdl2::rdl2::SceneVariables::sBssrdfSamplesSqrt));
     ssTable.emplace_back("Max depth", vars.get(scene_rdl2::rdl2::SceneVariables::sMaxDepth));
     ssTable.emplace_back("Max diffuse depth", vars.get(scene_rdl2::rdl2::SceneVariables::sMaxDiffuseDepth));

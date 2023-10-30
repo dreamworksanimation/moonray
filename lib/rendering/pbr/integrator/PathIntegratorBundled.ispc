@@ -475,42 +475,21 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
         //---------------------------------------------------------------------
         // Setup bsdf and light samples
-        if (this->mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_MULTI_SAMPLE) {
-            computeRadianceBsdfMultiSampler(this,
-                                            pbrTls,
-                                            shadingTls,
-                                            rs,
-                                            isect,
-                                            *bsdf,
-                                            slice,
-                                            doIndirect,
-                                            indirectFlags,
-                                            activeLightSet,
-                                            cullingNormal,
-                                            rayEpsilon,
-                                            shadowRayEpsilon,
-                                            ssAov,
-                                            sequenceID);
-        } else {
-            MNRY_ASSERT(this->mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_SAMPLE ||
-                       this->mBsdfSamplerStrategy == BSDF_SAMPLER_STRATEGY_ONE_LOBE);
-            computeRadianceBsdfOneSampler(this,
-                                          pbrTls,
-                                          shadingTls,
-                                          rs,
-                                          isect,
-                                          *bsdf,
-                                          slice,
-                                          doIndirect,
-                                          (varying BsdfLobeType) indirectFlags.mBits,
-                                          activeLightSet,
-                                          cullingNormal,
-                                          hasRayTerminatorLights,
-                                          rayEpsilon,
-                                          shadowRayEpsilon,
-                                          ssAov,
-                                          sequenceID);
-        }
+        computeRadianceBsdfMultiSampler(this,
+                                        pbrTls,
+                                        shadingTls,
+                                        rs,
+                                        isect,
+                                        *bsdf,
+                                        slice,
+                                        doIndirect,
+                                        indirectFlags,
+                                        activeLightSet,
+                                        cullingNormal,
+                                        rayEpsilon,
+                                        shadowRayEpsilon,
+                                        ssAov,
+                                        sequenceID);
     }
 
     MNRY_ASSERT(numRadiances <= numEntries);

@@ -81,24 +81,11 @@ enum class VolumeOverlapMode
     NUM_MODES
 };
 
-enum BsdfSamplerStrategy
-{
-    BSDF_SAMPLER_STRATEGY_ENUMERATIONS
-};
-MNRY_STATIC_ASSERT(static_cast<int>(BSDF_SAMPLER_STRATEGY_MULTI_SAMPLE) ==
-                  static_cast<int>(scene_rdl2::rdl2::BsdfSamplerStrategy::MULTI_SAMPLE));
-MNRY_STATIC_ASSERT(static_cast<int>(BSDF_SAMPLER_STRATEGY_ONE_SAMPLE) ==
-                  static_cast<int>(scene_rdl2::rdl2::BsdfSamplerStrategy::ONE_SAMPLE));
-MNRY_STATIC_ASSERT(static_cast<int>(BSDF_SAMPLER_STRATEGY_ONE_LOBE) ==
-                  static_cast<int>(scene_rdl2::rdl2::BsdfSamplerStrategy::ONE_LOBE));
-MNRY_STATIC_ASSERT(BSDF_SAMPLER_STRATEGY_NUM_MODES == 3);
-
 struct PathIntegratorParams
 {
     int mIntegratorPixelSamplesSqrt;
     int mIntegratorLightSamplesSqrt;
     int mIntegratorBsdfSamplesSqrt;
-    BsdfSamplerStrategy mIntegratorBsdfSamplerStrategy;
     int mIntegratorBssrdfSamplesSqrt;
     int mIntegratorMaxDepth;
     int mIntegratorMaxDiffuseDepth;
@@ -353,34 +340,6 @@ private:
             scene_rdl2::math::Color &radiance, unsigned &sequenceID,
             float *aovs, CryptomatteParams *refractCryptomatteParams) const;
 
-    scene_rdl2::math::Color oneSamplerDirectLight(pbr::TLState *pbrTls,
-            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
-            const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
-            const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler,
-                                                  const scene_rdl2::math::Color &pt,
-            const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const;
-
-    scene_rdl2::math::Color oneSamplerDirectBsdf(pbr::TLState *pbrTls,
-            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
-            const shading::Intersection &isect, const Light *light, const LightFilterList *lightFilterList,
-            const scene_rdl2::math::Vec3f *cullingNormal, const BsdfOneSampler &bsdfOneSampler,
-                                                 const scene_rdl2::math::Color &pt,
-            const float r[9], float rayEpsilon, float shadowRayEpsilon, unsigned sequenceID, float *aovs) const;
-
-    scene_rdl2::math::Color oneSamplerDirect(pbr::TLState *pbrTls,
-            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
-            const shading::Intersection &isect, const BsdfOneSampler &bsdfOneSampler,
-            const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal, float rayEpsilon,
-            float shadowRayEpsilon, IntegratorSample1D &rrSamples, unsigned sequenceID, float *aovs) const;
-
-    scene_rdl2::math::Color oneSamplerRayTerminatorLights(pbr::TLState *pbrTls,
-            const PathVertex &pv, const mcrt_common::RayDifferential &ray,
-            const shading::Intersection &isect, const scene_rdl2::math::Vec3f &wi, float pdfBsdf,
-            const shading::BsdfLobe &lobe, const shading::Bsdf &bsdf,
-            const LightSet &activeLightSet, const LightFilterRandomValues& lightFilterR,
-            const scene_rdl2::math::Vec3f *cullingNormal, const scene_rdl2::math::Color &pt,
-            float *aovs) const;
-
     // compute volume emission line integral along the ray
     scene_rdl2::math::Color computeEmissiveVolumeIntegral(pbr::TLState *pbrTls, mcrt_common::Ray& ray,
             int emissiveVolumeId, const Subpixel& sp,
@@ -401,16 +360,6 @@ private:
             int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
             float rayEpsilon, float shadowRayEpsilon, const scene_rdl2::math::Color &ssAov, unsigned &sequenceID,
             float *aovs, CryptomatteParams *refractCryptomatteParams) const;
-
-    // compute integrated radiance, transparency and aovs from a multiple lobe bsdf using
-    // a bsdf one sampler strategy
-    scene_rdl2::math::Color computeRadianceBsdfOneSampler(pbr::TLState *pbrTls,
-            const Subpixel &sp, const PathVertex &pv, const mcrt_common::RayDifferential &ray,
-            const shading::Intersection &isect, const shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
-            bool doIndirect, shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
-            int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
-            bool hasRayTerminatorLights, float rayEpsilon, float shadowRayEpsilon,const scene_rdl2::math::Color &ssAov,
-            unsigned &sequenceID, float *aovs) const;
 
     // compute the emission contribution from volumes emitting energy
     // (something like fire and explosion) toward intersection point

@@ -9,8 +9,6 @@
 // to update the scalar implementation and the one-sample
 // integrator (both vector and scalar).
 //   PathIntegratorMultiSampler.cc
-//   PathIntegratorOneSampler.cc
-//   PathIntegratorOneSampler.ispc
 
 #include "PathIntegrator.isph"
 

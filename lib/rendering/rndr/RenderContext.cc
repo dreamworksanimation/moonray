@@ -2097,13 +2097,6 @@ RenderContext::updatePbrState(const FrameState &fs)
     integratorParams.mIntegratorPixelSamplesSqrt               = vars.get(scene_rdl2::rdl2::SceneVariables::sPixelSamplesSqrt);
     integratorParams.mIntegratorLightSamplesSqrt               = vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplesSqrt);
     integratorParams.mIntegratorBsdfSamplesSqrt                = vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplesSqrt);
-
-    MNRY_ASSERT(vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplerStrategy) >= 0 &&
-               vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplerStrategy) <
-               static_cast<int>(pbr::BSDF_SAMPLER_STRATEGY_NUM_MODES));
-    integratorParams.mIntegratorBsdfSamplerStrategy            =
-        static_cast<pbr::BsdfSamplerStrategy>(vars.get(scene_rdl2::rdl2::SceneVariables::sBsdfSamplerStrategy));
-
     integratorParams.mIntegratorBssrdfSamplesSqrt              = vars.get(scene_rdl2::rdl2::SceneVariables::sBssrdfSamplesSqrt);
     integratorParams.mIntegratorMaxDepth                       = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxDepth);
     integratorParams.mIntegratorMaxDiffuseDepth                = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxDiffuseDepth);
