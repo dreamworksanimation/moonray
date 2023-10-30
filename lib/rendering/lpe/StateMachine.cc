@@ -140,6 +140,16 @@ StateMachine::Impl::getLabelId(std::string const &label) const
 void
 StateMachine::Impl::build()
 {
+    /// In order to fix the exclusion symbol "^", we had to add this "placeholder" label internally. This is to combat
+    /// the way the OSL automata works internally. For example, say we're at state 4 and want to progress to 5. 
+    /// The automata has created a transition that looks like this:
+    ///     4: excluded_label_name: -1  _stop_: -1   anything else: 5
+    /// We only try to perform this transition for labels if they exist, otherwise we get a "_stop_" 
+    /// (see StateMachine::transition()). This means that if there are no labels, we erroneously get a state id of -1. 
+    /// I'm not sure whether this is a bug in OSL, but for now this label (which only exists internally) 
+    /// will ensure we always have a label to process. 
+    addLabel("placeholder");
+
     MNRY_ASSERT(!mBuilt);
 
     osl::NdfAutomata ndf;
@@ -240,6 +250,9 @@ StateMachine::Impl::transition(int stateId, EventType ev, EventScatteringType ev
     if (labelId >= 0) {
         MNRY_ASSERT(static_cast<unsigned int>(labelId) < mLabels.size());
         newStateId = mOptFsm.getTransition(newStateId, mLabels[labelId]);
+    } else {
+        /// The "^" requires us to always process a label of some kind (see explanation in StateMachine::Impl::build)
+        newStateId = mOptFsm.getTransition(newStateId, mLabels[mLabels.size()-1]);
     }
 
     if (newStateId < 0) return newStateId;
