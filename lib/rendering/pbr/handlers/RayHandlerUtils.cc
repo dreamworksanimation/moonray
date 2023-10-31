@@ -117,7 +117,9 @@ fillBundledRadiance(pbr::TLState* pbrTls, BundledRadiance* dst, const BundledOcc
     // cryptomatte data. Before this change to cryptomatte, this would have been a null handle, as we only cared about 
     // pixel coverage information as seen from the camera.
     dst->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(occlRay.mCryptomatteDataHandle);
-    dst->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(occlRay.mCryptomatteDataHandle2);
+    dst->mCryptoRefP = occlRay.mCryptoRefP;
+    dst->mCryptoRefN = occlRay.mCryptoRefN;
+    dst->mCryptoUV = occlRay.mCryptoUV;
     dst->mTilePass = occlRay.mTilePass;
 }
 

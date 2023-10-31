@@ -1010,8 +1010,6 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
             if (br->mCryptomatteDataHandle != pbr::nullHandle) {
                 pbr::CryptomatteData *cryptomatteData =
                             static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(br->mCryptomatteDataHandle, 0));
-                pbr::CryptomatteData2 *cryptomatteData2 =
-                            static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(br->mCryptomatteDataHandle2, 0));
 
                 if (film.mCryptomatteBuf != nullptr) {
                     float id = cryptomatteData->mId;
@@ -1022,9 +1020,9 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                                                     br->mRadiance[1], 
                                                     br->mRadiance[2], 
                                                     br->mRadiance[3]);
-                    scene_rdl2::math::Vec3f refP = cryptomatteData2->mRefP;
-                    scene_rdl2::math::Vec3f refN = cryptomatteData2->mRefN;
-                    scene_rdl2::math::Vec2f uv = cryptomatteData2->mUV;
+                    scene_rdl2::math::Vec3f refP = br->mCryptoRefP;
+                    scene_rdl2::math::Vec3f refN = br->mCryptoRefN;
+                    scene_rdl2::math::Vec2f uv = br->mCryptoUV;
 
                     float presenceInv = cryptomatteData->mPathPixelWeight == 0.f ? 0.f 
                                                                              : (1.f / cryptomatteData->mPathPixelWeight);
@@ -1051,7 +1049,6 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                     }
                 }
                 pbrTls->releaseCryptomatteData(br->mCryptomatteDataHandle);
-                pbrTls->releaseCryptomatteData2(br->mCryptomatteDataHandle2);
             }
 
         } while (entryIdx != numEntries && currPixel == entries[entryIdx]->mPixel);

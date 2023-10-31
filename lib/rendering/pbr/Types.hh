@@ -34,10 +34,12 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mDataPtrHandle);                           \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
-    HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  \
     HVD_MEMBER(uint32_t, mOcclTestType);                            \
     HVD_MEMBER(int32_t,  mShadowReceiverId);                        \
-    HVD_ISPC_PAD(mIspcPad, 36)
+    HVD_ISPC_PAD(mIspcPad, 8)
 
 #define BUNDLED_OCCL_RAY_VALIDATION(vlen)                   \
     HVD_BEGIN_VALIDATION(BundledOcclRay, vlen);             \
@@ -55,7 +57,9 @@ enum OcclTestType
     HVD_VALIDATE(BundledOcclRay, mDataPtrHandle);           \
     HVD_VALIDATE(BundledOcclRay, mDeepDataHandle);          \
     HVD_VALIDATE(BundledOcclRay, mCryptomatteDataHandle);   \
-    HVD_VALIDATE(BundledOcclRay, mCryptomatteDataHandle2);  \
+    HUD_VALIDATE(BundledOcclRay, mCryptoRefP);              \
+    HUD_VALIDATE(BundledOcclRay, mCryptoRefN);              \
+    HUD_VALIDATE(BundledOcclRay, mCryptoUV);                \
     HVD_VALIDATE(BundledOcclRay, mOcclTestType);            \
     HVD_VALIDATE(BundledOcclRay, mShadowReceiverId);        \
     HVD_END_VALIDATION
@@ -93,7 +97,9 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mSubPixelIndex);                           \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
-    HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  \
     HVD_MEMBER(uint32_t, mTilePass);                                \
     HUD_ARRAY(int, mPad1, 5);
 
@@ -106,9 +112,11 @@ enum OcclTestType
     HVD_MEMBER(uint32_t, mSubPixelIndex);                           \
     HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
-    HVD_MEMBER(uint32_t, mCryptomatteDataHandle2);                  \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN); \
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  \
     HVD_MEMBER(uint32_t, mTilePass);                                \
-    HUD_ARRAY(int, mPad, 5)
+    HUD_ARRAY(int, mPad, 6)
 
 #endif
 
@@ -122,8 +130,9 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mSubPixelIndex);         \
     HVD_VALIDATE(BundledRadiance, mDeepDataHandle);        \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
-    HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
-    HVD_VALIDATE(BundledRadiance, mTilePass);              \
+    HUD_VALIDATE(BundledRadiance, mCryptoRefP);            \
+    HUD_VALIDATE(BundledRadiance, mCryptoRefN);            \
+    HUD_VALIDATE(BundledRadiance, mCryptoUV);              \
     HVD_VALIDATE(BundledRadiance, mPad1);                  \
     HVD_END_VALIDATION
 
@@ -137,11 +146,12 @@ enum OcclTestType
     HVD_VALIDATE(BundledRadiance, mSubPixelIndex);         \
     HVD_VALIDATE(BundledRadiance, mDeepDataHandle);        \
     HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle); \
-    HVD_VALIDATE(BundledRadiance, mCryptomatteDataHandle2);\
+    HUD_VALIDATE(BundledRadiance, mCryptoRefP);            \
+    HUD_VALIDATE(BundledRadiance, mCryptoRefN);            \
+    HUD_VALIDATE(BundledRadiance, mCryptoUV);              \
     HVD_VALIDATE(BundledRadiance, mTilePass);              \
     HVD_VALIDATE(BundledRadiance, mPad);                   \
     HVD_END_VALIDATION
-
 
 #endif
 
@@ -197,23 +207,6 @@ enum OcclTestType
     HUD_VALIDATE(CryptomatteData, mPresenceDepth);      \
     HUD_VALIDATE(CryptomatteData, mPathPixelWeight);    \
     HUD_VALIDATE(CryptomatteData, mIsFirstSample);      \
-    HUD_END_VALIDATION
-
-// We need a second one because these data objects are limited to 64
-// bytes in size due to them being allocated as one cache line.
-
-#define CRYPTOMATTE_DATA_MEMBERS_2                                  \
-    HUD_CPP_MEMBER(tbb::atomic<int>, mRefCount, 4);                 \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mRefP);      \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mRefN);      \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mUV)
-  
-#define CRYPTOMATTE_DATA_VALIDATION_2                   \
-    HUD_BEGIN_VALIDATION(CryptomatteData2);             \
-    HUD_VALIDATE(CryptomatteData2, mRefCount);          \
-    HUD_VALIDATE(CryptomatteData2, mRefP);              \
-    HUD_VALIDATE(CryptomatteData2, mRefN);              \
-    HUD_VALIDATE(CryptomatteData2, mUV);                \
     HUD_END_VALIDATION
 
 //

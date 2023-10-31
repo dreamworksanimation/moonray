@@ -1194,7 +1194,6 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
             pbr::RayState *rs = rayStates[i];
             rs->mDeepDataHandle = pbr::nullHandle;
             rs->mCryptomatteDataHandle = pbr::nullHandle;
-            rs->mCryptomatteDataHandle2 = pbr::nullHandle;
         }
     }
 
@@ -1248,10 +1247,9 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
                         static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
             cryptomatteData->init(cryptomatteBuffer);
 
-            rs->mCryptomatteDataHandle2 = pbrTls->allocList(sizeof(pbr::CryptomatteData2), 1);
-            pbr::CryptomatteData2 *cryptomatteData2 =
-                        static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2, 0));
-            cryptomatteData2->init();
+            rs->mCryptoRefP = scene_rdl2::math::Vec3f(0.f);
+            rs->mCryptoRefN = scene_rdl2::math::Vec3f(0.f);
+            rs->mCryptoUV = scene_rdl2::math::Vec2f(0.f);
         }
 
         // Queue up new primary ray.

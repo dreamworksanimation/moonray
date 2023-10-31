@@ -68,12 +68,3 @@ PbrTLState_acquireCryptomatteData(uniform PbrTLState * uniform pbrTls,
 void
 PbrTLState_releaseCryptomatteData(uniform PbrTLState * uniform pbrTls,
                                   varying uint32_t cryptomattePtr);
-
-void
-PbrTLState_acquireCryptomatteData2(uniform PbrTLState * uniform pbrTls,
-                                   varying uint32_t cryptomattePtr);
-
-void
-PbrTLState_releaseCryptomatteData2(uniform PbrTLState * uniform pbrTls,
-                                   varying uint32_t cryptomattePtr);
-                                   

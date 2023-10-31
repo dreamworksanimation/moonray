@@ -245,7 +245,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
-                currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
+                currRadiance->mCryptoRefP = rs->mCryptoRefP;
+                currRadiance->mCryptoRefN = rs->mCryptoRefN;
+                currRadiance->mCryptoUV = rs->mCryptoUV;
                 currRadiance->mTilePass = rs->mTilePass;
 
                 // To maintain parity with scalar mode, specify that we hit something with an Id of 0 when we hit
@@ -315,7 +317,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
-                currRadiance->mCryptomatteDataHandle2 = pbrTls->acquireCryptomatteData2(rs->mCryptomatteDataHandle2);
+                currRadiance->mCryptoRefP = rs->mCryptoRefP;
+                currRadiance->mCryptoRefN = rs->mCryptoRefN;
+                currRadiance->mCryptoUV = rs->mCryptoUV;
                 currRadiance->mTilePass = rs->mTilePass;
                 ++currRadiance;
 
@@ -347,8 +351,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 if (ray->getDepth() == 0 && rs->mCryptomatteDataHandle != pbr::nullHandle) {
                     pbr::CryptomatteData *cryptomatteData =
                                 static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
-                    pbr::CryptomatteData2 *cryptomatteData2 =
-                                static_cast<pbr::CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2, 0));
 
                     // Don't want to double count, so we set mHit to 0 only if it was originally a presence ray.
                     if (cryptomatteData->mPrevPresence) {
@@ -362,8 +364,8 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     cryptomatteData->mPosition = isect->getP();
                     cryptomatteData->mNormal = isect->getN();
                     shading::State sstate(isect);
-                    sstate.getRefP(cryptomatteData2->mRefP);
-                    sstate.getRefN(cryptomatteData2->mRefN);
+                    sstate.getRefP(rs->mCryptoRefP);
+                    sstate.getRefN(rs->mCryptoRefN);
 
                     // Retrieve the first deep id (if present) for this intersection from the primitive attrs.
                     // At the request of production, cryptomatte currently only supports one deep id associated
@@ -380,9 +382,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
                     shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(fs.mIntegrator->getCryptoUVAttrIdx());
                     if (isect->isProvided(cryptoUVAttrKey)) {
-                        cryptomatteData2->mUV = isect->getAttribute<scene_rdl2::rdl2::Vec2f>(cryptoUVAttrKey);
+                        rs->mCryptoUV = isect->getAttribute<scene_rdl2::rdl2::Vec2f>(cryptoUVAttrKey);
                     } else {
-                        cryptomatteData2->mUV = isect->getSt();
+                        rs->mCryptoUV = isect->getSt();
                     }
                 }
 
@@ -773,18 +775,14 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                         (pbrTls->getListItem(presenceRay->mCryptomatteDataHandle, 0));
                         cryptomatteDataNext->init(nullptr);
 
-                        presenceRay->mCryptomatteDataHandle2 = pbrTls->allocList(sizeof(pbr::CryptomatteData2), 1);
-                        pbr::CryptomatteData2 *cryptomatteDataNext2 = static_cast<pbr::CryptomatteData2*>
-                                                        (pbrTls->getListItem(presenceRay->mCryptomatteDataHandle2, 0));
-                        cryptomatteDataNext2->init();
+                        presenceRay->mCryptoRefP = scene_rdl2::math::Vec3f(0.f);
+                        presenceRay->mCryptoRefN = scene_rdl2::math::Vec3f(0.f);
+                        presenceRay->mCryptoUV = scene_rdl2::math::Vec2f(0.f);
 
                         // Add to the cryptomatte if we have a handle to it, and isn't a cutout:
                         if (!cutout && rs->mCryptomatteDataHandle != nullHandle && ray->getDepth() == 0) {
                             CryptomatteData *cryptomatteData =
                                 static_cast<CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle,
-                                                                                  0));
-                            CryptomatteData2 *cryptomatteData2 =
-                                static_cast<CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2,
                                                                                   0));
                             // add presence data to cryptomatte -- the only data we don't have at this point is 
                             // radiance, which we will add to the cryptomatte in the radiance handler
@@ -795,9 +793,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                                                     cryptomatteData->mPosition,
                                                                                     cryptomatteData->mNormal, 
                                                                                     beauty,
-                                                                                    cryptomatteData2->mRefP,
-                                                                                    cryptomatteData2->mRefN,
-                                                                                    cryptomatteData2->mUV,
+                                                                                    rs->mCryptoRefP,
+                                                                                    rs->mCryptoRefN,
+                                                                                    rs->mCryptoUV,
                                                                                     rs->mPathVertex.presenceDepth);
                             }
                             // update cryptomatte info for current presence ray
@@ -828,10 +826,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         CryptomatteData *cryptomatteData =
                             static_cast<CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle,
                                                                               0));
-                        CryptomatteData2 *cryptomatteData2 =
-                            static_cast<CryptomatteData2*>(pbrTls->getListItem(rs->mCryptomatteDataHandle2,
-                                                                              0));
-
                         if (!cryptomatteData->mPrevPresence) {
                             continue;
                         }
@@ -844,9 +838,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                                                 cryptomatteData->mPosition,
                                                                                 cryptomatteData->mNormal, 
                                                                                 beauty, 
-                                                                                cryptomatteData2->mRefP,
-                                                                                cryptomatteData2->mRefN,
-                                                                                cryptomatteData2->mUV,
+                                                                                rs->mCryptoRefP,
+                                                                                rs->mCryptoRefN,
+                                                                                rs->mCryptoUV,
                                                                                 rs->mPathVertex.presenceDepth);
                         }
                         // update cryptomatte info for current ray

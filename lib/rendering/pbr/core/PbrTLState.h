@@ -86,8 +86,6 @@ public:
 
     uint32_t acquireCryptomatteData(uint32_t cryptomatteDataHandle);
     void releaseCryptomatteData(uint32_t cryptomatteDataHandle);
-    uint32_t acquireCryptomatteData2(uint32_t cryptomatteDataHandle2);
-    void releaseCryptomatteData2(uint32_t cryptomatteDataHandle2);
 
     // Allocate a list of items.
     // Lists can be allocated on one thread, and efficiently freed on another.

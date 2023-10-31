@@ -131,10 +131,11 @@ fillBundledRadiance(       uniform PbrTLState *     uniform pbrTls,
         dst->mSubPixelIndex = rayState.mSubpixel.mSubpixelIndex;
         dst->mDeepDataHandle = rayState.mDeepDataHandle;
         dst->mCryptomatteDataHandle = rayState.mCryptomatteDataHandle;
-        dst->mCryptomatteDataHandle2 = rayState.mCryptomatteDataHandle2;
+        dst->mCryptoRefP = rayState.mCryptoRefP;
+        dst->mCryptoRefN = rayState.mCryptoRefN;
+        dst->mCryptoUV = rayState.mCryptoUV;
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);
         PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
-        PbrTLState_acquireCryptomatteData2(pbrTls, dst->mCryptomatteDataHandle2);
         dst->mTilePass = rayState.mTilePass;
 
 #ifdef PBR_CHECK_FOR_NAN

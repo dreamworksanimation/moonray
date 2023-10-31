@@ -40,12 +40,6 @@ CPP_PbrTLState_acquireCryptomatteData(uniform PbrTLState * uniform pbrTls, unifo
 extern "C" void
 CPP_PbrTLState_releaseCryptomatteData(uniform PbrTLState * uniform pbrTls, uniform uint32_t cryptomattePtr);
 
-extern "C" void
-CPP_PbrTLState_acquireCryptomatteData2(uniform PbrTLState * uniform pbrTls, uniform uint32_t cryptomattePtr);
-
-extern "C" void
-CPP_PbrTLState_releaseCryptomatteData2(uniform PbrTLState * uniform pbrTls, uniform uint32_t cryptomattePtr);
-
 extern "C" uniform bool isRenderCanceled();
 
 uniform bool
@@ -170,26 +164,6 @@ PbrTLState_releaseCryptomatteData(uniform PbrTLState * uniform pbrTls,
     foreach_active(lane) {
         uniform uint32_t uCryptomattePtr = extract(cryptomattePtr, lane);
         CPP_PbrTLState_releaseCryptomatteData(pbrTls, uCryptomattePtr);
-    }
-}
-
-void
-PbrTLState_acquireCryptomatteData2(uniform PbrTLState * uniform pbrTls,
-                                   varying uint32_t cryptomattePtr)
-{
-    foreach_active(lane) {
-        uniform uint32_t uCryptomattePtr = extract(cryptomattePtr, lane);
-        CPP_PbrTLState_acquireCryptomatteData2(pbrTls, uCryptomattePtr);
-    }
-}
-
-void
-PbrTLState_releaseCryptomatteData2(uniform PbrTLState * uniform pbrTls,
-                                   varying uint32_t cryptomattePtr)
-{
-    foreach_active(lane) {
-        uniform uint32_t uCryptomattePtr = extract(cryptomattePtr, lane);
-        CPP_PbrTLState_releaseCryptomatteData2(pbrTls, uCryptomattePtr);
     }
 }
 

@@ -60,12 +60,13 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
                             dataPtrHandle,
                             rayState.mDeepDataHandle,
                             rayState.mCryptomatteDataHandle,
-                            rayState.mCryptomatteDataHandle2,
+                            rayState.mCryptoRefP,
+                            rayState.mCryptoRefN,
+                            rayState.mCryptoUV,
                             occlTestType,
                             assignmentId);
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);
         PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
-        PbrTLState_acquireCryptomatteData2(pbrTls, dst->mCryptomatteDataHandle2);
 
         // packed_store_active2() "may write one extra element to the output array"
         // according to ISPC documentation https://ispc.github.io/ispc.html.
@@ -664,10 +665,11 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             rayState->mDeepDataHandle = parentRayState.mDeepDataHandle;
             // Since cryptomatte records radiance information, its handle actually also needs to be acquired
             rayState->mCryptomatteDataHandle = parentRayState.mCryptomatteDataHandle;
-            rayState->mCryptomatteDataHandle2 = parentRayState.mCryptomatteDataHandle2;
+            rayState->mCryptoRefP = parentRayState.mCryptoRefP;
+            rayState->mCryptoRefN = parentRayState.mCryptoRefN;
+            rayState->mCryptoUV = parentRayState.mCryptoUV;
             PbrTLState_acquireDeepData(pbrTls, rayState->mDeepDataHandle);
             PbrTLState_acquireCryptomatteData(pbrTls, rayState->mCryptomatteDataHandle);
-            PbrTLState_acquireCryptomatteData2(pbrTls, rayState->mCryptomatteDataHandle2);
 
             // Accumulate post scatter extra aovs
             if (!AovSchema_empty(aovSchema)) {

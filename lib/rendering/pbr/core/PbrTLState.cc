@@ -507,30 +507,6 @@ TLState::releaseCryptomatteData(uint32_t cryptomatteDataHandle)
     }
 }
 
-uint32_t
-TLState::acquireCryptomatteData2(uint32_t cryptomatteDataHandle2)
-{
-    if (cryptomatteDataHandle2 != pbr::nullHandle) {
-        pbr::CryptomatteData2 *cryptomatteData2 =
-            static_cast<pbr::CryptomatteData2*>(getListItem(cryptomatteDataHandle2, 0));
-        ++(cryptomatteData2->mRefCount);
-    }
-    return cryptomatteDataHandle2;
-}
-
-void
-TLState::releaseCryptomatteData2(uint32_t cryptomatteDataHandle2)
-{
-    if (cryptomatteDataHandle2 != pbr::nullHandle) {
-        pbr::CryptomatteData2 *cryptomatteData2 =
-            static_cast<pbr::CryptomatteData2*>(getListItem(cryptomatteDataHandle2, 0));
-        MNRY_ASSERT(cryptomatteData2->mRefCount > 0);
-        if (--(cryptomatteData2->mRefCount) == 0) {
-            freeList(cryptomatteDataHandle2);
-        }
-    }
-}
-
 void
 TLState::freeRayStates(unsigned numRayStates, RayState **rayStates)
 {
@@ -543,9 +519,6 @@ TLState::freeRayStates(unsigned numRayStates, RayState **rayStates)
         }
         if (rs->mCryptomatteDataHandle != nullHandle) {
             releaseCryptomatteData(rs->mCryptomatteDataHandle);
-        }
-        if (rs->mCryptomatteDataHandle2 != nullHandle) {
-            releaseCryptomatteData2(rs->mCryptomatteDataHandle2);
         }
     }
 
@@ -1082,18 +1055,6 @@ extern "C" void
 CPP_PbrTLState_releaseCryptomatteData(TLState *pbrTls, uint32_t cryptomattePtr)
 {
     pbrTls->releaseCryptomatteData(cryptomattePtr);
-}
-
-extern "C" void
-CPP_PbrTLState_acquireCryptomatteData2(TLState *pbrTls, uint32_t cryptomattePtr)
-{
-    pbrTls->acquireCryptomatteData2(cryptomattePtr);
-}
-
-extern "C" void
-CPP_PbrTLState_releaseCryptomatteData2(TLState *pbrTls, uint32_t cryptomattePtr)
-{
-    pbrTls->releaseCryptomatteData2(cryptomattePtr);
 }
 
 void heatMapBundledUpdate(TLState *pbrTls,
