@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "OptixGPUShadowLinking.h"
 #include <optix.h>
 
 namespace moonray {
@@ -32,7 +33,6 @@ struct MissData
 
 typedef SBTRecord<MissData> MissRecord;
 
-
 // The HitGroupData contains all of the Primitive data needed for Optix to execute the
 // programs on the GPU.
 
@@ -43,9 +43,14 @@ struct HitGroupData
     bool mIsNormalReversed;
     bool mVisibleShadow;
     int *mAssignmentIds;
-    unsigned mNumShadowLinkEntries;
-    int* mShadowLinkAssignmentIds;
-    unsigned long long *mShadowLinkLightIds;
+
+    // Whether this primitive will cast a shadow from specific lights
+    unsigned mNumShadowLinkLights;
+    ShadowLinkLight *mShadowLinkLights;
+
+    // Whether this primitive will cast a shadow onto specific receivers
+    unsigned mNumShadowLinkReceivers;
+    ShadowLinkReceiver *mShadowLinkReceivers;
 
     // Primitive type-specific properties.  This is all unioned together because
     // we need a fixed-size data structure for the Shader Binding Table entries.

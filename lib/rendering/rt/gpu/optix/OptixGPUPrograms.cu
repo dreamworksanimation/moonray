@@ -17,7 +17,8 @@ extern "C" __constant__ static OptixGPUParams params;
 
 struct PerRayData
 {
-    unsigned long long mLightId;  // light ID, used for shadow linking (input)
+    int mShadowReceiverId;        // used for shadow linking (input)
+    unsigned long long mLightId;  // used for shadow linking (input)
     bool mDidHitGeom;             // did ray hit geometry? (output)
     // todo: intersect() results
 };
@@ -70,6 +71,7 @@ void __raygen__()
     // which params.mIsectBuf or params.mIsOccludedBuf is nullptr.
 
     PerRayData prd;
+    prd.mShadowReceiverId = ray->mShadowReceiverId;
     prd.mLightId = ray->mLightId;
     prd.mDidHitGeom = false;
     unsigned int u0, u1;
@@ -123,14 +125,44 @@ void __anyhit__()
     }
 
     unsigned int primIdx = optixGetPrimitiveIndex();
-    unsigned int assignmentId = data->mAssignmentIds[primIdx];
-    for (unsigned i = 0; i < data->mNumShadowLinkEntries; i++) {
-        if (assignmentId == data->mShadowLinkAssignmentIds[i] &&
-            prd->mLightId == data->mShadowLinkLightIds[i]) {
-            // if there is a match, the current object can't cast a shadow for the current ray
+    unsigned int casterId = data->mAssignmentIds[primIdx];
+
+    for (unsigned i = 0; i < data->mNumShadowLinkLights; i++) {
+        if (casterId != data->mShadowLinkLights[i].mCasterId) {
+            // entry doesn't apply to this caster id
+            continue;
+        }
+        if (prd->mLightId == data->mShadowLinkLights[i].mLightId) {
+            // if there is a match, the current object can't cast a shadow
+            // from this specific light
             optixIgnoreIntersection();
             return;
         }
+    }
+
+    bool receiverMatches = false;
+    bool isComplemented = false;
+    for (unsigned i = 0; i < data->mNumShadowLinkReceivers; i++) {
+        if (casterId != data->mShadowLinkReceivers[i].mCasterId) {
+            // entry doesn't apply to this caster id
+            continue;
+        }
+
+        // this is the same for all [i] for this matching casterId,
+        // we just need one of them
+        isComplemented = data->mShadowLinkReceivers[i].mIsComplemented;
+
+        if (prd->mShadowReceiverId == data->mShadowLinkReceivers[i].mReceiverId) {
+            // if there is a match, the current object can't cast a shadow
+            // onto this receiver
+            receiverMatches = true;
+            break;
+        }
+    }
+
+    if (receiverMatches ^ isComplemented) {
+        optixIgnoreIntersection();
+        return;
     }
 }
 

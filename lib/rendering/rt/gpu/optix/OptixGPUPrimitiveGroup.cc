@@ -254,9 +254,10 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mIsNormalReversed = triMesh->mIsNormalReversed;
         rec.mData.mVisibleShadow = triMesh->mVisibleShadow;
         rec.mData.mAssignmentIds = triMesh->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkEntries = triMesh->mShadowLinkLightIds.count();
-        rec.mData.mShadowLinkAssignmentIds = triMesh->mShadowLinkAssignmentIds.ptr();
-        rec.mData.mShadowLinkLightIds = triMesh->mShadowLinkLightIds.ptr();
+        rec.mData.mNumShadowLinkLights = triMesh->mShadowLinkLights.count();
+        rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
+        rec.mData.mNumShadowLinkReceivers = triMesh->mShadowLinkReceivers.count();
+        rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);
@@ -271,9 +272,10 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mIsNormalReversed = triMesh->mIsNormalReversed;
         rec.mData.mVisibleShadow = triMesh->mVisibleShadow;
         rec.mData.mAssignmentIds = triMesh->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkEntries = triMesh->mShadowLinkLightIds.count();
-        rec.mData.mShadowLinkAssignmentIds = triMesh->mShadowLinkAssignmentIds.ptr();
-        rec.mData.mShadowLinkLightIds = triMesh->mShadowLinkLightIds.ptr();
+        rec.mData.mNumShadowLinkLights = triMesh->mShadowLinkLights.count();
+        rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
+        rec.mData.mNumShadowLinkReceivers = triMesh->mShadowLinkReceivers.count();
+        rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);
@@ -288,9 +290,10 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mIsNormalReversed = curves->mIsNormalReversed;
         rec.mData.mVisibleShadow = curves->mVisibleShadow;
         rec.mData.mAssignmentIds = curves->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkEntries = curves->mShadowLinkLightIds.count();
-        rec.mData.mShadowLinkAssignmentIds = curves->mShadowLinkAssignmentIds.ptr();
-        rec.mData.mShadowLinkLightIds = curves->mShadowLinkLightIds.ptr();
+        rec.mData.mNumShadowLinkLights = curves->mShadowLinkLights.count();
+        rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
+        rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
+        rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
 
         // Specify the program group to use
         switch (curves->mType) {
@@ -314,9 +317,10 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mIsNormalReversed = curves->mIsNormalReversed;
         rec.mData.mVisibleShadow = curves->mVisibleShadow;
         rec.mData.mAssignmentIds = curves->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkEntries = curves->mShadowLinkLightIds.count();
-        rec.mData.mShadowLinkAssignmentIds = curves->mShadowLinkAssignmentIds.ptr();
-        rec.mData.mShadowLinkLightIds = curves->mShadowLinkLightIds.ptr();
+        rec.mData.mNumShadowLinkLights = curves->mShadowLinkLights.count();
+        rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
+        rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
+        rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
 
         // Specify the program group to use
         switch (curves->mType) {
@@ -342,9 +346,10 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mIsNormalReversed = prim->mIsNormalReversed;
         rec.mData.mVisibleShadow = prim->mVisibleShadow;
         rec.mData.mAssignmentIds = prim->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkEntries = prim->mShadowLinkLightIds.count();
-        rec.mData.mShadowLinkAssignmentIds = prim->mShadowLinkAssignmentIds.ptr();
-        rec.mData.mShadowLinkLightIds = prim->mShadowLinkLightIds.ptr();
+        rec.mData.mNumShadowLinkLights = prim->mShadowLinkLights.count();
+        rec.mData.mShadowLinkLights = prim->mShadowLinkLights.ptr();
+        rec.mData.mNumShadowLinkReceivers = prim->mShadowLinkReceivers.count();
+        rec.mData.mShadowLinkReceivers = prim->mShadowLinkReceivers.ptr();
 
         // Fill in the primitive type-specific properties
         OptixGPUCurve* curve = dynamic_cast<OptixGPUCurve*>(prim);

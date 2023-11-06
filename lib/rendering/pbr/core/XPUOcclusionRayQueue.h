@@ -221,6 +221,7 @@ protected:
                 gpuRays[i].mMinT = occlRay.mMinT;
                 gpuRays[i].mMaxT = occlRay.mMaxT;
                 gpuRays[i].mTime = occlRay.mTime;
+                gpuRays[i].mShadowReceiverId = occlRay.mShadowReceiverId;
                 const scene_rdl2::rdl2::Light* light = static_cast<BundledOcclRayData *>(
                     pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight->getRdlLight();
                 gpuRays[i].mLightId = reinterpret_cast<intptr_t>(light);

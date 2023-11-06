@@ -20,6 +20,7 @@ struct GPURay
     float mMinT;
     float mMaxT;
     float mTime;
+    int mShadowReceiverId;
     unsigned long long mLightId;
 };
 

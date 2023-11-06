@@ -65,6 +65,16 @@ public:
         mReceiverSet.insert(receiverID);
     }
 
+    const std::unordered_set<int>& getReceivers() const
+    {
+        return mReceiverSet;
+    }
+
+    bool getIsComplemented() const
+    {
+        return mIsComplemented;
+    }
+
 private:
     std::unordered_set<const scene_rdl2::rdl2::Light*> mLightSet;
     std::unordered_set<int> mReceiverSet;

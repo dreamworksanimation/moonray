@@ -255,9 +255,11 @@ private:
 
     unsigned int resolveVisibilityMask(const geom::internal::NamedPrimitive& np) const;
 
-    bool getShadowLinking(const geom::internal::NamedPrimitive& np,
-                          OptixGPUBuffer<int>& assignmentIdsBuf,
-                          OptixGPUBuffer<unsigned long long>& lightIdsBuf) const;
+    bool getShadowLinkingLights(const geom::internal::NamedPrimitive& np,
+                                OptixGPUBuffer<ShadowLinkLight>& lightsBuf) const;
+
+    bool getShadowLinkingReceivers(const geom::internal::NamedPrimitive& np,
+                                   OptixGPUBuffer<ShadowLinkReceiver>& receiversBuf) const;
 
     bool mFailed;
     std::string mWhyFailed;
@@ -280,11 +282,17 @@ OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
     gpuBox->mIsNormalReversed = geomBox.getIsNormalReversed();
     gpuBox->mVisibleShadow = resolveVisibilityMask(geomBox) & scene_rdl2::rdl2::SHADOW;
 
-    if (!getShadowLinking(geomBox,
-                          gpuBox->mShadowLinkAssignmentIds,
-                          gpuBox->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomBox,
+                                gpuBox->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomBox,
+                                   gpuBox->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -319,11 +327,17 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     gpuCurve->mIsNormalReversed = false;
     gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
 
-    if (!getShadowLinking(geomCurves,
-                          gpuCurve->mShadowLinkAssignmentIds,
-                          gpuCurve->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomCurves,
+                                gpuCurve->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomCurves,
+                                   gpuCurve->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -421,11 +435,17 @@ OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
     gpuCurve->mIsNormalReversed = false;
     gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
 
-    if (!getShadowLinking(geomCurves,
-                          gpuCurve->mShadowLinkAssignmentIds,
-                          gpuCurve->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomCurves,
+                                gpuCurve->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomCurves,
+                                   gpuCurve->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -517,11 +537,17 @@ OptixGPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
     gpuPoints->mIsNormalReversed = false;
     gpuPoints->mVisibleShadow = resolveVisibilityMask(geomPoints) & scene_rdl2::rdl2::SHADOW;
 
-    if (!getShadowLinking(geomPoints,
-                          gpuPoints->mShadowLinkAssignmentIds,
-                          gpuPoints->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomPoints,
+                                gpuPoints->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomPoints,
+                                   gpuPoints->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -589,11 +615,17 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     gpuMesh->mVisibleShadow = resolveVisibilityMask(geomMesh) & scene_rdl2::rdl2::SHADOW;
     gpuMesh->mEnableMotionBlur = enableMotionBlur;
 
-    if (!getShadowLinking(geomMesh,
-                          gpuMesh->mShadowLinkAssignmentIds,
-                          gpuMesh->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomMesh,
+                                gpuMesh->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomMesh,
+                                   gpuMesh->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -757,11 +789,17 @@ OptixGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
     gpuSphere->mIsNormalReversed = geomSphere.getIsNormalReversed();
     gpuSphere->mVisibleShadow = resolveVisibilityMask(geomSphere) & scene_rdl2::rdl2::SHADOW;
 
-    if (!getShadowLinking(geomSphere,
-                          gpuSphere->mShadowLinkAssignmentIds,
-                          gpuSphere->mShadowLinkLightIds)) {
+    if (!getShadowLinkingLights(geomSphere,
+                                gpuSphere->mShadowLinkLights)) {
         mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking IDs to the GPU";
+        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
+        return;
+    }
+
+    if (!getShadowLinkingReceivers(geomSphere,
+                                   gpuSphere->mShadowLinkReceivers)) {
+        mFailed = true;
+        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
         return;
     }
 
@@ -862,15 +900,13 @@ OptixGPUBVHBuilder::resolveVisibilityMask(const geom::internal::NamedPrimitive& 
 }
 
 bool
-OptixGPUBVHBuilder::getShadowLinking(const geom::internal::NamedPrimitive& np,
-                                OptixGPUBuffer<int>& assignmentIdsBuf,
-                                OptixGPUBuffer<unsigned long long>& lightIdsBuf) const
+OptixGPUBVHBuilder::getShadowLinkingLights(const geom::internal::NamedPrimitive& np,
+                                           OptixGPUBuffer<ShadowLinkLight>& lightsBuf) const
 {
-    std::vector<int> assignmentIds;
-    std::vector<unsigned long long> lightIds;
+    std::vector<ShadowLinkLight> lights;
 
     for (const auto& element : np.getShadowLinkings()) {
-        int assignmentId = element.first;
+        int casterId = element.first;
         const geom::internal::ShadowLinking *linking = element.second;
 
         if (linking == nullptr) {
@@ -879,19 +915,47 @@ OptixGPUBVHBuilder::getShadowLinking(const geom::internal::NamedPrimitive& np,
         }
 
         for (const auto& light : linking->getLights()) {
-            assignmentIds.push_back(assignmentId);
-            lightIds.push_back(reinterpret_cast<intptr_t>(light));
+            ShadowLinkLight lgt;
+            lgt.mCasterId = casterId;
+            lgt.mLightId = reinterpret_cast<intptr_t>(light);
+            lights.push_back(lgt);
         }
     }
-    if (assignmentIdsBuf.allocAndUpload(assignmentIds) != cudaSuccess) {
-        return false;
-    }
-    if (lightIdsBuf.allocAndUpload(lightIds) != cudaSuccess) {
+    if (lightsBuf.allocAndUpload(lights) != cudaSuccess) {
         return false;
     }
     return true;
 }
 
+bool
+OptixGPUBVHBuilder::getShadowLinkingReceivers(const geom::internal::NamedPrimitive& np,
+                                              OptixGPUBuffer<ShadowLinkReceiver>& receiversBuf) const
+{
+    std::vector<ShadowLinkReceiver> receivers;
+
+    for (const auto& element : np.getShadowLinkings()) {
+        int casterId = element.first;
+        const geom::internal::ShadowLinking *linking = element.second;
+
+        if (linking == nullptr) {
+            // skip any empty
+            continue;
+        }
+
+        for (const auto& receiverId : linking->getReceivers()) {
+            ShadowLinkReceiver rcv;
+            rcv.mCasterId = casterId;
+            rcv.mReceiverId = receiverId;
+            // the same for all entries for this caster
+            rcv.mIsComplemented = linking->getIsComplemented();
+            receivers.push_back(rcv);
+        }
+    }
+    if (receiversBuf.allocAndUpload(receivers) != cudaSuccess) {
+        return false;
+    }
+    return true;
+}
 
 
 OptixGPUAccelerator::OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,

@@ -5,6 +5,7 @@
 
 #include "OptixGPUBuffer.h"
 #include "OptixGPUMath.h"
+#include "OptixGPUShadowLinking.h"
 
 #include <cuda.h>
 #include <vector>
@@ -29,8 +30,9 @@ public:
 
     // per sub-primitive (or just one item if no sub-primitives)
     OptixGPUBuffer<int> mAssignmentIds;
-    OptixGPUBuffer<int> mShadowLinkAssignmentIds;
-    OptixGPUBuffer<unsigned long long> mShadowLinkLightIds;
+
+    OptixGPUBuffer<ShadowLinkLight> mShadowLinkLights;
+    OptixGPUBuffer<ShadowLinkReceiver> mShadowLinkReceivers;
 };
 
 // Basic triangle mesh geometry.  Each triangle has 3 verts.  Moonray quads
