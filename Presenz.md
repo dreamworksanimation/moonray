@@ -4,12 +4,12 @@ title: PresenZ
 
 # PresenZ
 
-[PresenZ]({{ "https://www.presenzvr.com" | absolute_url }}) is a third party technology that allows
+[PresenZ](https://www.presenzvr.com) is a third party technology that allows
 for rendering of full fidelity scenes for playback in virtual reality.
 
-The [presenz]({{"https://github.com/dreamworksanimation/openmoonray/tree/release/moonray" | absolute_url}})
+The [presenz](https://github.com/dreamworksanimation/openmoonray/tree/release/moonray)
 branch of moonray integrates PresenZ using the SDK which can be found here:
-[PresenZ SDK]({{ "https://github.com/Parallaxter-team/PresenZ-SDK" | absolute_url }})
+[PresenZ SDK](https://github.com/Parallaxter-team/PresenZ-SDK)
 
 ## Components
 The main Moonray component used to render PresenZ frames is the new *PresenZCamera*.
