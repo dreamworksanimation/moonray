@@ -1,11 +1,5 @@
 // Copyright 2023 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-///
-/// @file LocalMotionBlur.h
-/// @author Scott Cegielski
-///
-/// $Id$
-///
 
 #pragma once
 #ifndef LOCALMOTIONBLUR_H
@@ -24,7 +18,7 @@
 
 #pragma once
 
-namespace moonshine {
+namespace moonray {
 namespace local_motion_blur {
 
 // Attributes in the points file that will be used
@@ -87,6 +81,6 @@ private:
 
 
 } // namespace local_motion_blur
-} // namespace moonshine 
+} // namespace moonray 
 
 #endif // LOCALMOTIONBLUR_H

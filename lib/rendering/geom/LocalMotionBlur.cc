@@ -10,7 +10,7 @@ using namespace moonray::geom;
 using namespace scene_rdl2::rdl2;
 using namespace scene_rdl2::math;
 
-namespace moonshine {
+namespace moonray {
 namespace local_motion_blur {
 
 LocalMotionBlur::LocalMotionBlur(const GenerateContext& generateContext,
@@ -349,4 +349,4 @@ template void LocalMotionBlur::apply(const MotionBlurType mbType,
                                      PrimitiveAttributeTable& primitiveAttributeTable) const;
 
 } // end local_motion_blur
-} // end namespace moonshine
+} // end namespace moonray
