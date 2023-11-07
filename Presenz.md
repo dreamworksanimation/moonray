@@ -1,8 +1,4 @@
----
-title: PresenZ
----
-
-# PresenZ
+# Introduction
 
 [PresenZ](https://www.presenzvr.com) is a third party technology that allows
 for rendering of full fidelity scenes for playback in virtual reality.
