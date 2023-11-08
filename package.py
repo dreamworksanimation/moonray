@@ -68,7 +68,7 @@ requires = [
     'amorphous',
     'boost',
     'cuda-12.1.0.x',
-    'embree-4.1.0.x',
+    'embree-4.2.0.x',
     'mcrt_denoise-4.1',
     'mkl',
     'openexr',
