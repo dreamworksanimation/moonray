@@ -5,7 +5,25 @@ for rendering of full fidelity scenes for playback in virtual reality.
 
 The [presenz](https://github.com/dreamworksanimation/openmoonray/tree/release/moonray)
 branch of moonray integrates PresenZ using the SDK which can be found here:
-[PresenZ SDK](https://github.com/Parallaxter-team/PresenZ-SDK)
+
+## Build
+
+Download the [PresenZ SDK](https://github.com/Parallaxter-team/PresenZ-SDK).
+
+Set the *PRESENZ_ROOT* environment variable or pass it in on the cmake command line.
+
+```bash
+# Set the environment variable before running cmake
+export PRESENZ_ROOT=<presenz sdk root dir>
+cmake -S <openmoonray source dir> -B <build dir>
+```
+
+or
+
+```bash
+# Pass PRESENZ_ROOT to the cmake configure step
+cmake -S <openmoonray source dir> -B <build dir> -DPRESENZ_ROOT=<presenz sdk root dir>
+```
 
 ## Components
 The main Moonray component used to render PresenZ frames is the new *PresenZCamera*.
