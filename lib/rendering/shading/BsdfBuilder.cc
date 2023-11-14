@@ -1841,18 +1841,44 @@ public:
                  ispc::BsdfBuilderBehavior combineBehavior,
                  const int label)
     {
-        // Adapt normal to prevent reflection ray from self-intersecting this geometry
-        const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
+        const float cosNO = dot(component.getN(), mState.getWo());
+
+        // It is common in practice for production to use ToonSpecularBRDF with
+        // explicit normals on the geometry for highly-stylized looks, and sometimes
+        // those normals can be backfacing to the observer (for example, when rendering
+        // normal-oriented curves). To prevent shading artifacts we'll attempt to apply a
+        // correction to bend the normal towards the observer similar to how we attempt
+        // to prevent self-instersections with reflections when normal mapping is used.
+        // In extreme cases where both the normal and geometric normal are facing nearly
+        // 180 degrees away from the observer, the approach used below to correct the normal
+        // is not adequate, and so we instead fade the specular lobe out and eventually
+        // skip it altogether.
+
+        scene_rdl2::math::Vec3f adaptedNormal(component.getN());
+        float fadeWeight = 1.0f;
+
+        if (cosNO < 0.0f) {
+            // Fade off as normal approaches 180 degrees from the observer direction, and
+            // don't add the lobe at all beyond some limit of stability.
+            const float minCosNO = -0.9f;  // limit of stability, determined emperically
+            fadeWeight = 1.0f - cosNO/minCosNO;
+
+            if (fadeWeight < 0.0f) return; // skip adding lobe altogether
+
+            const float epsilon = 0.001f;
+            adaptedNormal = normalize(component.getN() + (epsilon - cosNO) * mState.getWo());
+            MNRY_ASSERT(isNormalized(adaptedNormal));
+        }
 
         // Create the fresnel early to set on GGX child lobe of ToonSpecularGGXBsdfLobe
         Fresnel * fresnel = createFresnel(scene_rdl2::math::Color(1.5f), // eta
                                           scene_rdl2::math::sBlack, // k
                                           false); // is conductor
-        fresnel->setWeight(weight);
+        fresnel->setWeight(weight * fadeWeight);
 
         BsdfLobe * lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
                 adaptedNormal,
-                component.getIntensity(),
+                component.getIntensity() * fadeWeight * weight,
                 component.getTint(),
                 component.getRampInputScale(),
                 component.getRampNumPoints(),

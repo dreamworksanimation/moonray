@@ -192,6 +192,76 @@ HairToonSpecularBsdfLobe_show(const varying BsdfLobe * const uniform lobe,
 //
 // ToonSpecularBsdfLobe
 //
+void
+ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
+                          uniform Arena * uniform arena,
+                          const varying Vec3f &normal,
+                          const varying float intensity,
+                          const Color& tint,
+                          const float rampInputScale,
+                          const varying int numRampPoints,
+                          const varying float* uniform rampPositions,
+                          const varying RampInterpolatorMode* uniform rampInterpolators,
+                          const varying float* uniform rampValues,
+                          const varying float stretchU,
+                          const varying float stretchV,
+                          const varying Vec3f &dPds,
+                          const varying Vec3f &dPdt,
+                          const uniform bool enableIndirectReflections,
+                          const varying float indirectReflectionsRoughness,
+                          const varying float indirectReflectionsIntensity,
+                          varying Fresnel * uniform fresnel)
+{
+    BsdfLobe_init((varying BsdfLobe * uniform) lobe,
+                  /* name = */ BSDF_LOBE_HAIR_TOON,
+                  /* type = */ BSDF_LOBE_TYPE_REFLECTION | BSDF_LOBE_TYPE_GLOSSY,
+                  /* differentialFlags = */ (uniform BsdfLobeDifferentialFlags)0,
+                  /* isSpherical = */ false,
+                  /* propertyFlags = */ BSDF_LOBE_PROPERTY_NORMAL | BSDF_LOBE_PROPERTY_ROUGHNESS,
+                  /* evalFn = */ ToonSpecularBsdfLobe_eval,
+                  /* sampleFn = */ ToonSpecularBsdfLobe_sample,
+                  /* albedoFn = */ ToonSpecularBsdfLobe_albedo,
+                  /* differentialsFn = */ ToonSpecularBsdfLobe_differentials,
+                  /* getPropertyFn = */ToonSpecularBsdfLobe_getProperty,
+                  /* showFn = */ ToonSpecularBsdfLobe_show);
+
+    ReferenceFrame_init(lobe->mFrame, normal);
+
+    lobe->mIntensity = intensity;
+    lobe->mTint = tint;
+    lobe->mRampInputScale = rampInputScale;
+    lobe->mStretchU = stretchU;
+    lobe->mStretchV = stretchV;
+    lobe->mdPds = dPds;
+    lobe->mdPdt = dPdt;
+    FloatRampControl_init(&lobe->mRampControl,
+                          numRampPoints,
+                          rampPositions,
+                          rampValues,
+                          rampInterpolators);
+
+    GGXCookTorranceBsdfLobe_init(&lobe->mIndirectLobe,
+                                 normal,
+                                 indirectReflectionsRoughness);
+    lobe->mEnableIndirectReflections = enableIndirectReflections;
+    lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
+    BsdfLobe_setFresnel((varying BsdfLobe * uniform)&lobe->mIndirectLobe, fresnel);
+
+    if (fresnel) {
+        // pre-sample ramp to determine average value and scale the
+        // fresnel's weight to try to conserve energy.
+        varying float rampAvg = 0.0f;
+        uniform const int numSamples = 16;
+        uniform const float stepSize = 1.0f / numSamples;
+        for (int i = 0; i < numSamples; ++i) {
+            rampAvg += FloatRampControl_eval1D(i * stepSize, &lobe->mRampControl);
+        }
+        rampAvg /= numSamples;
+
+        fresnel->mWeight = fresnel->mWeight * rampAvg;
+    }
+}
+
 varying Color
 ToonSpecularBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
                             const varying BsdfSlice &slice,
@@ -266,12 +336,12 @@ ToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         return sBlack;
     }
 
-    if (pdf != NULL) {
-        *pdf = 0.5f * sOneOverPi * specAngle;
-    }
-    
     const float ramp = FloatRampControl_eval1D(specAngle / toonSpecLobe->mRampInputScale, &toonSpecLobe->mRampControl);
-    return toonSpecLobe->mTint * ramp * toonSpecLobe->mIntensity * sOneOverPi;
+    if (pdf != NULL) {
+        *pdf = 0.5f * sOneOverPi * ramp;
+    }
+
+    return toonSpecLobe->mScale * toonSpecLobe->mTint * ramp * toonSpecLobe->mIntensity * sOneOverPi;
 }
 
 varying Color

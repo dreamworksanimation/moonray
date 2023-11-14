@@ -165,12 +165,26 @@ ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
     mEnableIndirectReflections(enableIndirectReflections),
     mIndirectReflectionsIntensity(indirectReflectionsIntensity),
     mIndirectLobe(N, indirectReflectionsRoughness)
-{    
+{
     mIndirectLobe.setFresnel(fresnel);
     mRampControl.init(numRampPoints,
                       rampPositions,
                       rampValues,
                       rampInterpolators);
+
+    if (fresnel) {
+        // pre-sample ramp to determine average value and scale the
+        // fresnel's weight to try to conserve energy.
+        float rampAvg = 0.0f;
+        const int numSamples = 16;
+        const float stepSize = 1.0f / numSamples;
+        for (int i = 0; i < numSamples; ++i) {
+            rampAvg += mRampControl.eval1D(i * stepSize);
+        }
+        rampAvg /= numSamples;
+
+        fresnel->setWeight(fresnel->getWeight() * rampAvg);
+    }
 }
 
 Color
@@ -233,12 +247,12 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
         return sBlack;
     }
 
+    const float ramp = mRampControl.eval1D(specAngle / mRampInputScale);
     if (pdf != NULL) {
-        *pdf = 0.5f * scene_rdl2::math::sOneOverPi * specAngle;
+        *pdf = 0.5f * scene_rdl2::math::sOneOverPi * ramp;
     }
 
-    const float ramp = mRampControl.eval1D(specAngle / mRampInputScale);
-    return mTint * ramp * mIntensity * scene_rdl2::math::sOneOverPi;
+    return getScale() * mTint * ramp * mIntensity * scene_rdl2::math::sOneOverPi;
 }
 
 void

@@ -172,6 +172,8 @@ public:
     int32_t getPropertyFlags() const { return mPropertyFlags; }
     virtual bool getProperty(Property property, float *dest) const;
 
+    scene_rdl2::math::Color getScale() { return mScale; }
+
     /// Convenience method for derived classes to include color and fresnel
     /// scaling contributions
     finline scene_rdl2::math::Color computeScaleAndFresnel(float cosWi) const {

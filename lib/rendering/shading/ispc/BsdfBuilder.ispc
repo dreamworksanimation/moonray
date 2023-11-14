@@ -1417,18 +1417,46 @@ BsdfBuilder_addToonSpecularBRDF(
         const uniform int label)
 {
     varying BsdfBuilderImpl& me = *builder.mImpl;
+    const varying State& state = *(me.mState);
 
     cif (!testForVisibility(me, weight, combineBehavior)) { return; }
 
-    // Adapt normal to prevent reflection ray from self-intersecting this geometry
-    const varying Vec3f adaptedNormal =
-        Intersection_adaptNormal(asAnIntersection(*(me.mState)), brdf.mN);
+    // It is common in practice for production to use ToonSpecularBRDF with
+    // explicit normals on the geometry for highly-stylized looks, and sometimes
+    // those normals can be backfacing to the observer (for example, when rendering
+    // normal-oriented curves). To prevent shading artifacts we'll attempt to apply a
+    // correction to bend the normal towards the observer similar to how we attempt
+    // to prevent self-instersections with reflections when normal mapping is used.
+    // In extreme cases where both the normal and geometric normal are facing nearly
+    // 180 degrees away from the observer, the approach used below to correct the normal
+    // is not adequate, and so we instead fade the specular lobe out and eventually
+    // skip it altogether.
 
-    varying Fresnel * uniform fresnel = createFresnel(me,
-                                                      (varying Color)Color_ctor(1.5f), // eta
-                                                      (varying Color) sBlack, // k
-                                                      false, // isConductor
-                                                      weight);
+    const varying float cosNO = dot(brdf.mN, state.mWo);
+
+    varying Vec3f adaptedNormal = brdf.mN;
+    varying float fadeWeight = 1.0f;
+
+    // Adapt normal to prevent reflection ray from self-intersecting this geometry.
+    if (cosNO < 0.0f) {
+        // Fade off as normal approaches 180 degrees from the observer direction, and
+        // don't add the lobe at all beyond the empirical limit of stability.
+        const varying float minCosNsO = -0.9f;  // limit of stability
+        fadeWeight = 1.0f - cosNO/minCosNsO;
+
+        if (fadeWeight < 0.0f) return;
+
+        const varying float epsilon = 0.001f;
+        adaptedNormal = normalize(brdf.mN + (epsilon - cosNO) * state.mWo);
+        MNRY_ASSERT(isNormalized(adaptedNormal));
+    }
+
+    varying Fresnel * uniform fresnel =
+        createFresnel(me,
+                     (varying Color) Color_ctor(1.5f), // eta
+                     (varying Color) sBlack, // k
+                     false, // isConductor
+                     weight * fadeWeight);
 
     varying BsdfLobe * uniform lobe = (varying BsdfLobe * uniform)
         Arena_alloc(me.mTls->mArena, sizeof(varying ToonSpecularBsdfLobe));
@@ -1436,7 +1464,7 @@ BsdfBuilder_addToonSpecularBRDF(
     ToonSpecularBsdfLobe_init((varying ToonSpecularBsdfLobe * uniform) lobe,
                               me.mTls->mArena,
                               adaptedNormal,
-                              brdf.mIntensity,
+                              brdf.mIntensity * fadeWeight * weight,
                               brdf.mTint,
                               brdf.mRampInputScale,
                               brdf.mRampNumPoints,
