@@ -380,7 +380,6 @@ McrtRtComputation::applyConfigOverrides()
     rdl2::SceneVariables& sceneVars = mRenderContext->getSceneContext().getSceneVariables();
     
     rdl2::SceneObject::UpdateGuard guard(&sceneVars);
-    sceneVars.set(rdl2::SceneVariables::sProgressiveKey, true);
     
     if (mNumMachinesOverride >= 0) {
         sceneVars.set(rdl2::SceneVariables::sNumMachines, mNumMachinesOverride);

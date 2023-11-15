@@ -837,8 +837,6 @@ RenderStats::logSceneVariables(const scene_rdl2::rdl2::SceneVariables &vars, std
         sceneVarTable.emplace_back("Debug rays depth end", "not set");
     }
 
-    sceneVarTable.emplace_back("Progressive", vars.get(scene_rdl2::rdl2::SceneVariables::sProgressiveKey));
-
     StatsTable<2> ssTable("Sampling Settings");
     ssTable.emplace_back("Sampling mode", vars.get(scene_rdl2::rdl2::SceneVariables::sSamplingMode));
     ssTable.emplace_back("Min adaptive samples", vars.get(scene_rdl2::rdl2::SceneVariables::sMinAdaptiveSamples));
