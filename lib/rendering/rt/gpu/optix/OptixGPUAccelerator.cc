@@ -46,10 +46,12 @@ public:
     // Extremely similar to EmbreeAccelerator.cc BVHBuilder.  This is intentional so
     // it behaves the same and is easy to maintain and debug.
 
-    OptixGPUBVHBuilder(const scene_rdl2::rdl2::Layer* layer,
-                  const scene_rdl2::rdl2::Geometry* geometry,
-                  OptixGPUPrimitiveGroup* parentGroup,
-                  SharedGroupMap& groups) :
+    OptixGPUBVHBuilder(bool allowUnsupportedFeatures,
+                       const scene_rdl2::rdl2::Layer* layer,
+                       const scene_rdl2::rdl2::Geometry* geometry,
+                       OptixGPUPrimitiveGroup* parentGroup,
+                       SharedGroupMap& groups) :
+        mAllowUnsupportedFeatures(allowUnsupportedFeatures),
         mFailed(false),
         mLayer(layer),
         mGeometry(geometry),
@@ -76,8 +78,16 @@ public:
             createRoundCurves(*pCurves, c.getCurvesType());
         break;
         case geom::internal::Curves::SubType::NORMAL_ORIENTED:
-            mFailed = true;
-            mWhyFailed = "Normal-oriented curves are not supported in XPU mode";
+            if (mAllowUnsupportedFeatures) {
+                logWarningMsg(
+                    "Normal-oriented curves are not supported in XPU mode.  "
+                    "Using ray-facing curves instead.");
+                createCurves(*pCurves, c.getCurvesType(), c.getTessellationRate());
+            } else {
+                mFailed = true;
+                mWhyFailed = "Normal-oriented curves are not supported in XPU mode";
+                return;
+            }
         break;
         }
     }
@@ -191,7 +201,7 @@ public:
         // visit the referenced Primitive if it's not visited yet
         if (mSharedGroups.insert(std::make_pair(ref, nullptr)).second) {
             OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
-            OptixGPUBVHBuilder builder(mLayer, mGeometry, group, mSharedGroups);
+            OptixGPUBVHBuilder builder(mAllowUnsupportedFeatures, mLayer, mGeometry, group, mSharedGroups);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -230,10 +240,14 @@ public:
         }
     }
 
+    const std::vector<std::string>& warningMsgs() const { return mWarningMsgs; }
+
     bool hasFailed() const { return mFailed; }
     std::string whyFailed() const { return mWhyFailed; }
 
 private:
+
+    void logWarningMsg(const std::string& msg);
 
     void createBox(const geom::internal::Box& geomBox);
 
@@ -261,6 +275,8 @@ private:
     bool getShadowLinkingReceivers(const geom::internal::NamedPrimitive& np,
                                    OptixGPUBuffer<ShadowLinkReceiver>& receiversBuf) const;
 
+    bool mAllowUnsupportedFeatures;
+    std::vector<std::string> mWarningMsgs;
     bool mFailed;
     std::string mWhyFailed;
     const scene_rdl2::rdl2::Layer* mLayer;
@@ -268,6 +284,18 @@ private:
     OptixGPUPrimitiveGroup* mParentGroup;
     SharedGroupMap& mSharedGroups;
 };
+
+void
+OptixGPUBVHBuilder::logWarningMsg(const std::string& msg)
+{
+    for (auto& prevMsg : mWarningMsgs) {
+        if (msg == prevMsg) {
+            // only log a particular warning message once
+            return;
+        }
+    }
+    mWarningMsgs.push_back(msg);
+}
 
 void
 OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
@@ -403,21 +431,35 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
 
 void
 OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
-                                 const geom::Curves::Type curvesType)
+                                      const geom::Curves::Type curvesType)
 {
     if (curvesType == geom::Curves::Type::BEZIER) {
-        mFailed = true;
-        mWhyFailed = "Round bezier curves are not supported in XPU mode";
-        return;
+        // todo: this is supported in Optix 7.7
+        if (mAllowUnsupportedFeatures) {
+            logWarningMsg(
+                "Round bezier curves are currently unsupported in XPU mode.  "
+                "Ignoring geometry.");
+            return;
+        } else {
+            mFailed = true;
+            mWhyFailed = "Round bezier curves are currently unsupported in XPU mode";
+            return;
+        }
     }
 
     // This code assumes that there is a max of 2 motion samples.
     // TODO: add support for round curves with more motion samples.
     bool motionBlur = geomCurves.getMotionSamplesCount() > 1;
     if (geomCurves.getMotionSamplesCount() > 2) {
-        mFailed = true;
-        mWhyFailed = "Round curves with more than 2 motion samples are currently unsupported in XPU mode";
-        return;
+        if (mAllowUnsupportedFeatures) {
+            logWarningMsg(
+                "Round curves with more than 2 motion samples are currently unsupported in XPU mode.  "
+                "Only using first 2 samples.");
+        } else {
+            mFailed = true;
+            mWhyFailed = "Round curves with more than 2 motion samples are currently unsupported in XPU mode";
+            return;
+        }
     }
 
     geom::internal::Curves::Spans spans;
@@ -450,6 +492,9 @@ OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
     }
 
     gpuCurve->mMotionSamplesCount = geomCurves.getMotionSamplesCount();
+    if (gpuCurve->mMotionSamplesCount > 2) {
+        gpuCurve->mMotionSamplesCount = 2;
+    }
 
     switch (curvesType) {
     case geom::Curves::Type::LINEAR:
@@ -591,12 +636,19 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 
     // This code assumes that there is a max of 2 motion samples
     // TODO: add support for mesh with more motion samples.
-    const size_t mbSamples = mesh.mVertexBufferDesc.size();
-    const bool enableMotionBlur = mbSamples  > 1;
-    if (mbSamples  > 2) {
-        mFailed = true;
-        mWhyFailed = "Meshes with more than 2 motion samples are currently unsupported in XPU mode";
-        return;
+    size_t mbSamples = mesh.mVertexBufferDesc.size();
+    const bool enableMotionBlur = mbSamples > 1;
+    if (mbSamples > 2) {
+      if (mAllowUnsupportedFeatures) {
+            logWarningMsg(
+                "Meshes with more than 2 motion samples are currently unsupported in XPU mode.  "
+                "Only using first 2 samples.");
+            mbSamples = 2;
+        } else {
+            mFailed = true;
+            mWhyFailed = "Meshes with more than 2 motion samples are currently unsupported in XPU mode";
+            return;
+        }
     }
 
     OptixGPUTriMesh* gpuMesh = new OptixGPUTriMesh();
@@ -958,10 +1010,13 @@ OptixGPUBVHBuilder::getShadowLinkingReceivers(const geom::internal::NamedPrimiti
 }
 
 
-OptixGPUAccelerator::OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
-                                       const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
-                                       const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
-                                       std::string* errorMsg) :
+OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
+                                         const scene_rdl2::rdl2::Layer *layer,
+                                         const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
+                                         const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                                         std::vector<std::string>& warningMsgs,
+                                         std::string* errorMsg) :
+    mAllowUnsupportedFeatures {allowUnsupportedFeatures},
     mContext {nullptr},
     mModule {nullptr},
     mRoundLinearCurvesModule {nullptr},
@@ -1083,7 +1138,7 @@ OptixGPUAccelerator::OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
     scene_rdl2::logging::Logger::info("GPU: Creating traversables");
 
     std::string buildErrorMsg;
-    if (!build(mCudaStream, mContext, layer, geometrySets, g2s, &buildErrorMsg)) {
+    if (!build(mCudaStream, mContext, layer, geometrySets, g2s, warningMsgs, &buildErrorMsg)) {
         *errorMsg = "GPU: Accel creation failed: " + buildErrorMsg;
         return;
     }
@@ -1174,11 +1229,13 @@ OptixGPUAccelerator::getGPUDeviceName() const
 }
 
 bool
-buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
+buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
+                    const scene_rdl2::rdl2::Layer* layer,
                     scene_rdl2::rdl2::Geometry* geometry,
                     OptixGPUPrimitiveGroup* rootGroup,
                     SharedGroupMap& groups,
                     std::unordered_set<scene_rdl2::rdl2::Geometry*>& visitedGeometry,
+                    std::vector<std::string>& warningMsgs,
                     std::string* errorMsg)
 {
     // Extremely similar to EmbreeAccelerator.cc buildBVHBottomUp().  This is intentional so
@@ -1201,11 +1258,13 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
             continue;
         }
         scene_rdl2::rdl2::Geometry* referencedGeometry = ref->asA<scene_rdl2::rdl2::Geometry>();
-        buildGPUBVHBottomUp(layer,
+        buildGPUBVHBottomUp(allowUnsupportedFeatures,
+                            layer,
                             referencedGeometry,
                             rootGroup,
                             groups,
                             visitedGeometry,
+                            warningMsgs,
                             errorMsg);
     }
     // We disable parallelism here to solve the non-deterministic
@@ -1217,7 +1276,7 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
             procedural->getReference();
         if (groups.insert(std::make_pair(ref, nullptr)).second) {
             OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
-            OptixGPUBVHBuilder builder(layer, geometry, group, groups);
+            OptixGPUBVHBuilder builder(allowUnsupportedFeatures, layer, geometry, group, groups);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -1225,11 +1284,15 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
             groups[ref] = group;
         }
     } else {
-        OptixGPUBVHBuilder geomBuilder(layer,
-                                  geometry,
-                                  rootGroup,
-                                  groups);
+        OptixGPUBVHBuilder geomBuilder(allowUnsupportedFeatures,
+                                       layer,
+                                       geometry,
+                                       rootGroup,
+                                       groups);
         procedural->forEachPrimitive(geomBuilder, doParallel);
+        warningMsgs.insert(warningMsgs.end(),
+                           geomBuilder.warningMsgs().begin(),
+                           geomBuilder.warningMsgs().end());
         if (geomBuilder.hasFailed()) {
             *errorMsg = geomBuilder.whyFailed();
             return false;
@@ -1242,11 +1305,12 @@ buildGPUBVHBottomUp(const scene_rdl2::rdl2::Layer* layer,
 
 bool
 OptixGPUAccelerator::build(CUstream cudaStream,
-                          OptixDeviceContext context,
-                          const scene_rdl2::rdl2::Layer *layer,
-                          const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
-                          const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
-                          std::string* errorMsg)
+                           OptixDeviceContext context,
+                           const scene_rdl2::rdl2::Layer *layer,
+                           const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
+                           const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                           std::vector<std::string>& warningMsgs,
+                           std::string* errorMsg)
 {
     // See embree EmbreeAccelerator::build()
 
@@ -1260,11 +1324,13 @@ OptixGPUAccelerator::build(CUstream cudaStream,
             if (g2s != nullptr && g2s->find(geometry) == g2s->end()) {
                 continue;
             }
-            if (!buildGPUBVHBottomUp(layer,
+            if (!buildGPUBVHBottomUp(mAllowUnsupportedFeatures,
+                                     layer,
                                      geometry,
                                      mRootGroup,
                                      mSharedGroups,
                                      visitedGeometry,
+                                     warningMsgs,
                                      errorMsg)) {
                 return false;
             }

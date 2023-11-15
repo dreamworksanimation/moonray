@@ -1553,7 +1553,8 @@ void GeometryManager::updateAccelerator(const scene_rdl2::rdl2::Layer* layer,
             std::to_string(upper.z));
 }
 
-void GeometryManager::updateGPUAccelerator(const scene_rdl2::rdl2::Layer* layer)
+void GeometryManager::updateGPUAccelerator(bool allowUnsupportedFeatures,
+                                           const scene_rdl2::rdl2::Layer* layer)
 {
     mGPUAccelerator.reset();
 
@@ -1567,18 +1568,27 @@ void GeometryManager::updateGPUAccelerator(const scene_rdl2::rdl2::Layer* layer)
 
     Timer buildGPUBVHTimer(mOptions.stats.mBuildGPUAcceleratorTime);
     buildGPUBVHTimer.start();
+
+    std::vector<std::string> warningMsgs;
     std::string errorMsg;
-    mGPUAccelerator.reset(new GPUAccelerator(layer, geometrySets, &g2s, &errorMsg));
+    mGPUAccelerator.reset(new GPUAccelerator(allowUnsupportedFeatures, layer, geometrySets, &g2s, warningMsgs, &errorMsg));
+
     buildGPUBVHTimer.stop();
+
     if (!errorMsg.empty()) {
         mOptions.stats.logString("GPU setup aborted due to error:");
         mOptions.stats.logString(errorMsg);
         mOptions.stats.logString("Falling back to CPU vector mode");
         mGPUAccelerator.reset();
-    } else {
-        mOptions.stats.logString("GPU setup finished.  Using GPU: " +
-            mGPUAccelerator->getGPUDeviceName());
+        return;
     }
+
+    for (auto& msg : warningMsgs) {
+        mOptions.stats.logString("GPU warning: " + msg);
+    }
+
+    mOptions.stats.logString("GPU setup finished.  Using GPU: " +
+        mGPUAccelerator->getGPUDeviceName());
 }
 
 static void parsePartNames(char* partsString, ShadowExclusionMapping& mapping,

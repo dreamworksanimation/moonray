@@ -566,7 +566,8 @@ public:
 private:
     // Does any pre-render work, like building the spatial accelerator or
     // initializing any necessary libraries. Called in startFrame()
-    RP_RESULT renderPrep(mcrt_common::ExecutionMode executionMode);
+    RP_RESULT renderPrep(mcrt_common::ExecutionMode executionMode,
+                         bool allowUnsupportedXPUFeatures);
 
     // Helper function which loads the scene into the SceneContext.
     void loadScene(std::stringstream &initMessages);

@@ -12,12 +12,15 @@
 namespace moonray {
 namespace rt {
 
-GPUAccelerator::GPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
+GPUAccelerator::GPUAccelerator(bool allowUnsupportedFeatures,
+                               const scene_rdl2::rdl2::Layer *layer,
                                const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                                const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                               std::vector<std::string>& warningMsgs,
                                std::string* errorMsg)
 {
-    mImpl.reset(new OptixGPUAccelerator(layer, geometrySets, g2s, errorMsg));
+    mImpl.reset(new OptixGPUAccelerator(
+        allowUnsupportedFeatures, layer, geometrySets, g2s, warningMsgs, errorMsg));
     if (!errorMsg->empty()) {
         // Something went wrong so free everything
         // Output the error to Logger::error so we are guaranteed to see it

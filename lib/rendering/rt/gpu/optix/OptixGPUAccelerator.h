@@ -29,9 +29,11 @@ typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
 class OptixGPUAccelerator
 {
 public:
-    OptixGPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
+    OptixGPUAccelerator(bool allowUnsupportedFeatures,
+                        const scene_rdl2::rdl2::Layer *layer,
                         const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                         const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                        std::vector<std::string>& warningMsgs,
                         std::string* errorMsg);
     ~OptixGPUAccelerator();
 
@@ -53,11 +55,14 @@ private:
                const scene_rdl2::rdl2::Layer *layer,
                const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+               std::vector<std::string>& warningMsgs,
                std::string* errorMsg);
 
     bool createProgramGroups(std::string* errorMsg);
 
     bool createShaderBindingTable(std::string* errorMsg);
+
+    bool mAllowUnsupportedFeatures;
 
     CUstream mCudaStream;
     std::string mGPUDeviceName;

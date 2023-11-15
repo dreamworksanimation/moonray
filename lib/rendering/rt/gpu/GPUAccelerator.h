@@ -9,7 +9,7 @@ the GPU for supported scenes.  This is an extension of vectorized mode with some
 special queuing logic to collect occlusion rays for the GPU.  Future work will
 extend the GPU processing to regular non-occlusion rays.
 
-XPU is implemented using NVIDIA's Optix 7.0 API, which is built on NVIDIA's
+XPU is implemented using NVIDIA's Optix 7.6 API, which is built on NVIDIA's
 CUDA SDK.
 
 ***** Mode of execution:
@@ -122,9 +122,11 @@ class OptixGPUAccelerator;
 class GPUAccelerator
 {
 public:
-    GPUAccelerator(const scene_rdl2::rdl2::Layer *layer,
+    GPUAccelerator(bool allowUnsupportedFeatures,
+                   const scene_rdl2::rdl2::Layer *layer,
                    const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                    const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
+                   std::vector<std::string>& warningMsgs,
                    std::string* errorMsg);
     ~GPUAccelerator();
 

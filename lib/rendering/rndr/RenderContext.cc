@@ -758,6 +758,7 @@ RenderContext::startFrame()
     std::string executionModeString;
     std::string missingVecFeatures;
     const bool vecSupport = canRunVectorized(missingVecFeatures);
+    bool allowUnsupportedXPUFeatures = true;
 
     switch (desiredExecutionMode) {
 
@@ -799,6 +800,7 @@ RenderContext::startFrame()
             executionMode = ExecutionMode::SCALAR;
         } else {
             executionModeString = "Executing an XPU render since execution mode was set to auto.";
+            allowUnsupportedXPUFeatures = false; // want to fall back if unsupported
             executionMode = ExecutionMode::XPU;
             // If there is an error setting up the GPU, we will fall back to vector mode
             // in GeometryManager::updateGPUAccelerator().
@@ -815,7 +817,7 @@ RenderContext::startFrame()
     // Make sure everything is ready to render.
     scene_rdl2::rec_time::RecTime recTime;
     recTime.start();
-    RP_RESULT execResult = renderPrep(executionMode); // may throw
+    RP_RESULT execResult = renderPrep(executionMode, allowUnsupportedXPUFeatures); // may throw
     mDriver->pushRenderPrepTime(recTime.end()); // statistical info update for debug
 
 #if defined(USE_PARTITIONED_PIXEL) || defined(USE_PARTITIONED_LENS) || defined(USE_PARTITIONED_TIME)
@@ -1807,7 +1809,7 @@ RenderContext::getNumConsistentSamples() const
 }
 
 RenderContext::RP_RESULT
-RenderContext::renderPrep(ExecutionMode executionMode)
+RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUFeatures)
 {
     if (mRenderPrepExecTracker.startRenderPrep() == RenderPrepExecTracker::RESULT::CANCELED) {
         return RP_RESULT::CANCELED;
@@ -1983,7 +1985,7 @@ RenderContext::renderPrep(ExecutionMode executionMode)
             // XPU doesn't support BVH updates.  Also, moving the camera in moonray_gui
             // is a rt::ChangeFlag::UPDATE and we don't want to rebuild the GPU
             // data for that case.
-            mGeometryManager->updateGPUAccelerator(mLayer);
+            mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, mLayer);
         }
     }
     mRenderStats->mBuildGPUAcceleratorTime =

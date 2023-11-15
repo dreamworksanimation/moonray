@@ -190,7 +190,7 @@ public:
         mChangeStatus.compare_and_swap(swapFlag, compareFlag);
     }
 
-    void updateGPUAccelerator(const scene_rdl2::rdl2::Layer* layer);
+    void updateGPUAccelerator(bool allowUnsupportedFeatures, const scene_rdl2::rdl2::Layer* layer);
 
     const geom::internal::VolumeAssignmentTable * getVolumeAssignmentTable() const
     {
