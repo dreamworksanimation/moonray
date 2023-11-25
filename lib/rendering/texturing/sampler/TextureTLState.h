@@ -7,6 +7,7 @@
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 
 //  OiiO includes for access to texture system.
+#include <Imath/ImathVec.h>  // OIIO uses the Vector classes from Imath but defines its own version if not already defined.
 #include <OpenImageIO/version.h>
 #include <OpenImageIO/texture.h>
 
