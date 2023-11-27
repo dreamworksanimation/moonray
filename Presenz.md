@@ -10,6 +10,8 @@ branch of moonray integrates PresenZ using the SDK which can be found here:
 
 Download the [PresenZ SDK](https://github.com/Parallaxter-team/PresenZ-SDK).
 
+Checkout the `3.0.3.1` tag.
+
 Set the *PRESENZ_ROOT* environment variable or pass it in on the cmake command line.
 
 ```bash
