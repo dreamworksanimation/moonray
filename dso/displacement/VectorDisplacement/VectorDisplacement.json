@@ -7,12 +7,14 @@
             "type": "Vec3f",
             "default": "Vec3f(0.0f, 0.0f, 0.0f)",
             "flags": "FLAGS_BINDABLE",
-            "interface": "INTERFACE_MAP"
+            "interface": "INTERFACE_MAP",
+            "comment": "The direction to apply the displacement.  Bind a map with tangent or object space vector values here."
         },
         "attrFactor": {
             "name": "factor",
             "type": "Float",
-            "default": "1.0f"
+            "default": "1.0f",
+            "comment": "A multiplier applied to the input vector"
         },
         "attrSourceSpace": {
             "name": "source_space",

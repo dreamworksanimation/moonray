@@ -11,7 +11,8 @@
                 "add":                  "0",
                 "max magnitude":        "1",
                 "min magnitude":        "2"
-            }
+            },
+            "comment": "The method used for combining the displacements"
         },
         "attrInput1": {
             "name": "input_1",

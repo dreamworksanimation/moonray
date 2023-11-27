@@ -7,13 +7,16 @@
             "type": "Float",
             "default": "1.0f",
             "flags": "FLAGS_BINDABLE",
-            "interface": "INTERFACE_MAP"
+            "interface": "INTERFACE_MAP",
+            "comment": "This parameter is used as the initial displacement before the zero_value and height_multiplier are applied."
         },
         "attrZeroValue": {
             "name": "zero_value",
+            "type": "Float",
+            "default": "0.0f",
             "label": "zero value",
             "aliases": ["zero value"],
-            "type": "Float"
+            "comment": "This value is added to the displacement before applying the height_multiplier."
         },
         "attrHeightMultiplier": {
             "name": "height_multiplier",
