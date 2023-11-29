@@ -17,7 +17,6 @@ struct BundledOcclRay;
 struct BundledRadiance;
 struct RayState;
 class TLState;
-union WrappedRayState;
 
 // Passed into ray handlers via userData. These are static for the lifetime of
 // the queue.
@@ -30,7 +29,7 @@ enum RayHandlerFlags
 // Bundling handlers for ray intersection and occlusion.
 //
 void rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numRayStates,
-                      WrappedRayState *rayStates, void *userData);
+                      RayState **rayStates, void *userData);
 
 void occlusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
                                  unsigned numEntries, BundledOcclRay **entries,

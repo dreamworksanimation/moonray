@@ -1511,7 +1511,7 @@ PathIntegrator::queuePrimaryRay(pbr::TLState *pbrTls,
 
     // Queue up ray.
     pbrTls->mRayQueue.addEntries(pbrTls->mTopLevelTls, 1,
-        reinterpret_cast<WrappedRayState *>(&rs), pbrTls->mArena);
+        &rs, pbrTls->mArena);
 
     return true;
 }

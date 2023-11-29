@@ -50,7 +50,7 @@ public:
     typedef uint8_t CacheLine1[1 * CACHE_LINE_SIZE];
     typedef scene_rdl2::alloc::MemPool<mcrt_common::TLSInitParams::MemBlockType, CacheLine1> CL1Pool;
 
-    typedef mcrt_common::LocalQueue<WrappedRayState>           RayQueue;
+    typedef mcrt_common::LocalQueue<RayState*>                 RayQueue;
     typedef mcrt_common::LocalLargeEntryQueue<BundledOcclRay>  OcclusionQueue;
     typedef mcrt_common::LocalLargeEntryQueue<BundledOcclRay>  PresenceShadowsQueue;
 

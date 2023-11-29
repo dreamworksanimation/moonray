@@ -296,15 +296,13 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
 
 void
 rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
-                 WrappedRayState *wrappedRayStates, void *userData)
+                 RayState **rayStates, void *userData)
 {
     pbr::TLState *pbrTls = tls->mPbrTls.get();
 
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_RAY_HANDLER);
 
     MNRY_ASSERT(numEntries);
-
-    RayState **rayStates = &wrappedRayStates[0].mRsPtr;
 
     // By convention, if userData is null then rayState contains an array of raw
     // RayState pointers.

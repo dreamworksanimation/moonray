@@ -78,14 +78,6 @@ getPass(uint32_t tilePass)
     return (tilePass >> 3) & 0x7f;
 }
 
-// Contains either a ray RayState pointer or a SortedRayState depending on the
-// higher level context.
-union ALIGN(8) WrappedRayState
-{
-    RayState *              mRsPtr;
-    shading::SortedRayState mSortedRs;
-};
-
 // All frame state which need to be access inside of the pbr library should go
 // in here.
 struct FrameState
