@@ -256,6 +256,7 @@ enum OcclTestType
     HUD_CPP_PTR(const MaterialAovs *, mMaterialAovs);                       \
     HUD_CPP_PTR(const LightAovs *, mLightAovs);                             \
     HUD_MEMBER(bool, mRequiresHeatMap);                                     \
+    HUD_CPP_PTR(const mcrt_common::PresenZSettings *, mPresenZSettings);    \
     HUD_MEMBER(bool,     mLockFrameNoise);                                  \
     HUD_MEMBER(uint32_t, mShadingWorkloadChunkSize);                        \
     HUD_MEMBER(uint32_t, mFrameNumber);                                     \

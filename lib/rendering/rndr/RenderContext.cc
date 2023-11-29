@@ -35,6 +35,7 @@
 #include <moonray/rendering/bvh/shading/ThreadLocalObjectState.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/camera/Camera.h>
+#include <moonray/rendering/pbr/camera/PresenZCamera.h>
 #include <moonray/rendering/pbr/core/Aov.h>
 #include <moonray/rendering/pbr/core/DebugRay.h>
 #include <moonray/rendering/pbr/core/Statistics.h>
@@ -56,6 +57,7 @@
 #include <scene_rdl2/render/util/Files.h>
 #include <scene_rdl2/render/logging/logging.h>
 #include <scene_rdl2/render/util/Strings.h>
+#include <scene_rdl2/render/util/stdmemory.h>
 
 #include <openvdb/openvdb.h>
 
@@ -63,6 +65,9 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
 #include <tbb/task_arena.h>
+
+#include <API/PzBucketApi.h>
+#include <API/PzPhaseApi.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -225,6 +230,8 @@ RenderContext::RenderContext(RenderOptions& options, std::stringstream* initMess
     mRenderPrepTimingStats(nullptr),
     mPbrStatistics(new pbr::Statistics()),
     mGeomStatistics(new geom::internal::Statistics()),
+    mPresenZSettings(nullptr),
+    mPresenZPhaseBeginHasBeenCalled(false),
     mExecutionMode(ExecutionMode::AUTO) // for debugConsole command
 {
     MNRY_ASSERT(mDriver.get());
@@ -477,6 +484,7 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 
     createPbrScene();
     mHasBeenInit = true;
+    mPresenZPhaseBeginHasBeenCalled = false;
 }
 
 void
@@ -812,6 +820,15 @@ RenderContext::startFrame()
     mRenderStats->logExecModeConfiguration(executionMode);
     Logger::info(executionModeString);
 
+    // Get PresenZSettings from scene camera if it is a PresenZCamera
+    const pbr::PresenZCamera* presenZCamera = dynamic_cast<const pbr::PresenZCamera*>(getScene()->getCamera());
+    if (presenZCamera != nullptr) {
+        mPresenZSettings = presenZCamera->getPresenZSettings();
+
+        // Also copy PresenZSettings pointer to RenderDriver
+        mDriver->setPresenZSettings(mPresenZSettings);
+    }
+
     // Make sure everything is ready to render.
     scene_rdl2::rec_time::RecTime recTime;
     recTime.start();
@@ -852,6 +869,14 @@ RenderContext::startFrame()
 
     // Update pixel filter if needed.
     scene_rdl2::rdl2::PixelFilterType pixelFilterType = (scene_rdl2::rdl2::PixelFilterType)vars.get(scene_rdl2::rdl2::SceneVariables::sPixelFilterType);
+
+    // PresenZ - Detect mode should have no image filtering
+    if (mPresenZSettings != nullptr &&
+        mPresenZSettings->getEnabled() &&
+        mPresenZSettings->getPhase() == PresenZ::Phase::Detect) {
+        pixelFilterType = scene_rdl2::rdl2::PixelFilterType::box;
+    }
+
     float pixelFilterWidth = vars.get(scene_rdl2::rdl2::SceneVariables::sPixelFilterWidth);
     if (mCachedPixelFilterType != pixelFilterType ||
         mCachedPixelFilterWidth != pixelFilterWidth) {
@@ -932,6 +957,14 @@ RenderContext::startFrame()
     FrameState frameState;
     buildFrameState(&frameState, frameStartTime, executionMode);
 
+    if (mPresenZSettings != nullptr && mPresenZSettings->getEnabled()) {
+        frameState.mPresenZSettings = mPresenZSettings;
+        if (mPresenZSettings->getPhase() == PresenZ::Phase::Detect) {
+            // PresenZ - Update FrameState with PresenZ Detect phase settings
+            updateFrameStateForPresenZDetectPhase(&frameState);
+        }
+    }
+
     // Record some info for resume history from frameState
     mResumeHistoryMetaData->setNumOfThreads(frameState.mNumRenderThreads);
     if (frameState.mSamplingMode == SamplingMode::UNIFORM) {
@@ -991,6 +1024,27 @@ RenderContext::startFrame()
 
     // Setup RenderContext pointer into frame state
     frameState.mRenderContext = this;
+
+    // PresenZ - Begin current phase
+    if (mPresenZSettings != nullptr && mPresenZSettings->getEnabled()) {
+        mPresenZSettings->setResolution(frameState.mWidth, frameState.mHeight);
+        mPresenZSettings->setCurrentFrame(frameState.mFrameNumber);
+
+        if (!mPresenZSettings->phaseBegin(getNumTBBThreads())) {
+            throw scene_rdl2::except::RuntimeError("Problem with PresenZ PhaseBegin()");
+        }
+        mPresenZPhaseBeginHasBeenCalled = true;
+
+        if (mPresenZSettings->getPhase() == PresenZ::Phase::Render) {
+            // PresenZ render phase changes the resolution to shade all samples from
+            // the detect phase so we update the FrameState with the new resolution
+            scene_rdl2::math::Vec2f newResolution = mPresenZSettings->getResolution();
+            frameState.mWidth = static_cast<unsigned>(newResolution.x);
+            frameState.mHeight = static_cast<unsigned>(newResolution.y);
+            HalfOpenViewport vp(0.f, 0.f, frameState.mWidth, frameState.mHeight);
+            frameState.mViewport = scene_rdl2::math::convertToClosedViewport(vp);
+        }
+    }
 
     // Setup the XPU queues in the RenderDriver if we are XPU accelerated.
     // isGPUEnabled() may return false even in XPU mode if we failed to create it,
@@ -1140,6 +1194,12 @@ RenderContext::stopFrame()
     mRenderStats->reset();
 
     mcrt_common::resetAllAccumulators();
+
+    // Finish PresenZ if one of it's modes is active
+    if (mPresenZSettings != nullptr && mPresenZSettings->getEnabled() && mPresenZPhaseBeginHasBeenCalled) {
+        PresenZ::BinIO::PzProcessAllBucketsToFile();
+        mPresenZSettings->phaseEnd();
+    }
 
     mRenderPrepTimingStats->recTime(RenderPrepTimingStats::StopFrameTag::RESET);
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::StopFrameTag::WHOLE);
@@ -2146,6 +2206,13 @@ RenderContext::updatePbrState(const FrameState &fs)
     integratorParams.mIntegratorVolumeOverlapMode =
         static_cast<pbr::VolumeOverlapMode>(vars.get(scene_rdl2::rdl2::SceneVariables::sVolumeOverlapMode));
 
+    // PresenZ detect mode requires no indirect rays
+    if (mPresenZSettings != nullptr &&
+        mPresenZSettings->getEnabled() &&
+        mPresenZSettings->getPhase() == PresenZ::Phase::Detect) {
+        integratorParams.mIntegratorMaxDepth = 0;
+    }
+
     mIntegrator->update(fs, integratorParams);
 }
 
@@ -2182,6 +2249,10 @@ RenderContext::buildPrimitiveAttributeTables(
                 optionalKeys.insert(optKeys.begin(), optKeys.end());
             }
         }
+
+        if (mPresenZSettings != nullptr && mPresenZSettings->getEnabled()) {
+            optionalKeys.insert(shading::TypedAttributeKey<bool>("chaotic"));
+        }        
 
         if (s->isA<scene_rdl2::rdl2::Material>()) {
             // The render output driver might itself require certain attributes.
@@ -2737,6 +2808,31 @@ namespace {
 } // anonymous namespace
 
 void
+RenderContext::updateFrameStateForPresenZDetectPhase(FrameState *fs) const
+{
+    // PresenZ detect mode needs exactly 256 samples
+    unsigned numSamplesPerPixel = 256;
+    Logger::warn("pixel_samples set to 256 for PresenZ detect mode");
+    fs->mOriginalSamplesPerPixel = numSamplesPerPixel;
+
+    // The maximum number of samples per pixel over all the pixel sample maps from each camera
+    fs->mMaxSamplesPerPixel = unsigned(numSamplesPerPixel * mMaxPixelSampleValue);
+
+    // PresenZ detect mode does not support adaptive sampling
+    fs->mSamplingMode = SamplingMode::UNIFORM;
+
+    // PresenZ detect mode does not support progressive mode
+    fs->mRenderMode = RenderMode::BATCH;
+    Logger::warn("Setting render mode to batch PresenZ detect mode");
+
+    // Turn off resolution multipliers and region rendering if in PresenZ detect mode
+    //const rdl2::SceneVariables &vars = mSceneContext->getSceneVariables();
+    //fs->mWidth = vars.get(rdl2::SceneVariables::sImageWidth);
+    //fs->mHeight = vars.get(rdl2::SceneVariables::sImageHeight);
+    //fs->mViewport = math::convertToClosedViewport(HalfOpenViewport(0.f, 0.f, fs->mWidth, fs->mHeight));
+}
+
+void
 RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionMode executionMode) const
 {
     // cppcheck-suppress memsetClassFloat // floating point memset to 0 is fine
@@ -3064,8 +3160,15 @@ RenderContext::getMotionBlurParams(bool bake) const
         shutterClose = 0.0f;
     } else if (bake) {
         // Shutter open and close set to same values as motion steps for baking
-        shutterOpen  = sceneVarsMotionSteps[0];
-        shutterClose = sceneVarsMotionSteps[1];
+        if (mPresenZSettings != nullptr && mPresenZSettings->getEnabled()) {
+            shutterOpen  = 0.0f;
+            shutterClose = 1.0f;
+            sceneVarsMotionSteps = { 0.0f, 1.0f };
+        } else {
+            // Shutter open and close are controlled by the primary camera
+            shutterOpen  = sceneVarsMotionSteps[0];
+            shutterClose = sceneVarsMotionSteps[1];
+        }        
     } else {
         // Shutter open and close are controlled by the camera
         shutterOpen  = mCamera->get(scene_rdl2::rdl2::Camera::sMbShutterOpenKey);

@@ -31,6 +31,9 @@
 
 #include <tbb/task_group.h>
 
+#include <API/PzBucketApi.h>
+#include <API/PzPhaseApi.h>
+
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_COUNT // See RuntimeVerify.h
 #define RUNTIME_VERIFY0
 #endif // end RUNTIME_VERIFY_PIX_SAMPLE_COUNT
@@ -642,6 +645,9 @@ RenderDriver::updateTileCondition(RenderDriver *driver,
     return AdaptiveRenderTileInfo::Stage::ADAPTIVE_STAGE;
 }
 
+// Lock for PzProcessBucketFlushToFile()
+std::mutex RenderDriver::mPresenZMutex;
+
 // static function
 // _adaptive_ does not strictly have to be a template parameter, but it's known at compile-time, so we might as well
 // optimize it out.
@@ -668,6 +674,19 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
     const Pass &pass = driver->mTileWorkQueue.getPass(group.mPassIdx);
     Film &film = *params.mFilm;
     const scene_rdl2::fb_util::Tile &tile = (*driver->getTiles())[params.mTileIdx];
+
+    if (driver->mPresenZSettings != nullptr &&
+        driver->mPresenZSettings->getEnabled()) {
+        PresenZ::BinIO::PzInitBucket(pbrTls->mThreadIdx,
+                                     tile.mMinX, tile.mMinY,
+                                     tile.mMaxX, tile.mMaxY);
+        //std::cout << "Starting bucket with: " <<
+        //    " mMinX = " << tile.mMinX <<
+        //    " mMaxX = " << tile.mMaxX <<
+        //    " mMinY = " << tile.mMinY <<
+        //    " mMaxY = " << tile.mMaxY <<
+        //std::endl;
+    }
 
     for (unsigned ipix = pass.mStartPixelIdx; ipix != pass.mEndPixelIdx; ++ipix) {
         // Note we wrap around values over 64. This subtlety is actively used for realtime mode.
@@ -781,6 +800,12 @@ RenderDriver::renderTileUniformSamples(RenderDriver *driver,
             film.getAdaptiveRenderTilesTable()->setTileUpdate(params.mTileIdx, addedSamples); // update
         }
     } // ipix
+
+    if (driver->mPresenZSettings != nullptr && driver->mPresenZSettings->getEnabled()) {
+        // PzProcessBucketFlushToFile is not thread safe
+        std::lock_guard<std::mutex> lock(mPresenZMutex);
+        PresenZ::BinIO::PzProcessBucketFlushToFile(pbrTls->mThreadIdx);
+    }
 
     return true;
 }
@@ -1270,7 +1295,7 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
                                             int(offset),
                                             params->mTotalNumSamples,
                                             sample,
-                                            rs);
+                                            fs, rs);
         if (!queued) {
             rayStatesToFree[numRayStatesToFree++] = rs;
         }

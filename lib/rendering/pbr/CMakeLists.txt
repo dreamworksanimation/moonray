@@ -101,6 +101,7 @@ function(make_ispc_target target sources stubsDestination)
             ${PROJECT_NAME}::rendering_shading
             ${PROJECT_NAME}::shading_ispc
             ${PROJECT_NAME}::shading_eval_ispc
+            PresenZ::PresenZ
             SceneRdl2::common_math
             SceneRdl2::common_platform
             SceneRdl2::math_ispc
@@ -268,6 +269,7 @@ target_sources(${component}
         camera/DomeMaster3DCamera.cc
         camera/OrthographicCamera.cc
         camera/PerspectiveCamera.cc
+        camera/PresenZCamera.cc
         camera/ProjectiveCamera.cc
         camera/SphericalCamera.cc
         camera/LensDistribution.cc

@@ -4,6 +4,7 @@
 //
 #pragma once
 #include "Types.hh"
+#include <moonray/rendering/mcrt_common/PresenZSettings.h>
 #include <moonray/rendering/mcrt_common/Types.h> // for MAX_RENDER_PASSES
 #include <moonray/rendering/shading/bsdf/BsdfSlice.h> // FrameState::ShadowTerminatorFix
 #include <moonray/rendering/shading/Types.h>

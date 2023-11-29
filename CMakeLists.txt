@@ -101,6 +101,7 @@ find_package(OpenImageIO REQUIRED)
 find_package(Random123 REQUIRED)
 find_package(OpenImageIO REQUIRED)
 find_package(TBB REQUIRED)
+find_package(PresenZ REQUIRED)
 # Intel Math Kernel is not required by Moonray itself, but currently it has to
 # be linked into the application if any dsos require it. Therefore we link it
 # if it is available

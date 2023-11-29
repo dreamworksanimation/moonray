@@ -77,6 +77,7 @@ requires = [
     'openvdb',
     'optix-7.3.0.x',
     'random123-1.08.3',
+    'presenz-2.0.0.27.x.1',
     'scene_rdl2-13.0',
 ]
 

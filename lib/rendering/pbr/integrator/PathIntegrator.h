@@ -28,6 +28,8 @@
 #include <scene_rdl2/scene/rdl2/SceneVariables.h>
 #include <scene_rdl2/common/math/Vec3.h>
 
+#include <API/PzPhaseApi.h>
+
 #include <vector>
 
 namespace moonray {
@@ -248,7 +250,7 @@ public:
 
     bool queuePrimaryRay(pbr::TLState *pbrTls, int pixelX, int pixelY,
             int subpixelIndex, int pixelSamples, const Sample& sample,
-            RayState *rs) const;
+            const FrameState& fs, RayState *rs) const;
 
     // Used for bundled case as a wrapper to call directly into ISPC.
     void integrateBundledv(pbr::TLState *pbrTls, shading::TLState *shadingTls, unsigned numEntries,
@@ -507,12 +509,16 @@ private:
     // volume emission/in-scattering accumulated along the ray)
     IndirectRadianceType computeRadianceRecurse(pbr::TLState *pbrTls,
             mcrt_common::RayDifferential &ray,
+            mcrt_common::RayDifferential &rayForVolume,
             const Subpixel &sp, const PathVertex &pv, const shading::BsdfLobe *lobe,
             scene_rdl2::math::Color &radiance, float &transparency, VolumeTransmittance& vt,
             unsigned &sequenceID, float *aovs, float *depth,
             DeepParams* deepParams, CryptomatteParams *cryptomatteParams,
             CryptomatteParams *refractCryptomatteParams,
-            bool ignoreVolumes, bool &hitVolume) const;
+            bool ignoreVolumes, bool &hitVolume,
+            bool &isStereoscopic,
+            PresenZ::Phase::Eye presenZEye=PresenZ::Phase::RC_Left,
+            int pixelX=0, int pixelY=0) const;
 
     scene_rdl2::math::Color computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             const shading::Bsdf &bsdf, const Subpixel &sp,
@@ -538,7 +544,7 @@ private:
 
     bool initPrimaryRay(pbr::TLState *pbrTls, const Camera *camera,
             int pixelX, int pixelY, int subpixelIndex, int pixelSamples,
-            const Sample& sample, mcrt_common::RayDifferential &ray,
+            const Sample& sample, const FrameState& fs, mcrt_common::RayDifferential &ray,
             Subpixel &sp, PathVertex &pv) const;
 
     // Utility function handling occlusion/presence shadow ray query based on whether light has presence shadow enabled.
