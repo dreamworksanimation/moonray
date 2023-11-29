@@ -118,6 +118,7 @@ AccumulatorHandles::init(unsigned numThreads, unsigned numTLS)
     mExclusiveAccumulators[EXCL_ACCUM_DEFER_SHADE_ENTRIES]      = allocAccumulator("Defer shade entries (WARNING SIGN!)", ACCFLAG_DISPLAYABLE);
     mExclusiveAccumulators[EXCL_ACCUM_EMBREE_INTERSECTION]      = allocAccumulator("Embree intersection rays", ACCFLAG_DISPLAYABLE);
     mExclusiveAccumulators[EXCL_ACCUM_EMBREE_OCCLUSION]         = allocAccumulator("Embree occlusion rays", ACCFLAG_DISPLAYABLE);
+    mExclusiveAccumulators[EXCL_ACCUM_GPU_INTERSECTION]         = allocAccumulator("GPU intersection rays", ACCFLAG_DISPLAYABLE);
     mExclusiveAccumulators[EXCL_ACCUM_GPU_OCCLUSION]            = allocAccumulator("GPU occlusion rays", ACCFLAG_DISPLAYABLE);
     mExclusiveAccumulators[EXCL_ACCUM_EMBREE_PRESENCE]          = allocAccumulator("Embree presence rays", ACCFLAG_DISPLAYABLE);
     mExclusiveAccumulators[EXCL_ACCUM_EMBREE_VOLUME]            = allocAccumulator("Embree volume rays", ACCFLAG_DISPLAYABLE);

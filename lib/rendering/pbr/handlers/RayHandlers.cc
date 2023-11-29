@@ -322,6 +322,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     // Perform all intersection checks.
     if (numEntries) {
         pbrTls->mStatistics.addToCounter(STATS_INTERSECTION_RAYS, numEntries);
+        pbrTls->mStatistics.addToCounter(STATS_BUNDLED_INTERSECTION_RAYS, numEntries);
         EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_EMBREE_INTERSECTION);
 
         const rt::EmbreeAccelerator *accel = fs.mEmbreeAccel;

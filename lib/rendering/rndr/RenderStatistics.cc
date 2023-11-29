@@ -1148,10 +1148,15 @@ RenderStats::logSamplingStats(const pbr::Statistics& pbrStats, const geom::inter
     const size_t totalSamples = pixelSamples + lightSamples + bsdfSamples + bssrdfSamples;
 
     const size_t isectRays = pbrStats.getCounter(pbr::STATS_INTERSECTION_RAYS);
-    const size_t occlRays  = pbrStats.getCounter(pbr::STATS_OCCLUSION_RAYS);
-    const size_t presenceShadowRays  = pbrStats.getCounter(pbr::STATS_PRESENCE_SHADOW_RAYS);
-    const size_t bundledOcclRays  = pbrStats.getCounter(pbr::STATS_BUNDLED_OCCLUSION_RAYS);
-    const size_t bundledGPUOcclRays  = pbrStats.getCounter(pbr::STATS_BUNDLED_GPU_OCCLUSION_RAYS);
+    const size_t bundledIsectRays = pbrStats.getCounter(pbr::STATS_BUNDLED_INTERSECTION_RAYS);
+    const size_t bundledGPUIsectRays = pbrStats.getCounter(pbr::STATS_BUNDLED_GPU_INTERSECTION_RAYS);
+
+    const size_t presenceShadowRays = pbrStats.getCounter(pbr::STATS_PRESENCE_SHADOW_RAYS);
+
+    const size_t occlRays = pbrStats.getCounter(pbr::STATS_OCCLUSION_RAYS);
+    const size_t bundledOcclRays = pbrStats.getCounter(pbr::STATS_BUNDLED_OCCLUSION_RAYS);
+    const size_t bundledGPUOcclRays = pbrStats.getCounter(pbr::STATS_BUNDLED_GPU_OCCLUSION_RAYS);
+
     const size_t totalRays = isectRays + occlRays;
 
     const size_t shaderEvals = pbrStats.getCounter(pbr::STATS_SHADER_EVALS);
@@ -1170,12 +1175,19 @@ RenderStats::logSamplingStats(const pbr::Statistics& pbrStats, const geom::inter
     table.emplace_back("Total samples", totalSamples);
 
     table.emplace_back("Intersection rays", isectRays);
-    table.emplace_back("Occlusion rays", occlRays);
+    table.emplace_back("Bundled intersection rays", bundledIsectRays);
+    const double gpuIntersectionUtilization = (bundledIsectRays > 0) ?
+        static_cast<double>(bundledGPUIsectRays) / static_cast<double>(bundledIsectRays) : 0.0;
+    table.emplace_back("GPU bundled intersection ray utilization", percentage(gpuIntersectionUtilization));
+
     table.emplace_back("Presence shadow rays", presenceShadowRays);
+
+    table.emplace_back("Occlusion rays", occlRays);
     table.emplace_back("Bundled occlusion rays", bundledOcclRays);
     const double gpuOcclusionUtilization = (bundledOcclRays > 0) ?
         static_cast<double>(bundledGPUOcclRays) / static_cast<double>(bundledOcclRays) : 0.0;
     table.emplace_back("GPU bundled occlusion ray utilization", percentage(gpuOcclusionUtilization));
+
     table.emplace_back("Total rays", totalRays);
 
     table.emplace_back("Shader evals", shaderEvals);

@@ -35,6 +35,9 @@ enum ExclAccType
     // Time spent tracing embree intersection rays.
     EXCL_ACCUM_EMBREE_INTERSECTION,
 
+    // Time spent tracing GPU intersection rays.
+    EXCL_ACCUM_GPU_INTERSECTION,
+
     // Time spent tracing embree occlusion rays.
     EXCL_ACCUM_EMBREE_OCCLUSION,
 
