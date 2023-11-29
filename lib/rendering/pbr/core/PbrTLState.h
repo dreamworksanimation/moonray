@@ -24,12 +24,7 @@ namespace pbr {
 
 class DebugRayRecorder;
 class DebugRayVertex;
-
-template <typename T>
-class XPUAcceleratorQueue;
-
-typedef XPUAcceleratorQueue<BundledOcclRay> XPUOcclusionRayQueue;
-
+class XPUOcclusionRayQueue;
 
 // Expose for HUD validation.
 class TLState;

@@ -54,28 +54,27 @@ The API design of this queue class resembles the other queues in mcrt_common/Bun
 The two main methods are addEntries() and flush().
 */
 
-template<typename EntryType>
-class XPUAcceleratorQueue
+class XPUOcclusionRayQueue
 {
 public:
     // The CPU handler that is called when the GPU is busy
     typedef void (*CPUHandler)(mcrt_common::ThreadLocalState *tls,
                                unsigned numEntries,
-                               const EntryType *entryData,
+                               const BundledOcclRay *entryData,
                                void *userData);
 
     // The GPU handler that calls the GPU
     typedef void (*GPUHandler)(mcrt_common::ThreadLocalState *tls,
                                unsigned numEntries,
-                               EntryType *entryData,
+                               BundledOcclRay *entryData,
                                const rt::GPURay *gpuRays,
                                tbb::spin_mutex& mutex);
 
-    XPUAcceleratorQueue(unsigned numCPUThreads,
-                        unsigned cpuThreadQueueSize,
-                        CPUHandler cpuThreadQueueHandler,
-                        GPUHandler gpuQueueHandler,
-                        void *handlerData) :
+    XPUOcclusionRayQueue(unsigned numCPUThreads,
+                         unsigned cpuThreadQueueSize,
+                         CPUHandler cpuThreadQueueHandler,
+                         GPUHandler gpuQueueHandler,
+                         void *handlerData) :
         mNumCPUThreads(numCPUThreads),
         mCPUThreadQueueSize(cpuThreadQueueSize),
         mCPUThreadQueueHandler(cpuThreadQueueHandler),
@@ -91,14 +90,14 @@ public:
         mCPUThreadQueueEntries.resize(mNumCPUThreads);
         mCPUThreadQueueNumQueued.resize(mNumCPUThreads);
         for (size_t i = 0; i < numCPUThreads; i++) {
-            mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<EntryType>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
+            mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<BundledOcclRay>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
         mThreadsWaitingForGPU = 0;
     }
 
-    virtual ~XPUAcceleratorQueue()
+    virtual ~XPUOcclusionRayQueue()
     {
         for (size_t i = 0; i < mNumCPUThreads; i++) {
             MNRY_ASSERT(mCPUThreadQueueNumQueued[i] == 0);
@@ -108,7 +107,7 @@ public:
 
     unsigned getMemoryUsed() const
     {
-        return (sizeof(EntryType) * mCPUThreadQueueSize * mNumCPUThreads) + sizeof(*this);
+        return (sizeof(BundledOcclRay) * mCPUThreadQueueSize * mNumCPUThreads) + sizeof(*this);
     }
 
     bool isValid() const
@@ -120,7 +119,7 @@ public:
     // The CPU threads call this function to queue up rays (entries.)
     void addEntries(mcrt_common::ThreadLocalState *tls,
                     unsigned numEntries,
-                    EntryType *entries)
+                    BundledOcclRay *entries)
     {
         MNRY_ASSERT(tls);
         MNRY_ASSERT(numEntries);
@@ -146,7 +145,7 @@ public:
             // Copy entries into CPU thread's queue as there is room for them in that queue.
             memcpy(mCPUThreadQueueEntries[threadIdx] + mCPUThreadQueueNumQueued[threadIdx],
                    entries,
-                   numEntries * sizeof(EntryType));
+                   numEntries * sizeof(BundledOcclRay));
             mCPUThreadQueueNumQueued[threadIdx] = totalEntries;
             return;
         }
@@ -159,7 +158,7 @@ public:
         // Now that the queue is empty, we can add the new entries.
         memcpy(mCPUThreadQueueEntries[threadIdx],
                entries,
-               numEntries * sizeof(EntryType));
+               numEntries * sizeof(BundledOcclRay));
         mCPUThreadQueueNumQueued[threadIdx] = numEntries;
 
         MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] < mCPUThreadQueueSize);
@@ -185,7 +184,7 @@ protected:
 
     void processRays(mcrt_common::ThreadLocalState *tls,
                      unsigned numRays,
-                     EntryType *rays)
+                     BundledOcclRay *rays)
     {
         EXCL_ACCUMULATOR_PROFILE(tls, EXCL_ACCUM_QUEUE_LOGIC);
 
@@ -248,19 +247,16 @@ protected:
         }
     }
 
-    unsigned                    mNumCPUThreads;
-    unsigned                    mCPUThreadQueueSize;
-    std::vector<EntryType*>     mCPUThreadQueueEntries;
-    std::vector<unsigned>       mCPUThreadQueueNumQueued;
-    CPUHandler                  mCPUThreadQueueHandler;
-    std::atomic<int>            mThreadsWaitingForGPU;
-    GPUHandler                  mGPUQueueHandler;
-    tbb::spin_mutex             mGPUDeviceMutex;
-    void *                      mHandlerData;
+    unsigned                     mNumCPUThreads;
+    unsigned                     mCPUThreadQueueSize;
+    std::vector<BundledOcclRay*> mCPUThreadQueueEntries;
+    std::vector<unsigned>        mCPUThreadQueueNumQueued;
+    CPUHandler                   mCPUThreadQueueHandler;
+    std::atomic<int>             mThreadsWaitingForGPU;
+    GPUHandler                   mGPUQueueHandler;
+    tbb::spin_mutex              mGPUDeviceMutex;
+    void *                       mHandlerData;
 };
-
-typedef XPUAcceleratorQueue<BundledOcclRay> XPUOcclusionRayQueue;
 
 } // namespace pbr
 } // namespace moonray
-
