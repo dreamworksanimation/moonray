@@ -1510,8 +1510,7 @@ PathIntegrator::queuePrimaryRay(pbr::TLState *pbrTls,
     }
 
     // Queue up ray.
-    pbrTls->mRayQueue.addEntries(pbrTls->mTopLevelTls, 1,
-        &rs, pbrTls->mArena);
+    pbrTls->addRayQueueEntries(1, &rs);
 
     return true;
 }

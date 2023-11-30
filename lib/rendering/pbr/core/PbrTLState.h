@@ -25,6 +25,7 @@ namespace pbr {
 class DebugRayRecorder;
 class DebugRayVertex;
 class XPUOcclusionRayQueue;
+class XPURayQueue;
 
 // Expose for HUD validation.
 class TLState;
@@ -96,16 +97,18 @@ public:
     // have no outstanding allocations.
     bool                verifyNoOutstandingAllocs();
 
+    void                addRayQueueEntries(unsigned numEntries, RayState **entries);
     void                addRadianceQueueEntries(unsigned numEntries, BundledRadiance *entries);
     void                addAovQueueEntries(unsigned numEntries, BundledAov *entries);
     void                addOcclusionQueueEntries(unsigned numEntries, BundledOcclRay *entries);
     void                addPresenceShadowsQueueEntries(unsigned numEntries, BundledOcclRay *entries);
     void                addHeatMapQueueEntries(unsigned numEntries, BundledHeatMapSample *entries);
 
-    // Sets the pointer to the XPU occlusion ray queue, which is owned by the RenderDriver
-    // and is only not null if we are in XPU mode and RenderContext::renderPrep() has successfully
+    // Sets the pointers to the XPU ray queues, which are owned by the RenderDriver
+    // and are only not null if we are in XPU mode and RenderContext::renderPrep() has successfully
     // initialized the GPUAccelerator.
     void                setXPUOcclusionRayQueue(XPUOcclusionRayQueue* queue);
+    void                setXPURayQueue(XPURayQueue* queue);
 
     //
     // Queue helpers:

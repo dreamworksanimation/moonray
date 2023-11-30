@@ -307,7 +307,7 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
                         flushed = shading::Material::flushNonEmptyShadeQueue(topLevelTls);
                         CHECK_CANCELLATION(tls, break);
 
-                        flushed += driver->flushXPUQueue(topLevelTls, &topLevelTls->mArena);
+                        flushed += driver->flushXPUQueues(topLevelTls, &topLevelTls->mArena);
 
                         flushed += tls->flushLocalQueues();
                         CHECK_CANCELLATION(tls, break);

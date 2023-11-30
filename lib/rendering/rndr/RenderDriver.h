@@ -19,6 +19,7 @@
 #include <moonray/rendering/rndr/adaptive/ActivePixelMask.h>
 #include <moonray/rendering/pbr/camera/StereoView.h>
 #include <moonray/rendering/pbr/core/XPUOcclusionRayQueue.h>
+#include <moonray/rendering/pbr/core/XPURayQueue.h>
 #include <moonray/common/mcrt_util/AlignedElementArray.h>
 
 #include <scene_rdl2/common/fb_util/TileExtrapolation.h>
@@ -438,11 +439,11 @@ public:
 
     template <typename F> void crawlAllTiledPixels(F pixelFunc) const;
 
-    // The RenderDriver owns the XPU queue but other objects like TLState may
+    // The RenderDriver owns the XPU queues but other objects like TLState may
     // have pointers to them so they can queue up rays.
-    void createXPUQueue();
-    unsigned flushXPUQueue(mcrt_common::ThreadLocalState *tls, scene_rdl2::alloc::Arena *arena);
-    void freeXPUQueue();
+    void createXPUQueues();
+    unsigned flushXPUQueues(mcrt_common::ThreadLocalState *tls, scene_rdl2::alloc::Arena *arena);
+    void freeXPUQueues();
 
     // RenderDriver owns DisplayFilterDriver
     const DisplayFilterDriver& getDisplayFilterDriver() const { return mDisplayFilterDriver; }
@@ -863,6 +864,7 @@ private:
 
     // Queues for XPU processing of rays (RenderDriver is owner)
     pbr::XPUOcclusionRayQueue* mXPUOcclusionRayQueue;
+    pbr::XPURayQueue* mXPURayQueue;
 
     // RenderDriver owns DisplayFilterDriver
     DisplayFilterDriver mDisplayFilterDriver;

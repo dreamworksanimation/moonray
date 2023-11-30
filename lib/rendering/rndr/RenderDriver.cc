@@ -538,6 +538,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     mLastCheckpointFileEndSampleId(-1),
     mRenderStopAtPassBoundary(false),
     mXPUOcclusionRayQueue(nullptr),
+    mXPURayQueue(nullptr),
     mParallelInitFrameUpdate(true),
     mParallelInitFrameUpdateMcrtCount(0),
     mCheckpointEstimationStage(false),
@@ -612,7 +613,7 @@ RenderDriver::~RenderDriver()
     RenderThreadState state = mRenderThreadState.get();
     MNRY_ASSERT_REQUIRE(state == UNINITIALIZED || state == DEAD);
 
-    freeXPUQueue();
+    freeXPUQueues();
 
     // Terminate task scheduler and wait for tbb worker threads to finish.
     // We need worker threads to exit before the TLS cleanup which is where
@@ -2236,7 +2237,7 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
 }
 
 void
-RenderDriver::createXPUQueue()
+RenderDriver::createXPUQueues()
 {
     unsigned numCPUThreads = mcrt_common::getNumTBBThreads();
     // This queue size was determined empirically through performance testing.
@@ -2249,28 +2250,44 @@ RenderDriver::createXPUQueue()
                                                           pbr::xpuOcclusionQueryBundleHandlerGPU,
                                                           (void *)((uint64_t)rayHandlerFlags));
 
+    // TODO: mXPURayQueue
+
     pbr::forEachTLS([&](pbr::TLState *tls) {
         tls->setXPUOcclusionRayQueue(mXPUOcclusionRayQueue);
+        // TODO: mXPURayQueue
     });
 }
 
 unsigned
-RenderDriver::flushXPUQueue(mcrt_common::ThreadLocalState *tls, scene_rdl2::alloc::Arena *arena)
+RenderDriver::flushXPUQueues(mcrt_common::ThreadLocalState *tls, scene_rdl2::alloc::Arena *arena)
 {
+    unsigned numFlushed = 0;
+
     if (mXPUOcclusionRayQueue) {
-        return mXPUOcclusionRayQueue->flush(tls, arena);
+        numFlushed += mXPUOcclusionRayQueue->flush(tls, arena);
     }
-    return 0;
+    if (mXPURayQueue) {
+        numFlushed += mXPURayQueue->flush(tls, arena);
+    }
+
+    return numFlushed;
 }
 
 void
-RenderDriver::freeXPUQueue()
+RenderDriver::freeXPUQueues()
 {
     delete mXPUOcclusionRayQueue;
     mXPUOcclusionRayQueue = nullptr;
 
     pbr::forEachTLS([&](pbr::TLState *tls) {
         tls->setXPUOcclusionRayQueue(nullptr);
+    });
+
+    delete mXPURayQueue;
+    mXPURayQueue = nullptr;
+
+    pbr::forEachTLS([&](pbr::TLState *tls) {
+        tls->setXPURayQueue(nullptr);
     });
 }
 

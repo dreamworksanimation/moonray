@@ -19,6 +19,7 @@
 //  mAovQueue
 //  mHeatMapQueue
 //  mXPUOcclusionRayQueue               Pointer to XPU occlusion ray queue (owned by the RenderDriver)
+//  mXPURayQueue                        Pointer to XPU ray queue (owned by the RenderDriver)
 //  mPrimaryRaysSubmitted               Primary rays submitted.
 //  mFs                                 Constant for entire frame.
 //  mTilesRenderedTo                    Tiles which have had any samples rendered to them for gui diagnostics purposes.
@@ -47,6 +48,7 @@
     HUD_CPP_PTR(AovQueue *, mAovQueue);                                             \
     HUD_CPP_PTR(HeatMapQueue *, mHeatMapQueue);                                     \
     HUD_CPP_PTR(XPUOcclusionRayQueue *, mXPUOcclusionRayQueue);                     \
+    HUD_CPP_PTR(XPURayQueue *, mXPURayQueue);                                       \
     HUD_PUBLIC()                                                                    \
     HUD_CPP_ARRAY(size_t, mPrimaryRaysSubmitted, MAX_RENDER_PASSES, 8000);          \
     HUD_PTR(const FrameState *, mFs);                                               \
@@ -63,7 +65,7 @@
     HUD_CPP_PTR(RadianceQueue::EntryType *, mRadianceEntries);                      \
     HUD_CPP_PTR(AovQueue::EntryType *, mAovEntries);                                \
     HUD_CPP_PTR(HeatMapQueue::EntryType *, mHeatMapEntries);                        \
-    HUD_ISPC_PAD(mPad, 48)
+    HUD_ISPC_PAD(mPad, 40)
 
 
 #define PBR_TL_STATE_VALIDATION                                 \
@@ -79,6 +81,7 @@
     HUD_VALIDATE(PbrTLState, mAovQueue);                        \
     HUD_VALIDATE(PbrTLState, mHeatMapQueue);                    \
     HUD_VALIDATE(PbrTLState, mXPUOcclusionRayQueue);            \
+    HUD_VALIDATE(PbrTLState, mXPURayQueue);                     \
     HUD_VALIDATE(PbrTLState, mPrimaryRaysSubmitted);            \
     HUD_VALIDATE(PbrTLState, mFs);                              \
     HUD_VALIDATE(PbrTLState, mTilesRenderedTo);                 \

@@ -684,10 +684,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 }
 
                 // Trace deep layer rays
-                pbrTls->mRayQueue.addEntries(pbrTls->mTopLevelTls,
-                                             numDeepLayerRays,
-                                             deepLayerRays,
-                                             arena);
+                pbrTls->addRayQueueEntries(numDeepLayerRays, deepLayerRays);
             }
         }
 
@@ -853,7 +850,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
 
                 // Trace presence continuation rays
                 if (presenceRays) {
-                    pbrTls->mRayQueue.addEntries(pbrTls->mTopLevelTls, numPresenceRays, presenceRays, arena);
+                    pbrTls->addRayQueueEntries(numPresenceRays, presenceRays);
                 }
             }
 

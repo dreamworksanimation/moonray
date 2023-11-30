@@ -7,6 +7,7 @@
 #include "PbrTLState.h"
 #include "RayState.h"
 #include "XPUOcclusionRayQueue.h"
+#include "XPURayQueue.h"
 #include <moonray/rendering/pbr/handlers/RayHandlers.h>
 #include <moonray/rendering/shading/Types.h>
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
@@ -226,6 +227,7 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
     mAovQueue(nullptr),
     mHeatMapQueue(nullptr),
     mXPUOcclusionRayQueue(nullptr),
+    mXPURayQueue(nullptr),
     mFs(nullptr),
     mCancellationState(DISABLED),
     mCurrentPassIdx(0),
@@ -535,6 +537,19 @@ TLState::verifyNoOutstandingAllocs()
 }
 
 void
+TLState::addRayQueueEntries(unsigned numEntries, RayState **entries)
+{
+    if (!numEntries) {
+        return;
+    }
+    if (mXPURayQueue) {
+        mXPURayQueue->addEntries(mTopLevelTls, numEntries, entries);
+    } else {
+        mRayQueue.addEntries(mTopLevelTls, numEntries, entries, mArena);
+    }
+}
+
+void
 TLState::addRadianceQueueEntries(unsigned numEntries, BundledRadiance *entries)
 {
     if (!numEntries) {
@@ -567,7 +582,6 @@ TLState::addOcclusionQueueEntries(unsigned numEntries, BundledOcclRay *entries)
     if (!numEntries) {
         return;
     }
-
     if (mXPUOcclusionRayQueue) {
         mXPUOcclusionRayQueue->addEntries(mTopLevelTls, numEntries, entries);
     } else {
@@ -581,7 +595,6 @@ TLState::addPresenceShadowsQueueEntries(unsigned numEntries, BundledOcclRay *ent
     if (!numEntries) {
         return;
     }
-
     mPresenceShadowsQueue.addEntries(mTopLevelTls, numEntries, entries, mArena);
 }
 
@@ -589,6 +602,12 @@ void
 TLState::setXPUOcclusionRayQueue(XPUOcclusionRayQueue* queue)
 {
     mXPUOcclusionRayQueue = queue;
+}
+
+void
+TLState::setXPURayQueue(XPURayQueue* queue)
+{
+    mXPURayQueue = queue;
 }
 
 void

@@ -31,7 +31,7 @@ inline void doFlush(mcrt_common::ThreadLocalState* tls)
     unsigned flushed;
     do {
         flushed = shading::Material::flushNonEmptyShadeQueue(tls);
-        flushed += driver->flushXPUQueue(tls, &tls->mArena);
+        flushed += driver->flushXPUQueues(tls, &tls->mArena);
         flushed += tls->mPbrTls->flushLocalQueues();
     } while (flushed);
 }

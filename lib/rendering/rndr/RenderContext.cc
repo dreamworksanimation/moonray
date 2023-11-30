@@ -996,9 +996,9 @@ RenderContext::startFrame()
     // e.g. unsupported geometry, out of VRAM, etc.  In this case we don't have
     // any XPU queues.
     if (mGeometryManager->isGPUEnabled()) {
-        mDriver->createXPUQueue();
+        mDriver->createXPUQueues();
     } else {
-        mDriver->freeXPUQueue();
+        mDriver->freeXPUQueues();
     }
 
     if (execResult == RP_RESULT::CANCELED) {
