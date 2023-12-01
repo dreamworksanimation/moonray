@@ -22,7 +22,7 @@ public:
     // The CPU handler that is called when the GPU is busy
     typedef void (*CPUHandler)(mcrt_common::ThreadLocalState *tls,
                                unsigned numEntries,
-                               const RayState **entryData,
+                               RayState **entryData,
                                void *userData);
 
     // The GPU handler that calls the GPU
