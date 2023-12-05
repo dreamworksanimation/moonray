@@ -217,45 +217,7 @@ xpuOcclusionQueryBundleHandlerGPU(mcrt_common::ThreadLocalState *tls,
     pbrTls->addRadianceQueueEntries(numRadiancesFilled, results);
 }
 
-void
-xpuOcclusionQueryBundleHandlerCPU(mcrt_common::ThreadLocalState *tls,
-                                  unsigned numRays,
-                                  const BundledOcclRay *rays,
-                                  void *userData)
-{
-    pbr::TLState *pbrTls = tls->mPbrTls.get();
-
-    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_OCCL_QUERY_HANDLER);
-
-    scene_rdl2::alloc::Arena *arena = &tls->mArena;
-    SCOPED_MEM(arena);
-
-    RayHandlerFlags handlerFlags = RayHandlerFlags((uint64_t)userData);
-
-    BundledRadiance *results = arena->allocArray<BundledRadiance>(numRays, CACHE_LINE_SIZE);
-
-    // We need an array of pointers to entries, not of the entries themselves.
-    BundledOcclRay** entries = arena->allocArray<BundledOcclRay*>(numRays, CACHE_LINE_SIZE);
-    for (int i = 0; i < numRays; i++) {
-        entries[i] = const_cast<BundledOcclRay*>(rays + i);
-    }
-
-    // We just call the regular CPU vector mode code.
-    unsigned numRadiancesFilled = computeOcclusionQueriesBundled(pbrTls,
-                                                                 numRays,
-                                                                 entries,
-                                                                 results,
-                                                                 handlerFlags);
-
-    MNRY_ASSERT(numRadiancesFilled <= numRays);
-
-    CHECK_CANCELLATION(pbrTls, return);
-
-    pbrTls->addRadianceQueueEntries(numRadiancesFilled, results);
-}
-
 #pragma warning pop
 
 } // namespace pbr
 } // namespace moonray
-

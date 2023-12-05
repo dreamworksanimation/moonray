@@ -60,7 +60,7 @@ public:
     // The CPU handler that is called when the GPU is busy
     typedef void (*CPUHandler)(mcrt_common::ThreadLocalState *tls,
                                unsigned numEntries,
-                               const BundledOcclRay *entryData,
+                               const BundledOcclRay **entryData,
                                void *userData);
 
     // The GPU handler that calls the GPU
@@ -243,7 +243,16 @@ protected:
         } else {
             // There's too many threads already waiting for the GPU, and we would need to wait
             // too long.  Process these rays on the CPU instead.
-            (*mCPUThreadQueueHandler)(tls, numRays, rays, mHandlerData);            
+
+            // We need an array of pointers to entries, not of the entries themselves.
+            scene_rdl2::alloc::Arena *arena = &tls->mArena;
+            SCOPED_MEM(arena);
+            BundledOcclRay** entries = arena->allocArray<BundledOcclRay*>(numRays, CACHE_LINE_SIZE);
+            for (int i = 0; i < numRays; i++) {
+                entries[i] = const_cast<BundledOcclRay*>(rays + i);
+            }
+
+            (*mCPUThreadQueueHandler)(tls, numRays, entries, mHandlerData);
         }
     }
 

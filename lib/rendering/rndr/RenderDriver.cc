@@ -2246,7 +2246,7 @@ RenderDriver::createXPUQueues()
 
     mXPUOcclusionRayQueue = new pbr::XPUOcclusionRayQueue(numCPUThreads,
                                                           cpuThreadQueueSize,
-                                                          pbr::xpuOcclusionQueryBundleHandlerCPU,
+                                                          pbr::occlusionQueryBundleHandler,
                                                           pbr::xpuOcclusionQueryBundleHandlerGPU,
                                                           (void *)((uint64_t)rayHandlerFlags));
 
