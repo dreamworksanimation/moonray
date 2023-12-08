@@ -512,6 +512,12 @@ public:
     /// Copy the contents to the  passed in PrimitiveAttributeTable
     void copy(PrimitiveAttributeTable& result) const;
 
+    /// Erase all elements
+    void clear()
+    {
+        mMap.clear();
+    }
+
 private:
 
     template <typename T>
