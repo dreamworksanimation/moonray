@@ -341,9 +341,9 @@ private:
 
 //----------------------------------------------------------------------------
 
-class AshikminhShirleyBsdfFactory : public BsdfFactory {
+class AshikhminShirleyBsdfFactory : public BsdfFactory {
 public:
-    AshikminhShirleyBsdfFactory(float roughness) : mRoughness(roughness)  {}
+    AshikhminShirleyBsdfFactory(float roughness) : mRoughness(roughness)  {}
     shading::Bsdf *operator()(scene_rdl2::alloc::Arena& arena, const scene_rdl2::math::ReferenceFrame &frame) const
     {
         shading::Bsdf *bsdf = arena.allocWithCtor<shading::Bsdf>();
@@ -357,7 +357,7 @@ public:
     shading::Bsdfv *getBsdfv(scene_rdl2::alloc::Arena& arena, const scene_rdl2::math::ReferenceFrame &frame) const
     {
         shading::Bsdfv *bsdfv =
-            ispc::AshikminhShirleyBsdfFactory(ispcArena(arena), ispcFrame(frame), mRoughness);
+            ispc::AshikhminShirleyBsdfFactory(ispcArena(arena), ispcFrame(frame), mRoughness);
 
         return bsdfv;
     }
@@ -366,9 +366,9 @@ private:
 };
 
 
-class AshikminhShirleyFullBsdfFactory : public BsdfFactory {
+class AshikhminShirleyFullBsdfFactory : public BsdfFactory {
 public:
-    AshikminhShirleyFullBsdfFactory(float roughness) : mRoughness(roughness)  {}
+    AshikhminShirleyFullBsdfFactory(float roughness) : mRoughness(roughness)  {}
     shading::Bsdf *operator()(scene_rdl2::alloc::Arena& arena, const scene_rdl2::math::ReferenceFrame &frame) const
     {
         shading::Bsdf *bsdf = arena.allocWithCtor<shading::Bsdf>();
@@ -386,7 +386,7 @@ public:
     shading::Bsdfv *getBsdfv(scene_rdl2::alloc::Arena& arena, const scene_rdl2::math::ReferenceFrame &frame) const
     {
         shading::Bsdfv *bsdfv =
-            ispc::AshikminhShirleyFullBsdfFactory(ispcArena(arena), ispcFrame(frame), mRoughness);
+            ispc::AshikhminShirleyFullBsdfFactory(ispcArena(arena), ispcFrame(frame), mRoughness);
         return bsdfv;
     }
 private:
