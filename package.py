@@ -49,6 +49,8 @@ variants = [
     ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
+    ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2023.0', 'gcc-11.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
+    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2023.0', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
 ]
 
 conf_rats_variants = variants[0:2]
@@ -62,7 +64,8 @@ sconsTargets = {
     'refplat-vfx2020.3': scons_targets,
     'refplat-vfx2021.0': scons_targets,
     'refplat-vfx2022.0': scons_targets,
-}
+    'refplat-vfx2023.0': scons_targets,
+    }
 
 requires = [
     'amorphous',
@@ -84,7 +87,7 @@ private_build_requires = [
     build_system_pbr,
     'cppunit',
     'ispc-1.20.0.x',
-    'python-2.7|3.7|3.9'
+    'python-2.7|3.7|3.9|3.10'
 ]
 
 commandstr = lambda i: "cd build/"+os.path.join(*variants[i])+"; ctest -j $(nproc)"
