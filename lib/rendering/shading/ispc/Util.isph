@@ -7,9 +7,10 @@
 #include <scene_rdl2/common/math/ispc/Color.isph>
 #include <scene_rdl2/common/math/ispc/ColorSpace.isph>
 #include <scene_rdl2/common/math/ispc/Constants.isph>
+#include <scene_rdl2/common/math/ispc/Mat4.isph>
+#include <scene_rdl2/common/math/ispc/Transcendental.isph>
 #include <scene_rdl2/common/math/ispc/Vec2.isph>
 #include <scene_rdl2/common/math/ispc/Vec3.isph>
-#include <scene_rdl2/common/math/ispc/Mat4.isph>
 
 // Returns angle in range in [-pi,pi]
 inline varying float rangeAngle(varying float angle)
@@ -547,7 +548,7 @@ sampleSphereUniform(varying float r1, varying float r2, float &theta, float &phi
     // Sample polar coordinates
     float cosTheta = 1.0f - 2.0f * r1;
     MNRY_ASSERT(cosTheta >= -1.0f  &&  cosTheta <= 1.0f);
-    theta = acos(cosTheta);
+    theta = dw_acos(cosTheta);
     float sinTheta = sqrt(max(0.0f, 1.0f - cosTheta * cosTheta));
 
     phi = r2 * sTwoPi;

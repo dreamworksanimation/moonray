@@ -43,7 +43,7 @@ HairState_calculateHairFrame(varying HairState * uniform hairState,
         hairState->mHairBiNorm = frame.mY;
     }
 
-    hairState->mThetaO = sHalfPi - acos(UdotO);
+    hairState->mThetaO = sHalfPi - dw_acos(UdotO);
     sincos(hairState->mThetaO, &hairState->mSinThetaO, &hairState->mCosThetaO);
 
     if (hairState->mUsingCustomNormal) {
@@ -139,7 +139,7 @@ HairState_computeAngles(varying HairState * uniform hairState,
 {
     const float cosTheta = dot(direction,
                                hairDir);
-    outTheta = sHalfPi - acos(clamp(cosTheta, -1.0f, 1.0f));
+    outTheta = sHalfPi - dw_acos(clamp(cosTheta, -1.0f, 1.0f));
 
     // Project direction into azimuth plane
     Vec3f proj = direction - hairDir * dot(direction, hairDir);
@@ -156,7 +156,7 @@ HairState_computeAngles(varying HairState * uniform hairState,
         // acos instead of atan2. We get a phi value only in half the possible
         // range of directions. Don't use these angles to generate directions!!!
         // Only use these angles to evaluate the pdf or the bsdf.
-        outPhi = acos(cosPhi);
+        outPhi = dw_acos(cosPhi);
     }
 }
 

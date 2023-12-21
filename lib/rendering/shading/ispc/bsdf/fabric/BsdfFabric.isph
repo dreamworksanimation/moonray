@@ -213,10 +213,10 @@ sampleKajiyaKay(const varying Vec3f& wo,
                 varying Vec3f& wi)
 {
     // Theta is wrt the hair tangent
-    const float thetaO = acos(clamp(dot(threadDirection, wo),-.99f,.99f));
+    const float thetaO = dw_acos(clamp(dot(threadDirection, wo),-.99f,.99f));
 
     // We sample theta_d and then convert it into the sample vector omega_i
-    const float thetaD = acos(pow(r1, 1/(specularExponent+1)));
+    const float thetaD = dw_acos(pow(r1, 1/(specularExponent+1)));
 
     // theta_d = abs(theta_o - theta_i_prime)
     // so, theta_i_prime = theta_o - theta_d || theta_i_prime = theta_o + theta_d

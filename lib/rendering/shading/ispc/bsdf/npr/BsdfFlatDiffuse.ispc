@@ -25,7 +25,7 @@ getOrenNayarFalloffIntensity(const varying Vec3f& n,
     // Note: For the flat diffuse lobe type we introduce an 
     // additional terminatorShift control that reshapes the n dot l
     // response
-    const float nl = max(0.0f, cos(min(sHalfPi, acos(clamp(dot(n, l), -1.0f, 1.0f)) * terminatorShift)));
+    const float nl = max(0.0f, cos(min(sHalfPi, dw_acos(clamp(dot(n, l), -1.0f, 1.0f)) * terminatorShift)));
     const float nv = max(dot(n, v), 0.0f);
     const float s = dot(l, v) - nl * nv;
 
@@ -57,7 +57,7 @@ FlatDiffuseBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     // https://www.desmos.com/calculator/z1iufecqmf
     const float terminatorShift = flatDiffuse->mTerminatorShift + 1.0f;
     const float theta = min(sHalfPi, terminatorShift *
-                        acos(clamp(dot(getN(flatDiffuse->mOrenNayar.mFrame), wi), -1.0f, 1.0f)));
+                        dw_acos(clamp(dot(getN(flatDiffuse->mOrenNayar.mFrame), wi), -1.0f, 1.0f)));
     const float a = 1.0f - flatDiffuse->mFlatnessFalloff;
     // The power of "a" controls the linearity of the falloff parameter.
     // Raising to the power of 4 slightly biases the control towards

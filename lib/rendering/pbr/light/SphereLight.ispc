@@ -52,7 +52,7 @@ local2uv(const varying Vec3f &local)
         // Convert to spherical polar coords with y up.
         // Note that phi is intentionally off by pi, so that adding 0.5 to
         // uv.x brings it into the range [0,1] without using a conditional.
-        float theta = acos(local.y);
+        float theta = dw_acos(local.y);
         float phi = atan2(-local.z, -local.x);
 
         // Generate (u,v)

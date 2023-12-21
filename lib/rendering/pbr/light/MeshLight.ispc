@@ -172,11 +172,11 @@ MeshLight_importance(const varying Vec3f& shadingPoint,
         float shadingNormalContribution = 1.0f;
         if (shadingNormal) {
             const varying Vec3f normal = *shadingNormal;
-            thetaI = acos(clamp(dot(point2center, normal), -1.0f, 1.0f));
+            thetaI = dw_acos(clamp(dot(point2center, normal), -1.0f, 1.0f));
             shadingNormalContribution = abs(cos(max(thetaI - thetaU, 0.0f)));
         }
         // theta is the angle between the bounding cone axis and the center to shading point axis
-        float theta = acos(-dot(node->mBcone.mAxis, point2center));
+        float theta = dw_acos(-dot(node->mBcone.mAxis, point2center));
         // thetaPrime is the minimum possible angle between edge of the bounding cone and the
         // center to shading point axis
         float thetaPrime = max(theta - node->mBcone.mThetaO - thetaU, 0.0f);

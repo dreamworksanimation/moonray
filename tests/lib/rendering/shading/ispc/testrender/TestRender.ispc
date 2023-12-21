@@ -47,7 +47,7 @@ computeIsect(const varying float sx, const varying float sy, // screen x, y hitp
     // for surface parameterization,
     // use spherical coords chosen such that the seam is hidden down -z
     const Dual phi = atan2(xd, zd);     // (-PI->PI longitude)
-    const Dual theta = acos(yd / r);    // (0->PI latitude)
+    const Dual theta = dw_acos(yd / r); // (0->PI latitude)
     const Dual s = (phi + PI) / (2. * PI);
     const Dual t = (PI - theta) / PI;
 

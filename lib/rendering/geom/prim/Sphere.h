@@ -103,8 +103,8 @@ public:
     {
         mZMin = scene_rdl2::math::clamp(scene_rdl2::math::min(zMin, zMax), -mRadius, mRadius);
         mZMax = scene_rdl2::math::clamp(scene_rdl2::math::max(zMin, zMax), -mRadius, mRadius);
-        mThetaMin = acosf(scene_rdl2::math::clamp(mZMin / mRadius, -1.0f, 1.0f));
-        mThetaMax = acosf(scene_rdl2::math::clamp(mZMax / mRadius, -1.0f, 1.0f));
+        mThetaMin = acos(scene_rdl2::math::clamp(mZMin / mRadius, -1.0f, 1.0f));
+        mThetaMax = acos(scene_rdl2::math::clamp(mZMax / mRadius, -1.0f, 1.0f));
         mPhiMax = scene_rdl2::math::degreesToRadians(scene_rdl2::math::clamp(sweepAngle, 0.0f, 360.0f));
     }
 

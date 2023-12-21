@@ -47,7 +47,7 @@ local2uv(const varying Vec3f &dir)
 {
     MNRY_ASSERT(isNormalized(dir));
 
-    float theta = acos(clamp(dir.z, -1.0f, 1.0f));
+    float theta = dw_acos(clamp(dir.z, -1.0f, 1.0f));
     float phi = atan2(dir.y, dir.x);
 
     float u = phi * sOneOverTwoPi;

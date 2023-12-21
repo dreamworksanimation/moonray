@@ -446,7 +446,7 @@ WardOriginalBsdfLobe_pdf(const varying BsdfLobe * uniform lobe,
     }
 
     cosTheta = min(cosTheta, maxCosTheta);
-    float theta = acos(cosTheta);
+    float theta = dw_acos(cosTheta);
     float sinThetaSqrd = 1.0f - cosTheta * cosTheta;
     // TODO: is sqrt(sinThetaSqrd) faster than sin(theta) ?
     float sinTheta = sqrt(sinThetaSqrd);
