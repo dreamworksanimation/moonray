@@ -153,15 +153,23 @@ void
 PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         Subpixel const& sp, const PathVertex &pv,
         const LightSetSampler &lSampler, const LightSample *lsmp,
+        const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
         const shading::Intersection &isect) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
     // Trace light sample shadow rays
-    int s = 0;
     const int lightCount = lSampler.getLightCount();
     const int lightSampleCount = lSampler.getLightSampleCount();
+    const int sampleCount = lSampler.getSampleCount();
+
+    const SequenceIDRR sid(sp.mPixel,
+            SequenceType::RussianRouletteLight,
+            sp.mSubpixelIndex, sequenceID);
+    IntegratorSample1D rrSamples;
+    rrSamples.resume(sid, pv.nonMirrorDepth * sampleCount);
+
     for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
         const Light *light = lSampler.getLight(lightIndex);
 
@@ -169,11 +177,22 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         // terminating ray paths too early. We exclude them from light samples because these samples represent
         // natural ends to light paths.
         if (light->getIsRayTerminator()) {
-            s += lightSampleCount;
             continue;
         }
 
-        for (int i = 0; i < lightSampleCount; ++i, ++s) {
+        // Draw light samples from the light and compute tentative contributions
+        drawLightSetSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, parentRay.getTime(), 
+                            sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, 
+                            parentRay.getDirFootprint(), aovs, lightIndex);
+
+        // Apply Russian Roulette to the light samples
+        if (pv.nonMirrorDepth > 0 && mRussianRouletteThreshold > 0.0f) {
+            applyRussianRoulette(lSampler, lsmp, sp, pv, sequenceID, 
+                                 mRussianRouletteThreshold, 
+                                 mInvRussianRouletteThreshold, rrSamples);
+        }
+
+        for (int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
             if (lsmp[s].isInvalid()) {
                 continue;
             }
@@ -322,6 +341,21 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                 }
             }
         }
+    }
+
+    // tldr; Add inactive lights to the visibility aov
+    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
+    // consider inactive lights, which are culled from the visible light set because the whole light faces away
+    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
+    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
+    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
+    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
+    if (aovs && pbrTls->mFs->mLightAovs->hasVisibilityEntries()) {
+        std::function<void(const Light* const)> accumVisibilityAovsOccludedLambda = [&] (const Light* const inLight) 
+        {
+            accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, inLight, lSampler.getLightSampleCount());
+        };
+        lSampler.getLightSet().addInactiveLightsToVisibilityAov(accumVisibilityAovsOccludedLambda);
     }
 }
 
@@ -597,8 +631,8 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
             scene_rdl2::math::min(mLightSamples, 1));
     LightSetSampler lSampler(arena, activeLightSet, bsdf, isect.getP(), maxSamplesPerLight);
 
-    const int lightSetSampleCount = lSampler.getSampleCount();
-    LightSample *lsmp = arena->allocArray<LightSample>(lightSetSampleCount);
+    const int lightSampleCount = lSampler.getLightSampleCount();
+    LightSample *lsmp = arena->allocArray<LightSample>(lightSampleCount);
 
     // Draw Bsdf and LightSet samples and compute tentative contributions.
     drawBsdfSamples(pbrTls, bSampler, lSampler, sp, pv, isect.getP(), cullingNormal,
@@ -616,9 +650,6 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
                            &bSampler, bsmp, pv.aovPathPixelWeight, pv.lpeStateId, aovs);
     }
 
-    drawLightSetSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, ray.getTime(),
-                        sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, ray.getDirFootprint(), aovs);
-
     CHECK_CANCELLATION(pbrTls, return scene_rdl2::math::sBlack );
 
     //---------------------------------------------------------------------
@@ -631,8 +662,6 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     if (pv.nonMirrorDepth > 0  &&  mRussianRouletteThreshold > 0.0f) {
         applyRussianRoulette(bSampler, bsmp, sp, pv, sequenceID,
                 mRussianRouletteThreshold, mInvRussianRouletteThreshold);
-        applyRussianRoulette(lSampler, lsmp, sp, pv, sequenceID,
-                mRussianRouletteThreshold, mInvRussianRouletteThreshold);
     }
 
     CHECK_CANCELLATION(pbrTls, return scene_rdl2::math::sBlack );
@@ -642,6 +671,9 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // contributions. We trace one ray per valid sample and affect all
     // contributions for that sample accordingly.
 
+    addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, bSampler, cullingNormal, ray,
+            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
+    checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
     if (doIndirect) {
         // Note: This will recurse
         addIndirectOrDirectVisibleContributions(pbrTls, sp, pv, bSampler, bsmp,
@@ -655,9 +687,6 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
             rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
         checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
     }
-    addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, ray,
-            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
-    checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
 
     return radiance;
 }

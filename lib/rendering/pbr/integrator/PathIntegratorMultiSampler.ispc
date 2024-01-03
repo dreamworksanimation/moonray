@@ -299,11 +299,16 @@ addDirectVisibleBsdfSampleContributionsBundled( const uniform PathIntegrator * u
 void
 addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * uniform this,
                                                        uniform PbrTLState *     uniform pbrTls,
+                                                       uniform ShadingTLState * uniform shadingTls,
                                                  const varying LightSetSampler &        lSampler,
+                                                 const varying BsdfSampler &            bSampler,
                                                        varying LightSample *    uniform lsmp,
                                                  const varying RayDifferential &        parentRay,
+                                                 const varying Vec3f *          uniform cullingNormal,
                                                  const varying float                    rayEpsilon,
                                                  const varying float                    shadowRayEpsilon,
+                                                 const varying Subpixel &               sp,
+                                                 const varying PathVertex &             pv,
                                                  const varying RayState &               rayState,
                                                        varying uint32_t                 srcRayIndices,
                                                        varying BundledOcclRay * uniform dstOcclRays,
@@ -312,18 +317,40 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                                                        varying BundledOcclRay * uniform presenceShadowsRays,
                                                        uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
                                                        uniform uint32_t &               numPresenceShadowsRays,
-                                                       const varying Intersection &     isect)
+                                                       const varying Intersection &     isect,
+                                                       varying uint32_t &               sequenceID)
 {
     MNRY_ASSERT(CPP_isIntegratorAccumulatorRunning(pbrTls));
 
-    uniform int sampleCount = LightSetSampler_getSampleCount(&lSampler);
     varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
     uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
+    const uniform int sampleCount = LightSetSampler_getSampleCount(&lSampler);
+
+    SequenceID sid;
+    SequenceID_init(sid, sp.mPixel, (uniform uint32_t)SequenceTypeRussianRouletteLight,
+            (uint32_t)sp.mSubpixelIndex, sequenceID);
+    IntegratorSample1D rrSamples;
+    IntegratorSample1D_init(rrSamples, sid);
+    rrSamples.mSampleNumber = pv.nonMirrorDepth * sampleCount;
 
     // Trace light sample shadow rays
     for (uniform int lightIndex = 0, s = 0; lightIndex < lightCount; lightIndex++) {
 
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
+
+        // Draw light samples from the light and compute tentative contributions
+        drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
+                            *cullingNormal, Ray_getTime(parentRay), sequenceID, lsmp,
+                            this->mSampleClampingDepth, sp.mSampleClampingValue, 
+                            Ray_getDirFootprint(parentRay), &rayState, lightIndex);
+
+        // Apply Russian Roulette to the light samples
+        if (pv.nonMirrorDepth > 0  &&  this->mRussianRouletteThreshold > 0.0f) {
+            applyRussianRoulette(pbrTls, lSampler, lsmp, sp, pv, sequenceID,
+                                this->mRussianRouletteThreshold, 
+                                this->mInvRussianRouletteThreshold,
+                                rrSamples);
+        }
 
         for (uniform int is = 0; is < lightSampleCount; s++, is++) {
 
@@ -334,7 +361,7 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                 occlTestType = FORCE_NOT_OCCLUDED;
             }
 
-            varying LightSample *uniform currSamp = &lsmp[s];
+            varying LightSample *uniform currSamp = &lsmp[is];
 
             if (LightSample_isValid(currSamp)) {
 
@@ -347,7 +374,7 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                 const uniform FrameState &fs = *pbrTls->mFs;
                 const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
                 if (!AovSchema_empty(aovSchema)) {
-                    const LightSampleLPE &lp = lsmp[s].lp;
+                    const LightSampleLPE &lp = lsmp[is].lp;
                     const uniform LightAovs * uniform lightAovs =
                         (const uniform LightAovs * uniform) pbrTls->mFs->mLightAovs;
 
@@ -417,6 +444,29 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
             }
         }
     }
+
+    // tldr; Add inactive lights to the visibility aov
+    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
+    // consider inactive lights, which are culled from the visible light set because the whole light faces away
+    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
+    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
+    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
+    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
+    const uniform FrameState &fs = *pbrTls->mFs;
+    const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
+    const uniform LightAovs* uniform lightAovs = (const uniform LightAovs * uniform) fs.mLightAovs;
+
+    if (!AovSchema_empty(aovSchema) && LightAovs_hasVisibilityEntries(lightAovs)) {
+        uniform int totalLightCount = LightSetSampler_getAccLightCount(&lSampler); // active + inactive lights
+        for (uniform int i = 0; i < totalLightCount; ++i) {
+            if (!LightSetSampler_lightIsActive(&lSampler, i)) {
+                const uniform Light * light = LightSetSampler_getLightFromAcc(&lSampler, i);
+                accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
+                                            pv, rayState.mSubpixel.mPixel, rayState.mDeepDataHandle, light, 
+                                            PathIntegrator_getLightSampleCount(pbrTls->mFs->mIntegrator));
+            }
+        }
+    }  
 }
 
 
@@ -755,16 +805,17 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
     varying LightSetSampler lSampler;
     LightSetSampler_init( &lSampler, arena, &activeLightSet, &bsdf, getP(isect), maxSamplesPerLight);
 
+    const uniform int lightSampleCount = reduce_max(LightSetSampler_getLightSampleCount(&lSampler));
     const uniform int lightSetSampleCount = LightSetSampler_getSampleCount(&lSampler);
 
     varying LightSample *uniform lsmp = (varying LightSample *uniform)
-        Arena_allocArray(arena, lightSetSampleCount, sizeof(varying LightSample));
-    memset(lsmp, 0, sizeof(varying LightSample) * lightSetSampleCount);
+        Arena_allocArray(arena, lightSampleCount, sizeof(varying LightSample));
+    memset(lsmp, 0, sizeof(varying LightSample) * lightSampleCount);
 
     // Store max possible lightset sample count, we'll refine this later by taking
     // the active lanes into account.
     addToCounter(pbrTls->mStatistics, STATS_LIGHT_SAMPLE_LANE_MAX,
-                 lightSetSampleCount * VLEN);
+                 lightSampleCount * VLEN);
 
     // Draw Bsdf and LightSet samples and compute tentative contributions
     const varying Subpixel &sp = rs->mSubpixel;
@@ -786,10 +837,6 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
                              rs->mDeepDataHandle, pv.lpeStateId);
     }
 
-    drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
-                        cullingNormal, Ray_getTime(ray), sequenceID, lsmp,
-                        this->mSampleClampingDepth, sp.mSampleClampingValue, Ray_getDirFootprint(ray), rs);
-
     snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_COUNTER_B);
 
     //---------------------------------------------------------------------
@@ -802,8 +849,6 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
     // TODO: Compute RR culling rate
     if (pv.nonMirrorDepth > 0  &&  this->mRussianRouletteThreshold > 0.0f) {
         applyRussianRoulette(pbrTls, bSampler, bsmp, sp, pv, sequenceID,
-                             this->mRussianRouletteThreshold, this->mInvRussianRouletteThreshold);
-        applyRussianRoulette(pbrTls, lSampler, lsmp, sp, pv, sequenceID,
                              this->mRussianRouletteThreshold, this->mInvRussianRouletteThreshold);
     }
 
@@ -825,6 +870,16 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
         Arena_allocArray(arena, numOcclRaysToAlloc * VLEN + 1, sizeof(uniform uint32_t));
     uniform uint32_t numPresenceShadowsRaysFilled = 0;
 
+    addDirectVisibleLightSampleContributionsBundled(this, pbrTls, shadingTls, lSampler, bSampler, lsmp, ray,
+                                                    &cullingNormal, rayEpsilon, shadowRayEpsilon, sp, pv, *rs,
+                                                    programIndex,
+                                                    occlRays,
+                                                    occlRayIndices,
+                                                    numOcclRaysFilled,
+                                                    presenceShadowsRays,
+                                                    presenceShadowsRayIndices,
+                                                    numPresenceShadowsRaysFilled,
+                                                    isect, sequenceID);
     if (doIndirect) {
         addIndirectOrDirectVisibleContributionsBundled(this, pbrTls, sp, pv,
                                                        bSampler, bsmp, ray, rayEpsilon, shadowRayEpsilon, isect,
@@ -833,25 +888,15 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
         // TODO: Incorrect transparency if there is no indirect
         addDirectVisibleBsdfSampleContributionsBundled(this, pbrTls, bSampler, false, bsmp, ray,
                                                        rayEpsilon, shadowRayEpsilon, *rs,
-                                                       programIndex,
-                                                       occlRays,
+                                                       lightSetSampleCount * VLEN + programIndex,
+                                                       occlRays + lightSetSampleCount,
                                                        occlRayIndices,
                                                        numOcclRaysFilled,
-                                                       presenceShadowsRays,
+                                                       presenceShadowsRays + lightSetSampleCount,
                                                        presenceShadowsRayIndices,
                                                        numPresenceShadowsRaysFilled,
                                                        isect);
     }
-    addDirectVisibleLightSampleContributionsBundled(this, pbrTls, lSampler, lsmp, ray,
-                                                    rayEpsilon, shadowRayEpsilon, *rs,
-                                                    bsdfSampleCount * VLEN + programIndex,
-                                                    occlRays + bsdfSampleCount,
-                                                    occlRayIndices,
-                                                    numOcclRaysFilled,
-                                                    presenceShadowsRays + bsdfSampleCount,
-                                                    presenceShadowsRayIndices,
-                                                    numPresenceShadowsRaysFilled,
-                                                    isect);
 
     MNRY_ASSERT(numOcclRaysFilled <= numOcclRaysToAlloc * VLEN);
 

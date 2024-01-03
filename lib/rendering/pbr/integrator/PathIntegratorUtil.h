@@ -250,6 +250,9 @@ float updateMaterialPriorities(mcrt_common::RayDifferential& ray, const Scene* s
         const scene_rdl2::rdl2::Material* material, float* presence, int materialPriority, 
         const scene_rdl2::rdl2::Material** newPriorityList, int* newPriorityListCount, int presenceDepth);
 
+void accumVisibilityAovsOccluded(float* aovs, pbr::TLState* pbrTls, const LightSetSampler& lSampler,
+                                 const BsdfSampler& bSampler, const PathVertex& pv, const Light* const light,
+                                 int missCount);
 //----------------------------------------------------------------------------
 
 void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSetSampler &lSampler,
@@ -260,7 +263,7 @@ void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const Li
 void drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs);
+        float rayDirFootprint, float* aovs, int lightIndex);
 
 void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
@@ -268,7 +271,7 @@ void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
 
 void applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold);
+        float threshold, float invThreshold, IntegratorSample1D& rrSamples);
 
 void accumulateRayPresence(pbr::TLState *pbrTls,
                            const Light* light,

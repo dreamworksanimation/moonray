@@ -338,7 +338,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
         uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
-        const varying RayState* uniform rs)
+        const varying RayState* uniform rs, const uniform int lightIndex)
 {
     SequenceID sid, sidFilter, sidFilter3D;
     IntegratorSample3D lightSamples;
@@ -349,24 +349,11 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
     bool lightFilterNeedsSamples = CPP_LightFilterNeedsSamples(
         (const uniform Scene *uniform)(pbrTls->mFs->mScene));
 
-    // Loop over each light
-    uniform int s = 0;
     uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
     varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
 
-    for (uniform int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
+    {
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
-
-        // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
-        // terminating ray paths too early. We exclude them from light samples because these samples represent
-        // natural ends to light paths. Exclusion is done by invalidating all the light's samples.
-        if (Light_getIsRayTerminator(light)) {
-            for (int i = 0; i < lightSampleCount; ++i, ++s) {
-                LightSample_setInvalid(&lsmp[s]);
-            }
-            continue;
-        }
-
         const uniform LightFilterList * uniform lightFilterList =
             LightSetSampler_getLightFilterList(&lSampler, lightIndex);
 
@@ -405,7 +392,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
         }
 
         // Loop over each light' samples
-        for (varying int i = 0; i < lightSampleCount; ++i, ++s) {
+        for (uniform int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
 
             MNRY_ASSERT(s < LightSetSampler_getSampleCount(&lSampler));
 
@@ -444,33 +431,6 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
             addToCounter(pbrTls->mStatistics, STATS_LIGHT_SAMPLES, getActiveLaneCount());
         }
     }
-
-    // tldr; Add inactive lights to the visibility aov
-    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
-    // consider inactive lights, which are culled from the visible light set because the whole light faces away
-    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
-    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
-    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
-    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
-    const uniform FrameState &fs = *pbrTls->mFs;
-    const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
-    const uniform LightAovs* uniform lightAovs = (const uniform LightAovs * uniform) fs.mLightAovs;
-
-    if (!AovSchema_empty(aovSchema) && LightAovs_hasVisibilityEntries(lightAovs)) {
-        uniform int totalLightCount = LightSetSampler_getAccLightCount(&lSampler); // active + inactive lights
-        for (uniform int i = 0; i < totalLightCount; ++i) {
-            if (!LightSetSampler_lightIsActive(&lSampler, i)) {
-                const uniform Light * light = LightSetSampler_getLightFromAcc(&lSampler, i);
-                accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
-                                            pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
-                                            light, 
-                                            PathIntegrator_getLightSampleCount(pbrTls->mFs->mIntegrator));
-            }
-        }
-    }  
-
-    MNRY_ASSERT(any(s == LightSetSampler_getSampleCount(&lSampler)));
-    MNRY_ASSERT(allActive(s >= LightSetSampler_getSampleCount(&lSampler)));
 }
 
 
@@ -532,20 +492,14 @@ applyRussianRoulette(
         const varying LightSetSampler &lSampler, varying LightSample * uniform lsmp,
         const varying Subpixel &sp, const varying PathVertex &pv,
         varying uint32_t sequenceID,
-        uniform float threshold, uniform float invThreshold)
+        uniform float threshold, uniform float invThreshold,
+        IntegratorSample1D& rrSamples)
 {
-    const varying int sampleCount = LightSetSampler_getSampleCount(&lSampler);
-
-    SequenceID sid;
-    SequenceID_init(sid, sp.mPixel, (uniform uint32_t)SequenceTypeRussianRouletteLight,
-            (uint32_t)sp.mSubpixelIndex, sequenceID);
-    IntegratorSample1D rrSamples;
-    IntegratorSample1D_init(rrSamples, sid);
-    rrSamples.mSampleNumber = pv.nonMirrorDepth * sampleCount;
+    const varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
 
     // Cull shadow rays from the light samples
     uniform int s = 0;
-    for (int i = 0; i < sampleCount; ++i, ++s) {
+    for (int i = 0; i < lightSampleCount; ++i, ++s) {
         if (LightSample_isInvalid(&(lsmp[s]))) {
             continue;
         }

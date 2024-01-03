@@ -71,6 +71,15 @@ checkForNan(Color &radiance, const char *contributionName,
 */
 
 
+void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
+                         const varying BsdfSampler& bSampler,
+                         const varying LightSetSampler& lSampler,
+                         const varying PathVertex &pv,
+                         const varying uint32_t pixel,
+                         const varying uint32_t deepDataHandle,
+                         const uniform Light * light,
+                         uniform int attempts);
+
 //----------------------------------------------------------------------------
 
 void drawBsdfSamples(
@@ -88,7 +97,7 @@ void drawLightSetSamples(
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
         uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
-        const varying RayState* uniform rs);
+        const varying RayState* uniform rs, const uniform int lightIndex);
 
 void applyRussianRoulette(
         uniform PbrTLState * uniform pbrTls,
@@ -100,7 +109,8 @@ void applyRussianRoulette(
         uniform PbrTLState * uniform pbrTls,
         const varying LightSetSampler &lSampler, varying LightSample * uniform lsmp,
         const varying Subpixel &sp, const varying PathVertex &pv,
-        varying uint32_t sequenceID, uniform float threshold, uniform float invThreshold);
+        varying uint32_t sequenceID, uniform float threshold, uniform float invThreshold, 
+        IntegratorSample1D& rrSamples);
 
 
 //----------------------------------------------------------------------------

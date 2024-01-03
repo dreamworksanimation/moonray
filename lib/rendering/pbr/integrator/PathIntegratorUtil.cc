@@ -434,7 +434,7 @@ void
 drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, 
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs)
+        float rayDirFootprint, float* aovs, int lightIndex)
 {
     IntegratorSample3D lightSamples;
     IntegratorSample2D lightFilterSamples;
@@ -447,23 +447,8 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
 
     Statistics &stats = pbrTls->mStatistics;
 
-    // Loop over each light
-    int s = 0;
-    const int lightCount = lSampler.getLightCount();
-    const int lightSampleCount = lSampler.getLightSampleCount();
-    for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
+    {
         const Light *light = lSampler.getLight(lightIndex);
-
-        // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
-        // terminating ray paths too early. We exclude them from light samples because these samples represent
-        // natural ends to light paths. Exclusion is done by invalidating all the light's samples.
-        if (light->getIsRayTerminator()) {
-            for (int i = 0; i < lightSampleCount; ++i, ++s) {
-                lsmp[s].setInvalid();
-            }
-            continue;
-        }
-
         const LightFilterList *lightFilterList = lSampler.getLightFilterList(lightIndex);
 
         const int lightSampleCount = lSampler.getLightSampleCount();
@@ -509,7 +494,7 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
         }
 
         // Loop over each light's samples
-        for (int i = 0; i < lightSampleCount; ++i, ++s) {
+        for (int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
             // Draw the sample and test validity
             scene_rdl2::math::Vec3f lightSample;
             lightSamples.getSample(&lightSample[0], pv.nonMirrorDepth);
@@ -540,21 +525,6 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
 
             stats.incCounter(STATS_LIGHT_SAMPLES);
         }
-    }
-
-    // tldr; Add inactive lights to the visibility aov
-    // In order to encompass all of the cases where the point's normal faces away from the light, we have to
-    // consider inactive lights, which are culled from the visible light set because the whole light faces away
-    // from the intersection in question. This code sorts through all the lights in the accelerator and finds the ones 
-    // that have been marked invalid. It then adds the appropriate number of "misses" to the visibility aov.
-    /// NOTE: if we ever switch entirely to adaptive light sampling, we won't need the visible light 
-    /// set, since the algorithm should ignore those lights anyway. That would make this portion of code unnecessary
-    if (aovs && pbrTls->mFs->mLightAovs->hasVisibilityEntries()) {
-        std::function<void(const Light* const)> accumVisibilityAovsOccludedLambda = [&] (const Light* const inLight) 
-        {
-            accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, inLight, lSampler.getLightSampleCount());
-        };
-        lSampler.getLightSet().addInactiveLightsToVisibilityAov(accumVisibilityAovsOccludedLambda);
     }
 }
 
@@ -608,18 +578,12 @@ applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
 void
 applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold)
+        float threshold, float invThreshold, IntegratorSample1D& rrSamples)
 {
-    const int sampleCount = lSampler.getSampleCount();
-
-    const SequenceIDRR sid(sp.mPixel,
-            SequenceType::RussianRouletteLight,
-            sp.mSubpixelIndex, sequenceID);
-    IntegratorSample1D rrSamples;
-    rrSamples.resume(sid, pv.nonMirrorDepth * sampleCount);
+    const int lightSampleCount = lSampler.getLightSampleCount();
 
     // Cull shadow rays from the light samples
-    for (int s = 0; s < sampleCount; ++s) {
+    for (int s = 0; s < lightSampleCount; ++s) {
         if (lsmp[s].isInvalid()) {
             continue;
         }
