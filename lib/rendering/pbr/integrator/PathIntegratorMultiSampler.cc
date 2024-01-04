@@ -152,7 +152,7 @@ PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
 void
 PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         Subpixel const& sp, const PathVertex &pv,
-        const LightSetSampler &lSampler, const LightSample *lsmp,
+        const LightSetSampler &lSampler, LightSample *lsmp,
         const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
