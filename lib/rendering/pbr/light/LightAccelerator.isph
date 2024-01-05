@@ -4,11 +4,12 @@
 
 #pragma once
 
+#include <moonray/rendering/pbr/sampler/SequenceID.isph>
 #include <scene_rdl2/common/platform/Platform.isph>
 
 #include "Light.isph"
 #include "LightAccelerator.hh"
-#include <moonray/rendering/pbr/sampler/SequenceID.isph>
+#include "LightTree.isph"
 
 #include <embree4/rtcore.isph>
 #include <embree4/rtcore_ray.isph>

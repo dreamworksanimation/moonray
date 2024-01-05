@@ -310,17 +310,23 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     // This can only be done after update() has been called for each light,
     // since that's where the lights' bounding boxes are set.
 
+    // Get parameters for adaptive light sampling
+    const float sceneDiameter = scene_rdl2::math::length(mEmbreeAccel->getBounds().size());
+    const pbr::LightSamplingMode lightSamplingMode = 
+                    static_cast<pbr::LightSamplingMode>(vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode));
+    const float lightSamplingQuality = vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingQuality);
+
     // First the per-layer light sets
     LightAccelerator* acc = mLightAccList.data();
     MNRY_ASSERT(acc);
     LightPtrList* lightPtrList = mLightSets.data();
     for (unsigned int i=0; i<mLightSets.size(); i++, acc++, lightPtrList++) {
-        acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice);
+        acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice, sceneDiameter, lightSamplingQuality);
     }
 
     // Finally the visible light set
     size_t visibleLightCount = mVisibleLightSet.getLightCount();
-    acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice);
+    acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice, sceneDiameter, lightSamplingQuality);
     int * visibleLightAcceleratorIndexMap = new int[visibleLightCount];
     for (size_t i = 0; i < visibleLightCount; ++i) {
         visibleLightAcceleratorIndexMap[i] = i;
@@ -718,8 +724,9 @@ Scene::updateLightList()
         }
     }
 
-    // Reserve memory for the light accelerators
-    mLightAccList.reserve(lightSetCount + 1);
+    // Initialize the light accelerators (there will always be lightSetCount + 1 members,
+    // where the extra 1 is the visible light set)
+    mLightAccList.resize(lightSetCount + 1);
 
     // Create mapping from rdl2 assignment ids to runtime light sets and light accelerators
     mIdToLightSetMap.reserve(assignmentCount);

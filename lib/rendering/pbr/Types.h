@@ -290,6 +290,12 @@ pixelLocationToUint32(unsigned px, unsigned py)
     return uint32_t((py << 16) | px);
 }
 
+enum class LightSamplingMode
+{
+    UNIFORM = 0,
+    ADAPTIVE = 1
+};
+
 } // namespace pbr
 } // namespace moonray
 

@@ -1,0 +1,21 @@
+// Copyright 2024 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include "Light.isph"
+#include "LightTree.hh"
+
+struct LightTree
+{
+    LIGHT_TREE_MEMBERS;
+};
+
+/// Chooses light(s) using importance sampling and adaptive tree splitting 
+/// (Section 5.4) from "Importance Sampling of Many Lights..." (Conty, Kulla)
+void LightTree_sample(const uniform LightTree * const uniform lightTree);
+
+/// Print the tree
+void LightTree_print(const uniform LightTree * const uniform lightTree);

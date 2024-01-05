@@ -8,6 +8,7 @@
 #include "LightAccelerator.hh"
 
 #include <scene_rdl2/common/math/Vec3.h>
+#include <moonray/rendering/pbr/light/LightTree.h>
 #include <moonray/rendering/pbr/sampler/IntegratorSample.h>
 
 #include <embree4/rtcore.h>
@@ -28,7 +29,8 @@ public:
         LIGHT_ACCELERATOR_VALIDATION;
     }
 
-    void init(const Light*const* lights, int lightCount, const RTCDevice& rtcDevice);
+    void init(const Light*const* lights, int lightCount, const RTCDevice& rtcDevice, 
+              float sceneDiameter, float samplingThreshold);
     int intersect(const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f* N, const scene_rdl2::math::Vec3f &wi, float time,
         float maxDistance, bool includeRayTerminationLights, int visibilityMask, IntegratorSample1D &samples,
         int depth, LightIntersection &isect, int &numHits, const int* lightIdMap) const;

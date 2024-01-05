@@ -55,6 +55,7 @@ set(sources02
         light/Light.ispc
         light/LightAccelerator.ispc
         light/LightSet.ispc
+        light/LightTree.ispc
         light/LightUtil.ispc
         light/MeshLight.ispc
         light/RectLight.ispc
@@ -300,6 +301,7 @@ target_sources(${component}
         light/Light.cc
         light/LightAccelerator.cc
         light/LightSet.cc
+        light/LightTree.cc
         light/LightUtil.cc
         light/MeshLight.cc
         light/RectLight.cc
