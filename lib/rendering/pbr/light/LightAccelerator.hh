@@ -24,7 +24,7 @@
     HUD_MEMBER(int32_t, mBoundedLightCount);                                    \
     HUD_PTR(const HUD_UNIFORM Light * const HUD_UNIFORM *, mUnboundedLights);   \
     HUD_MEMBER(int32_t, mUnboundedLightCount);                                  \
-    HUD_MEMBER(const HUD_UNIFORM LightTree, mSamplingTree)
+    HUD_MEMBER(HUD_UNIFORM LightTree, mSamplingTree)
 
 #define LIGHT_ACCELERATOR_VALIDATION                        \
     HUD_BEGIN_VALIDATION(LightAccelerator);                 \
