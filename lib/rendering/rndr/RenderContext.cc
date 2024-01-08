@@ -1350,20 +1350,6 @@ RenderContext::snapshotDeltaRenderOutput(unsigned int rodIndex,
     switchAovType(*mRenderOutputDriver,
                   rodIndex,
                   [](const scene_rdl2::rdl2::RenderOutput * /*ro*/) {},  // non active AOV
-                  [&](const int /*aovIdx*/, const int varianceSource) { // VisibilityVariance AOV
-                      mDriver->snapshotDeltaAovVarianceVisibility(varianceSource,
-                                                                  renderOutputBuffer,
-                                                                  renderOutputWeightBuffer,
-                                                                  activePixelsRenderOutput,
-                                                                  parallel);
-                  },
-                  [&](const int aovIdx) { // Variance AOV
-                      mDriver->snapshotDeltaAov(aovIdx,
-                                                renderOutputBuffer,
-                                                renderOutputWeightBuffer,
-                                                activePixelsRenderOutput,
-                                                parallel);
-                  },
                   [&](const int aovIdx) { // Visibility AOV
                       mDriver->snapshotDeltaAovVisibility(aovIdx,
                                                           renderOutputBuffer,
@@ -1423,15 +1409,6 @@ RenderContext::snapshotVisibilityBuffer(scene_rdl2::fb_util::VariablePixelBuffer
 }
 
 void
-RenderContext::snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *visibilityVarianceBuffer,
-                                                unsigned int sourceAov, bool untile, bool parallel) const
-{
-    // Request a snapshot of the visibility aov buffer's variance from the render driver.
-    // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-    mDriver->snapshotVisibilityVarianceBuffer(visibilityVarianceBuffer, sourceAov, untile, parallel);
-}
-
-void
 RenderContext::snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *aovBuffer, unsigned int aov,
                                  bool untile, bool parallel) const
 //
@@ -1459,14 +1436,6 @@ RenderContext::snapshotAovBuffers(std::vector<scene_rdl2::fb_util::VariablePixel
     aovBuffers.resize(mDriver->getFilm().getNumAovs());
     crawlAllRenderOutput(*mRenderOutputDriver,
                          [](const scene_rdl2::rdl2::RenderOutput */*ro*/) {}, // non active AOV
-                         [&](const int aovIdx, const int varianceSource) { // VisibilityVariance AOV
-                             snapshotVisibilityVarianceBuffer(&aovBuffers[aovIdx],
-                                                              varianceSource,
-                                                              untile, parallel);
-                         },
-                         [&](const int aovIdx) { // Variance AOV
-                             snapshotAovBuffer(&aovBuffers[aovIdx], aovIdx, untile, parallel);
-                         },
                          [&](const int aovIdx) { // Visibility AOV
                              snapshotVisibilityBuffer(&aovBuffers[aovIdx], aovIdx, untile, parallel);
                          },
@@ -1494,19 +1463,6 @@ RenderContext::snapshotAovsForDisplayFilters(bool untile, bool parallel) const
 {
     crawlAllRenderOutput(*mRenderOutputDriver,
                         [](const scene_rdl2::rdl2::RenderOutput * /*ro*/) {}, // non active AOV
-                        [&](const int aovIdx, const int varianceSource) { // VisibilityVariance AOV
-                            if (mDriver->getDisplayFilterDriver().isAovRequired(aovIdx)) {
-                                snapshotVisibilityVarianceBuffer(mDriver->getDisplayFilterDriver().getAovBuffer(aovIdx),
-                                                                 varianceSource,
-                                                                 untile, parallel);
-                            }
-                        },
-                        [&](const int aovIdx) { // Variance AOV
-                            if (mDriver->getDisplayFilterDriver().isAovRequired(aovIdx)) {
-                                snapshotAovBuffer(mDriver->getDisplayFilterDriver().getAovBuffer(aovIdx),
-                                                  aovIdx, untile, parallel);
-                            }
-                        },
                         [&](const int aovIdx) { // Visibility AOV
                             if (mDriver->getDisplayFilterDriver().isAovRequired(aovIdx)) {
                                 snapshotVisibilityBuffer(mDriver->getDisplayFilterDriver().getAovBuffer(aovIdx),
@@ -1573,16 +1529,6 @@ RenderContext::snapshotRenderOutput(scene_rdl2::fb_util::VariablePixelBuffer *bu
     const int aovIdx = mRenderOutputDriver->getAovBuffer(roIndx);
     if (aovIdx < 0) {
         return;
-    }
-
-    if (schema.isVarianceEntry(aovIdx)) {
-        const int varianceSource = schema.getVarianceToSourceAOV(aovIdx);
-        MNRY_ASSERT(varianceSource >= 0);
-        if (mRenderOutputDriver->isVisibilityAov(varianceSource)) {
-            snapshotVisibilityVarianceBuffer(buffer, varianceSource, untile, parallel);
-            return;
-        }
-        // else, fall through to snapshotAovBuffer
     }
 
     if (mRenderOutputDriver->isVisibilityAov(aovIdx)) {
@@ -3228,16 +3174,12 @@ RenderContext::canRunVectorized(std::string &reason) const
     // Since we have multiple issues with render output objects, we'll loop
     // over all the render outputs once, checking for all the problem types.
     // The issues will still be reported in alphabetical order.
-    bool hasVarianceBuffers = false;
     bool hasDeepOutput = false;
     bool hasRefractCrypto = false;
     const scene_rdl2::rdl2::SceneContext::RenderOutputVector &ros = mSceneContext->getAllRenderOutputs();
     for (auto roItr = ros.cbegin(); roItr != ros.cend(); ++roItr) {
         const scene_rdl2::rdl2::RenderOutput *ro = *roItr;
         if (ro->getActive()) {
-            if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) {
-                hasVarianceBuffers = true;
-            }
             if (ro->getOutputType() == "deep") {
                 hasDeepOutput = true;
             }
@@ -3262,11 +3204,6 @@ RenderContext::canRunVectorized(std::string &reason) const
     // Path Guiding: MOONRAY-3018
     if (vars.get(scene_rdl2::rdl2::SceneVariables::sPathGuideEnable)) {
         fail("path guiding");
-    }
-
-    // Variance Buffers: MOONRAY-2797
-    if (hasVarianceBuffers) {
-        fail("variance buffers");
     }
 
     // Volume Rendering + Deep Output: MOONRAY-3133

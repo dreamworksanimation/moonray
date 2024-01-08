@@ -932,23 +932,6 @@ RenderDriver::renderPixelScalarSamples(pbr::TLState *pbrTls,
                 }
 #endif // end DEBUG_SAMPLE_REC_MODE
 
-                if (schema.hasVarianceEntry(entryIdx)) {
-                    // This entry has another aov keeping track of its variance. Let's add its variance.
-
-                    // Map from aov to variance aov
-                    for (auto varidx : schema.getSourceToVarianceAOVs(entryIdx)) {
-                        MNRY_ASSERT(varidx >= 0);
-                        film->addSampleStatistics(px, py, varidx, aovs + aovFloatIndex);
-                    }
-                }
-
-                // if entry IS variance...skip. Its values
-                // get added through addSampleStatistics*
-                // calls.
-                if (schema.isVarianceEntry(entryIdx)) {
-                    continue;
-                }
-
                 if (!schema.hasAovFilter()) {
                     // if there is no special aov filter, sum
                     // the values

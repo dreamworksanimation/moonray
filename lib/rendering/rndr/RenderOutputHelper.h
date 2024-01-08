@@ -20,25 +20,19 @@ namespace rndr {
 /// for every AOV buffer. This template is useful if you would like to do something for every AOVs inside
 /// renderOutputDriver.
 /// @param funcNonActive execute function if AOV buffer is non active
-/// @param funcVisVariance execute function if AOV buffer is Visibility Variance type
-/// @param funcVariance execute function if AOV buffer is Variance type
 /// @param funcVisibility execute function if AOV buffer is Visibility type
 /// @param funcAOV execute function if AOV buffer is regular AOV type (and non of above)
 template <typename FUNC_NONACTIVE,
-          typename FUNC_VISVARIANCE,
-          typename FUNC_VARIANCE,
           typename FUNC_VISIBILITY,
           typename FUNC_AOV>
 void
 crawlAllRenderOutput(const RenderOutputDriver& outputDriver,
                      FUNC_NONACTIVE funcNonActive,
-                     FUNC_VISVARIANCE funcVisVariance,
-                     FUNC_VARIANCE funcVariance,
                      FUNC_VISIBILITY funcVisibility,
                      FUNC_AOV funcAOV)
 {
     for (unsigned int roIdx = 0; roIdx < outputDriver.getNumberOfRenderOutputs(); ++roIdx) {
-        switchAovType(outputDriver, roIdx, funcNonActive, funcVisVariance, funcVariance, funcVisibility, funcAOV);
+        switchAovType(outputDriver, roIdx, funcNonActive, funcVisibility, funcAOV);
     }
 }
 
@@ -47,21 +41,15 @@ crawlAllRenderOutput(const RenderOutputDriver& outputDriver,
 /// all possible functions to execute based on AOV type.
 /// @param roIdx return of getRenderOutputIndx() this defines current AOV buffer which need to process
 /// @param funcNonActive execute function if this AOV is non active
-/// @param funcVisVariance execute function if this AOV is Visibility Variance type
-/// @param funcVariance execute function if this AOV is Variance type
 /// @param funcVisibility execute function if this AOV is Visibility type
 /// @param funcAOV execute function if this AOV is regular AOV type (and non of above)
 template <typename FUNC_NONACTIVE,
-          typename FUNC_VISVARIANCE,
-          typename FUNC_VARIANCE,
           typename FUNC_VISIBILITY,
           typename FUNC_AOV>
 void
 switchAovType(const RenderOutputDriver& outputDriver,
               const int roIdx,
               FUNC_NONACTIVE funcNonActive,
-              FUNC_VISVARIANCE funcVisVariance,
-              FUNC_VARIANCE funcVariance,
               FUNC_VISIBILITY funcVisibility,
               FUNC_AOV funcAOV)
 //
@@ -74,15 +62,6 @@ switchAovType(const RenderOutputDriver& outputDriver,
     if (aovIdx < 0) {
         // non active AOV
         funcNonActive(outputDriver.getRenderOutput(roIdx));
-    } else if (schema.isVarianceEntry(aovIdx)) {
-        const int varianceSource = schema.getVarianceToSourceAOV(aovIdx);
-        if (outputDriver.isVisibilityAov(varianceSource)) {
-            // Visibility variance AOV
-            funcVisVariance(aovIdx, varianceSource);
-        } else {
-            // Variance AOV
-            funcVariance(aovIdx);
-        }
     } else if (outputDriver.isVisibilityAov(roIdx)) {
         // Visibility AOV
         funcVisibility(aovIdx);
@@ -92,9 +71,5 @@ switchAovType(const RenderOutputDriver& outputDriver,
     }
 }
 
-
-
 } // namespace rndr
 } // namespace moonray
-
-

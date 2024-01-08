@@ -165,10 +165,6 @@ aovBufferFormat(pbr::AovStorageType type)
     case pbr::AovStorageType::RGB:            return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3;
     case pbr::AovStorageType::RGB4:           return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4;
     case pbr::AovStorageType::VISIBILITY:     return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2;
-    case pbr::AovStorageType::FLOAT_VARIANCE: return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE;
-    case pbr::AovStorageType::VEC2_VARIANCE:  return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE;
-    case pbr::AovStorageType::VEC3_VARIANCE:  return scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE;
-    case pbr::AovStorageType::RGB_VARIANCE:   return scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE;
     default:
         MNRY_ASSERT(0 && "unhandled type");
     }
@@ -582,12 +578,6 @@ Film::addAovSamplesToBuffer(std::vector<scene_rdl2::fb_util::VariablePixelBuffer
                    buf.getFormat() == scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4);
 
         switch (buf.getFormat()) {
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-            MNRY_ASSERT(numFloats == 1);
-            break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT:
             {
                 float *val = &buf.getFloatBuffer().getPixel(px, py);
@@ -644,12 +634,6 @@ Film::addAovSamplesToBufferSafe(std::vector<scene_rdl2::fb_util::VariablePixelBu
                    buf.getFormat() == scene_rdl2::fb_util::VariablePixelBuffer::FLOAT4);
 
         switch (buf.getFormat()) {
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-            MNRY_ASSERT(numFloats == 1);
-            break;
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT:
             {
                 float *val = &buf.getFloatBuffer().getPixel(px, py);

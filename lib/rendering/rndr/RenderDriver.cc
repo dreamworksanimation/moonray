@@ -21,7 +21,6 @@
 #include <moonray/rendering/pbr/core/DebugRay.h>
 #include <moonray/rendering/pbr/handlers/XPURayHandlers.h>
 #include <moonray/rendering/rt/gpu/GPUAccelerator.h>
-#include <scene_rdl2/common/fb_util/StatisticsPixelBuffer.h>
 #include <scene_rdl2/common/fb_util/VariablePixelBuffer.h>
 
 #include <scene_rdl2/render/util/Memory.h>
@@ -1598,47 +1597,6 @@ zeroWeightMaskVariablePixelBuffer(const RenderDriver *renderDriver,
         });
 }
 
-template<typename DST_TYPE, typename SRC_TYPE>
-static void
-snapshotVarianceVariablePixelBuffer(const RenderDriver *renderDriver,
-                                    scene_rdl2::fb_util::PixelBuffer<DST_TYPE> *dst,
-                                    const scene_rdl2::fb_util::PixelBuffer<SRC_TYPE> &src,
-                                    scene_rdl2::fb_util::PixelBuffer<SRC_TYPE> *scratchBuffer,
-                                    bool extrapolate,
-                                    bool untile,
-                                    bool parallel)
-{
-    using scene_rdl2::fb_util::reduce_max; // for float
-    renderDriver->snapshotBuffer(dst, src, scratchBuffer, extrapolate, untile, parallel,
-        [](const SRC_TYPE &, unsigned ofs) -> uint32_t {
-            return 0xffffffffu;
-        },
-        [](const SRC_TYPE &pixel, unsigned ofs) {
-            return static_cast<DST_TYPE>(reduce_max(pixel.variance()));
-        });
-}
-
-template <typename DST_PIXEL_TYPE, typename SRC_PIXEL_TYPE>
-static void
-snapshotVarianceVariablePixelBufferFulldump(const RenderDriver *renderDriver,
-                                            scene_rdl2::fb_util::PixelBuffer<DST_PIXEL_TYPE> *dst,
-                                            const scene_rdl2::fb_util::PixelBuffer<SRC_PIXEL_TYPE> &src,
-                                            scene_rdl2::fb_util::PixelBuffer<SRC_PIXEL_TYPE> *scratchBuffer,
-                                            bool extrapolate,
-                                            bool untile,
-                                            bool parallel)
-{
-    renderDriver->snapshotBuffer(dst, src, scratchBuffer, extrapolate, untile, parallel,
-                                 [](const SRC_PIXEL_TYPE &, unsigned ofs) -> uint32_t {
-                                     // data always exists because there is no coarse pass.
-                                     // pixel mask is all on.
-                                     return 0xffffffffu;
-                                 },
-                                 [](const SRC_PIXEL_TYPE &pixel, unsigned ofs) {
-                                     return DST_PIXEL_TYPE(pixel);
-                                 });
-}
-
 void
 RenderDriver::snapshotDisplayFilterBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
                                           unsigned int dfIdx,
@@ -1687,7 +1645,6 @@ RenderDriver::snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *output
     const bool extrapolate               = !areCoarsePassesComplete();
 
     // aovBuffer is not variance of visibility AOV buffer. (See RenderContext::snapshotAovBuffers())
-    // variance + visibility AOV buffer snapshot is done by RenderDriver::snapshotVisibilityVarianceBuffer()
 
     // closest filter aovs require special handling because the source film buffer
     // has a different number of channels (4) than the snapshot destination, and requires
@@ -1838,95 +1795,6 @@ RenderDriver::snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *output
                                     filter);
         break;
 
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        if (!fulldump) {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBuffer(this,
-                                                &outputBuffer->getFloatBuffer(),
-                                                aovBuffer.getFloatVarianceBuffer(),
-                                                reinterpret_cast<scene_rdl2::fb_util::FloatVarianceBuffer *>(&mExtrapolationBuffer),
-                                                extrapolate,
-                                                untile,
-                                                parallel);
-        } else {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE_FULLDUMP,
-                               aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBufferFulldump(this,
-                                                        &outputBuffer->getFloatVarianceFulldumpBuffer(),
-                                                        aovBuffer.getFloatVarianceBuffer(),
-                                                        reinterpret_cast<scene_rdl2::fb_util::FloatVarianceBuffer *>(&mExtrapolationBuffer),
-                                                        extrapolate,
-                                                        untile,
-                                                        parallel);
-        }
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        if (!fulldump) {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBuffer(this,
-                                                &outputBuffer->getFloatBuffer(),
-                                                aovBuffer.getFloat2VarianceBuffer(),
-                                                reinterpret_cast<scene_rdl2::fb_util::Float2VarianceBuffer *>(&mExtrapolationBuffer),
-                                                extrapolate,
-                                                untile,
-                                                parallel);
-        } else {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE_FULLDUMP,
-                               aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBufferFulldump(this,
-                                                        &outputBuffer->getFloat2VarianceFulldumpBuffer(),
-                                                        aovBuffer.getFloat2VarianceBuffer(),
-                                                        reinterpret_cast<scene_rdl2::fb_util::Float2VarianceBuffer *>(&mExtrapolationBuffer),
-                                                        extrapolate,
-                                                        untile,
-                                                        parallel);
-        }
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        if (!fulldump) {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBuffer(this,
-                                                &outputBuffer->getFloatBuffer(),
-                                                aovBuffer.getFloat3VarianceBuffer(),
-                                                reinterpret_cast<scene_rdl2::fb_util::Float3VarianceBuffer *>(&mExtrapolationBuffer),
-                                                extrapolate,
-                                                untile,
-                                                parallel);
-        } else {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE_FULLDUMP,
-                               aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBufferFulldump(this,
-                                                        &outputBuffer->getFloat3VarianceFulldumpBuffer(),
-                                                        aovBuffer.getFloat3VarianceBuffer(),
-                                                        reinterpret_cast<scene_rdl2::fb_util::Float3VarianceBuffer *>(&mExtrapolationBuffer),
-                                                        extrapolate,
-                                                        untile,
-                                                        parallel);
-        }
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        if (!fulldump) {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBuffer(this,
-                                                &outputBuffer->getFloatBuffer(),
-                                                aovBuffer.getRgbVarianceBuffer(),
-                                                reinterpret_cast<scene_rdl2::fb_util::RgbVarianceBuffer *>(&mExtrapolationBuffer),
-                                                extrapolate,
-                                                untile,
-                                                parallel);
-        } else {
-            outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE_FULLDUMP,
-                               aovBuffer.getWidth(), aovBuffer.getHeight());
-            snapshotVarianceVariablePixelBufferFulldump(this,
-                                                        &outputBuffer->getRgbVarianceFulldumpBuffer(),
-                                                        aovBuffer.getRgbVarianceBuffer(),
-                                                        reinterpret_cast<scene_rdl2::fb_util::RgbVarianceBuffer *>(&mExtrapolationBuffer),
-                                                        extrapolate,
-                                                        untile,
-                                                        parallel);
-        }
-        break;
-
     default:
         MNRY_ASSERT(0 && "unexpected aov buffer format");
     }
@@ -1987,42 +1855,6 @@ RenderDriver::snapshotAovBuffer(scene_rdl2::fb_util::RenderBuffer *outputBuffer,
                                     weights,
                                     numConsistentSamples,
                                     filter);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        snapshotVarianceVariablePixelBuffer(this,
-                                            outputBuffer,
-                                            aovBuffer.getFloatVarianceBuffer(),
-                                            reinterpret_cast<scene_rdl2::fb_util::FloatVarianceBuffer *>(&mExtrapolationBuffer),
-                                            extrapolate,
-                                            untile,
-                                            parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        snapshotVarianceVariablePixelBuffer(this,
-                                            outputBuffer,
-                                            aovBuffer.getFloat2VarianceBuffer(),
-                                            reinterpret_cast<scene_rdl2::fb_util::Float2VarianceBuffer *>(&mExtrapolationBuffer),
-                                            extrapolate,
-                                            untile,
-                                            parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        snapshotVarianceVariablePixelBuffer(this,
-                                            outputBuffer,
-                                            aovBuffer.getFloat3VarianceBuffer(),
-                                            reinterpret_cast<scene_rdl2::fb_util::Float3VarianceBuffer *>(&mExtrapolationBuffer),
-                                            extrapolate,
-                                            untile,
-                                            parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        snapshotVarianceVariablePixelBuffer(this,
-                                            outputBuffer,
-                                            aovBuffer.getRgbVarianceBuffer(),
-                                            reinterpret_cast<scene_rdl2::fb_util::RgbVarianceBuffer *>(&mExtrapolationBuffer),
-                                            extrapolate,
-                                            untile,
-                                            parallel);
         break;
 
     default:
@@ -2090,42 +1922,6 @@ RenderDriver::snapshotVisibilityBuffer(scene_rdl2::fb_util::VariablePixelBuffer 
                            return scene_rdl2::math::Vec3f(pixel.x, pixel.y, p);
                        });
     }
-}
-
-void
-RenderDriver::snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
-                                               unsigned int sourceAov,
-                                               bool untile,
-                                               bool parallel) const
-{
-    // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-
-    const Film &film                                        = getFilm();
-    const scene_rdl2::fb_util::VariablePixelBuffer &aovBuffer           = film.getAovBuffer(sourceAov);
-    const bool extrapolate                                  = !areCoarsePassesComplete();
-
-    outputBuffer->init(scene_rdl2::fb_util::VariablePixelBuffer::FLOAT, aovBuffer.getWidth(), aovBuffer.getHeight());
-
-    snapshotBuffer(&outputBuffer->getFloatBuffer(),
-                   aovBuffer.getFloat2Buffer(),
-                   reinterpret_cast<scene_rdl2::fb_util::Float2Buffer *>(&mExtrapolationBuffer),
-                   extrapolate,
-                   untile,
-                   parallel,
-                   [](const scene_rdl2::math::Vec2f &, unsigned ofs) -> uint32_t {
-                       return 0xffffffffu;
-                   },
-                   [](const scene_rdl2::math::Vec2f &pixel, unsigned ofs) {
-                       // The visibility buffer is a ratio of the ratio of # hits / # attempts.
-                       // The visibility variable is simply a Bernoulli variable.
-                       // The variance of a Bernoulli distribution is p(1 - p).
-                       float s2 = 0.0f;
-                       if (pixel.y > 0.0f) {
-                           const float p = pixel.x / pixel.y;
-                           s2 = p*(1.0f - p);
-                       }
-                       return s2;
-                   });
 }
 
 bool
@@ -2202,15 +1998,6 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
                                  mFilm->fillPixelSampleCountBuffer(samplesCount);
                                  mFilm->getCryptomatteBuffer()->unfinalize(samplesCount);
                              }
-                         },
-                         [](const int /*aovIdx*/, const int /*varianceSource*/) {
-                             // VisibilityVariance AOV
-                             // We don't need to denormalize/zeroWeightMask operation in this case
-                         },
-                         [&](const int aovIdx) { // Variance AOV
-                             // Variance AOV (non Visibility)
-                             if (!zeroWeightMask) return;
-                             zeroWeightMaskAovBuffer(aovIdx);
                          },
                          [&](const int aovIdx) { // Visibility AOV
                              if (!zeroWeightMask) return;
@@ -2375,13 +2162,6 @@ RenderDriver::denormalizeAovBuffer(int numConsistentSamples, unsigned int aov)
                                        filter);
         break;
 
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-    case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        // We don't need any denormalize operation for this type
-        break;
-
     default:
         MNRY_ASSERT(0 && "unexpected aov buffer format");
     }
@@ -2444,27 +2224,6 @@ RenderDriver::zeroWeightMaskAovBuffer(unsigned int aov)
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2 :
     case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3 :
         // We don't need any zeroWeightMask operation for this type
-        break;
-
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        zeroWeightMaskVariablePixelBuffer(this,
-                                          aovBuffer.getFloatVarianceBuffer(),
-                                          weightBuff);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        zeroWeightMaskVariablePixelBuffer(this,
-                                          aovBuffer.getFloat2VarianceBuffer(),
-                                          weightBuff);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        zeroWeightMaskVariablePixelBuffer(this,
-                                          aovBuffer.getFloat3VarianceBuffer(),
-                                          weightBuff);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        zeroWeightMaskVariablePixelBuffer(this,
-                                          aovBuffer.getRgbVarianceBuffer(),
-                                          weightBuff);
         break;
     }
 }

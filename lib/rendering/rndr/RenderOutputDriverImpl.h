@@ -204,8 +204,6 @@ private:
     pbr::AovStorageType getStorageType(const scene_rdl2::rdl2::RenderOutput *ro);
     void getChannelNames(const scene_rdl2::rdl2::RenderOutput *ro, int aovSchemaId,
                          std::vector<std::string> &chanNames);
-    void getChannelNamesVarianceFulldump(const scene_rdl2::rdl2::RenderOutput *ro, const std::string &baseName,
-                                         std::vector<std::string> &chanNames);
     void getChannelNamesVisibilityFulldump(const std::string &baseName,
                                            std::vector<std::string> &chanNames);
     std::string generateCheckpointMultiVersionFilename(const File &f,
@@ -219,7 +217,6 @@ private:
 
     static std::string defBaseChannelName(scene_rdl2::rdl2::RenderOutput::StateVariable sv);
     static std::string defBaseChannelName(const scene_rdl2::rdl2::RenderOutput& ro);
-    static std::string defVarianceChannelName(const scene_rdl2::rdl2::RenderOutput& ro);
 
     int materialAovToSchema(const scene_rdl2::rdl2::RenderOutput *ro,
                             shading::AttributeKeySet &primAttrs,
@@ -277,7 +274,7 @@ private:
     bool                              mRequiresMotionVector;
 
     bool mCheckpointRenderActive;   // flag of checkpoint rendering on or off
-    bool mResumableOutput;          // flag to output resumable Variance/Visibility/ClosestFilter AOV buffer
+    bool mResumableOutput;          // flag to output resumable Visibility/ClosestFilter AOV buffer
                                     // This flag is not indicate that this process is a resume render.
     unsigned mFinalMaxSamplesPerPixel;
     int mResumeTileSamples;         // tile samples for resume render which is read from resume file

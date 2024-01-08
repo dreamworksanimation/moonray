@@ -1293,8 +1293,6 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry& e,
     case scene_rdl2::rdl2::RenderOutput::RESULT_MATERIAL_AOV:
     case scene_rdl2::rdl2::RenderOutput::RESULT_WIREFRAME:
     case scene_rdl2::rdl2::RenderOutput::RESULT_LIGHT_AOV:
-    case scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE:
-        MNRY_ASSERT(pbr::aovNumChannels(e.mAovSchemaId) == aov->getSizeOfPixel() / sizeof(float));
     case scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV:
         {
             MNRY_ASSERT(e.mAovSchemaId != pbr::AOV_SCHEMA_ID_UNKNOWN);
@@ -1339,41 +1337,6 @@ RenderOutputWriter::fillPixBufferSingleEntry(const Entry& e,
                     outPtr[1] = v4f->y;
                     outPtr[2] = v4f->z;
                     outPtr[3] = v4f->w;
-                }
-                break;
-            case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE_FULLDUMP:
-                {
-                    const scene_rdl2::fb_util::RgbVarianceFulldumpBuffer& buf = aov->getRgbVarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float>* pix = buf.getData();
-                    pix += y * mWidth + x;
-                    pix->fillPixBuffer(outPtr);
-                }
-                break;
-            case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE_FULLDUMP:
-                {
-                    const scene_rdl2::fb_util::FloatVarianceFulldumpBuffer& buf =
-                        aov->getFloatVarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<float>* pix = buf.getData();
-                    pix += y * mWidth + x;
-                    pix->fillPixBuffer(outPtr);
-                }
-                break;
-            case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE_FULLDUMP:
-                {
-                    const scene_rdl2::fb_util::Float2VarianceFulldumpBuffer& buf =
-                        aov->getFloat2VarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec2f>* pix = buf.getData();
-                    pix += y * mWidth + x;
-                    pix->fillPixBuffer(outPtr);
-                }
-                break;
-            case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE_FULLDUMP:
-                {
-                    const scene_rdl2::fb_util::Float3VarianceFulldumpBuffer& buf =
-                        aov->getFloat3VarianceFulldumpBuffer();
-                    const scene_rdl2::fb_util::RunningStatsLightWeightFulldump<scene_rdl2::math::Vec3f>* pix = buf.getData();
-                    pix += y * mWidth + x;
-                    pix->fillPixBuffer(outPtr);
                 }
                 break;
 

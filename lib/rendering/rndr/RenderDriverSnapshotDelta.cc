@@ -16,12 +16,7 @@
 //#define SNAPSHOT_DELTA_AOV_FLOAT2_TIMING_TEST
 //#define SNAPSHOT_DELTA_AOV_FLOAT3_TIMING_TEST
 //#define SNAPSHOT_DELTA_AOV_FLOAT4_TIMING_TEST
-//#define SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
-//#define SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
-//#define SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
-//#define SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
 //#define SNAPSHOT_DELTA_AOV_VISIBILITY_TIMING_TEST
-//#define SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
 
 #if defined(SNAPSHOT_DELTA_TIMING_TEST) || \
     defined(SNAPSHOT_DELTA_PIXINFO_TIMING_TEST) || \
@@ -31,12 +26,7 @@
     defined(SNAPSHOT_DELTA_AOV_FLOAT_TIMING_TEST) || \
     defined(SNAPSHOT_DELTA_AOV_FLOAT2_TIMING_TEST) || \
     defined(SNAPSHOT_DELTA_AOV_FLOAT3_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_VISIBILITY_TIMING_TEST) || \
-    defined(SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST)
+    defined(SNAPSHOT_DELTA_AOV_VISIBILITY_TIMING_TEST)
 #include <scene_rdl2/common/rec_time/RecTime.h>
 #endif
 
@@ -152,51 +142,6 @@ reduce_max(float f)
     return f;
 }
 } // anonymous namespace
-
-template<typename SRC_BUFF_TYPE>
-static void
-snapshotDeltaAovVariance(SRC_BUFF_TYPE srcVarianceBuffer,
-                         const Film &film,
-                         scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                         scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                         scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                         bool parallel)
-{
-    const unsigned numTiles = film.getTiler().mNumTiles;
-
-    simpleLoop(parallel, 0u, numTiles, [&](unsigned tileId) {
-            unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
-            scene_rdl2::fb_util::FloatBuffer &dstFloatBuffer = dstRenderOutputBuffer->getFloatBuffer();
-
-            // Compute variance value for current tile
-            //
-            //   varianceAOV buffer has own pixel data format and we need to convert to single variance value
-            //   before creating delta information by snapshotTile.
-            //   Current logic is very naive and always compute variance value regardless of
-            //   values are changed or not. This visibility value computation is relatively
-            //   ultralight, however, we might be considered compare source variable information
-            //   instead of computed variance when we need more speed up here. Toshi (Sep/10/2018)
-            //
-            const auto *srcTileStartAddr = &(srcVarianceBuffer.getData()[pixId]);
-            float varianceTileInfo[64];
-            for (int currPixId = 0; currPixId < 64; ++currPixId) {
-                auto &currPix = srcTileStartAddr[currPixId];
-                varianceTileInfo[currPixId] = reduce_max(currPix.variance());
-            }
-
-            // do snapshot against computed variance
-            float *dst = dstFloatBuffer.getData() + pixId;
-            float *dstWeight = dstRenderOutputWeightBuffer->getData() + pixId;
-            const float *src = varianceTileInfo;
-            const float *srcWeight = film.getWeightBuffer().getData() + pixId;
-            uint64_t activePixelMask =
-                scene_rdl2::fb_util::SnapshotUtil::snapshotTileFloatWeight((uint32_t *)dst,
-                                                               (uint32_t *)dstWeight,
-                                                               (const uint32_t *)src,
-                                                               (const uint32_t *)srcWeight);
-            activePixelsRenderOutput.setTileMask(tileId, activePixelMask);
-        });
-}
 
 //------------------------------------------------------------------------------
 
@@ -496,34 +441,6 @@ RenderDriver::snapshotDeltaAov(unsigned aovIdx,
                                activePixelsRenderOutput,
                                parallel);
         break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-        snapshotDeltaAovFloatVariance(aovIdx,
-                                      dstRenderOutputBuffer,
-                                      dstRenderOutputWeightBuffer,
-                                      activePixelsRenderOutput,
-                                      parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-        snapshotDeltaAovFloat2Variance(aovIdx,
-                                       dstRenderOutputBuffer,
-                                       dstRenderOutputWeightBuffer,
-                                       activePixelsRenderOutput,
-                                       parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-        snapshotDeltaAovFloat3Variance(aovIdx,
-                                       dstRenderOutputBuffer,
-                                       dstRenderOutputWeightBuffer,
-                                       activePixelsRenderOutput,
-                                       parallel);
-        break;
-    case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-        snapshotDeltaAovRgbVariance(aovIdx,
-                                    dstRenderOutputBuffer,
-                                    dstRenderOutputWeightBuffer,
-                                    activePixelsRenderOutput,
-                                    parallel);
-        break;
     }
 }
 
@@ -587,67 +504,6 @@ RenderDriver::snapshotDeltaAovVisibility(unsigned aovIdx,
         recTimeVisibilityLog.reset();
     }
 #endif // end SNAPSHOT_DELTA_AOV_VISIBILITY_TIMING_TEST
-}
-
-void
-RenderDriver::snapshotDeltaAovVarianceVisibility(unsigned aovIdx,
-                                                 scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                                 scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                                 scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                                 bool parallel) const
-{
-    const Film &film = getFilm();
-    const unsigned numTiles = film.getTiler().mNumTiles;
-
-#ifdef SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
-    static rec_time::RecTimeLog recTimeVarianceVisibilityLog;
-    rec_time::RecTime recTime;
-    recTime.start();
-#endif // end SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
-
-    simpleLoop(parallel, 0u, numTiles, [&](unsigned tileId) {
-            unsigned pixId = tileId << 6; // tile is 8x8 = 64pixels
-            scene_rdl2::fb_util::FloatBuffer &dstFloatBuffer = dstRenderOutputBuffer->getFloatBuffer();
-
-            // VisibilityAOV is always float2 buffer
-            const scene_rdl2::fb_util::Float2Buffer &srcFloat2Buffer = film.getAovBuffer(aovIdx).getFloat2Buffer();
-
-            // Compute variance visibility value for current tile.
-            // See also RenderDriver::snapshotVisibilityVarianceBuffer()
-            const scene_rdl2::math::Vec2f *srcTileStartAddr = srcFloat2Buffer.getData() + pixId;
-            float visibilityTileInfo[64];
-            for (int currPixId = 0; currPixId < 64; ++currPixId) {
-                const scene_rdl2::math::Vec2f &currPix = srcTileStartAddr[currPixId];
-
-                float s2 = 0.0f;
-                if (currPix.y > 0.0f) {
-                    const float p = currPix.x / currPix.y;
-                    s2 = p * (1.0f - p);
-                }
-                visibilityTileInfo[currPixId] = s2;
-            }
-
-            // do snapshot against computed visibility
-            float *dst = dstFloatBuffer.getData() + pixId;
-            float *dstWeight = dstRenderOutputWeightBuffer->getData() + pixId;
-            const float *src = visibilityTileInfo;
-            const float *srcWeight = film.getWeightBuffer().getData() + pixId;
-            uint64_t activePixelMask =
-                scene_rdl2::fb_util::SnapshotUtil::snapshotTileFloatWeight((uint32_t *)dst,
-                                                               (uint32_t *)dstWeight,
-                                                               (const uint32_t *)src,
-                                                               (const uint32_t *)srcWeight);
-            activePixelsRenderOutput.setTileMask(tileId, activePixelMask);
-        });
-
-#ifdef SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
-    recTimeVarianceVisibilityLog.add(recTime.end());
-    if (recTimeVarianceVisibilityLog.getTotal() == 24) {
-        std::cerr << ">> Film.cc snapshot variance visibility ave:"
-                  << recTimeVarianceVisibilityLog.getAverage() * 1000.0f << " ms" << std::endl;
-        recTimeVarianceVisibilityLog.reset();
-    }
-#endif // end SNAPSHOT_DELTA_AOV_VARIANCE_VISIBILITY_TIMING_TEST
 }
 
 void
@@ -805,134 +661,6 @@ RenderDriver::snapshotDeltaAovFloat4(unsigned aovIdx,
         recTimeFloat4Log.reset();
     }
 #endif // end SNAPSHOT_DELTA_AOV_FLOAT4_TIMING_TEST
-}
-
-void
-RenderDriver::snapshotDeltaAovFloatVariance(unsigned aovIdx,
-                                            scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                            scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                            scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                            bool parallel) const
-{
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
-    static rec_time::RecTimeLog recTimeFloatVarianceLog;
-    rec_time::RecTime recTime;
-    recTime.start();
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
-
-    const Film &film = getFilm();
-    const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloatVarianceBuffer();
-    snapshotDeltaAovVariance(srcVarianceBuffer,
-                             film,
-                             dstRenderOutputBuffer,
-                             dstRenderOutputWeightBuffer,
-                             activePixelsRenderOutput,
-                             parallel);
-
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
-    recTimeFloatVarianceLog.add(recTime.end());
-    if (recTimeFloatVarianceLog.getTotal() == 24) {
-        std::cerr << ">> Film.cc snapshot Float Variance ave:"
-                  << recTimeFloatVarianceLog.getAverage() * 1000.0f << " ms" << std::endl;
-        recTimeFloatVarianceLog.reset();
-    }
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT_VARIANCE_TIMING_TEST
-}
-
-void
-RenderDriver::snapshotDeltaAovFloat2Variance(unsigned aovIdx,
-                                             scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                             scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                             scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                             bool parallel) const
-{
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
-    static rec_time::RecTimeLog recTimeFloat2VarianceLog;
-    rec_time::RecTime recTime;
-    recTime.start();
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
-
-    const Film &film = getFilm();
-    const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloat2VarianceBuffer();
-    snapshotDeltaAovVariance(srcVarianceBuffer,
-                             film,
-                             dstRenderOutputBuffer,
-                             dstRenderOutputWeightBuffer,
-                             activePixelsRenderOutput,
-                             parallel);
-
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
-    recTimeFloat2VarianceLog.add(recTime.end());
-    if (recTimeFloat2VarianceLog.getTotal() == 24) {
-        std::cerr << ">> Film.cc snapshot Float2 Variance ave:"
-                  << recTimeFloat2VarianceLog.getAverage() * 1000.0f << " ms" << std::endl;
-        recTimeFloat2VarianceLog.reset();
-    }
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT2_VARIANCE_TIMING_TEST
-}
-
-void
-RenderDriver::snapshotDeltaAovFloat3Variance(unsigned aovIdx,
-                                             scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                             scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                             scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                             bool parallel) const
-{
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
-    static rec_time::RecTimeLog recTimeFloat3VarianceLog;
-    rec_time::RecTime recTime;
-    recTime.start();
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
-
-    const Film &film = getFilm();
-    const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getFloat3VarianceBuffer();
-    snapshotDeltaAovVariance(srcVarianceBuffer,
-                             film,
-                             dstRenderOutputBuffer,
-                             dstRenderOutputWeightBuffer,
-                             activePixelsRenderOutput,
-                             parallel);
-
-#ifdef SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
-    recTimeFloat3VarianceLog.add(recTime.end());
-    if (recTimeFloat3VarianceLog.getTotal() == 24) {
-        std::cerr << ">> Film.cc snapshot Float3 Variance ave:"
-                  << recTimeFloat3VarianceLog.getAverage() * 1000.0f << " ms" << std::endl;
-        recTimeFloat3VarianceLog.reset();
-    }
-#endif // end SNAPSHOT_DELTA_AOV_FLOAT3_VARIANCE_TIMING_TEST
-}
-
-void
-RenderDriver::snapshotDeltaAovRgbVariance(unsigned aovIdx,
-                                          scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                          scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                          scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                          bool parallel) const
-{
-#ifdef SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
-    static rec_time::RecTimeLog recTimeRgbVarianceLog;
-    rec_time::RecTime recTime;
-    recTime.start();
-#endif // end SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
-
-    const Film &film = getFilm();
-    const auto &srcVarianceBuffer = film.getAovBuffer(aovIdx).getRgbVarianceBuffer();
-    snapshotDeltaAovVariance(srcVarianceBuffer,
-                             film,
-                             dstRenderOutputBuffer,
-                             dstRenderOutputWeightBuffer,
-                             activePixelsRenderOutput,
-                             parallel);
-
-#ifdef SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
-    recTimeRgbVarianceLog.add(recTime.end());
-    if (recTimeRgbVarianceLog.getTotal() == 24) {
-        std::cerr << ">> Film.cc snapshot Rgb Variance ave:"
-                  << recTimeRgbVarianceLog.getAverage() * 1000.0f << " ms" << std::endl;
-        recTimeRgbVarianceLog.reset();
-    }
-#endif // end SNAPSHOT_DELTA_AOV_RGB_VARIANCE_TIMING_TEST
 }
 
 } // namespace rndr

@@ -222,12 +222,6 @@ public:
                                   bool parallel,
                                   bool fulldumpVisibility) const;
 
-    // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-    void                snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *outputBuffer,
-                                                         unsigned int sourceAov,
-                                                         bool untile,
-                                                         bool parallel) const;
-
     //
     // Whereas snapshotRenderBuffer and snapshotPixelInfoBuffer are buffer
     // specific, this is a general purpose version which can be used on any type
@@ -333,12 +327,6 @@ public:
                                     scene_rdl2::fb_util::FloatBuffer *renderOutputWeightBuffer,
                                     scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                     bool parallel) const;
-    // This is a specially designed Variance Visibility AOV buffer version of snapshotDeltaAov()
-    void snapshotDeltaAovVarianceVisibility(unsigned aovIndex,
-                                            scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
-                                            scene_rdl2::fb_util::FloatBuffer *renderOutputWeightBuffer,
-                                            scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                            bool parallel) const;
     // This is a specially designed DisplayFilter version of snapshotDelta.
     void snapshotDeltaDisplayFilter(unsigned dfIdx,
                                     scene_rdl2::fb_util::VariablePixelBuffer *renderOutputBuffer,
@@ -532,26 +520,6 @@ private:
                                 scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
                                 scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
                                 bool parallel) const;
-    void snapshotDeltaAovFloatVariance(unsigned aovIdx,
-                                       scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                       scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                       scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                       bool parallel) const;
-    void snapshotDeltaAovFloat2Variance(unsigned aovIdx,
-                                        scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                        scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                        scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                        bool parallel) const;
-    void snapshotDeltaAovFloat3Variance(unsigned aovIdx,
-                                        scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                        scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                        scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                        bool parallel) const;
-    void snapshotDeltaAovRgbVariance(unsigned aovIdx,
-                                     scene_rdl2::fb_util::VariablePixelBuffer *dstRenderOutputBuffer,
-                                     scene_rdl2::fb_util::FloatBuffer *dstRenderOutputWeightBuffer,
-                                     scene_rdl2::fb_util::ActivePixels &activePixelsRenderOutput,
-                                     bool parallel) const;
 
     void snapshotAovsForDisplayFilters(bool untile, bool parallel) const;
 

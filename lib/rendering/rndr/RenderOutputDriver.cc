@@ -161,8 +161,6 @@ RenderOutputDriver::Impl::getAovSchemaID(const scene_rdl2::rdl2::RenderOutput* r
                                    ro->getVisibilityAov(), R"(" failed to be generated.)");
             return pbr::AOV_SCHEMA_ID_UNKNOWN;
         }
-    } else if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) {
-        roAovSchemaId = pbr::AOV_SCHEMA_ID_VARIANCE;
     } else if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY) {
         roAovSchemaId = pbr::AOV_SCHEMA_ID_BEAUTY;
     } else if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_ALPHA) {
@@ -283,26 +281,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
                 if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_WEIGHT) defWeightAOV = true;
                 if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY_AUX) defBeautyAuxAOV = true;
                 if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_ALPHA_AUX) defAlphaAuxAOV = true;
-            }
-
-            if (roAovSchemaId == pbr::AOV_SCHEMA_ID_VARIANCE) {
-                if (auto p = ro->getReferenceOutput()) {
-                    if (hasReferenceCycle(ro)) {
-                        skipRenderOutputMessage(ro->getName(), "has cyclical references.");
-                        continue;
-                    }
-                    varianceAovReferences.insert(p);
-                } else {
-                    skipRenderOutputMessage(ro->getName(), R"(unable to treat ")", ro->getReferenceOutput(), R"(" as a RenderOutput)");
-                    continue;
-                }
-            }
-
-            if (ro->getOutputType() == "deep") {
-                if (roAovSchemaId == pbr::AOV_SCHEMA_ID_VARIANCE) {
-                    skipRenderOutputMessage(ro->getName(), "is a deep output and cannot be a variance buffer.");
-                    continue;
-                }
             }
 
             if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_DISPLAY_FILTER &&
@@ -556,8 +534,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
         }
     }
 
-    std::map<const scene_rdl2::rdl2::RenderOutput*, int> varianceIndexMap;
-
     // construct our entry order
     // set the aov schema
     // set our aov offsets
@@ -599,10 +575,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
                     data.storageType = getStorageType(entry.mRenderOutput, entry.mAovSchemaId, data.filter);
 
                     mAovBuffers.push_back(aovBuffer);
-
-                    if (entry.mAovSchemaId == pbr::AOV_SCHEMA_ID_VARIANCE) {
-                        varianceIndexMap.emplace(entry.mRenderOutput->getReferenceOutput(), aovBuffer);
-                    }
 
                     schemaData.push_back(data);
                     ++aovBuffer;
@@ -664,12 +636,6 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
 
     // init the aov schema
     mAovSchema.init(schemaData);
-    for (std::size_t i = 0; i < mEntries.size(); ++i) {
-        const auto it = varianceIndexMap.find(mEntries[i]->mRenderOutput);
-        if (it != varianceIndexMap.end()) {
-            mAovSchema.linkVarianceOutput(i, it->second);
-        }
-    }
 
     // finalize our light aov object
     mLightAovs.finalize();
@@ -1228,28 +1194,12 @@ RenderOutputDriver::Impl::defBaseChannelName(const scene_rdl2::rdl2::RenderOutpu
             return ro.getLpe();
         case scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV:
             return "visiblility_" + ro.getVisibilityAov();
-        case scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE:
-            MNRY_ASSERT(ro.getReferenceOutput());
-            return defVarianceChannelName(ro);
         case scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE:
             return "cryptomatte";
         default:
             MNRY_ASSERT(0 && "unknown result type");
             return "unknown";
     }
-}
-
-std::string
-RenderOutputDriver::Impl::defVarianceChannelName(const scene_rdl2::rdl2::RenderOutput& ro)
-{
-    MNRY_ASSERT(ro.getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE);
-    MNRY_ASSERT(ro.getReferenceOutput());
-
-    std::string refName = ro.getReferenceOutput()->getChannelName();
-    if (refName.empty() && ro.getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) {
-        refName = defBaseChannelName(*ro.getReferenceOutput());
-    }
-    return refName.empty() ? "variance" : refName + "_variance";
 }
 
 pbr::AovStorageType
@@ -1378,27 +1328,6 @@ RenderOutputDriver::Impl::getStorageType(const scene_rdl2::rdl2::RenderOutput *r
         case scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV:
             return pbr::AovStorageType::VISIBILITY;
             break;
-        case scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE:
-            if (auto ref = ro->getReferenceOutput()) {
-                switch (getStorageType(ref)) {
-                    case pbr::AovStorageType::RGB:
-                        return pbr::AovStorageType::RGB_VARIANCE;
-                    case pbr::AovStorageType::FLOAT:
-                        return pbr::AovStorageType::FLOAT_VARIANCE;
-                    case pbr::AovStorageType::VEC2:
-                        return pbr::AovStorageType::VEC2_VARIANCE;
-                    case pbr::AovStorageType::VEC3:
-                        return pbr::AovStorageType::VEC3_VARIANCE;
-                    case pbr::AovStorageType::FLOAT_VARIANCE:
-                    case pbr::AovStorageType::VEC2_VARIANCE:
-                    case pbr::AovStorageType::VEC3_VARIANCE:
-                        return pbr::AovStorageType::FLOAT_VARIANCE;
-                    default:
-                        MNRY_ASSERT(0 && "unexpected type on reference");
-                        break;
-                }
-            }
-            break;
         default:
             MNRY_ASSERT(0 && "unknown result type");
             break;
@@ -1449,11 +1378,6 @@ RenderOutputDriver::Impl::getOutputType(const scene_rdl2::rdl2::RenderOutput *ro
         return pbr::AovOutputType::RGB;
     case pbr::AovStorageType::FLOAT:
     case pbr::AovStorageType::VISIBILITY:
-    case pbr::AovStorageType::FLOAT_VARIANCE:
-    case pbr::AovStorageType::VEC2_VARIANCE:
-    case pbr::AovStorageType::VEC3_VARIANCE:
-    case pbr::AovStorageType::RGB_VARIANCE:
-        return pbr::AovOutputType::FLOAT;
     default:
         MNRY_ASSERT(0, "Unhandled storage type");
         return pbr::AovOutputType::FLOAT;
@@ -1484,11 +1408,8 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
     }
 
     if (mResumableOutput) {
-        // Setup channel name for Variance/Visibility AOV fulldump mode
-        if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) {
-            getChannelNamesVarianceFulldump(ro, baseName, chanNames);
-            return;
-        } else if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV) {
+        // Setup channel name for Visibility AOV fulldump mode
+        if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV) {
             getChannelNamesVisibilityFulldump(baseName, chanNames);
             return;
         }
@@ -1707,84 +1628,6 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
         break;
     default :
         break;                  // never happen
-    }
-}
-
-void
-RenderOutputDriver::Impl::getChannelNamesVarianceFulldump(const scene_rdl2::rdl2::RenderOutput *ro,
-                                                          const std::string &baseName,
-                                                          std::vector<std::string> &chanNames)
-{
-    MNRY_ASSERT(ro->getResult() != scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE, "RenderOutput type is not VARIANCE");
-    if (ro->getResult() != scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) return; // just in case
-
-    constexpr char const *suffixN = ".n";
-    // MOONRAY-4077
-    // add .var for variance channel to deal with how it shows up on nuke. 
-    // if no extension is provided then nuke displays is as "<baseName>.unnamed"
-    constexpr char const *suffixVar = ".var";
-    constexpr char const *rgb[] = {".Rom", ".Gom", ".Bom", ".Rnm", ".Gnm", ".Bnm", ".Ros", ".Gos", ".Bos", ".Rns", ".Gns", ".Bns"};
-    constexpr char const *xyz[] = {".Xom", ".Yom", ".Zom", ".Xnm", ".Ynm", ".Znm", ".Xos", ".Yos", ".Zos", ".Xns", ".Yns", ".Zns"};
-    constexpr char const *uvw[] = {".Uom", ".Vom", ".Wom", ".Unm", ".Vnm", ".Wnm", ".Uos", ".Vos", ".Wos", ".Uns", ".Vns", ".Wns"};
-
-    const char *const *suffix = nullptr;
-    switch (ro->getChannelSuffixMode()) {
-    case scene_rdl2::rdl2::RenderOutput::SUFFIX_MODE_RGB : suffix = rgb; break;
-    case scene_rdl2::rdl2::RenderOutput::SUFFIX_MODE_XYZ : suffix = xyz; break;
-    case scene_rdl2::rdl2::RenderOutput::SUFFIX_MODE_UVW : suffix = uvw; break;
-    default : suffix = xyz; break;
-    }
-
-    auto ref = ro->getReferenceOutput();
-    MNRY_ASSERT(ref);
-    switch (getStorageType(ref)) {
-    case pbr::AovStorageType::VISIBILITY :
-        // Variance Visibility AOV : We don't need any additional channels
-        chanNames.push_back(baseName + suffixVar); // variance
-        break;
-
-    case pbr::AovStorageType::RGB : // variance RGB is using scene_rdl2::fb_util::RgbVarianceBufferFulldumpBuffer
-    case pbr::AovStorageType::FLOAT :
-        // single float variance AOV : 6 floats
-        chanNames.push_back(baseName + suffixN);
-        chanNames.push_back(baseName + suffix[0]);
-        chanNames.push_back(baseName + suffix[3]);
-        chanNames.push_back(baseName + suffix[6]);
-        chanNames.push_back(baseName + suffix[9]);
-        chanNames.push_back(baseName + suffixVar); // variance
-        break;
-
-    case pbr::AovStorageType::VEC2 :
-        // float x 2 variance AOV : 10 floats
-        chanNames.push_back(baseName + suffixN);
-        chanNames.push_back(baseName + suffix[0]);
-        chanNames.push_back(baseName + suffix[1]);
-        chanNames.push_back(baseName + suffix[3]);
-        chanNames.push_back(baseName + suffix[4]);
-        chanNames.push_back(baseName + suffix[6]);
-        chanNames.push_back(baseName + suffix[7]);
-        chanNames.push_back(baseName + suffix[9]);
-        chanNames.push_back(baseName + suffix[10]);
-        chanNames.push_back(baseName + suffixVar); // variance
-        break;
-
-    case pbr::AovStorageType::VEC3 :
-        // float x 3 variance AOV : 14 floats
-        chanNames.push_back(baseName + suffixN);
-        chanNames.push_back(baseName + suffix[0]);
-        chanNames.push_back(baseName + suffix[1]);
-        chanNames.push_back(baseName + suffix[2]);
-        chanNames.push_back(baseName + suffix[3]);
-        chanNames.push_back(baseName + suffix[4]);
-        chanNames.push_back(baseName + suffix[5]);
-        chanNames.push_back(baseName + suffix[6]);
-        chanNames.push_back(baseName + suffix[7]);
-        chanNames.push_back(baseName + suffix[8]);
-        chanNames.push_back(baseName + suffix[9]);
-        chanNames.push_back(baseName + suffix[10]);
-        chanNames.push_back(baseName + suffix[11]);
-        chanNames.push_back(baseName + suffixVar); // variance
-        break;
     }
 }
 

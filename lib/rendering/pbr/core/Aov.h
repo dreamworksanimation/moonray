@@ -7,7 +7,6 @@
 #include "Aov.hh"
 #include <moonray/rendering/pbr/integrator/BsdfSampler.h>
 #include "RayState.h"
-#include "VarianceAOVMap.h"
 
 #include <moonray/rendering/bvh/shading/Intersection.h>
 #include <moonray/rendering/bvh/shading/State.h>
@@ -60,7 +59,6 @@ enum AovSchemaId {
     AOV_SCHEMA_ID_UNKNOWN = 0,
     AOV_SCHEMA_ID_BEAUTY,
     AOV_SCHEMA_ID_ALPHA,
-    AOV_SCHEMA_ID_VARIANCE,
     // state position (vec3f)
     AOV_SCHEMA_ID_STATE_P,
     // state geometric normal (vec3f)
@@ -125,7 +123,6 @@ enum AovType {
     AOV_TYPE_UNKNOWN        = 0,
     AOV_TYPE_BEAUTY         = (1 << 0),
     AOV_TYPE_ALPHA          = (1 << 1),
-    AOV_TYPE_VARIANCE       = (1 << 2),
     AOV_TYPE_STATE_VAR      = (1 << 3),
     AOV_TYPE_PRIM_ATTR      = (1 << 4),
     AOV_TYPE_MATERIAL_AOV   = (1 << 5),
@@ -133,7 +130,6 @@ enum AovType {
     AOV_TYPE_LIGHT_AOV      = (1 << 7),
     AOV_TYPE_ALL            = (AOV_TYPE_BEAUTY         |
                                AOV_TYPE_ALPHA          |
-                               AOV_TYPE_VARIANCE       |
                                AOV_TYPE_STATE_VAR      |
                                AOV_TYPE_PRIM_ATTR      |
                                AOV_TYPE_MATERIAL_AOV   |
@@ -162,11 +158,7 @@ enum class AovStorageType {
     VEC4,
     RGB,
     RGB4,
-    VISIBILITY,
-    FLOAT_VARIANCE,
-    VEC2_VARIANCE,
-    VEC3_VARIANCE,
-    RGB_VARIANCE
+    VISIBILITY
 };
 
 std::string aovStorageTypeToString(const AovStorageType &aovStorageType); // for debug
@@ -187,8 +179,6 @@ unsigned aovNumChannels(int aovSchemaId);
 class AovSchema
 {
 public:
-    static constexpr int sNoVarianceKey = -1;
-
     static constexpr int sLpePrefixNone       = 0;
     static constexpr int sLpePrefixUnoccluded = 1 << 0;
 
@@ -197,7 +187,6 @@ public:
         EntryData() noexcept :
             schemaID(-1),
             filter(AovFilter::AOV_FILTER_AVG),
-            varianceIndex(sNoVarianceKey),
             storageType(AovStorageType::UNSPECIFIED),
             lpePrefixFlags(sLpePrefixNone),
             stateAovId(0)
@@ -206,7 +195,6 @@ public:
 
         int schemaID;
         AovFilter filter;
-        int varianceIndex;
         AovStorageType storageType;
         int lpePrefixFlags;
         int stateAovId;
@@ -291,26 +279,11 @@ public:
 
     bool requiresScaledByWeight(unsigned int idx) const noexcept
     {
-        return mEntries[idx].filter() == AOV_FILTER_AVG && !mVarianceMap.isVarianceEntry(idx);
+        return mEntries[idx].filter() == AOV_FILTER_AVG;
     }
 
     std::vector<Entry>::const_iterator begin() const { return mEntries.begin(); }
     std::vector<Entry>::const_iterator end()   const { return mEntries.end(); }
-
-    bool isVarianceEntry(int idx) const                     { return mVarianceMap.isVarianceEntry(idx); }
-    bool hasVarianceEntry(int idx) const                    { return mVarianceMap.hasVarianceEntry(idx); }
-    void linkVarianceOutput(int sourceIdx, int varianceIdx) { mVarianceMap.linkVarianceOutput(sourceIdx, varianceIdx); }
-
-    int getVarianceToSourceAOV(int varianceAovIdx) const
-    {
-        return mVarianceMap.getVarianceToSourceAOV(varianceAovIdx);
-    }
-
-    auto getSourceToVarianceAOVs(int sourceAovIdx) const -> decltype(
-        std::declval<VarianceAOVMap>().getSourceToVarianceAOVs(sourceAovIdx))
-    {
-        return mVarianceMap.getSourceToVarianceAOVs(sourceAovIdx);
-    }
 
 private:
     AOV_SCHEMA_MEMBERS;

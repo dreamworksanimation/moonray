@@ -342,9 +342,6 @@ protected:
     void initWeightBuffer(const rndr::RenderOutputDriver *rod,
                           const int weightBufferId); // this function should be called after init()
     void initRenderBufferOdd(const int beautyAuxId, const int alphaAuxId); // should call after init()
-    void initRenderOutputVarianceAOV(const rndr::RenderOutputDriver *rod, const unsigned int roIdx);
-    void initRenderOutputVarianceVisibilityAOV(const rndr::RenderOutputDriver *rod,
-                                               const unsigned int roIdx);
     void initRenderOutputVisibilityAOV(const rndr::RenderOutputDriver *rod, const unsigned int roIdx);
     void initRenderOutputRegularAOV(const rndr::RenderOutputDriver *rod, const unsigned int roIdx,
                                     int &beautyId, int &alphaId,

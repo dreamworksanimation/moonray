@@ -132,19 +132,7 @@ McrtFbSender::initRenderOutput(const rndr::RenderOutputDriver *rod)
     for (unsigned int roIdx = 0; roIdx < total; ++roIdx) {
         mRenderOutputName[roIdx] = rod->getRenderOutput(roIdx)->getName(); // save buffer name
 
-        const int aovIdx = rod->getAovBuffer(roIdx);
-        if (schema.isVarianceEntry(aovIdx)) {
-            //
-            // Variance AOV
-            //
-            const int varianceSourceRoIdx = schema.getVarianceToSourceAOV(aovIdx);
-            if (rod->isVisibilityAov(varianceSourceRoIdx)) {
-                initRenderOutputVarianceVisibilityAOV(rod, roIdx);
-            } else {
-                initRenderOutputVarianceAOV(rod, roIdx);
-            }
-
-        } else if (rod->isVisibilityAov(roIdx)) {
+        if (rod->isVisibilityAov(roIdx)) {
             //
             // Visibility AOV
             //
@@ -946,58 +934,6 @@ McrtFbSender::initRenderBufferOdd(const int beautyAuxId, const int alphaAuxId)
 }
 
 void
-McrtFbSender::initRenderOutputVarianceAOV(const rndr::RenderOutputDriver *rod,
-                                          const unsigned int roIdx)
-{
-    //
-    // Variance AOV : size = FLOAT
-    //
-    mRenderOutputSkipCondition[roIdx] = 0x0; // We know this is a variance AOV. So skip condition should be 0x0
-
-    mRenderOutputBufferDefaultValue[roIdx] = 0.0f; // We don't have value until at least 2 samples per pixel.
-    mRenderOutputBufferScaledByWeight[roIdx] = static_cast<char>(false);
-
-    unsigned width = mActivePixels.getWidth();
-    unsigned height = mActivePixels.getHeight();
-    unsigned tileAlignedWidth = mActivePixels.getAlignedWidth();
-    unsigned tileAlignedHeight = mActivePixels.getAlignedHeight();
-
-    mActivePixelsRenderOutput[roIdx].init(width, height);
-    mRenderOutputBufferTiled[roIdx].init(VariablePixelBuffer::FLOAT, tileAlignedWidth, tileAlignedHeight);
-    mRenderOutputWeightBufferTiled[roIdx].init(tileAlignedWidth, tileAlignedHeight);
-
-    mRenderOutputBufferCoarsePassPrecision[roIdx] = CoarsePassPrecision::H16;
-    mRenderOutputBufferFinePassPrecision[roIdx] =
-        calcRenderOutputBufferFinePassPrecision(rod, static_cast<int>(roIdx));
-}
-
-void
-McrtFbSender::initRenderOutputVarianceVisibilityAOV(const rndr::RenderOutputDriver *rod,
-                                                    const unsigned int dstRoIdx)
-{
-    //
-    // Visibility Variance AOV : size = FLOAT
-    //
-    mRenderOutputSkipCondition[dstRoIdx] = 0x0; // We know this is a visibility variance AOV. So skip condition should be 0x0
-
-    mRenderOutputBufferDefaultValue[dstRoIdx] = 0.0f; // We don't have value until at least 2 samples per pixel.
-    mRenderOutputBufferScaledByWeight[dstRoIdx] = static_cast<char>(false);
-
-    unsigned width = mActivePixels.getWidth();
-    unsigned height = mActivePixels.getHeight();
-    unsigned tileAlignedWidth = mActivePixels.getAlignedWidth();
-    unsigned tileAlignedHeight = mActivePixels.getAlignedHeight();
-
-    mActivePixelsRenderOutput[dstRoIdx].init(width, height);
-    mRenderOutputBufferTiled[dstRoIdx].init(VariablePixelBuffer::FLOAT, tileAlignedWidth, tileAlignedHeight);
-    mRenderOutputWeightBufferTiled[dstRoIdx].init(tileAlignedWidth, tileAlignedHeight);
-
-    mRenderOutputBufferCoarsePassPrecision[dstRoIdx] = CoarsePassPrecision::H16;
-    mRenderOutputBufferFinePassPrecision[dstRoIdx] =
-        calcRenderOutputBufferFinePassPrecision(rod, static_cast<int>(dstRoIdx));
-}
-
-void
 McrtFbSender::initRenderOutputVisibilityAOV(const rndr::RenderOutputDriver *rod,
                                             const unsigned int roIdx)
 {
@@ -1224,7 +1160,6 @@ McrtFbSender::calcRenderOutputBufferCoarsePassPrecision(const rndr::RenderOutput
     case scene_rdl2::rdl2::RenderOutput::RESULT_MATERIAL_AOV : precision = CoarsePassPrecision::H16; break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_LIGHT_AOV : precision = CoarsePassPrecision::H16; break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV : precision = CoarsePassPrecision::UC8; break;
-    case scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE : precision = CoarsePassPrecision::H16; break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_WEIGHT : precision = COARSE_PASS_PRECISION_WEIGHT; break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY_AUX : precision = COARSE_PASS_PRECISION_BEAUTY; break;
     case scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE : precision = CoarsePassPrecision::F32; break;

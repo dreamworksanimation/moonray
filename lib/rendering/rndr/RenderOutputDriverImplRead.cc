@@ -553,7 +553,6 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
     case scene_rdl2::rdl2::RenderOutput::RESULT_MATERIAL_AOV:
     case scene_rdl2::rdl2::RenderOutput::RESULT_WIREFRAME:
     case scene_rdl2::rdl2::RenderOutput::RESULT_LIGHT_AOV:
-    case scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE:
     case scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV:
         switch (aovBuffer->getFormat()) {
         case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT:
@@ -616,70 +615,6 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                 }
             }
             break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-            {
-                scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstBuf =
-                    aovBuffer->getRgbVarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstPix,
-                                                const float* srcPix) {
-                                dstPix->set(f2ui(srcPix[chanOffset[0]]),
-                                            srcPix[chanOffset[1]],
-                                            srcPix[chanOffset[2]],
-                                            srcPix[chanOffset[3]],
-                                            srcPix[chanOffset[4]]);
-                            });
-            }
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-            {
-                scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstBuf =
-                    aovBuffer->getFloatVarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<float>* dstPix,
-                                                const float* srcPix) {
-                                dstPix->set(f2ui(srcPix[chanOffset[0]]),
-                                            srcPix[chanOffset[1]],
-                                            srcPix[chanOffset[2]],
-                                            srcPix[chanOffset[3]],
-                                            srcPix[chanOffset[4]]);
-                            });
-            }
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-            {
-                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f>* dstBuf =
-                    aovBuffer->getFloat2VarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec2f>* dstPix,
-                                                const float* srcPix) {
-                                dstPix->set(f2ui(srcPix[chanOffset[0]]),
-                                            scene_rdl2::math::Vec2f(srcPix[chanOffset[1]], srcPix[chanOffset[2]]),
-                                            scene_rdl2::math::Vec2f(srcPix[chanOffset[3]], srcPix[chanOffset[4]]),
-                                            scene_rdl2::math::Vec2f(srcPix[chanOffset[5]], srcPix[chanOffset[6]]),
-                                            scene_rdl2::math::Vec2f(srcPix[chanOffset[7]], srcPix[chanOffset[8]]));
-                            });
-            }
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-            {
-                scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f>* dstBuf =
-                    aovBuffer->getFloat3VarianceBuffer().getData();
-                setTiledBuf(reader, dstBuf, [&](scene_rdl2::fb_util::RunningStatsLightWeight<scene_rdl2::math::Vec3f>* dstPix,
-                                                const float* srcPix) {
-                                dstPix->set(f2ui(srcPix[chanOffset[0]]),
-                                            scene_rdl2::math::Vec3f(srcPix[chanOffset[1]],
-                                                        srcPix[chanOffset[2]],
-                                                        srcPix[chanOffset[3]]),
-                                            scene_rdl2::math::Vec3f(srcPix[chanOffset[4]],
-                                                        srcPix[chanOffset[5]],
-                                                        srcPix[chanOffset[6]]),
-                                            scene_rdl2::math::Vec3f(srcPix[chanOffset[7]],
-                                                        srcPix[chanOffset[8]],
-                                                        srcPix[chanOffset[9]]),
-                                            scene_rdl2::math::Vec3f(srcPix[chanOffset[10]],
-                                                        srcPix[chanOffset[11]],
-                                                        srcPix[chanOffset[12]]));
-                            });
-            }
-            break;
 
         default:
             MNRY_ASSERT(0 && "unexpected variable pixel buffer format");
@@ -723,12 +658,6 @@ RenderOutputDriver::Impl::readSubImageSetDestinationBuffer(const int roIdx,
                           *renderBufferOdd = film.getRenderBufferOdd();
                           break;
                       }
-                  },
-                  [&](const int /*aovIdx*/, const int /*varianceSource*/) { // VisibilityVariance AOV
-                      returnVal = false; // We don't need to revert information from file in this case.
-                  },
-                  [&](const int aovIdx) { // Variance AOV
-                      *aovBuffer = &film.getAovBuffer(aovIdx);
                   },
                   [&](const int aovIdx) { // Visibility AOV
                       *aovBuffer = &film.getAovBuffer(aovIdx);

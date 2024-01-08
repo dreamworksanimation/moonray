@@ -326,16 +326,6 @@ public:
                                   unsigned int aov, bool untile, bool parallel) const;
 
     /**
-     * Calculates and snapshots the variance of a visibility buffer.
-     *
-     * @param visibilityBuffer The output buffer to which the results are written
-     * @param sourceAov The index of the aov from which we are calculating the variance
-     */
-    // sourceAov is the aov from which we are gathering variance, not the aov to which we are storing variance.
-    void snapshotVisibilityVarianceBuffer(scene_rdl2::fb_util::VariablePixelBuffer *visibilityVarianceBuffer,
-                                          unsigned int sourceAov, bool untile, bool parallel) const;
-
-    /**
      * Snapshots the contents of a particular channel in the aov buffer
      */
     void snapshotAovBuffer(scene_rdl2::fb_util::VariablePixelBuffer *aovBuffer, unsigned int aov, bool untile, bool parallel) const;

@@ -26,7 +26,6 @@
 #include <scene_rdl2/common/math/Vec2.h>
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/fb_util/PixelBuffer.h>
-#include <scene_rdl2/common/fb_util/StatisticsPixelBuffer.h>
 #include <scene_rdl2/common/fb_util/Tiler.h>
 #include <scene_rdl2/common/fb_util/VariablePixelBuffer.h>
 #include <scene_rdl2/render/util/MiscUtils.h>
@@ -180,41 +179,6 @@ private:
 
 public:
     void addBeautyAndAlphaSamplesToBuffer(unsigned px, unsigned py, const scene_rdl2::fb_util::RenderColor& color);
-
-    // Add the value(s) from aovs the statistics buffer at index idx.
-    // px, py is the pixel
-    // idx is the index into the mAovBuf array for the statistics buffer
-    // aovs is the value in one, two, or three floats
-    void addSampleStatistics(unsigned px, unsigned py, std::size_t idx, const float* aovs)
-    {
-        mTiler.linearToTiledCoords(px, py, &px, &py);
-        scene_rdl2::fb_util::VariablePixelBuffer& buf = mAovBuf[idx];
-
-        switch (buf.getFormat()) {
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT_VARIANCE:
-            buf.getFloatVarianceBuffer().getPixel(px, py).push(aovs[0]);
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT2_VARIANCE:
-            buf.getFloat2VarianceBuffer().getPixel(px, py).push(scene_rdl2::math::Vec2f(aovs[0], aovs[1]));
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3_VARIANCE:
-            buf.getFloat3VarianceBuffer().getPixel(px, py).push(scene_rdl2::math::Vec3f(aovs[0], aovs[1], aovs[2]));
-            break;
-        case scene_rdl2::fb_util::VariablePixelBuffer::RGB_VARIANCE:
-            buf.getRgbVarianceBuffer().getPixel(px, py).push(luminance(scene_rdl2::math::Color(aovs[0], aovs[1], aovs[2])));
-            break;
-        default:
-            MNRY_ASSERT(0 && "unexpected aov buffer format");
-        }
-    }
-
-    // Same as addSampleStatistics except thread safe. Use this version when
-    // updating statistics in vector mode.
-    void addSampleStatisticsSafe(unsigned px, unsigned py, std::size_t idx, const float* aovs)
-    {
-        tbb::mutex::scoped_lock lock(mStatsMutex.getMutex(px, py));
-        addSampleStatistics(px, py, idx, aovs);
-    }
 
     inline void setPixelInfo(unsigned px, unsigned py, const scene_rdl2::fb_util::PixelInfo &data);
 

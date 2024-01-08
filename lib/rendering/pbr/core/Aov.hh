@@ -12,14 +12,12 @@
 #define SIZEOF_LPE_STATEMACHINE     8
 #define SIZEOF_LABELSUBSTITUTIONS   48
 #define SIZEOF_STD_VECTOR           24
-#define SIZEOF_VARIANCEAOVMAP       96
 #define AOV_SCHEMA_MEMBERS_PADDING  6
 #else
 #define SIZEOF_BGEXTRAAOVS          24
 #define SIZEOF_LPE_STATEMACHINE     8
 #define SIZEOF_LABELSUBSTITUTIONS   56
 #define SIZEOF_STD_VECTOR           24
-#define SIZEOF_VARIANCEAOVMAP       112
 #define AOV_SCHEMA_MEMBERS_PADDING  6
 #endif
 
@@ -42,7 +40,6 @@ enum {
 };
 
 #define AOV_SCHEMA_MEMBERS                                              \
-    HUD_CPP_MEMBER(VarianceAOVMap, mVarianceMap, SIZEOF_VARIANCEAOVMAP);\
     HUD_CPP_MEMBER(std::vector<Entry>, mEntries, SIZEOF_STD_VECTOR);    \
     HUD_CPP_MEMBER(int, mAllLpePrefixFlags, 4);                         \
     HUD_MEMBER(unsigned int, mNumChannels);                             \
@@ -52,7 +49,6 @@ enum {
 
 #define AOV_SCHEMA_VALIDATION                    \
     HUD_BEGIN_VALIDATION(AovSchema);             \
-    HUD_VALIDATE(AovSchema, mVarianceMap);       \
     HUD_VALIDATE(AovSchema, mEntries);           \
     HUD_VALIDATE(AovSchema, mAllLpePrefixFlags); \
     HUD_VALIDATE(AovSchema, mNumChannels);       \

@@ -562,8 +562,7 @@ DisplayFilterDriver::Impl::createChildAovNodes(unsigned int nodeIdx,
         const scene_rdl2::fb_util::VariablePixelBuffer& filmAovBuf = film.getAovBuffer(newNode.mAltIndex);
         newNode.mBuffer.reset(new scene_rdl2::fb_util::VariablePixelBuffer());
         scene_rdl2::fb_util::VariablePixelBuffer::Format format = filmAovBuf.getFormat();
-        if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV ||
-            ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VARIANCE) {
+        if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_VISIBILITY_AOV) {
             // special cases where snapshot format does not match film buffer format
             format = scene_rdl2::fb_util::VariablePixelBuffer::FLOAT;
         }

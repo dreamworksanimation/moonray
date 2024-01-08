@@ -43,7 +43,6 @@ aovSchemaIdToString(const AovSchemaId &aovSchemaId)
     case AovSchemaId::AOV_SCHEMA_ID_UNKNOWN : return "AOV_SCHEMA_ID_UNKNOWN";
     case AovSchemaId::AOV_SCHEMA_ID_BEAUTY : return "AOV_SCHEMA_ID_BEAUTY";
     case AovSchemaId::AOV_SCHEMA_ID_ALPHA : return "AOV_SCHEMA_ID_ALPHA";
-    case AovSchemaId::AOV_SCHEMA_ID_VARIANCE : return "AOV_SCHEMA_ID_VARIANCE";
 
     // state position (vec3f)
     case AovSchemaId::AOV_SCHEMA_ID_STATE_P : return "AOV_SCHEMA_ID_STATE_P";
@@ -133,7 +132,6 @@ aovTypeToString(const AovType &aovType)
     case AovType::AOV_TYPE_UNKNOWN : return "AOV_TYPE_UNKNOWN";
     case AovType::AOV_TYPE_BEAUTY : return "AOV_TYPE_BEAUTY";
     case AovType::AOV_TYPE_ALPHA : return "AOV_TYPE_ALPHA";
-    case AovType::AOV_TYPE_VARIANCE : return "AOV_TYPE_VARIANCE";
     case AovType::AOV_TYPE_STATE_VAR : return "AOV_TYPE_STATE_VAR";
     case AovType::AOV_TYPE_PRIM_ATTR : return "AOV_TYPE_PRIM_ATTR";
     case AovType::AOV_TYPE_MATERIAL_AOV : return "AOV_TYPE_MATERIAL_AOV";
@@ -156,10 +154,6 @@ aovStorageTypeToString(const AovStorageType &aovStorageType)
     case AovStorageType::RGB : return "RGB";
     case AovStorageType::RGB4 : return "RGB4";
     case AovStorageType::VISIBILITY : return "VISIBILITY";
-    case AovStorageType::FLOAT_VARIANCE : return "FLOAT_VARIANCE";
-    case AovStorageType::VEC2_VARIANCE : return "VEC2_VARIANCE";
-    case AovStorageType::VEC3_VARIANCE : return "VEC3_VARIANCE";
-    case AovStorageType::RGB_VARIANCE : return "RGB_VARIANCE";
     }
     return "?";
 }
@@ -171,7 +165,6 @@ aovType(int aovSchemaId)
 
     if      (aovSchemaId == AOV_SCHEMA_ID_BEAUTY)     result = AOV_TYPE_BEAUTY;
     else if (aovSchemaId == AOV_SCHEMA_ID_ALPHA)      result = AOV_TYPE_ALPHA;
-    else if (aovSchemaId == AOV_SCHEMA_ID_VARIANCE)   result = AOV_TYPE_VARIANCE;
     else if (aovSchemaId >= AOV_START_LIGHT_AOV)      result = AOV_TYPE_LIGHT_AOV;
     else if (aovSchemaId >= AOV_START_VISIBILITY_AOV) result = AOV_TYPE_VISIBILITY_AOV;
     else if (aovSchemaId >= AOV_START_MATERIAL_AOV)   result = AOV_TYPE_MATERIAL_AOV;
@@ -209,9 +202,6 @@ aovNumChannels(int aovSchemaId)
         result = 3;
         break;
     case AOV_TYPE_ALPHA:
-        result = 1;
-        break;
-    case AOV_TYPE_VARIANCE:
         result = 1;
         break;
     case AOV_TYPE_PRIM_ATTR:
@@ -266,7 +256,6 @@ AovSchema::EntryData::toString() const
     ostr << "EntryData {\n"
          << "  schemaId:" << schemaID << ' ' << aovSchemaIdToString((AovSchemaId)schemaID) << '\n'
          << "  filter:" << aovFilterToString(filter) << '\n'
-         << "  varianceIndex:" << varianceIndex << '\n'
          << "  storageType:" << aovStorageTypeToString(storageType) << '\n'
          << "}";
     return ostr.str();

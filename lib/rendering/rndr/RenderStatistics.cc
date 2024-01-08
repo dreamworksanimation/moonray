@@ -692,9 +692,6 @@ RenderStats::logRenderOutputs(const std::vector<const scene_rdl2::rdl2::RenderOu
             resultString += "Visibility AOV - ";
             resultString += "\"" + ro->getVisibilityAov() + "\"";
             break;
-        case RenderOutput::Result::RESULT_VARIANCE:
-            resultString += "Variance";
-            break;
         case RenderOutput::Result::RESULT_WEIGHT:
             resultString += "Weight";
             break;
