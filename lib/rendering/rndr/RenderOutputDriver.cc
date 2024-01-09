@@ -1378,6 +1378,7 @@ RenderOutputDriver::Impl::getOutputType(const scene_rdl2::rdl2::RenderOutput *ro
         return pbr::AovOutputType::RGB;
     case pbr::AovStorageType::FLOAT:
     case pbr::AovStorageType::VISIBILITY:
+        return pbr::AovOutputType::FLOAT;
     default:
         MNRY_ASSERT(0, "Unhandled storage type");
         return pbr::AovOutputType::FLOAT;
