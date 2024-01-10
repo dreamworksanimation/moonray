@@ -67,6 +67,9 @@ public:
             const LightFilterList *lightFilterList, float rayDirFootprint, float *pdf = nullptr) const override;
     virtual scene_rdl2::math::Vec3f getEquiAngularPivot(const scene_rdl2::math::Vec3f& r, float time) const override;
 
+    float getThetaO() const override { return scene_rdl2::math::sPi * 0.5f * mSpread; }
+    float getThetaE() const override { return scene_rdl2::math::sPi * 0.5f; }
+
 private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
 

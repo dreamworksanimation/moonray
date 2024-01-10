@@ -66,6 +66,18 @@ public:
             const LightFilterList *lightFilterList, float rayDirFootprint, float *pdf = nullptr) const override;
     virtual scene_rdl2::math::Vec3f getEquiAngularPivot(const scene_rdl2::math::Vec3f& r, float time) const override;
 
+    float getThetaO() const override { 
+        return 0.f; 
+    }
+    float getThetaE() const override 
+    { 
+        // find outer angle
+        // if lens is elliptical, find larger outer angle
+        float aspectRatio = scene_rdl2::math::max(mRcpAspectRatio, 1.f); 
+        // outer angle = atan( aspect ratio (if y > x) * opposite / adjacent )
+        return scene_rdl2::math::atan(aspectRatio * (mFocalRadius + mLensRadius) / mFocalDistance);    
+    }
+
 protected:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
 

@@ -42,6 +42,8 @@ enum LightSidednessType
     HUD_ISPC_FNPTR(LightOccludedFn, mOccludedFn);                           \
     HUD_ISPC_FNPTR(LightSampleFn, mSampleFn);                               \
     HUD_ISPC_FNPTR(LightEvalFn, mEvalFn);                                   \
+    HUD_ISPC_FNPTR(LightGetThetaOFn, mGetThetaOFn);                         \
+    HUD_ISPC_FNPTR(LightGetThetaEFn, mGetThetaEFn);                         \
                                                                             \
     /* Backpointer to the rdl2 light */                                     \
     HUD_CPP_PTR(const scene_rdl2::rdl2::Light *, mRdlLight);                \

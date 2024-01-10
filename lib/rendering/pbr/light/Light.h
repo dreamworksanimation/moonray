@@ -87,6 +87,14 @@ public:
         return slerpDirection(time);
     }
 
+    // Attributes for light sampling acceleration
+
+    // Get the spread of possible light directions
+    virtual float getThetaO() const = 0;
+
+    // Get the spread of possible emission directions
+    virtual float getThetaE() const = 0;
+
     /// Get image distribution and color correction. the update() method should be
     /// called first for these to be valid.
     const ImageDistribution* getDistribution() const { return mDistribution; }

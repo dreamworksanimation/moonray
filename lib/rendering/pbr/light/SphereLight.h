@@ -74,6 +74,9 @@ public:
         return getPosition(time);
     }
 
+    float getThetaO() const override { return scene_rdl2::math::sPi; }
+    float getThetaE() const override { return scene_rdl2::math::sPi * 0.5f; }
+
 private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
 

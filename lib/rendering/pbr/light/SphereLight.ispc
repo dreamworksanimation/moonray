@@ -382,13 +382,17 @@ SphereLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unif
     return radiance;
 }
 
+inline uniform float SphereLight_getThetaO(const uniform Light * uniform li) { return sPi; }
+inline uniform float SphereLight_getThetaE(const uniform Light * uniform li) { return sPi * 0.5f; }
+
 //----------------------------------------------------------------------------
 
 export void
 SphereLight_init(uniform SphereLight * uniform light, uniform bool uniformSampling)
 {
     Light_init((uniform Light * uniform)light, SphereLight_canIlluminate,
-                SphereLight_intersect, SphereLight_sample, SphereLight_eval);
+                SphereLight_intersect, SphereLight_sample, SphereLight_eval,
+                SphereLight_getThetaO, SphereLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

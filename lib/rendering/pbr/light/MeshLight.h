@@ -82,6 +82,10 @@ public:
             float rayDirFootprint, float *pdf = nullptr) const override;
     virtual scene_rdl2::math::Vec3f getEquiAngularPivot(const scene_rdl2::math::Vec3f& r, float time) const override;
 
+    // TODO: update with correct values once MeshLight is supported with adaptive light sampling
+    float getThetaO() const override { return 0.f; }
+    float getThetaE() const override { return 0.f; }
+
     // Get the rdl geometry. Used before MeshLight is finalized during render prep
     scene_rdl2::rdl2::Geometry* getReferenceGeometry() const
     {

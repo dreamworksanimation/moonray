@@ -363,13 +363,21 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
     return radiance;
 }
 
+inline uniform float RectLight_getThetaO(const uniform Light * uniform li)
+{
+    const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
+    return sPi * 0.5f * light->mSpread; 
+}
+inline uniform float RectLight_getThetaE(const uniform Light * uniform li) { return sPi * 0.5f; }
+
 //----------------------------------------------------------------------------
 
 export void
 RectLight_init(uniform RectLight * uniform light, uniform bool uniformSampling)
 {
     Light_init((uniform Light * uniform)light, RectLight_canIlluminate,
-                RectLight_intersect, RectLight_sample, RectLight_eval);
+                RectLight_intersect, RectLight_sample, RectLight_eval,
+                RectLight_getThetaO, RectLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

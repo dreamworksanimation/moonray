@@ -238,13 +238,17 @@ CylinderLight_eval(const uniform Light * uniform li, uniform ShadingTLState * un
     return radiance;
 }
 
+inline uniform float CylinderLight_getThetaO(const uniform Light * uniform li) { return sPi; }
+inline uniform float CylinderLight_getThetaE(const uniform Light * uniform li) { return sPi * 0.5f; }
+
 //----------------------------------------------------------------------------
 
 export void
 CylinderLight_init(uniform CylinderLight * uniform light)
 {
     Light_init((uniform Light * uniform)light, CylinderLight_canIlluminate,
-            CylinderLight_intersect, CylinderLight_sample, CylinderLight_eval);
+            CylinderLight_intersect, CylinderLight_sample, CylinderLight_eval,
+            CylinderLight_getThetaO, CylinderLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

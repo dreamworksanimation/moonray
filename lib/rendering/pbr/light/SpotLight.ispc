@@ -364,13 +364,24 @@ SpotLight_eval_uniform(const uniform Light * uniform li, uniform ShadingTLState 
     return radiance;
 }
 
+inline uniform float SpotLight_getThetaO(const uniform Light * uniform li) { return 0.f; }
+inline uniform float SpotLight_getThetaE(const uniform Light * uniform li) {
+    const uniform SpotLight * uniform light = (const uniform SpotLight * uniform)li;
+    // find outer angle
+    // if lens is elliptical, find larger outer angle
+    uniform float aspectRatio = max(light->mRcpAspectRatio, 1.f); 
+    // outer angle = atan( aspect ratio (if y > x) * opposite / adjacent )
+    return atan(aspectRatio * (light->mFocalRadius + light->mLensRadius) / light->mFocalDistance);  
+}
+
 //----------------------------------------------------------------------------
 
 export void
 SpotLight_init(uniform SpotLight * uniform light)
 {
     Light_init((uniform Light * uniform)light, SpotLight_canIlluminate,
-                SpotLight_intersect, SpotLight_sample_uniform, SpotLight_eval_uniform);
+                SpotLight_intersect, SpotLight_sample_uniform, SpotLight_eval_uniform,
+                SpotLight_getThetaO, SpotLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

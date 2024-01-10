@@ -436,13 +436,21 @@ DiskLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
     return radiance;
 }
 
+inline uniform float DiskLight_getThetaO(const uniform Light * uniform li)
+{
+    const uniform DiskLight * uniform light = (const uniform DiskLight * uniform)li;
+    return sPi * 0.5f * light->mSpread; 
+}
+inline uniform float DiskLight_getThetaE(const uniform Light * uniform li) { return sPi * 0.5f; }
+
 //----------------------------------------------------------------------------
 
 export void
 DiskLight_init(uniform DiskLight * uniform light)
 {
     Light_init((uniform Light * uniform)light, DiskLight_canIlluminate,
-                DiskLight_intersect, DiskLight_sample, DiskLight_eval);
+                DiskLight_intersect, DiskLight_sample, DiskLight_eval,
+                DiskLight_getThetaO, DiskLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

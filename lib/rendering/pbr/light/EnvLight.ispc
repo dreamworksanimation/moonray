@@ -254,13 +254,18 @@ EnvLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform
     return radiance;
 }
 
+// Unbounded lights aren't included in the LightTree sampling BVH, so these values aren't needed
+inline uniform float EnvLight_getThetaO(const uniform Light * uniform li) { return 0.f; }
+inline uniform float EnvLight_getThetaE(const uniform Light * uniform li) { return 0.f; }
+
 //----------------------------------------------------------------------------
 
 export void
 EnvLight_init(uniform EnvLight * uniform light)
 {
     Light_init((uniform Light * uniform)light, EnvLight_canIlluminate,
-                EnvLight_intersect, EnvLight_sample, EnvLight_eval);
+                EnvLight_intersect, EnvLight_sample, EnvLight_eval,
+                EnvLight_getThetaO, EnvLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

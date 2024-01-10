@@ -137,17 +137,24 @@ typedef varying Color (* uniform LightEvalFn)(
         uniform bool fromCamera, const uniform LightFilterList * uniform lightFilterList,
         varying float rayDirFootprint, varying float * uniform pdf);
 
+typedef uniform float (* uniform LightGetThetaOFn)(const uniform Light * uniform);
+typedef uniform float (* uniform LightGetThetaEFn)(const uniform Light * uniform);
+
 inline void
 Light_init(uniform Light * uniform light,
         LightCanIlluminateFn canIlluminateFn,
         LightIntersectFn intersectFn,
         LightSampleFn sampleFn,
-        LightEvalFn evalFn)
+        LightEvalFn evalFn,
+        LightGetThetaOFn getThetaOFn,
+        LightGetThetaEFn getThetaEFn)
 {
     light->mCanIlluminateFn = (intptr_t)canIlluminateFn;
     light->mIntersectFn = (intptr_t)intersectFn;
     light->mSampleFn = (intptr_t)sampleFn;
     light->mEvalFn = (intptr_t)evalFn;
+    light->mGetThetaOFn = (intptr_t)getThetaOFn;
+    light->mGetThetaEFn = (intptr_t)getThetaEFn;
 }
 
 
@@ -221,6 +228,17 @@ inline uniform int
 Light_getVisibilityMask(const uniform Light * uniform light)
 {
     return light->mVisibilityMask;
+}
+
+inline uniform float Light_getThetaO(const uniform Light * uniform light) {
+    MNRY_ASSERT(light->mGetThetaOFn != 0);
+    LightGetThetaOFn getThetaO = (LightGetThetaOFn)light->mGetThetaOFn;
+    return getThetaO(light); 
+}
+inline uniform float Light_getThetaE(const uniform Light * uniform light) {
+    MNRY_ASSERT(light->mGetThetaEFn != 0);
+    LightGetThetaEFn getThetaE = (LightGetThetaEFn)light->mGetThetaEFn;
+    return getThetaE(light); 
 }
 
 varying Vec3f LocalParamLight_slerpPointLocal2Render(const uniform LocalParamLight * uniform light,
