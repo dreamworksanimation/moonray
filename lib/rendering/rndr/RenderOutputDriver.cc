@@ -83,22 +83,6 @@ namespace {
                       name0, " and ", name1, " share the same output image but conflict: ",
                       message, std::forward<Additional>(additional)...);
     }
-
-    bool hasReferenceCycle(const scene_rdl2::rdl2::RenderOutput* ro)
-    {
-        std::set<const scene_rdl2::rdl2::RenderOutput*> references;
-        while (ro) {
-            // This can be made more efficient using equal_range and using the
-            // result as an insertion hint, but this is probably fast enough.
-            if (references.find(ro) != references.end()) {
-                // Found a cycle
-                return true;
-            }
-            references.insert(ro);
-            ro = ro->getReferenceOutput();
-        }
-        return false;
-    }
 }
 
 int
