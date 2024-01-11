@@ -67,8 +67,13 @@ public:
 
     void free()
     {
-        cudaError_t err = cudaFree(mPtr);
-        MNRY_ASSERT(err == cudaSuccess);
+        if (mPtr != nullptr) {
+            // Careful: If mPtr == nullptr then CUDA might not have been initialized so
+            // we don't try to call it, i.e. GPU initialization has failed and we are just
+            // cleaning up.
+            cudaError_t err = cudaFree(mPtr);
+            MNRY_ASSERT(err == cudaSuccess);
+        }
         mCount = 0;
         mPtr = nullptr;
     }

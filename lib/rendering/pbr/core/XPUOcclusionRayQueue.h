@@ -137,7 +137,7 @@ public:
 
         int threadIdx = tls->mThreadIdx;
 
-        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] < mCPUThreadQueueSize);
+        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] <= mCPUThreadQueueSize);
         unsigned totalEntries = mCPUThreadQueueNumQueued[threadIdx] + numEntries;
 
         // Is there enough room in the CPU thread queue for the new entries?
@@ -161,7 +161,7 @@ public:
                numEntries * sizeof(BundledOcclRay));
         mCPUThreadQueueNumQueued[threadIdx] = numEntries;
 
-        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] < mCPUThreadQueueSize);
+        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] <= mCPUThreadQueueSize);
     }
 
     // Explicit flush of the CPU queues per thread.
