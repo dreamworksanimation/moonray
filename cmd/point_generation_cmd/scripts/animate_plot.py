@@ -1,5 +1,5 @@
 #!/rel/lang/python/2.7.3-6/opt-debug-icc140_64/bin/python
-# Copyright 2023 DreamWorks Animation LLC
+# Copyright 2023-2024 DreamWorks Animation LLC
 # SPDX-License-Identifier: Apache-2.0
 
 import os

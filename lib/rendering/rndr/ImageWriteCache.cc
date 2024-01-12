@@ -1,5 +1,6 @@
-// Copyright 2023 DreamWorks Animation LLC
+// Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
+
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
 #include "ImageWriteCache.h"
 #include "ProcKeeper.h"
