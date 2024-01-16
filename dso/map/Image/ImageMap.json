@@ -71,7 +71,7 @@
             "default": "0.0f",
             "flags": "FLAGS_BINDABLE",
             "group": "Blur",
-            "comment": "Amount to scale derivatives which controls mipmap selection.   This can be used to provide a cheap, albiet low quality, blur."
+            "comment": "Amount to offset derivatives which controls mipmap selection.   This can be used to provide a cheap, albiet low quality, blur.  Note: Setting this value to -1.0 effectively disables mip mapping and the highest resolution will be used."
         },
         "attrGamma": {
             "name": "gamma",
