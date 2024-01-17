@@ -57,6 +57,7 @@ target_sources(${target}
         TestDistribution.cc
         TestLights.cc
         TestLightSetSampler.cc
+        TestLightTree.cc
         TestLightUtil.cc
         TestSampler.cc
         TestSceneContext.cc

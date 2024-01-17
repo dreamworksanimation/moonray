@@ -17,3 +17,4 @@ void LightTree_sample(const uniform LightTree * const uniform lightTree) {}
 // --------------------------------- PRINT FUNCTIONS -------------------------------------------
 
 void LightTree_print(const uniform LightTree * const uniform lightTree) {}
+

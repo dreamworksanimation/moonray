@@ -1,0 +1,19 @@
+#pragma once
+
+#include <scene_rdl2/common/platform/Platform.isph>
+
+#include "LightTree.hh"
+#include "Light.isph"
+
+/// -------------------------------------------------- Cone -----------------------------------------------------------
+/// This struct represents the orientation cone that bounds the normals and emission falloff for a cluster of lights. 
+/// We use this Cone structure to 1) decide how to cluster lights, 2) calculate the material and geometric terms for 
+/// the importance heuristic. 
+///
+/// @see (Section 4.1)
+
+struct Cone
+{
+    CONE_MEMBERS;
+};
+

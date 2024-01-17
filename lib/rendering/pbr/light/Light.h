@@ -62,6 +62,9 @@ public:
     /// Is this light active.
     bool isOn() const { return mOn; }
 
+    /// Is this light two-sided
+    bool isTwoSided() const { return mSidedness == LIGHT_SIDEDNESS_2_SIDED; }
+
     /// Is this light visible in camera, and if so is it opaque in the
     /// alpha channel ?
     bool getIsVisibleInCamera() const { return mIsVisibleInCamera; }
@@ -240,6 +243,9 @@ public:
 
     /// Get the maximum shadow distance
     float getMaxShadowDistance() const { return mMaxShadowDistance; }
+
+    /// Get radiance
+    scene_rdl2::math::Color getRadiance() const { return mRadiance; }
 
     // Reject dir/pos combos depending on sidedness.
     // (Note: a 'true' return value means 'reject'.)

@@ -59,6 +59,7 @@ sources   += [
     'TestLights.cc',
     'TestLightSetSampler.cc',
     'TestLightUtil.cc',
+    'TestLightTree.cc',
     'TestSampler.cc',
     'TestSceneContext.cc',
     'main.cc',
