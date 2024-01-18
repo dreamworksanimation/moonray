@@ -5,7 +5,6 @@
 
 #include <moonray/rendering/pbr/core/Util.h>
 #include "Light.h"
-#include "LightAccelerator.h"
 #include "LightUtil.h"
 
 #include <moonray/rendering/pbr/light/LightSet_ispc_stubs.h>

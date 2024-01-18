@@ -17,3 +17,55 @@ struct Cone
     CONE_MEMBERS;
 };
 
+
+
+// ---------------------------------------------------- Node -----------------------------------------------------------
+/// A Node represents a cluster in our LightTree. @see (Section 4.1)
+
+struct Node
+{
+    NODE_MEMBERS;
+};
+
+/// ------------------------------------- Inline Utils --------------------------------------------------
+
+/// Is this node a leaf?
+inline uniform bool Node_isLeaf(const uniform Node& node) 
+{ 
+    return node.mLightCount == 1; 
+}
+/// Get center of node
+inline uniform Vec3f Node_getCenter(const uniform Node& node)
+{
+    return 0.5f * (node.mBBox.lower + node.mBBox.upper);
+}
+/// Get the index of the node's right child
+inline uniform uint Node_getRightNodeIndex(const uniform Node& node)
+{ 
+    return node.mRightNodeIndex; 
+}
+/// Get the number of lights in this node
+inline uniform uint Node_getLightCount(const uniform Node& node)
+{ 
+    return node.mLightCount; 
+}
+/// Gets the light index, if it's a leaf. Otherwise, returns -1.
+inline uniform int Node_getLightIndex(const uniform Node& node)
+{ 
+    return node.mLightIndex;
+}
+/// Gets the bounding box of the node
+inline const uniform BBox3f& Node_getBBox(const uniform Node& node)
+{ 
+    return node.mBBox;
+}
+/// Gets the energy variance
+inline uniform float Node_getEnergyVariance(const uniform Node& node)
+{ 
+    return node.mEnergyVariance;
+}
+/// Gets the energy mean
+inline uniform float Node_getEnergyMean(const uniform Node& node)
+{ 
+    return node.mEnergyMean;
+}

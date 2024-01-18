@@ -7,6 +7,7 @@
 
 #include "Light.isph"
 #include "LightTree.hh"
+#include "LightTreeUtil.isph"
 
 struct LightTree
 {
