@@ -49,9 +49,6 @@ public:
 
 // ------------------------------------ Member Variables ---------------------------------------------------------------
     LIGHT_TREE_MEMBERS;
-    std::vector<Node> mNodes = {};                  // array of nodes 
-    std::vector<uint> mLightIndices = {};           // array of light indices -- allows us to change the "order" of 
-                                                    // lights in the light tree without mutating the lightset itself
 };
 
 } // end namespace pbr
