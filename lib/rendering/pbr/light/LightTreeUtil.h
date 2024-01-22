@@ -6,44 +6,44 @@
 namespace moonray {
 namespace pbr {
 
-/// -------------------------------------------------- Cone -----------------------------------------------------------
+/// ------------------------------------------------ LightTreeCone -----------------------------------------------------
 /// This struct represents the orientation cone that bounds the normals and emission falloff for a cluster of lights. 
-/// We use this Cone structure to 1) decide how to cluster lights, 2) calculate the material and geometric terms for 
-/// the importance heuristic.
+/// We use this LightTreeCone structure to 1) decide how to cluster lights, 2) calculate the material and geometric terms 
+/// for the importance heuristic.
 ///
 /// @see (Section 4.1)
 
-struct Cone
+struct LightTreeCone
 {
     /// Default Constructor
-    Cone() 
+    LightTreeCone() 
         : mAxis(scene_rdl2::math::Vec3f(0.f)),  // central orientation axis
           mCosThetaO(0.f),                      // cosine of the angle bounding the spread of normals around the axis
           mCosThetaE(0.f),                      // cosine of the angle representing the bound on the emission falloff
           mTwoSided(false) {}                   // does this cone contain a two-sided light?
 
     /// Full Constructor
-    Cone(const scene_rdl2::math::Vec3f& axis, float cos_theta_o, float cos_theta_e, bool isTwoSided) 
+    LightTreeCone(const scene_rdl2::math::Vec3f& axis, float cos_theta_o, float cos_theta_e, bool isTwoSided) 
         : mAxis(axis), 
           mCosThetaO(cos_theta_o), 
           mCosThetaE(cos_theta_e),
           mTwoSided(isTwoSided) {}
 
     /// Copy Constructor
-    Cone(const Cone& coneToCopy)
+    LightTreeCone(const LightTreeCone& coneToCopy)
         : mAxis(coneToCopy.mAxis),
           mCosThetaO(coneToCopy.mCosThetaO),
           mCosThetaE(coneToCopy.mCosThetaE),
           mTwoSided(coneToCopy.mTwoSided) {}
 
     /// Constructor using light properties
-    Cone(const Light* const light)
+    LightTreeCone(const Light* const light)
         : mAxis(light->getDirection(0.f)),
           mCosThetaO(scene_rdl2::math::cos(light->getThetaO())),
           mCosThetaE(scene_rdl2::math::cos(light->getThetaE())),
           mTwoSided(light->isTwoSided()) {}
 
-    /// Is this Cone empty?
+    /// Is this LightTreeCone empty?
     bool isEmpty() const { return isZero(mAxis); }
 
     /// Get orientation angle in radians
@@ -54,27 +54,27 @@ struct Cone
 
     void print() const
     {
-        std::cout << "Cone:\n\tAxis: " << mAxis << "\n\tCosThetaO: " << mCosThetaO << "\n\tCosThetaE: " 
+        std::cout << "LightTreeCone:\n\tAxis: " << mAxis << "\n\tCosThetaO: " << mCosThetaO << "\n\tCosThetaE: " 
                   << mCosThetaE << "\n\tTwoSided? " << mTwoSided << std::endl;
     }
 
-    CONE_MEMBERS;
+    LIGHT_TREE_CONE_MEMBERS;
 };
 
 /// Combine orientation cones a and b.
 /// @see [Algorithm 1] from "Importance Sampling of Many Lights..." (Conty, Kulla)
-Cone combineCones(const Cone& a, const Cone& b);
+LightTreeCone combineCones(const LightTreeCone& a, const LightTreeCone& b);
 
 
 
-// ---------------------------------------------------- Node -----------------------------------------------------------
-/// A Node represents a cluster in our LightTree. @see (Section 4.1) 
+// ------------------------------------------- LightTreeNode -----------------------------------------------------------
+/// A LightTreeNode represents a cluster in our LightTree. @see (Section 4.1) 
 
-class Node
+class LightTreeNode
 {
 public:
 
-    Node()
+    LightTreeNode()
         : mStartIndex(0),                   // index in mLightIndices where node begins
           mRightNodeIndex(0),               // index of right child node in mNodes
           mLightCount(0),                   // total # lights belonging to node
@@ -100,7 +100,7 @@ public:
     /// Gets the bounding box of the node
     inline const scene_rdl2::math::BBox3f& getBBox() const { return mBBox; }
     /// Gets the emission-bounding cone
-    inline const Cone& getCone() const { return mCone; }
+    inline const LightTreeCone& getCone() const { return mCone; }
     /// Gets the energy variance
     inline float getEnergyVariance() const { return mEnergyVariance; }
     /// Gets the energy mean
@@ -122,7 +122,7 @@ public:
     /// Initialize the node, with most of the calculations passed in from the SplitCandidate
     void init(uint startIndex, 
               float energy, 
-              const Cone& cone, 
+              const LightTreeCone& cone, 
               const scene_rdl2::math::BBox3f& bbox,
               const Light* const* lights, 
               const std::vector<uint>& lightIndices, 
@@ -133,7 +133,7 @@ private:
     void calcEnergyVariance(uint lightCount, uint startIndex, const Light* const* lights, 
                             const std::vector<uint>& lightIndices);
 
-    NODE_MEMBERS;
+    LIGHT_TREE_NODE_MEMBERS;
 };
 
 } // end namespace pbr

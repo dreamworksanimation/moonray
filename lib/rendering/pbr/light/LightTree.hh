@@ -7,44 +7,44 @@
 
 // ---------------------------------------------------------------------------
 
-#define CONE_MEMBERS                                                \
+#define LIGHT_TREE_CONE_MEMBERS                                     \
     HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, Vec3f), mAxis);      \
     HUD_MEMBER(float, mCosThetaO);                                  \
     HUD_MEMBER(float, mCosThetaE);                                  \
     HUD_MEMBER(bool, mTwoSided)
 
-#define CONE_VALIDATION                                             \
-    HUD_BEGIN_VALIDATION(Cone);                                     \
-    HUD_VALIDATE(Cone, mAxis);                                      \
-    HUD_VALIDATE(Cone, mCosThetaO);                                 \
-    HUD_VALIDATE(Cone, mCosThetaE);                                 \
-    HUD_VALIDATE(Cone, mTwoSided);                                  \
+#define LIGHT_TREE_CONE_VALIDATION                                           \
+    HUD_BEGIN_VALIDATION(LightTreeCone);                                     \
+    HUD_VALIDATE(LightTreeCone, mAxis);                                      \
+    HUD_VALIDATE(LightTreeCone, mCosThetaO);                                 \
+    HUD_VALIDATE(LightTreeCone, mCosThetaE);                                 \
+    HUD_VALIDATE(LightTreeCone, mTwoSided);                                  \
     HUD_END_VALIDATION
 
 // ---------------------------------------------------------------------------
 
-#define NODE_MEMBERS                                                \
+#define LIGHT_TREE_NODE_MEMBERS                                     \
     HUD_MEMBER(uint32_t, mStartIndex);                              \
     HUD_MEMBER(uint32_t, mRightNodeIndex);                          \
     HUD_MEMBER(uint32_t, mLightCount);                              \
     HUD_MEMBER(int32_t, mLightIndex);                               \
     HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, BBox3f), mBBox);     \
-    HUD_MEMBER(Cone, mCone);                                        \
+    HUD_MEMBER(LightTreeCone, mCone);                               \
     HUD_MEMBER(float, mEnergy);                                     \
     HUD_MEMBER(float, mEnergyVariance);                             \
     HUD_MEMBER(float, mEnergyMean)
 
-#define NODE_VALIDATION                                             \
-    HUD_BEGIN_VALIDATION(Node);                                     \
-    HUD_VALIDATE(Node, mStartIndex);                                \
-    HUD_VALIDATE(Node, mRightNodeIndex);                            \
-    HUD_VALIDATE(Node, mLightCount);                                \
-    HUD_VALIDATE(Node, mLightIndex);                                \
-    HUD_VALIDATE(Node, mBBox);                                      \
-    HUD_VALIDATE(Node, mCone);                                      \
-    HUD_VALIDATE(Node, mEnergy);                                    \
-    HUD_VALIDATE(Node, mEnergyVariance);                            \
-    HUD_VALIDATE(Node, mEnergyMean);                                \
+#define LIGHT_TREE_NODE_VALIDATION                                  \
+    HUD_BEGIN_VALIDATION(LightTreeNode);                            \
+    HUD_VALIDATE(LightTreeNode, mStartIndex);                       \
+    HUD_VALIDATE(LightTreeNode, mRightNodeIndex);                   \
+    HUD_VALIDATE(LightTreeNode, mLightCount);                       \
+    HUD_VALIDATE(LightTreeNode, mLightIndex);                       \
+    HUD_VALIDATE(LightTreeNode, mBBox);                             \
+    HUD_VALIDATE(LightTreeNode, mCone);                             \
+    HUD_VALIDATE(LightTreeNode, mEnergy);                           \
+    HUD_VALIDATE(LightTreeNode, mEnergyVariance);                   \
+    HUD_VALIDATE(LightTreeNode, mEnergyMean);                       \
     HUD_END_VALIDATION
 
 //----------------------------------------------------------------------------
@@ -54,7 +54,7 @@
     HUD_MEMBER(uint32_t, mBoundedLightCount);                                   \
     HUD_PTR(const HUD_UNIFORM Light * const HUD_UNIFORM *, mUnboundedLights);   \
     HUD_MEMBER(uint32_t, mUnboundedLightCount);                                 \
-    HUD_PTR(Node*, mNodesPtr);                                                  \
+    HUD_PTR(LightTreeNode*, mNodesPtr);                                         \
     HUD_PTR(uint*, mLightIndicesPtr);                                           \
     HUD_MEMBER(float, mSceneDiameter);                                          \
     HUD_MEMBER(float, mSamplingThreshold)
