@@ -230,6 +230,8 @@ public:
 
         OIIO::TextureSystem *texSys = MNRY_VERIFY(tls->mTextureSystem);
 
+        EXCL_ACCUMULATOR_PROFILE(tls, EXCL_ACCUM_OIIO);
+
         // dwa_texture *must* be given 4 floats for the result.
         ALIGN(16) float tmp[4];
 
