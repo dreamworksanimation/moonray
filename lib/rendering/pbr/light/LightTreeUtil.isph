@@ -5,12 +5,20 @@
 #include "LightTree.hh"
 #include "Light.isph"
 
+// =====================================================================================================================
+// References:
+// =====================================================================================================================
+// [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
+//     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
+// =====================================================================================================================
+
+
 /// ----------------------------------------------- LightTreeCone ------------------------------------------------------
 /// This struct represents the orientation cone that bounds the normals and emission falloff for a cluster of lights. 
 /// We use this LightTreeCone structure to 1) decide how to cluster lights, 2) calculate the material and geometric terms
 /// for the importance heuristic. 
 ///
-/// @see (Section 4.1)
+/// @see [1] section 4.1
 
 struct LightTreeCone
 {
@@ -20,7 +28,7 @@ struct LightTreeCone
 
 
 // ------------------------------------------- LightTreeNode -----------------------------------------------------------
-/// A LightTreeNode represents a cluster in our LightTree. @see (Section 4.1)
+/// A LightTreeNode represents a cluster in our LightTree. @see [1] section 4.1
 
 struct LightTreeNode
 {

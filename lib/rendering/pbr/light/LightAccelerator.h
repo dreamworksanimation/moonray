@@ -40,6 +40,7 @@ public:
     finline const Light* getLight(int l) const { return mLights[l]; }
     finline int getLightCount() const { return mLightCount; }
     finline bool useAcceleration() const { return mBoundedLightCount >= SCALAR_THRESHOLD_COUNT; }
+    void buildSamplingTree();
 
 private:
     LIGHT_ACCELERATOR_MEMBERS;

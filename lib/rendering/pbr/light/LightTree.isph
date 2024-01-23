@@ -9,13 +9,21 @@
 #include "LightTree.hh"
 #include "LightTreeUtil.isph"
 
+// =====================================================================================================================
+// References:
+// =====================================================================================================================
+// [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
+//     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
+// =====================================================================================================================
+
+
 struct LightTree
 {
     LIGHT_TREE_MEMBERS;
 };
 
 /// Chooses light(s) using importance sampling and adaptive tree splitting 
-/// (Section 5.4) from "Importance Sampling of Many Lights..." (Conty, Kulla)
+/// @see [1] section 5.4
 void LightTree_sample(const uniform LightTree * const uniform lightTree);
 
 /// Print the tree

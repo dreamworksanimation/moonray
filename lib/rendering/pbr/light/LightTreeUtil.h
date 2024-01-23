@@ -6,12 +6,23 @@
 namespace moonray {
 namespace pbr {
 
+// =====================================================================================================================
+// References:
+// =====================================================================================================================
+// [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
+//     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
+// =====================================================================================================================
+
+
+class LightTreeNode;
+
+
 /// ------------------------------------------------ LightTreeCone -----------------------------------------------------
 /// This struct represents the orientation cone that bounds the normals and emission falloff for a cluster of lights. 
 /// We use this LightTreeCone structure to 1) decide how to cluster lights, 2) calculate the material and geometric terms 
 /// for the importance heuristic.
 ///
-/// @see (Section 4.1)
+/// @see [1] section 4.1
 
 struct LightTreeCone
 {
@@ -62,13 +73,74 @@ struct LightTreeCone
 };
 
 /// Combine orientation cones a and b.
-/// @see [Algorithm 1] from "Importance Sampling of Many Lights..." (Conty, Kulla)
+/// @see [1] algorithm 1
 LightTreeCone combineCones(const LightTreeCone& a, const LightTreeCone& b);
 
 
 
+/// ---------------------------------------- LightTreeBucket -----------------------------------------------------------
+
+struct LightTreeBucket
+{
+    /// Adds the properties of the light to the bucket
+    void addLight(const Light* const light);
+
+    float mEnergy                   = 0.f;
+    scene_rdl2::math::BBox3f mBBox  = scene_rdl2::math::BBox3f(scene_rdl2::util::empty);
+    LightTreeCone mCone;
+};
+
+
+
+/// ------------------------------------------------ SplitCandidate ----------------------------------------------------
+/// A SplitCandidate is a potential split of a node into two children. We will typically have a SplitCandidate for all 
+/// three axes, and we choose the SplitCandidate with the lowest cost.
+
+struct SplitCandidate
+{
+    /// Finds the area of the bbox
+    inline float bboxArea(const scene_rdl2::math::BBox3f& bbox) const 
+    {
+        scene_rdl2::math::Vec3f dim = bbox.size();
+        return 2*dim[0]*dim[1] + 2*dim[1]*dim[2] + 2*dim[0]*dim[2];
+    }
+
+    /// Is the left side of this split empty?
+    bool leftIsEmpty() const { return mLeftBBox.size()[mAxis.first] == 0.f  || mLeftEnergy <= 0.f; }
+    /// Is the right side of this split empty?
+    bool rightIsEmpty() const { return mRightBBox.size()[mAxis.first] == 0.f  || mRightEnergy <= 0.f; }
+
+    // Populate left-side attributes
+    void setLeftSide(const LightTreeBucket& leftBucket);
+    void setLeftSide(const SplitCandidate& leftSplit, const LightTreeBucket& leftBucket);
+
+    // Populate right-side attributes
+    void setRightSide(const LightTreeBucket& rightBucket);
+    void setRightSide(const SplitCandidate& rightSplit, const LightTreeBucket& rightBucket);
+
+    /** @see (1) from "Importance Sampling of Many Lights...". */
+    float calcOrientationTerm(const LightTreeCone& cone) const;
+
+    // Surface Area Orientation Heuristic (SAOH) (Section 4.4)
+    float cost(const scene_rdl2::math::BBox3f& parentBBox, const LightTreeCone& parentCone);
+
+    // Having chosen this SplitCandidate, perform the node creation and light partitioning
+    void performSplit(LightTreeNode& leftNode, LightTreeNode& rightNode, const Light* const* lights, 
+                      std::vector<uint>& lightIndices, const LightTreeNode& parent);
+
+    std::pair<int, float> mAxis         = {0, 0.f};   // split axis, 1st: 0, 1, or 2 (x, y, or z), 2nd: value
+    float mLeftEnergy                   = 0.f;
+    float mRightEnergy                  = 0.f;
+    scene_rdl2::math::BBox3f mLeftBBox  = scene_rdl2::math::BBox3f(scene_rdl2::util::empty);
+    scene_rdl2::math::BBox3f mRightBBox = scene_rdl2::math::BBox3f(scene_rdl2::util::empty);
+    LightTreeCone mLeftCone;
+    LightTreeCone mRightCone;
+};
+
+
+
 // ------------------------------------------- LightTreeNode -----------------------------------------------------------
-/// A LightTreeNode represents a cluster in our LightTree. @see (Section 4.1) 
+/// A LightTreeNode represents a cluster in our LightTree. @see [1] section 4.1 
 
 class LightTreeNode
 {

@@ -322,11 +322,17 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     LightPtrList* lightPtrList = mLightSets.data();
     for (unsigned int i=0; i<mLightSets.size(); i++, acc++, lightPtrList++) {
         acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice, sceneDiameter, lightSamplingQuality);
+        if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
+            acc->buildSamplingTree();
+        }
     }
 
     // Finally the visible light set
     size_t visibleLightCount = mVisibleLightSet.getLightCount();
     acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice, sceneDiameter, lightSamplingQuality);
+    if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
+        acc->buildSamplingTree();
+    }
     int * visibleLightAcceleratorIndexMap = new int[visibleLightCount];
     for (size_t i = 0; i < visibleLightCount; ++i) {
         visibleLightAcceleratorIndexMap[i] = i;

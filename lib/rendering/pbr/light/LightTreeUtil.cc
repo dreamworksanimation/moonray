@@ -5,6 +5,14 @@ using namespace scene_rdl2::math;
 namespace moonray {
 namespace pbr {
 
+// =====================================================================================================================
+// References:
+// =====================================================================================================================
+// [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
+//     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
+// =====================================================================================================================
+
+
 /// --------------------------------------------- LightTreeCone --------------------------------------------------------
 
 LightTreeCone combineCones(const LightTreeCone& a, const LightTreeCone& b)
@@ -56,6 +64,101 @@ LightTreeCone combineCones(const LightTreeCone& a, const LightTreeCone& b)
         return LightTreeCone(normalize(axis), scene_rdl2::math::cos(theta_o), scene_rdl2::math::cos(theta_e), twoSided);
     }
 }
+
+
+/// ----------------------------------------- LightTreeBucket ----------------------------------------------------------
+
+void LightTreeBucket::addLight(const Light* const light)
+{
+    mEnergy += scene_rdl2::math::luminance(light->getRadiance());
+    mBBox.extend(light->getBounds());
+    LightTreeCone cone(light->getDirection(0.f), scene_rdl2::math::cos(light->getThetaO()), 
+              scene_rdl2::math::cos(light->getThetaE()), light->isTwoSided());
+    mCone = combineCones(cone, mCone);
+}
+
+
+/// ----------------------------------------- SplitCandidate -----------------------------------------------------------
+
+void SplitCandidate::setLeftSide(const LightTreeBucket& leftBucket)
+{
+    mLeftEnergy = leftBucket.mEnergy;
+    mLeftBBox = leftBucket.mBBox;
+    mLeftCone = leftBucket.mCone;
+}
+void SplitCandidate::setLeftSide(const SplitCandidate& leftSplit, const LightTreeBucket& leftBucket)
+{
+    mLeftEnergy = leftSplit.mLeftEnergy + leftBucket.mEnergy;
+    mLeftBBox = leftSplit.mLeftBBox;
+    mLeftBBox.extend(leftBucket.mBBox);
+    mLeftCone = combineCones(leftSplit.mLeftCone, leftBucket.mCone);
+}
+void SplitCandidate::setRightSide(const LightTreeBucket& rightBucket)
+{
+    mRightEnergy = rightBucket.mEnergy;
+    mRightBBox = rightBucket.mBBox;
+    mRightCone = rightBucket.mCone;
+}
+void SplitCandidate::setRightSide(const SplitCandidate& rightSplit, const LightTreeBucket& rightBucket)
+{
+    mRightEnergy = rightSplit.mRightEnergy + rightBucket.mEnergy;
+    mRightBBox = rightSplit.mRightBBox;
+    mRightBBox.extend(rightBucket.mBBox);
+    mRightCone = combineCones(rightSplit.mRightCone, rightBucket.mCone);
+}
+
+float SplitCandidate::calcOrientationTerm(const LightTreeCone& cone) const
+{
+    const float theta_o = cone.getThetaO();
+    const float theta_w = scene_rdl2::math::min(theta_o + cone.getThetaE(), sPi);
+    const float sinThetaO = scene_rdl2::math::sqrt(1 - cone.mCosThetaO*cone.mCosThetaO);
+
+    const float orientationTermLeft = 2.f * sPi * (1.f - cone.mCosThetaO);
+    const float orientationTermRight = 0.5f * sPi * (
+                                       (2.f * theta_w * sinThetaO) - 
+                                       scene_rdl2::math::cos(theta_o - 2.f * theta_w) -
+                                       (2.f * theta_o * sinThetaO) + cone.mCosThetaO
+                                    );
+    return orientationTermLeft + orientationTermRight;
+}
+
+float SplitCandidate::cost(const BBox3f& parentBBox, const LightTreeCone& parentCone)
+{
+    // regularization factor Kr = length_max / length_axis
+    const float length_max = parentBBox.size()[maxDim(parentBBox.size())];
+    const float length_axis = parentBBox.size()[mAxis.first];
+    const float kr = length_max / length_axis;
+
+    const float numeratorL = mLeftEnergy  * bboxArea(mLeftBBox)  * calcOrientationTerm(mLeftCone);
+    const float numeratorR = mRightEnergy * bboxArea(mRightBBox) * calcOrientationTerm(mRightCone);
+    const float denominator = bboxArea(parentBBox) * calcOrientationTerm(parentCone);
+
+    return kr * ( (numeratorL + numeratorR) / denominator );
+}
+
+void SplitCandidate::performSplit(LightTreeNode& leftNode, LightTreeNode& rightNode, const Light* const* lights, 
+                                  std::vector<uint>& lightIndices, const LightTreeNode& parent)
+{
+    // sort lights on either side of axis
+    const auto startIt = lightIndices.begin() + parent.getStartIndex();
+    const auto endIt   = lightIndices.begin() + parent.getStartIndex() + parent.getLightCount();
+    const float splitPlane = mAxis.second;
+    const auto splitFunc = [&](uint lightIndex) {
+        return lights[lightIndex]->getPosition(0)[mAxis.first] <= splitPlane;
+    };
+    const auto rightStartIt = std::partition(startIt, endIt, splitFunc);
+
+    // create left and right child nodes
+    const uint lightCountLeft  = rightStartIt - startIt;
+    const uint lightCountRight = parent.getLightCount() - lightCountLeft;
+    const uint startIndexLeft  = parent.getStartIndex();
+    const uint startIndexRight = parent.getStartIndex() + lightCountLeft;
+
+    // initialize nodes
+    leftNode.init(startIndexLeft, mLeftEnergy, mLeftCone, mLeftBBox, lights, lightIndices, lightCountLeft);
+    rightNode.init(startIndexRight, mRightEnergy, mRightCone, mRightBBox, lights, lightIndices, lightCountRight);
+}
+
 
 
 /// ------------------------------------------- LightTreeNode ----------------------------------------------------------

@@ -302,6 +302,7 @@ target_sources(${component}
         light/LightAccelerator.cc
         light/LightSet.cc
         light/LightTree.cc
+        light/LightTreeUtil.cc
         light/LightUtil.cc
         light/MeshLight.cc
         light/RectLight.cc

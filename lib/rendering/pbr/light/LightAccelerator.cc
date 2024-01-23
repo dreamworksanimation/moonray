@@ -425,6 +425,10 @@ extern "C" void CPP_lightIntersect(RTCScene scene, RTCRayHitv& rayHitv,
     }
 }
 
+void LightAccelerator::buildSamplingTree() 
+{
+    mSamplingTree.build(mBoundedLights, mBoundedLightCount, mUnboundedLights, mUnboundedLightCount);
+}
 
 //----------------------------------------------------------------------------
 
