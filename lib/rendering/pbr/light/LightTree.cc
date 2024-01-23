@@ -38,7 +38,8 @@ void LightTree::build(const Light* const* boundedLights, uint boundedLightCount,
         }
 
         // create root node
-        LightTreeNode& rootNode = mNodes.emplace_back();
+        mNodes.emplace_back();
+        LightTreeNode& rootNode = mNodes.back();
         rootNode.init(mBoundedLightCount, /* root index*/ 0, mBoundedLights, mLightIndices);
 
         // build light tree recursively

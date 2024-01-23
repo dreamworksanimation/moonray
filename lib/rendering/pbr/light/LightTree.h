@@ -62,7 +62,8 @@ private:
     // Returns a new list of buckets and splits with empty buckets/splits removed,
     // as well as the number of splits that remain
     inline int purgeEmptyBuckets(const LightTreeBucket* const oldBuckets, const SplitCandidate* const oldSplits,
-                                 const LightTreeBucket* newBuckets, const SplitCandidate* newSplits, int oldBucketCount)
+                                 LightTreeBucket* newBuckets, SplitCandidate* newSplits, int oldBucketCount) const
+
     {
         int newBucketCount = 0;
         int oldSplitCount = oldBucketCount - 1;
@@ -84,7 +85,7 @@ private:
     //          s0       s1       s2       s(n-1)
 
     // Populates the left side of each split
-    inline void populateSplitsLeftSide(const SplitCandidate* splits, const LightTreeBucket* buckets, int splitCount)
+    inline void populateSplitsLeftSide(SplitCandidate* splits, const LightTreeBucket* buckets, int splitCount) const
     {
         for (int i = 0; i < splitCount; ++i) {
             if (i == 0) {
@@ -98,7 +99,7 @@ private:
         }
     }
     // Populates the right side of each split
-    inline void populateSplitsRightSide(const SplitCandidate* splits, const LightTreeBucket* buckets, int splitCount)
+    inline void populateSplitsRightSide(SplitCandidate* splits, const LightTreeBucket* buckets, int splitCount) const
     {
         int lastSplitIndex = splitCount - 1;
         for (int i = lastSplitIndex; i >= 0; --i) {
@@ -115,7 +116,7 @@ private:
 
     // Finds the lowest-cost split of the node along the given axis
     inline float getCheapestSplit(int splitCount, const SplitCandidate* const splits, const LightTreeNode& node, 
-                                  SplitCandidate& minSplit)
+                                  SplitCandidate& minSplit) const
     {
         float minCost = std::numeric_limits<float>::max();
         for (int i = 0; i < splitCount; ++i) {

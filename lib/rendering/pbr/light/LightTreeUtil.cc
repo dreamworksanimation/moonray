@@ -122,7 +122,7 @@ float SplitCandidate::calcOrientationTerm(const LightTreeCone& cone) const
     return orientationTermLeft + orientationTermRight;
 }
 
-float SplitCandidate::cost(const BBox3f& parentBBox, const LightTreeCone& parentCone)
+float SplitCandidate::cost(const BBox3f& parentBBox, const LightTreeCone& parentCone) const
 {
     // regularization factor Kr = length_max / length_axis
     const float length_max = parentBBox.size()[maxDim(parentBBox.size())];

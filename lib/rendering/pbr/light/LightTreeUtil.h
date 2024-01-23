@@ -122,7 +122,7 @@ struct SplitCandidate
     float calcOrientationTerm(const LightTreeCone& cone) const;
 
     // Surface Area Orientation Heuristic (SAOH) (Section 4.4)
-    float cost(const scene_rdl2::math::BBox3f& parentBBox, const LightTreeCone& parentCone);
+    float cost(const scene_rdl2::math::BBox3f& parentBBox, const LightTreeCone& parentCone) const;
 
     // Having chosen this SplitCandidate, perform the node creation and light partitioning
     void performSplit(LightTreeNode& leftNode, LightTreeNode& rightNode, const Light* const* lights, 
