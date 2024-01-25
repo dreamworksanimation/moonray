@@ -28,8 +28,7 @@
 #include <moonray/rendering/pbr/sampler/PixelScramble.h>
 
 #include <scene_rdl2/common/math/Color.h>
-
-#include <tbb/task_group.h>
+#include <scene_rdl2/render/util/ThreadPoolExecutor.h>
 
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_COUNT // See RuntimeVerify.h
 #define RUNTIME_VERIFY0
@@ -38,6 +37,13 @@
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_SPAN // See RuntimeVerify.h
 #define RUNTIME_VERIFY1
 #endif // end RUNTIME_VERIFY_PIX_SAMPLE_SPAN
+
+// This directive is used to fall back to the original TBB version of MCRT thread pool for emergency purposes.
+//#define TBB_MCRT_THREADPOOL
+
+#ifdef TBB_MCRT_THREADPOOL
+#include <tbb/task_group.h>
+#endif // end TBB_MCRT_THREADPOOL
 
 // Debug message display for adaptive sampling stage rendering
 //#define PRINT_DEBUG_MESSAGE_ADAPTIVE_STAGE
@@ -99,7 +105,30 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     }
     bool stopAtPassBoundary = false;
 
+#   ifndef FORCE_SINGLE_THREADED_RENDERING
+#   ifdef TBB_MCRT_THREADPOOL
     tbb::task_group taskGroup;
+    std::string msg = "TBB MCRT thread pool";
+    scene_rdl2::logging::Logger::info(msg);
+    std::cerr << msg << '\n';
+#   else // else TBB_MCRT_THREADPOOL
+    auto calcCpuIdSequential = [&](size_t threadId) -> size_t { return threadId; };
+    scene_rdl2::ThreadPoolExecutor::CalcCpuIdFunc calcCpuIdFunc = nullptr;
+
+    std::ostringstream ostr;
+    ostr << "MOONRAY MCRT thread pool";
+    if (fs.mNumRenderThreads == std::thread::hardware_concurrency()) {
+        // We want to use all cores. We activate CPU-affinity control and
+        // all MCRT threads are individually attached to the core.
+        calcCpuIdFunc = calcCpuIdSequential;
+        ostr << " : enable MCRT-CPU-affinity";
+    }
+    std::string msg = ostr.str();
+    scene_rdl2::logging::Logger::info(msg);
+    std::cerr << msg << '\n';
+    scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, calcCpuIdFunc);
+#   endif // end else TBB_MCRT_THREADPOOL
+#   endif // end ifndef FORCE_SINGLE_THREADED_RENDERING
 
     // This counter verifies that we don't leave this function until all threads
     // have started working.
