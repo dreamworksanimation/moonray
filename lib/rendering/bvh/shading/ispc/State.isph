@@ -7,7 +7,6 @@
 
 #include <moonray/rendering/bvh/shading/ispc/Intersection.isph>
 #include <scene_rdl2/common/platform/Platform.isph>
-#include <scene_rdl2/common/math/ispc/autodiff.isph>
 
 struct Arena;
 struct TextureSystem;

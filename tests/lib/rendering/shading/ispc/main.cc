@@ -7,7 +7,6 @@
 #include "TestDisplace.h"
 #include "TestEvalAttribute.h"
 #include "TestPrimitiveAttribute.h"
-#include "TestShading.h"
 
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
 #include <moonray/rendering/bvh/shading/ShadingTLState.h>
@@ -41,7 +40,6 @@ main(int argc, char* argv[])
     CPPUNIT_TEST_SUITE_REGISTRATION(TestDisplace);
     CPPUNIT_TEST_SUITE_REGISTRATION(TestEvalAttribute);
     CPPUNIT_TEST_SUITE_REGISTRATION(TestPrimitiveAttribute);
-    CPPUNIT_TEST_SUITE_REGISTRATION(TestShading);
 
     MOONRAY_START_NON_THREADSAFE_STATIC_WRITE
     MOONRAY_FINISH_NON_THREADSAFE_STATIC_WRITE

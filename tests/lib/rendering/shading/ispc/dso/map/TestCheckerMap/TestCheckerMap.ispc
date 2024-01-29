@@ -26,9 +26,8 @@ checker(const varying float s, const varying float t)
 }
 
 // This function is not differentiable at the important points where
-// isEven(s) and isEven(t) change value.  Unfortunately, this makes the autodiff
-// function and operator overloads only minimally useful to us.
-// Instead, we'll evaluate colorA and colorB with derivatives and then
+// isEven(s) and isEven(t) change value.
+// We'll evaluate colorA and colorB with derivatives and then
 // use finite differences to approximate our derivatives.
 #define NUM_SAMPLES 5
 

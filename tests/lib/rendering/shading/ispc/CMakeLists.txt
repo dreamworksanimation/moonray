@@ -13,7 +13,6 @@ add_library(${objLib} OBJECT)
 
 target_sources(${objLib}
     PRIVATE
-        testrender/TestRender.ispc
         TestPrimitiveAttribute.ispc
 )
 
@@ -40,12 +39,10 @@ add_executable(${target})
 target_sources(${target}
     PRIVATE
         main.cc
-        testrender/TestRender.cc
         TestBase.cc
         TestDisplace.cc
         TestEvalAttribute.cc
         TestPrimitiveAttribute.cc
-        TestShading.cc
         # pull in our ispc object files
         $<TARGET_OBJECTS:${objLib}>
 )
@@ -122,21 +119,6 @@ target_compile_definitions(${target}
         RDL2DSO_PATH="${rdl2DsoPath}"
 )
 # ---------------------------------------------------
-
-# Copy the .ppm canonicals to the build dir after building
-set(canonicals
-        ref/TestRender_canonical0.ppm
-        ref/TestRender_canonical1.ppm
-        ref/TestRender_canonical2.ppm
-        ref/TestRender_canonical3.ppm)
-
-foreach(f ${canonicals})
-    add_custom_command(
-        TARGET ${target} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_SOURCE_DIR}/${f}
-                ${CMAKE_CURRENT_BINARY_DIR}/${f})
-endforeach()
 
 add_test(NAME ${target} COMMAND ${target})
 set_tests_properties(${target} PROPERTIES LABELS "unit")

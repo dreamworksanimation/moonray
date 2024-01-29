@@ -14,7 +14,6 @@
 #include <moonray/rendering/mcrt_common/Util.isph>
 #include <scene_rdl2/common/platform/Platform.isph>
 #include <scene_rdl2/common/math/ispc/asA.isph>
-#include <scene_rdl2/common/math/ispc/autodiff.isph>
 #include <scene_rdl2/common/math/ispc/Col3.isph>
 #include <scene_rdl2/common/math/ispc/Color.isph>
 #include <scene_rdl2/common/math/ispc/Mat4.isph>

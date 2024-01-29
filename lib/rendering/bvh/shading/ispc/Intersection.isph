@@ -9,8 +9,8 @@
 
 #include <moonray/rendering/mcrt_common/Util.isph>
 
-#include <scene_rdl2/common/math/ispc/autodiff.isph>
-#include <scene_rdl2/common/math/ispc/Xform.isph>
+#include <scene_rdl2/common/math/ispc/Vec2.isph>    
+#include <scene_rdl2/common/math/ispc/Vec3.isph>    
 
 
 //---------------------------------------------------------------------------
