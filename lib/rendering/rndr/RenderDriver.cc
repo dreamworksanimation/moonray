@@ -1975,7 +1975,7 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
     }
     if (fs.mSamplingMode == SamplingMode::ADAPTIVE) {
         // for adaptive resume, we need "Beauty Odd"
-        if (mFilm->getRenderBufferOdd()) {
+        if (!mFilm->getRenderBufferOdd()) {
             Logger::error("ADAPTIVE sampling resume file required \"Beauty Odd\" AOV");
             return false;
         }
