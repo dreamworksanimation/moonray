@@ -2942,7 +2942,9 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
     uint32_t isecId1, isecId2, isecId3;
     intersection.getIds(isecId1, isecId2, isecId3);
 
-    overrideInstanceAttrs(ray, intersection);
+    if (ray.isInstanceHit()) {
+        overrideInstanceAttrs(ray, intersection);
+    }
 
     // The St value is read from the explicit "surface_st" primitive
     // attribute on the control mesh if it exists.  The mSurfaceSt

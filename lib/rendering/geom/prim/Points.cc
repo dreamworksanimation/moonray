@@ -126,7 +126,9 @@ Points::postIntersect(mcrt_common::ThreadLocalState& tls,
                                               *primitiveAttributes,
                                               intersection);
 
-    overrideInstanceAttrs(ray, intersection);
+    if (ray.isInstanceHit()) {
+        overrideInstanceAttrs(ray, intersection);
+    }
 
     // The St value is read from the explicit "uv" primitive
     // attribute if it exists.

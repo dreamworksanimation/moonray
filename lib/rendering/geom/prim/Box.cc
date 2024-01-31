@@ -79,7 +79,10 @@ Box::postIntersect(mcrt_common::ThreadLocalState& tls,
         material->get<shading::RootShader>().getAttributeTable();
     intersection.setTable(&tls.mArena, table);
     intersection.setIds(ray.primID, 0, 0);
-    overrideInstanceAttrs(ray, intersection);
+
+    if (ray.isInstanceHit()) {
+        overrideInstanceAttrs(ray, intersection);
+    }
 
     const Vec3f& nLocal = ray.Ng;
     Vec3f Ng = normalize(scene_rdl2::math::transformNormal(mP2L, nLocal));

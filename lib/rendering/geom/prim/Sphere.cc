@@ -77,7 +77,10 @@ Sphere::postIntersect(mcrt_common::ThreadLocalState& tls,
         material->get<shading::RootShader>().getAttributeTable();
     intersection.setTable(&tls.mArena, table);
     intersection.setIds(ray.primID, 0, 0);
-    overrideInstanceAttrs(ray, intersection);
+
+    if (ray.isInstanceHit()) {
+        overrideInstanceAttrs(ray, intersection);
+    }
 
     // we store the local space intersect point in Ng during ray tracing time,
     // which is the geometry normal in local space. (we need this local space
