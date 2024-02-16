@@ -62,10 +62,10 @@ CPP_addPresenceShadowsQueueEntries(      uniform PbrTLState *     uniform pbrTls
                                    const uniform uint32_t *       uniform indices );
 
 extern "C" void
-CPP_addIncoherentRayQueueEntries(       uniform PbrTLState *     uniform pbrTls,
-                                  const varying RayState *       uniform rayStates,
-                                        uniform uint32_t                 numRayStates,
-                                  const uniform uint32_t *       uniform indices );
+CPP_addRayQueueEntries(       uniform PbrTLState *     uniform pbrTls,
+                        const varying RayState *       uniform rayStates,
+                              uniform uint32_t                 numRayStates,
+                        const uniform uint32_t *       uniform indices );
 
 extern "C" uniform bool
 CPP_isIntegratorAccumulatorRunning( uniform PbrTLState *uniform pbrTls );

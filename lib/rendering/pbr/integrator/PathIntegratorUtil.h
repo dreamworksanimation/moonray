@@ -365,8 +365,8 @@ void
 CPP_applyVolumeTransmittance(const PathIntegrator *pathIntegrator,
     PbrTLState *pbrTls, const uint32_t *rayStateIndices, int32_t lanemask);
 
-void CPP_addIncoherentRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
-                                      unsigned numRayStates, const unsigned *indices);
+void CPP_addRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
+                            unsigned numRayStates, const unsigned *indices);
 
 void CPP_addOcclusionQueueEntries(pbr::TLState *pbrTls, const BundledOcclRayv *occlRaysv,
                                   unsigned numOcclRays, const unsigned *indices);

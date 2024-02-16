@@ -689,8 +689,7 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             // and transparency which comes from recursion.
             //
             // We allocate a new RayState, fill it in, and spawn a new
-            // ray via the incoherent ray queue (since we know the newly spawned ray
-            // can't be a primary ray).
+            // ray via the ray queue.
             //
             // if ray hits a surface then
             //     add indirect radiance contribution from that surface to radiance
@@ -747,8 +746,8 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
 
     if (numSpawnedRays) {
         MNRY_ASSERT(numSpawnedRays <= sampleCount * VLEN);
-        CPP_addIncoherentRayQueueEntries(pbrTls, spawnedRays, numSpawnedRays,
-                                         spawnedRayIndices);
+        CPP_addRayQueueEntries(pbrTls, spawnedRays, numSpawnedRays,
+                               spawnedRayIndices);
     }
 
     Arena_setPtr(arena, memoryBookmark1);

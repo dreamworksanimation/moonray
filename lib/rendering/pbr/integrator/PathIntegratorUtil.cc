@@ -1080,8 +1080,8 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
 }
 
 void
-CPP_addIncoherentRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
-                                 unsigned numRayStates, const unsigned *indices)
+CPP_addRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
+                       unsigned numRayStates, const unsigned *indices)
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
     MNRY_ASSERT(pbrTls->isIspcAccumulatorRunning());
