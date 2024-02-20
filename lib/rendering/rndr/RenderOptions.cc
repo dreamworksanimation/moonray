@@ -201,6 +201,18 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         setThreads(stringToUnsignedLong(values[0]));
     }
 
+    validFlags.push_back("-socketAffinity");
+    if (args.getFlagValues("-socketAffinity", 1, values) >= 0) {
+        mCpuAffinityDef = "";
+        mSocketAffinityDef = values[0];
+    }
+
+    validFlags.push_back("-cpuAffinity");
+    if (args.getFlagValues("-cpuAffinity", 1, values) >= 0) {
+        mCpuAffinityDef = values[0];
+        mSocketAffinityDef = "";
+    }
+
     validFlags.push_back("-dso_path");
     if (args.getFlagValues("-dso_path", 1, values) >= 0) {
         setDsoPath(values[0]);
@@ -527,6 +539,17 @@ RenderOptions::getUsageMessage(const std::string& programName, bool guiMode)
 "    -threads n\n"
 "        Number of threads to use (all by default).\n"
 "\n"
+"    -cpuAffinity cpuIdDef\n"
+"        set CPU affinity definition. \"-1\" disables CPU affinity control.\n"
+"        cpuIdDef example : 0,1,2     => 0 1 2\n"
+"                           0-2,4,6-9 => 0,1,2,4,6,7,8,9\n"
+"                           -1        => disable CPU affinity (default)\n"
+"\n"
+"    -socketAffinity socketIdDef\n"
+"        set Socket affinity definition\n"
+"        socketIdDef example : 0\n"
+"                              0,1 or 0-1 => 0 1\n"
+"\n"
 "    -size 1920 1080\n"
 "        Canonical frame width and height (in pixels).\n"
 "\n"
@@ -777,8 +800,14 @@ RenderOptions::setupTLSInitParams(mcrt_common::TLSInitParams *params, bool realt
     scene_rdl2::logging::Logger::info("Setting mShadingWorkloadChunkSize to ", mShadingWorkloadChunkSize);
     scene_rdl2::logging::Logger::info("Setting mPresenceShadowsQueueSize to ", params->mPresenceShadowsQueueSize);
 
-    // always assign these three
     params->mDesiredNumTBBThreads = getThreads();
+
+    if (!mCpuAffinityDef.empty()) {
+        params->mCpuAffinityDef = std::make_shared<std::string>(mCpuAffinityDef);
+    }
+    if (!mSocketAffinityDef.empty()) {
+        params->mSocketAffinityDef = std::make_shared<std::string>(mSocketAffinityDef);
+    }
 }
 
 std::string

@@ -28,6 +28,7 @@
 #include <moonray/rendering/pbr/sampler/PixelScramble.h>
 
 #include <scene_rdl2/common/math/Color.h>
+#include <scene_rdl2/render/util/CpuSocketUtil.h>
 #include <scene_rdl2/render/util/ThreadPoolExecutor.h>
 
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_COUNT // See RuntimeVerify.h
@@ -110,22 +111,37 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     tbb::task_group taskGroup;
     std::string msg = "TBB MCRT thread pool";
     scene_rdl2::logging::Logger::info(msg);
-    std::cerr << msg << '\n';
+    if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
 #   else // else TBB_MCRT_THREADPOOL
     auto calcCpuIdSequential = [&](size_t threadId) -> size_t { return threadId; };
+    auto calcCpuIdByTbl = [&](size_t threadId) -> size_t { return (*fs.mAffinityCpuIdTbl)[threadId]; };
     scene_rdl2::ThreadPoolExecutor::CalcCpuIdFunc calcCpuIdFunc = nullptr;
 
     std::ostringstream ostr;
     ostr << "MOONRAY MCRT thread pool";
-    if (fs.mNumRenderThreads == std::thread::hardware_concurrency()) {
-        // We want to use all cores. We activate CPU-affinity control and
-        // all MCRT threads are individually attached to the core.
-        calcCpuIdFunc = calcCpuIdSequential;
-        ostr << " : enable MCRT-CPU-affinity";
+    if (fs.mEnableMcrtCpuAffinity) {
+        driver->mEnableMcrtCpuAffinity = true;
+        if (fs.mNumRenderThreads == std::thread::hardware_concurrency()) {
+            // We want to use all cores. We activate CPU-affinity control and
+            // all MCRT threads are individually attached to the core.
+            calcCpuIdFunc = calcCpuIdSequential;
+            driver->mEnableMcrtCpuAffinityAll = true;
+            ostr << " : MCRT-CPU-affinity enabled : All";
+        } else if (fs.mAffinityCpuIdTbl && !fs.mAffinityCpuIdTbl->empty()) {
+            // We have {CPU,Socket}-Affinity setup.
+            calcCpuIdFunc = calcCpuIdByTbl;
+            driver->mEnableMcrtCpuAffinityAll = false;
+            ostr << " : MCRT-CPU-affinity enabled"
+                 << " : " << scene_rdl2::CpuSocketUtil::showCpuIdTbl("CPU-Tbl", *fs.mAffinityCpuIdTbl)
+                 << " numRenderThreads:" << fs.mNumRenderThreads;
+        }
+    } else {
+        driver->mEnableMcrtCpuAffinity = false;
+        ostr << " : MCRT-CPU-affinity disabled";
     }
     std::string msg = ostr.str();
     scene_rdl2::logging::Logger::info(msg);
-    std::cerr << msg << '\n';
+    if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
     scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, calcCpuIdFunc);
 #   endif // end else TBB_MCRT_THREADPOOL
 #   endif // end ifndef FORCE_SINGLE_THREADED_RENDERING

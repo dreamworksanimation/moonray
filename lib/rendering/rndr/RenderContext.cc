@@ -2751,6 +2751,8 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
     // From rndr::FrameState.
     //
     fs->mNumRenderThreads = MNRY_VERIFY(getNumTBBThreads());
+    fs->mEnableMcrtCpuAffinity = getTLSInitParams().mEnableMcrtCpuAffinity;
+    fs->mAffinityCpuIdTbl = getTLSInitParams().mAffinityCpuIdTbl; // set cpuId table for CPU-Affinity control
 
     int machineId = vars.get(scene_rdl2::rdl2::SceneVariables::sMachineId);
     int numMachines = vars.get(scene_rdl2::rdl2::SceneVariables::sNumMachines);

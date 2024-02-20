@@ -440,6 +440,12 @@ RenderStats::logHardwareConfiguration(const RenderOptions& options, const scene_
     table.emplace_back("Cluster machine id", vars.getMachineId());
     table.emplace_back("Thread(s)", mcrt_common::getNumTBBThreads());
 
+    if (!options.getCpuAffinityDef().empty()) {
+        table.emplace_back("CPU-Affinity", options.getCpuAffinityDef());
+    } else if (!options.getSocketAffinityDef().empty()) {
+        table.emplace_back("Socket-Affinity", options.getSocketAffinityDef());
+    }
+
     if (getLogAthena()) {
         writeEqualityCSVTable(mAthenaStream, table, true);
     }
@@ -1616,12 +1622,15 @@ RenderStats::logRenderingStats(const pbr::Statistics& pbrStats,
 
     if (getLogAthena()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mAthenaStream, OutputFormat::athenaCSV);
+        logCpuAffinityStats(mAthenaStream, OutputFormat::athenaCSV);
     }
     if (getLogCsv()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mCSVStream, OutputFormat::fileCSV);
+        logCpuAffinityStats(mCSVStream, OutputFormat::fileCSV);
     }
     if (getLogInfo()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mInfoStream, OutputFormat::human);
+        logCpuAffinityStats(mInfoStream, OutputFormat::human);
     } else {
         const std::string prepend = getPrependString();
         StatsTable<2> renderTimeTable("Time");
@@ -1744,6 +1753,28 @@ RenderStats::logMcrtProgress(float elapsedMcrtTime, float pctComplete)
     }
 }
 
+void
+RenderStats::logCpuAffinityStats(std::ostream& outs, OutputFormat format)
+{
+    const bool csvStream = format == OutputFormat::athenaCSV || format == OutputFormat::fileCSV;
+
+    std::vector<std::string> titleTbl;
+    std::vector<std::string> msgTbl;
+
+    rndr::getRenderDriver()->setupCpuAffinityLogInfo(titleTbl, msgTbl);
+
+    StatsTable<2> cpuAffinityStatsTbl("CPU Affinity");
+    for (size_t i = 0; i < titleTbl.size(); ++i) {
+        cpuAffinityStatsTbl.emplace_back(titleTbl[i], msgTbl[i]);
+    }
+
+    if (csvStream) {
+        writeEqualityCSVTable(outs, cpuAffinityStatsTbl, format == OutputFormat::athenaCSV);
+    } else {
+        const std::string prepend = getPrependString();
+        writeEqualityInfoTable(outs, prepend, cpuAffinityStatsTbl);
+    }
+}
 
 } // namespace rndr
 } // namespace moonray

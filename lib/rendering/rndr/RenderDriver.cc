@@ -23,7 +23,10 @@
 #include <moonray/rendering/rt/gpu/GPUAccelerator.h>
 #include <scene_rdl2/common/fb_util/VariablePixelBuffer.h>
 
+#include <scene_rdl2/render/util/CpuSocketUtil.h>
 #include <scene_rdl2/render/util/Memory.h>
+#include <scene_rdl2/render/util/ProcCpuAffinity.h>
+
 #include <random>
 
 // Quick way to force a single sample per pixel. For debugging.
@@ -551,6 +554,8 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     TLSInitParams tlsInitParams = initParams;
     MNRY_ASSERT(tlsInitParams.mArenaBlockPool);
 
+    setProcCpuAffinity(tlsInitParams);
+
     if (tlsInitParams.mDesiredNumTBBThreads == 0) {
         tlsInitParams.mDesiredNumTBBThreads = tbb::task_scheduler_init::default_num_threads();
     }
@@ -566,9 +571,10 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 
     // There are 2 task_scheduler_init objects created in this class. Both are
     // essential. This first call sets the number of threads for the frame
-    // building phase to that specified in the TLSInitParams. The second allows
-    // the render thread to take part in the rendering phase and ensures a TLS
-    // is created for it.
+    // building phase to that specified in the TLSInitParams.
+    // The second is used by the threads for the MCRT stage. However, MCRT threads
+    // itself is not using the TBB thread pool anymore and use MoonRay own thread
+    // pool due to we need CPU affinity control for them.
     mTaskScheduler = new tbb::task_scheduler_init(int(tlsInitParams.mDesiredNumTBBThreads));
 
     mFilm = alignedMallocCtor<Film>(CACHE_LINE_SIZE);
@@ -586,6 +592,109 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     // class becomes functional.
     while (mRenderThreadState.get() == UNINITIALIZED) {
         mcrt_common::threadSleep();
+    }
+}
+
+void
+RenderDriver::setProcCpuAffinity(TLSInitParams& tlsInitParams)
+{
+    mEnableRenderPrepCpuAffinity = false;
+    tlsInitParams.mEnableMcrtCpuAffinity = true; // default is MCRT CPU-Affinity = ON
+
+    scene_rdl2::CpuSocketUtil::CpuIdTbl cpuIdTbl;
+    std::ostringstream ostr;
+    std::string errMsg;
+    if (tlsInitParams.mCpuAffinityDef && !tlsInitParams.mCpuAffinityDef->empty()) {
+        if ((*tlsInitParams.mCpuAffinityDef) == "-1") {
+            // We will try to apply CPU-Affinity control for MCRT threads even if no CPU-Affinity control
+            // for renderPrep. However, if the user sets "-1" (= explicitly disables CPU-Affinity),
+            // we disable CPU-Affinity control regarding both renderPrep and MCRT threads.
+            ostr << "RenderPrep CPU-affinity control disabled";
+            cpuIdTbl.clear();
+            tlsInitParams.mEnableMcrtCpuAffinity = false; // disalbe MCRT CPU-Affinity
+        } else {
+            //
+            // pick CpuAffinity info
+            //
+            if (!scene_rdl2::CpuSocketUtil::cpuIdDefToCpuIdTbl((*tlsInitParams.mCpuAffinityDef),
+                                                               cpuIdTbl, errMsg)) {
+                ostr << "CPU-affinity definition failed. " << errMsg
+                     << " RenderPrep CPU-affinity control skipped";
+                cpuIdTbl.clear();
+            } else {
+                if (!cpuIdTbl.size()) {
+                    ostr << "CPU-affinity definition is empty. RenderPrep CPU-affinity control skipped";
+                } else {
+                    ostr << scene_rdl2::CpuSocketUtil::showCpuIdTbl("RenderPrep CPU-affinity cpuIdTbl",
+                                                                    cpuIdTbl);
+                }
+            }
+        }
+    } else if (tlsInitParams.mSocketAffinityDef && !tlsInitParams.mSocketAffinityDef->empty()) {
+        //
+        // pick SocketAffinity info
+        //
+        try {
+            scene_rdl2::CpuSocketUtil cpuSocketUtil;
+            if (!cpuSocketUtil.socketIdDefToCpuIdTbl((*tlsInitParams.mSocketAffinityDef), cpuIdTbl, errMsg)) {
+                ostr << "Socket-affinity definition failed. " << errMsg 
+                     << " RenderPrep CPU-affinity control skipped.";
+                cpuIdTbl.clear();
+            } else {
+                if (!cpuIdTbl.size()) {
+                    ostr << "Socket-affinity definition is empty. RenderPrep CPU-affinity control skipped";
+                } else {
+                    ostr << "RenderPrep Socket-affinity " << (*tlsInitParams.mSocketAffinityDef)
+                         << scene_rdl2::CpuSocketUtil::showCpuIdTbl(" cpuIdTbl", cpuIdTbl);
+                    mSocketAffinityDefStr = (*tlsInitParams.mSocketAffinityDef); // save info for info dump
+                }
+            }
+        }
+        catch (scene_rdl2::except::RuntimeError& e) {
+            ostr << "Socket-affinity processing failed. RenderPrep CPU-affinity control skipped. " << e.what();
+            cpuIdTbl.clear();
+        }
+    } else {
+        return; // no CPU-affinity control for renderPrep
+    }
+
+    Logger::info(ostr.str());
+    if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
+
+    if (cpuIdTbl.empty()) {
+        return; // no CPU-affinity definition
+    }
+
+    //
+    // Set process based CPU affinity
+    //
+    try {
+        scene_rdl2::ProcCpuAffinity procCpuAffinity;
+        for (auto cpuId : cpuIdTbl) { procCpuAffinity.set(cpuId); }
+        std::string msg;
+        if (!procCpuAffinity.bindAffinity(msg)) {
+            std::ostringstream ostr;
+            ostr << "RenderPrep Bind CPU-affinity failed. " << msg
+                 << " RenderPrep CPU-affinity control skipped";
+            Logger::error(ostr.str());
+            if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
+        } else {
+            int numThreads = std::min(static_cast<unsigned>(cpuIdTbl.size()),
+                                      std::thread::hardware_concurrency());
+            tlsInitParams.mDesiredNumTBBThreads = numThreads; // update total threads
+            tlsInitParams.mAffinityCpuIdTbl = std::make_shared<std::vector<unsigned>>(cpuIdTbl);
+            mCpuAffinityCpuIdTbl = cpuIdTbl; // save for info display
+            mEnableRenderPrepCpuAffinity = true; // save for info display
+
+            Logger::info("RenderPrep " + msg); // show CPU-Affinity control result
+            if (isatty(STDOUT_FILENO)) std::cerr << "RenderPrep " << msg << '\n';
+        }
+    }
+    catch (scene_rdl2::except::RuntimeError& e) {
+        ostr << "RenderPrep ProcCpuAffinity() failed. " << e.what()
+             << " RenderPrep CPU-affinity control skipped";
+        Logger::error(ostr.str());
+        if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
     }
 }
 
@@ -2272,10 +2381,11 @@ void
 RenderDriver::renderThread(RenderDriver *driver,
                            const mcrt_common::TLSInitParams &initParams)
 {
-    // We are now running in the context of the render thread. This sets up the
-    // task scheduler used for rendering. By creating a new task scheduler
-    // instance here, we are allowing this thread to take part in rendering work
-    // (tbb will spawn tasks on this thread when invoked from this thread.)
+    // We are now running in the context of the render thread stage.
+    // This sets up the task scheduler used for MCRT stage. However, the MCRT
+    // thread itself is not using the TBB thread anymore due to we need CPU-affinity
+    // control. We still keep tbb::task_scheduler for other TBB thread requirements
+    // we might create during the MCRT stage.
     tbb::task_scheduler_init scheduler(int(initParams.mDesiredNumTBBThreads));
 
     // TLS initialization.
@@ -2419,6 +2529,37 @@ RenderDriver::showMultiMachineCheckpointMainLoopInfo() const
          << "  mMultiMachineGlobalProgressFraction:" << mMultiMachineGlobalProgressFraction << '\n'
          << "}";
     return ostr.str();
+}
+
+void
+RenderDriver::setupCpuAffinityLogInfo(std::vector<std::string>& titleTbl,
+                                      std::vector<std::string>& msgTbl) const
+{
+    titleTbl.push_back("RenderPrep CPU-affinity");
+    if (mEnableRenderPrepCpuAffinity) {
+        if (mSocketAffinityDefStr.empty()) {
+            // -cpuAffinity
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl("cpuId", mCpuAffinityCpuIdTbl));
+        } else {
+            // -socketAffinity
+            std::ostringstream ostr;
+            ostr << "socketId " << mSocketAffinityDefStr << " cpuId";
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl(ostr.str(), mCpuAffinityCpuIdTbl));
+        }
+    } else {
+        msgTbl.push_back("disabled");
+    }
+
+    titleTbl.push_back("MCRT CPU-affinity");
+    if (mEnableMcrtCpuAffinity) {
+        if (mEnableMcrtCpuAffinityAll) {
+            msgTbl.push_back("all");
+        } else {
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl("cpuId", mCpuAffinityCpuIdTbl));
+        }
+    } else {
+        msgTbl.push_back("disabled");
+    }
 }
 
 //------------------------------------------------------------------------------------------

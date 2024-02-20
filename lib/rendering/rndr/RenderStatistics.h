@@ -313,6 +313,7 @@ private:
                            mcrt_common::ExecutionMode executionMode,
                            const scene_rdl2::rdl2::SceneVariables& vars, double processTime, std::ostream& outs,
                            OutputFormat format);
+    void logCpuAffinityStats(std::ostream& outs, OutputFormat format);
 
     moonray_stats::StatsTable<3> buildTessellationStatistics(std::size_t maxEntry, std::size_t callDivisor);
 

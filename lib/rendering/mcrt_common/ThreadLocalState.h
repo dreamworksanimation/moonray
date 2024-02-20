@@ -48,6 +48,11 @@ struct TLSInitParams
     // Authoritative, pass in 0 to let the system decide.
     unsigned        mDesiredNumTBBThreads;
 
+    std::shared_ptr<std::string> mCpuAffinityDef; // CPU-Affinity definition
+    std::shared_ptr<std::string> mSocketAffinityDef; // Socket-Affinity definition
+    bool mEnableMcrtCpuAffinity {true};
+    std::shared_ptr<std::vector<unsigned>> mAffinityCpuIdTbl; // cpuId table for CPU-Affinity mask
+
     scene_rdl2::alloc::ArenaBlockPool *mArenaBlockPool;
 
     // This is the total number of RayState objects allocated per thread.

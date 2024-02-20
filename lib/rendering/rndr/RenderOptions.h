@@ -245,6 +245,9 @@ public:
 
     Parser& getParser() { return mParser; }
 
+    const std::string& getCpuAffinityDef() const { return mCpuAffinityDef; }
+    const std::string& getSocketAffinityDef() const { return mSocketAffinityDef; }
+
 private:
 
     void parserConfigure();
@@ -256,6 +259,8 @@ private:
     const scene_rdl2::rdl2::SceneContext* mSceneContext;
 
     uint32_t mThreads;
+    std::string mCpuAffinityDef {"-1"}; // "-1" is disable CPU-Affinity control
+    std::string mSocketAffinityDef;
     RenderMode mRenderMode;
     FastRenderMode mFastMode;
     bool mGeneratePixelInfo;    // Generally controlled by the application.
