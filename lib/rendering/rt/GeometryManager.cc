@@ -519,16 +519,16 @@ GeometryManager::GeometryManager(scene_rdl2::rdl2::SceneContext* sceneContext,
 
 static size_t
 fillGenerateList(
-        const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap& fullGeometryRootShaders,
+        const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap& allGeometryRootShaders,
         scene_rdl2::rdl2::Geometry* topLevelGeometry,
         scene_rdl2::rdl2::Geometry* currentGeometry,
-        std::unordered_set<const scene_rdl2::rdl2::Geometry*>& isReferenced,
-        std::map<size_t, std::unordered_set<scene_rdl2::rdl2::Geometry*>>& toGenerate,
-        scene_rdl2::rdl2::Layer::GeometryToRootShadersMap& toLoadGeometryRootShaders,
+        std::unordered_set<const scene_rdl2::rdl2::Geometry*>& allReferencedGeometry,
+        std::map<size_t, std::unordered_set<scene_rdl2::rdl2::Geometry*>>& geometryToGenerate,
+        scene_rdl2::rdl2::Layer::GeometryToRootShadersMap& geometryRootShadersToLoad,
         int level)
 {
     if (level > 0) {
-        isReferenced.insert(currentGeometry);
+        allReferencedGeometry.insert(currentGeometry);
     }
 
     // Get the geometry the current geometry references, going down one more level
@@ -540,24 +540,26 @@ fillGenerateList(
         if (!ref->isA<scene_rdl2::rdl2::Geometry>()) {
             continue;
         }
-        scene_rdl2::rdl2::Geometry* referencedGeometry = ref->asA<scene_rdl2::rdl2::Geometry>();
+        scene_rdl2::rdl2::Geometry* refGeometry = ref->asA<scene_rdl2::rdl2::Geometry>();
+
         generateOrder = max(generateOrder,
-            fillGenerateList(fullGeometryRootShaders, topLevelGeometry, referencedGeometry,
-            isReferenced, toGenerate, toLoadGeometryRootShaders, level + 1) + 1);
+            fillGenerateList(allGeometryRootShaders, topLevelGeometry, refGeometry,
+            allReferencedGeometry, geometryToGenerate, geometryRootShadersToLoad, level + 1) + 1);
         // the top level geometry references other geometries and needs to be aware of
         // the shading network attribute requests from referenced geometries
-        const auto& refRootShaders = fullGeometryRootShaders.find(referencedGeometry);
-        if (refRootShaders == fullGeometryRootShaders.end()) {
+        const auto& refRootShaders = allGeometryRootShaders.find(refGeometry);
+        if (refRootShaders == allGeometryRootShaders.end()) {
+            // the referenced geometry has no shaders
             continue;
         }
         for (scene_rdl2::rdl2::RootShader* s : refRootShaders->second) {
             // collect up all the shaders we find in the referenced geometries and
             // and associate them with the top level geometry
-            toLoadGeometryRootShaders[topLevelGeometry].insert(s);
+            geometryRootShadersToLoad[topLevelGeometry].insert(s);
         }
     }
 
-    toGenerate[generateOrder].insert(currentGeometry);
+    geometryToGenerate[generateOrder].insert(currentGeometry);
 
     return generateOrder;
 }
@@ -572,30 +574,31 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
                                 const shading::PerGeometryAttributeKeySet &perGeometryAttributes)
 {
     // Get all geometries in the Layer.
-    scene_rdl2::rdl2::Layer::GeometryToRootShadersMap fullGeometryRootShaders;
-    layer->getAllGeometryToRootShaders(fullGeometryRootShaders);
-    scene_rdl2::rdl2::Layer::GeometryToRootShadersMap toLoadGeometryRootShaders;
+    scene_rdl2::rdl2::Layer::GeometryToRootShadersMap allGeometryRootShaders;
+    layer->getAllGeometryToRootShaders(allGeometryRootShaders);
+    scene_rdl2::rdl2::Layer::GeometryToRootShadersMap geometryRootShadersToLoad;
+
     if (flag == ChangeFlag::ALL) {
-        toLoadGeometryRootShaders = fullGeometryRootShaders;
+        geometryRootShadersToLoad = allGeometryRootShaders;
     } else if (flag == ChangeFlag::UPDATE) {
         // Get geometries with changed shaders which requires generate.
-        layer->getChangedGeometryToRootShaders(toLoadGeometryRootShaders);
+        layer->getChangedGeometryToRootShaders(geometryRootShadersToLoad);
     }
 
-    if (!toLoadGeometryRootShaders.empty()) {
+    if (!geometryRootShadersToLoad.empty()) {
         // fill out the list of geometry procedural to generate.
         // the geometry that is referenced by other geometry will be generated
         // first (this is somewhat a dependency graph ordered evaluation)
         std::unordered_set<const scene_rdl2::rdl2::Geometry*> isReferenced;
         std::map<size_t, std::unordered_set<scene_rdl2::rdl2::Geometry*>> toGenerate;
-        for (const auto& pair : toLoadGeometryRootShaders) {
+        for (const auto& pair : geometryRootShadersToLoad) {
             scene_rdl2::rdl2::Geometry* geometry = pair.first;
             // For the first iteration of this recursive function call, we just say
             // that the top level geometry and the current geometry are the same
             // which picks up the top level geometry and its shaders first before chasing any
             // deeper referenced geometry.
-            fillGenerateList(fullGeometryRootShaders, geometry, geometry, isReferenced,
-                toGenerate, toLoadGeometryRootShaders, 0);
+            fillGenerateList(allGeometryRootShaders, geometry, geometry, isReferenced,
+                toGenerate, geometryRootShadersToLoad, 0);
         }
 
         {
@@ -663,14 +666,21 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
 
                 shading::AttributeKeySet requestedAttributes;
                 // Find which primitive attributes this procedural needs to load.
-                const auto& rootShaders = toLoadGeometryRootShaders[geometry];
-                for (const scene_rdl2::rdl2::RootShader* const s : rootShaders) {
-                    const auto& table = s->get<shading::RootShader>().getAttributeTable();
-                    const auto& reqKeys = table->getRequiredAttributes();
-                    requestedAttributes.insert(reqKeys.begin(), reqKeys.end());
-                    const auto& optKeys = table->getOptionalAttributes();
-                    requestedAttributes.insert(optKeys.begin(), optKeys.end());
+
+                if (geometryRootShadersToLoad.find(geometry) != geometryRootShadersToLoad.end()) {
+                    const auto& rootShaders = geometryRootShadersToLoad[geometry];
+                    for (const scene_rdl2::rdl2::RootShader* const s : rootShaders) {
+                        const auto& table = s->get<shading::RootShader>().getAttributeTable();
+                        const auto& reqKeys = table->getRequiredAttributes();
+                        requestedAttributes.insert(reqKeys.begin(), reqKeys.end());
+                        const auto& optKeys = table->getOptionalAttributes();
+                        requestedAttributes.insert(optKeys.begin(), optKeys.end());
+                    }
+                } else {
+                    throw scene_rdl2::except::RuntimeError(std::string("Geometry ") + geometry->getName() + 
+                        std::string(" is not in the Layer"));
                 }
+
                 shading::PerGeometryAttributeKeySet::const_iterator itr =
                     perGeometryAttributes.find(geometry);
                 if (itr != perGeometryAttributes.end()) {
@@ -723,7 +733,7 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
             mOptions.stats.mGeometryManagerExecTracker.finalizeLoadGeometriesItem(false); // cancel = false
         }
 
-        for (const auto& gs : toLoadGeometryRootShaders) {
+        for (const auto& gs : geometryRootShadersToLoad) {
             scene_rdl2::rdl2::Geometry * const geometry = gs.first;
             mOptions.stats.logGeneratingProcedurals(
                 geometry->getSceneClass().getName(), geometry->getName());
