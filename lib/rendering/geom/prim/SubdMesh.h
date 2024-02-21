@@ -235,6 +235,8 @@ public:
         LayerAssignmentId&& layerAssignmentId,
         shading::PrimitiveAttributeTable&& primitiveAttributeTable):
             Mesh(std::move(layerAssignmentId)),
+            mMotionBlurType(scene_rdl2::rdl2::MotionBlurType::STATIC),
+            mCurvedMotionBlurSampleCount(0),
             mControlMeshData(new ControlMeshData(scheme,
                                                  std::move(faceVertexCount),
                                                  std::move(indices),

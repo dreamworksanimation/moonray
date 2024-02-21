@@ -65,7 +65,8 @@ public:
                       std::move(primitiveAttributeTable), estiFaceCount,
                       std::move(faceVertexCount)))),
         mSmoothNormal(true),
-        mCurvedMotionBlurSampleCount(0)
+        mCurvedMotionBlurSampleCount(0),
+        mMotionBlurType(scene_rdl2::rdl2::MotionBlurType::STATIC)
     {
     }
 

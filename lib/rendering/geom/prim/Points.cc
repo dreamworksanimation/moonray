@@ -61,7 +61,9 @@ Points::Points(geom::Points::VertexBuffer&& position,
         PrimitiveAttributeTable&& primitiveAttributeTable):
     NamedPrimitive(std::move(layerAssignmentId)),
     mPosition(std::move(position)), mRadius(std::move(radius)),
-    mPrimitiveAttributeTable(std::move(primitiveAttributeTable))
+    mPrimitiveAttributeTable(std::move(primitiveAttributeTable)),
+    mCurvedMotionBlurSampleCount(0),
+    mMotionBlurType(scene_rdl2::rdl2::MotionBlurType::STATIC)
 {
     size_t pointsCount = mPosition.size();
     MNRY_ASSERT_REQUIRE(mRadius.size() == pointsCount);

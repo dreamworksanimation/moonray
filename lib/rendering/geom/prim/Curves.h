@@ -52,7 +52,8 @@ public:
         mIndexBuffer({}),
         mSpanCount(0),
         mPrimitiveAttributeTable(std::move(primitiveAttributeTable)),
-        mCurvedMotionBlurSampleCount(0)
+        mCurvedMotionBlurSampleCount(0),
+        mMotionBlurType(scene_rdl2::rdl2::MotionBlurType::STATIC)
     {
         if (mSubType == SubType::NORMAL_ORIENTED) {
             const shading::PrimitiveAttribute<scene_rdl2::math::Vec3f>& normalAttr =
