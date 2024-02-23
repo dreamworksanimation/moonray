@@ -94,25 +94,6 @@
                 "auto": "3"
             },
             "comment": "Flag indicating the color space in which the source texture is encoded.  If set to auto, gamma correction will be applied if the images is not single channel."
-        },
-        "attrUDimValues": {
-            "name": "udim_values",
-            "label": "udim values",
-            "type": "IntVector",
-            "comment": "Explicit list of UDIM values corresponding to filename in the \\\"udim_files\\\" list"
-        },
-        "attrUDimFiles": {
-            "name": "udim_files",
-            "label": "udim files",
-            "type": "StringVector",
-            "comment": "Explicit list of UDIM filenames corresponding to values in the \\\"udim_values\\\" list"
-        },
-        "attrMaxVdim": {
-            "name": "udim_max_v",
-            "label": "udim max v",
-            "type": "Int",
-            "default": "10",
-            "comment": "Maximum UDIM v value used (maximum UDIM row). Needed to for texture allocation."
         }
     }
 }

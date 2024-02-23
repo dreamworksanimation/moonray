@@ -102,9 +102,7 @@ ImageMap::update()
 {
     std::string filename = get(attrTexture);
     std::size_t udimPos = filename.find("<UDIM>");
-    IntVector udimValueList = get(attrUDimValues);
-    bool areWeAUdim = (udimPos != std::string::npos
-                       || (udimValueList.size() > 0));
+    bool areWeAUdim = udimPos != std::string::npos;
 
     const scene_rdl2::rdl2::SceneVariables &sv = getSceneClass().getSceneContext()->getSceneVariables();
     mIspc.mFatalColor = asIspc(sv.get(scene_rdl2::rdl2::SceneVariables::sFatalColor));
@@ -133,10 +131,7 @@ ImageMap::update()
             hasChanged(attrGamma) ||
             hasChanged(attrWrapAround) ||
             hasChanged(attrUseDefaultColor) ||
-            hasChanged(attrDefaultColor) ||
-            hasChanged(attrMaxVdim) ||
-            hasChanged(attrUDimValues) ||
-            hasChanged(attrUDimFiles)) {
+            hasChanged(attrDefaultColor)) {
             std::string errorStr;
             if (!mUdimTexture->update(this,
                                       sLogEventRegistry,
@@ -147,11 +142,8 @@ ImageMap::update()
                                       get(attrUseDefaultColor),
                                       get(attrDefaultColor),
                                       asCpp(mIspc.mFatalColor),
-                                      get(attrMaxVdim),
-                                      get(attrUDimValues),
-                                      get(attrUDimFiles),
                                       errorStr)) {
-                fatal(errorStr);
+                Logger::fatal(getSceneClass().getName(), "(\"", getName() , "\"): ", errorStr);
                 mUdimTexture = nullptr;
                 mIspc.mUdimTexture = nullptr;
                 return;
@@ -180,7 +172,7 @@ ImageMap::update()
                                   get(attrDefaultColor),
                                   asCpp(mIspc.mFatalColor),
                                   errorStr)) {
-                fatal(errorStr);
+                Logger::fatal(getSceneClass().getName(), "(\"", getName() , "\"): ", errorStr);
                 mTexture = nullptr;
                 mIspc.mTexture = nullptr;
                 return;
@@ -220,6 +212,15 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
                  const moonray::shading::State &state, math::Color *result)
 {
     ImageMap const *me = static_cast<ImageMap const *>(self);
+
+    if (!me->mTexture && !me->mUdimTexture) {
+        if (me->get(attrUseDefaultColor)) {
+            *result = me->get(attrDefaultColor);
+        } else {
+            *result = asCpp(me->mIspc.mFatalColor);
+        }
+        return;
+    }
 
     Vec2f st;
     float dsdx = state.getdSdx();
@@ -273,7 +274,6 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
     const float mipBias = 1.0f + evalFloat(me, attrMipBias, tls, state);
     const Vec2f scale  = me->get(attrScale);
     int udim = -1;
-    int width, height;
     if (me->mTexture) {
         // rotation and scaling only for non-udim case
         const Vec2f offset = me->get(attrOffset);
@@ -294,8 +294,6 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
 
         // Invert t coord.
         st.y = 1.0 - st.y;
-
-        me->mTexture->getDimensions(width, height);
     } else if (me->mUdimTexture) {
         // compute udim index
         udim = me->mUdimTexture->computeUdim(tls, st.x, st.y);
@@ -311,8 +309,6 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
 
         // Invert t coord.
         st.y = 1.0 - st.y;
-
-        me->mUdimTexture->getDimensions(udim, width, height);
     }
 
     math::Color4 tx;

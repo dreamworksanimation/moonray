@@ -113,28 +113,6 @@
             "default": "Vec2f(0.5f, 0.5f)",
             "comment": "UV coordinate around which to rotate"
         },
-        "attrUDimValues": {
-            "name": "udim_values",
-            "label": "udim values",
-            "aliases": [ "udim values" ],
-            "type": "IntVector",
-            "comment": "Explicit list of UDIM values corresponding to filename in the 'udim_files' list."
-        },
-        "attrUDimFiles": {
-            "name": "udim_files",
-            "label": "udim files",
-            "aliases": [ "udim files" ],
-            "type": "StringVector",
-            "comment": "Explicit list of UDIM filenames corresponding to values in the 'udim_values' list.  If this is set, the 'texture' parameter is ignored."
-        },
-        "attrMaxVdim": {
-            "name": "udim_max_v",
-            "label": "udim max v",
-            "aliases": [ "udim max v" ],
-            "type": "Int",
-            "default": "10",
-            "comment": "Maximum UDIM v value used (maximum UDIM row). Needed to for texture allocation."
-        },
         "attrSaturationEnabled": {
             "name": "saturation_enabled",
             "label": "saturation enabled",

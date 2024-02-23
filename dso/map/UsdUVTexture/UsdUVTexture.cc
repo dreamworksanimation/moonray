@@ -14,6 +14,7 @@
 #include <scene_rdl2/render/util/stdmemory.h>
 
 using namespace moonray::shading;
+using namespace scene_rdl2;
 using namespace scene_rdl2::math;
 
 static ispc::StaticUsdUVTextureData sStaticUsdUVTextureData;
@@ -115,11 +116,10 @@ UsdUVTexture::update()
                                       true, // use default/fallback color
                                       get(attrFallback),
                                       asCpp(mIspc.mFatalColor),
-                                      get(attrMaxVdim),
-                                      get(attrUDimValues),
-                                      get(attrUDimFiles),
                                       errorStr)) {
-                fatal(errorStr);
+                Logger::fatal(getSceneClass().getName(), "(\"", getName() , "\"): ", errorStr);
+                mUdimTexture = nullptr;
+                mIspc.mUdimTexture = nullptr;
                 return;
             }
         }
@@ -147,7 +147,9 @@ UsdUVTexture::update()
                                   get(attrFallback),
                                   asCpp(mIspc.mFatalColor),
                                   errorStr)) {
-                fatal(errorStr);
+                Logger::fatal(getSceneClass().getName(), "(\"", getName() , "\"): ", errorStr);
+                mTexture = nullptr;
+                mIspc.mTexture = nullptr;
                 return;
             }
         }
@@ -166,6 +168,11 @@ UsdUVTexture::sample(const scene_rdl2::rdl2::Map *self,
                      Color *sample)
 {
     UsdUVTexture const *me = static_cast<UsdUVTexture const *>(self);
+
+    if (!me->mTexture && !me->mUdimTexture) {
+        *sample = me->get(attrFallback);
+        return;
+    }
 
     float dsdx, dsdy, dtdx, dtdy;
 

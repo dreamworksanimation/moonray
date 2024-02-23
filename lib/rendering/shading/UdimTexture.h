@@ -29,9 +29,6 @@ public:
                 bool useDefaultColor,
                 const scene_rdl2::math::Color& defaultColor,
                 const scene_rdl2::math::Color& fatalColor,
-                int maxVdim,
-                const std::vector<int>& udimValues,
-                const std::vector<std::string>& udimFiles,
                 std::string &errorMsg);
 
 

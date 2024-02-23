@@ -180,6 +180,14 @@ sample(const uniform Map* uniform map,
 {
     const uniform ImageMap * uniform me = MAP_GET_ISPC_PTR(ImageMap, map);
 
+    if (!me->mTexture && !me->mUdimTexture) {
+        if (getAttrUseDefaultColor(map)) {
+            return getAttrDefaultColor(map);
+        } else {
+            return me->mFatalColor;
+        }
+    }
+
     Color result = Color_ctor(0.f, 0.f, 0.f);
 
     Vec2f st;
@@ -199,7 +207,6 @@ sample(const uniform Map* uniform map,
     const varying float mipBias = 1.0f + evalAttrMipBias(map, tls, state);
     const uniform Vec2f scale = getAttrScale(map);
     varying int udim = -1;
-    varying int width, height;
     if (me->mTexture) {
         // rotation and scaling only for non-udim case
         const uniform Vec2f offset = getAttrOffset(map);
@@ -219,8 +226,6 @@ sample(const uniform Map* uniform map,
 
         // Invert t coord.
         st.y = 1.0 - st.y;
-
-        BASIC_TEXTURE_getDimensions(me->mTexture, width, height);
     } else if (me->mUdimTexture) {
         // compute udim index
         udim = UDIM_TEXTURE_compute_udim(me->mUdimTexture, tls, st);
@@ -237,8 +242,6 @@ sample(const uniform Map* uniform map,
 
         // Invert t coord
         st.y = 1.0 - st.y;
-
-        UDIM_TEXTURE_getDimensions(me->mUdimTexture, udim, width, height);
     }
 
     varying Col4f tx;

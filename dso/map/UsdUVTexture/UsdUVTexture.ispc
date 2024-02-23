@@ -44,6 +44,10 @@ sample(const uniform Map* uniform map,
 {
     const uniform UsdUVTexture * uniform me = MAP_GET_ISPC_PTR(UsdUVTexture, map);
 
+    if (!me->mTexture && !me->mUdimTexture) {
+        return getAttrFallback(map);
+    }
+
     Color result = Color_ctor(0.0f, 0.0f, 0.0f);
 
     const Vec2f uv = evalAttrSt(map, tls, state);

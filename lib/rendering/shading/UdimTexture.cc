@@ -21,7 +21,9 @@
 #include <tbb/mutex.h>
 
 #include <dirent.h>
-#include <unordered_set>
+#include <glob.h>
+#include <vector>
+#include <algorithm>
 
 namespace moonray {
 namespace shading {
@@ -81,6 +83,31 @@ getOIIOWrap(WrapType wrapType) {
     }
 }
 
+bool
+getUdimFilenames(const std::string& filename,
+                 std::vector<std::string>& filenames)
+{
+    size_t udimPos = filename.find("<UDIM>");
+    const std::string pattern = filename.substr(0, udimPos) + "*";
+
+    glob_t glob_result;
+    memset(&glob_result, 0, sizeof(glob_result));
+
+    int return_value = glob(pattern.c_str(), GLOB_TILDE, NULL, &glob_result);
+    if(return_value != 0) {
+        globfree(&glob_result);
+        return false;
+    }
+
+    for(size_t i = 0; i < glob_result.gl_pathc; ++i) {
+        filenames.push_back(std::string(glob_result.gl_pathv[i]));
+    }
+
+    globfree(&glob_result);
+
+    return true;
+}
+
 } // namespace
 
 static ispc::UDIM_TEXTURE_StaticData sUdimTextureStaticData;
@@ -136,6 +163,26 @@ public:
 
     ~Impl() {}
 
+    int
+    calculateNumTextures(const std::string &filename,
+                         const std::vector<std::string>& udimFilenames)
+    {
+        int numTextures = 0;
+
+        size_t udimPos = filename.find("<UDIM>");
+        for (const std::string& entry : udimFilenames) {
+            try {
+                const int udimVal = std::stoi(entry.substr(udimPos, 4));
+                numTextures = std::max(numTextures, udimVal - 1000);
+            } catch (const std::out_of_range& ex) {
+                continue;
+            } catch (const std::invalid_argument& ex) {
+                continue;
+            }
+        }
+        return numTextures;
+    }
+
     bool
     update(scene_rdl2::rdl2::Shader *shader,
            scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry,
@@ -146,9 +193,6 @@ public:
            bool useDefaultColor,
            const scene_rdl2::math::Color& defaultColor,
            const scene_rdl2::math::Color& fatalColor,
-           int maxVdim,
-           const std::vector<int>& udimValues,
-           const std::vector<std::string>& udimFiles,
            std::string &errorMsg)
     {
         init();
@@ -160,9 +204,15 @@ public:
         mIspc.mFatalColor.r = fatalColor.r;
         mIspc.mFatalColor.g = fatalColor.g;
         mIspc.mFatalColor.b = fatalColor.b;
-        mIspc.mIsValid = false;
 
-        mNumTextures = sMaxUdim * maxVdim;
+        std::vector<std::string> udimFilenames;
+        if (!getUdimFilenames(filename, udimFilenames)) {
+            errorMsg = "Failed to locate udim textures for filename: \"" + filename +  "\"";
+            return false;
+        }
+
+        mNumTextures = calculateNumTextures(filename, udimFilenames);
+
         mIspc.mNumTextures = mNumTextures;
         mWidths.assign(mNumTextures, 0);
         mHeights.assign(mNumTextures, 0);
@@ -171,7 +221,7 @@ public:
         mIspc.mTextureHandles = reinterpret_cast<intptr_t *>(&mTextureHandles[0]);
         mTextureOptions.resize(mNumTextures * QualityCount);
 
-        std::size_t udimPos = filename.find("<UDIM>");
+        size_t udimPos = filename.find("<UDIM>");
 
         mErrorUdimOutOfRangeU =
             logEventRegistry.createEvent(scene_rdl2::logging::ERROR_LEVEL,
@@ -193,47 +243,14 @@ public:
 
         bool applyGamma = true;
 
-        // Populate mTextureHandles with all Udim Multi Files TextureHandle pointers
-        if ( udimFiles.size() > 0 ) {
-            // Load the *explicit* list of UDim File Names
-            if (udimValues.size() != udimFiles.size()) {
-                mIspc.mIsValid = false;
-                if (mIspc.mUseDefaultColor) {
-                    return true;
-                } else {
-                    errorMsg = "FATAL: Invalid UDim list provided!  Unequal number of UDim Values & UDim File names...";
-                    return false;
-                }
-            }
-            if (!prepareUdimTextureHandles(udimFiles,
-                                           udimValues,
-                                           logEventRegistry,
-                                           errorMsg,
-                                           gammaMode,
-                                           applyGamma)) {
-                mIspc.mIsValid = false;
-                if (mIspc.mUseDefaultColor) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        } else if (udimPos != std::string::npos) {
-            // multi-file token substitution udim case
-            if (!prepareUdimTextureHandles(filename,
-                                           udimPos,
-                                           maxVdim,
-                                           logEventRegistry,
-                                           errorMsg,
-                                           gammaMode,
-                                           applyGamma)) {
-                mIspc.mIsValid = false;
-                if (mIspc.mUseDefaultColor) {
-                    return true;
-                } else {
-                    return false;
-                }
-            }
+        if (prepareUdimTextureHandles(filename,
+                                      udimPos,
+                                      logEventRegistry,
+                                      errorMsg,
+                                      gammaMode,
+                                      applyGamma,
+                                      udimFilenames)) {
+            mIspc.mIsValid = true;
         }
 
         mIspc.mErrorUdimMissingTexture = mErrorUdimMissingTexture.data();
@@ -249,7 +266,6 @@ public:
         mIspc.mApplyGamma = applyGamma;
         mIspc.mIs8bit = mIs8bit;
 
-        mIspc.mIsValid = true;
         tbb::mutex errorMutex;
 
         tbb::blocked_range<int> range(0, mTextureHandleIndices.size());
@@ -504,38 +520,19 @@ private:
     bool
     prepareUdimTextureHandles(const std::string &filename,
                               const std::size_t uDimPos,
-                              const int maxVdim,
                               scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry,
                               std::string &errorMsg,
                               ispc::TEXTURE_GammaMode gammaMode,
-                              bool& applyGamma)
+                              bool& applyGamma,
+                              std::vector<std::string>& udimFilenames)
     {
         std::string udimFileName = filename;
         udimFileName.replace(uDimPos, 6, "UDIM");
-
-        // to eliminate negative filesystem lookups, we check the strings in the UDIM directory
-        // the directory will be processed once into an unordered set for O(1) lookup, then closed
-        const size_t directoryEnd = udimFileName.find_last_of("/\\");
-        const std::string udimDirectoryName = udimFileName.substr(0, directoryEnd);
-        DIR *directory = opendir(udimDirectoryName.c_str());
-
-        struct dirent *dirEntry;
-        std::unordered_set<std::string> allEntries;
-        if (directory != NULL) {
-            while ((dirEntry = readdir(directory)) != NULL) {
-                allEntries.insert(std::string(dirEntry->d_name));
-            }
-            closedir(directory);
-        }
-
         int firstUdimChannelCount = 0;
         int firstUdimFileFormat = 0;
         for (int idx = 0; idx < mNumTextures; ++idx) {
             udimToStr(idx + sUdimStart, udimFileName, uDimPos);
-            const std::string udimFileEntry = udimFileName.substr(directoryEnd + 1);
-
-            const bool fileExists = allEntries.find(udimFileEntry) != allEntries.end();
-
+            const bool fileExists = std::find(udimFilenames.begin(), udimFilenames.end(), udimFileName) != udimFilenames.end();
             if (fileExists) {
                 if (!prepareUdimTextureHandle(udimFileName,
                                               idx,
@@ -560,46 +557,6 @@ private:
             }
         }
 
-        return true;
-    }
-
-    bool
-    prepareUdimTextureHandles(const std::vector<std::string> &filenameList,
-                              const std::vector<int> &udimList,
-                              scene_rdl2::rdl2::ShaderLogEventRegistry& logEventRegistry,
-                              std::string &errorMsg,
-                              ispc::TEXTURE_GammaMode gammaMode,
-                              bool& applyGamma)
-    {
-        int firstUdimChannelCount = 0;
-        int firstUdimFileFormat = 0;
-
-        for (size_t i = 0; i < udimList.size(); i++) {
-            unsigned int arrayIndex = udimList[i] - sUdimStart;
-            std::string udimFileName = filenameList[i];
-            if (file_resource::fileExists( udimFileName )) {
-                if (!prepareUdimTextureHandle(udimFileName,
-                                              arrayIndex,
-                                              firstUdimChannelCount,
-                                              firstUdimFileFormat,
-                                              errorMsg,
-                                              gammaMode,
-                                              applyGamma)) {
-                    return false;
-                }
-            } else {
-                // The UDIM file does not exist and we should use the error color when sampling
-                mTextureHandles[arrayIndex] = nullptr;
-
-                if (mUdimMissingTextureWarningSwitch) {
-                    // Create a matching log event for this missing file
-                    std::stringstream ss;
-                    ss << "computed udim " << (1001 + arrayIndex) << " does not have corresponding texture: " << udimFileName;
-                    mErrorUdimMissingTexture[arrayIndex] =
-                        logEventRegistry.createEvent(scene_rdl2::logging::ERROR_LEVEL, ss.str());
-                }
-            }
-        }
         return true;
     }
 
@@ -664,9 +621,6 @@ UdimTexture::update(scene_rdl2::rdl2::Shader *shader,
                     bool useDefaultColor,
                     const scene_rdl2::math::Color& defaultColor,
                     const scene_rdl2::math::Color& fatalColor,
-                    int maxVdim,
-                    const std::vector<int>& udimValues,
-                    const std::vector<std::string>& udimFiles,
                     std::string &errorMsg)
 {
     return mImpl->update(shader,
@@ -678,9 +632,6 @@ UdimTexture::update(scene_rdl2::rdl2::Shader *shader,
                          useDefaultColor,
                          defaultColor,
                          fatalColor,
-                         maxVdim,
-                         udimValues,
-                         udimFiles,
                          errorMsg);
 }
 
