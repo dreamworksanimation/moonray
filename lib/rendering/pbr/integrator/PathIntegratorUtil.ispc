@@ -197,6 +197,30 @@ drawBsdfSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * un
 
 //-----------------------------------------------------------------------------
 
+void chooseLightsToSample(varying float * uniform lightSelectionPdfs, const varying LightSetSampler& lSampler, 
+                          const uniform int lightCount, const varying PathVertex& pv, const varying Subpixel& sp,
+                          varying uint32_t& sequenceID, const varying Intersection& isect, 
+                          const varying Vec3f& cullingNormal)
+{
+    // If a light pdf is -1, that means the light was not chosen
+    // set all light pdfs to -1 for now
+    for (uniform int i = 0; i < lightCount; ++i) {
+        lightSelectionPdfs[i] = -1.f;
+    }
+
+    // Set up the light selection random sample
+    IntegratorSample1D lightSelectionSample;
+    SequenceID sid1D;
+    SequenceID_init(sid1D, (uint32_t)pv.nonMirrorDepth, sp.mPixel, 
+                    (uniform uint32_t)SequenceTypeIndexSelection, sp.mSubpixelIndex, sequenceID);
+    IntegratorSample1D_init(lightSelectionSample, sid1D);
+
+    // choose lights and update the light pdfs
+    LightTree_sample(LightAccelerator_getLightTree(LightSetSampler_getAccelerator(&lSampler)), 
+                     lightSelectionPdfs, isect.mP, isect.mNg, &cullingNormal, lightSelectionSample, 
+                     LightSet_getLightIdMap(lSampler.mLightSet));
+}
+
 inline void
 integrateLightSetSample(const varying LightSetSampler &lSampler,
         uniform int lightIndex, const varying BsdfSampler &bSampler,
@@ -251,7 +275,7 @@ integrateLightSetSample(const varying LightSetSampler &lSampler,
         // Direct lighting tentative contribution (omits shadowing)
         // using multiple importance sampling:
         const int nk = BsdfSampler_getLobeSampleCount(&bSampler, k);
-        Color t = factor * f * powerHeuristic(ni * lsmp.pdf, nk * pdf);
+        Color t = factor * f * powerHeuristic(ni * lsmp.misPdf, nk * pdf);
 
         // Selective clamp of t with clampingValue
         if (pv.nonMirrorDepth >= clampingDepth) {
@@ -338,7 +362,7 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
         uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
-        const varying RayState* uniform rs, const uniform int lightIndex)
+        const varying RayState * uniform rs, const uniform int lightIndex, const varying float lightSelectionPdf)
 {
     SequenceID sid, sidFilter, sidFilter3D;
     IntegratorSample3D lightSamples;
@@ -420,6 +444,8 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
                                             light, 1);
                 continue;
             }
+            currSamp.misPdf = currSamp.pdf;
+            currSamp.pdf *= lightSelectionPdf;
 
             snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_LIGHT_SAMPLES_POST);
 

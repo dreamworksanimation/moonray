@@ -156,7 +156,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
         const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-        const shading::Intersection &isect) const
+        const shading::Intersection &isect, const float* lightSelectionPdfs) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
     // Trace light sample shadow rays
@@ -171,6 +171,15 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
     rrSamples.resume(sid, pv.nonMirrorDepth * sampleCount);
 
     for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
+
+        // If adaptive light sampling is on, check to see if this light was chosen
+        // A pdf of -1 indicates that the light at this light index wasn't picked
+        float lightSelectionPdf = 1.f;
+        if (lightSelectionPdfs) {
+            lightSelectionPdf = lightSelectionPdfs[lightIndex];
+            if (lightSelectionPdf < 0.f) continue;
+        }
+
         const Light *light = lSampler.getLight(lightIndex);
 
         // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
@@ -183,7 +192,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         // Draw light samples from the light and compute tentative contributions
         drawLightSetSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, parentRay.getTime(), 
                             sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, 
-                            parentRay.getDirFootprint(), aovs, lightIndex);
+                            parentRay.getDirFootprint(), aovs, lightIndex, lightSelectionPdf);
 
         // Apply Russian Roulette to the light samples
         if (pv.nonMirrorDepth > 0 && mRussianRouletteThreshold > 0.0f) {
@@ -631,8 +640,16 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
             scene_rdl2::math::min(mLightSamples, 1));
     LightSetSampler lSampler(arena, activeLightSet, bsdf, isect.getP(), maxSamplesPerLight);
 
-    const int lightSampleCount = lSampler.getLightSampleCount();
-    LightSample *lsmp = arena->allocArray<LightSample>(lightSampleCount);
+    LightSample *lsmp = arena->allocArray<LightSample>(lSampler.getLightSampleCount());
+
+    // If adaptive light sampling is on, intelligently choose lights to sample using a 
+    // light acceleration structure. Otherwise, sample all lights.  
+    float* lightSelectionPdfs = nullptr;
+    if (static_cast<LightSamplingMode>(pbrTls->mFs->mLightSamplingMode) == LightSamplingMode::ADAPTIVE) {
+        int lightCount = lSampler.getLightCount();
+        lightSelectionPdfs = arena->allocArray<float>(lightCount);
+        chooseLightsToSample(lightSelectionPdfs, lSampler, lightCount, pv, sp, sequenceID, isect, cullingNormal);
+    }
 
     // Draw Bsdf and LightSet samples and compute tentative contributions.
     drawBsdfSamples(pbrTls, bSampler, lSampler, sp, pv, isect.getP(), cullingNormal,
@@ -672,8 +689,9 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // contributions for that sample accordingly.
 
     addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, bSampler, cullingNormal, ray,
-            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect);
+            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect, lightSelectionPdfs);
     checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
+
     if (doIndirect) {
         // Note: This will recurse
         addIndirectOrDirectVisibleContributions(pbrTls, sp, pv, bSampler, bsmp,

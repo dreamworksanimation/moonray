@@ -42,6 +42,7 @@ struct LightSample {
     scene_rdl2::math::Vec3f wi;
     float distance;
     float pdf;
+    float misPdf;
     scene_rdl2::math::Color Li;
     scene_rdl2::math::Color t;
 
@@ -102,6 +103,10 @@ public:
     {
         MNRY_ASSERT(lightIndex < mLightSet.getLightCount());
         return mLightSet.getLightFilterList(lightIndex);
+    }
+
+    finline const LightAccelerator* getAccelerator() const {
+        return mLightSet.getAccelerator();
     }
 
     // Returns total number of samples for all lights in the light set

@@ -42,9 +42,18 @@ public:
     void build(const Light* const* boundedLights, unsigned int boundedLightCount,
                const Light* const* unboundedLights, unsigned int unboundedLightCount);
 
-    /// Chooses light(s) using importance sampling and adaptive tree splitting 
-    /// @see [1] section 5.4
-    void sample() const;
+    /// Chooses light(s) using importance sampling and adaptive tree splitting [1] (Section 5.4).
+    ///
+    /// OUTPUTS:
+    ///     @param lightSelectionPdfs A list of light selection probabilities, saved to the associated light's index.
+    ///                               Any pdf of -1 indicates that the light was not chosen (default).
+    ///
+    void sample(float* lightSelectionPdfs,
+                const scene_rdl2::math::Vec3f& P, 
+                const scene_rdl2::math::Vec3f& N, 
+                const scene_rdl2::math::Vec3f* cullingNormal,
+                const IntegratorSample1D& lightSelectionSample,
+                const int* lightIdMap, int nonMirrorDepth) const;
 
     /// Sets the scene diameter (size of the scene bvh's bounding box)
     void setSceneDiameter(float sceneDiameter) { mSceneDiameter = sceneDiameter; }
@@ -59,10 +68,24 @@ private:
 
 /// ----------------------------- Inline Helpers -----------------------------------------
 
+    inline void chooseLight(float* lightSelectionPdfs, int lightIndex, float pdf, const int* lightIdMap) const
+    {
+        if (lightIndex < 0) {
+            return;
+        }
+        // Convert light index into the light set's index. If it's -1, it means that 
+        // light has been culled, and therefore is not in the set
+        const int visibleLightIndex = lightIdMap[lightIndex];
+        if (visibleLightIndex >= 0) {
+            lightSelectionPdfs[visibleLightIndex] = pdf;
+        }
+    }
+
     // Returns a new list of buckets and splits with empty buckets/splits removed,
     // as well as the number of splits that remain
-    inline int purgeEmptyBuckets(const LightTreeBucket* const oldBuckets, const SplitCandidate* const oldSplits,
-                                 LightTreeBucket* newBuckets, SplitCandidate* newSplits, int oldBucketCount) const
+    inline int purgeEmptyBuckets(LightTreeBucket* newBuckets, SplitCandidate* newSplits,
+                                 const LightTreeBucket* const oldBuckets, const SplitCandidate* const oldSplits,
+                                 int oldBucketCount) const
 
     {
         int newBucketCount = 0;
@@ -115,8 +138,8 @@ private:
     }
 
     // Finds the lowest-cost split of the node along the given axis
-    inline float getCheapestSplit(int splitCount, const SplitCandidate* const splits, const LightTreeNode& node, 
-                                  SplitCandidate& minSplit) const
+    inline float getCheapestSplit(SplitCandidate& minSplit, int splitCount, 
+                                  const SplitCandidate* const splits, const LightTreeNode& node) const
     {
         float minCost = std::numeric_limits<float>::max();
         for (int i = 0; i < splitCount; ++i) {
@@ -137,7 +160,7 @@ private:
 /// ------------------------------------- Function Declarations ---------------------------------------
 
     /// Recursively build tree
-    void buildRecurse(uint nodeIndex);
+    void buildRecurse(uint32_t nodeIndex);
 
 
     /// Create a tree split. This involves initializing SplitCandidate objects, which are possibilities of tree splits. 
@@ -151,7 +174,7 @@ private:
     ///     @param leftNode The new left node resulting from the split
     ///     @param rightNode The new right node resulting from the split
     ///
-    float split(uint nodeIndex, LightTreeNode& leftNode, LightTreeNode& rightNode);
+    float split(LightTreeNode& leftNode, LightTreeNode& rightNode, uint32_t nodeIndex);
 
 
     /// Splits the axis into the specified number of pieces, called buckets. We create SplitCandidates between each 
@@ -164,12 +187,53 @@ private:
     /// OUTPUT:
     ///     @param minSplit The SplitCandidate with the lowest cost for this axis
     ///
-    float splitAxis(int axis, SplitCandidate& minSplit, const LightTreeNode& node) const;
+    float splitAxis(SplitCandidate& minSplit, int axis, const LightTreeNode& node) const;
+
+
+    /// Choose a light from the hierarchy using importance sampling. We traverse the hierarchy by using a random number, 
+    /// r, to determine which subtree to traverse. Each subtree (node) has an associated importance weight which 
+    /// determines the probability of choosing one node over another. 
+    /// @see [1] eq (5)
+    ///
+    /// NOTABLE INPUTS:
+    ///     @param nodeIndex The current node of the tree
+    ///
+    /// OUTPUTS:
+    ///     @param lightIndex The index of the light we selected
+    ///     @param pdf The probability of selecting that light
+    ///     @param r The random number used to determine the subtree to traverse, rescaled in each iteration
+    ///
+    void sampleBranch(int& lightIndex, float& pdf, float& r, uint32_t nodeIndex,
+                      const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n, bool cullLights) const;
+
+
+    /// Recursive function that chooses light(s) to sample, using adaptive tree splitting and a user-specified quality 
+    /// control. This quality control, mSamplingQuality, is a threshold [0, 1] that determines whether we traverse both 
+    /// subtrees or stop traversing and choose a light using importance sampling. When mSamplingQuality is closer to 0.0, 
+    /// fewer lights will be sampled, and when it is closer to 1.0, more lights will be sampled. 
+    ///
+    /// @see [1] (Section 5.4)
+    ///
+    /// NOTABLE INPUTS:
+    ///     @param lightSelectionSample Random number sequence we use when selecting a light
+    ///     @param nodeIndices The current node(s) we are traversing (we explore both branches)
+    ///
+    /// OUTPUTS:
+    ///     @param lightSelectionPdfs A list of light selection pdfs, where the pdf is stored in the corresponding 
+    ///                               light's index. Any lights not chosen will have a pdf of -1.
+    ///
+    void sampleRecurse(float* lightSelectionPdfs, int nodeIndices[2], 
+                       const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n, bool cullLights, 
+                       const IntegratorSample1D& lightSelectionSample,
+                       const int* lightIdMap, int nonMirrorDepth) const;
+
+    /// Recursively print the tree
+    void printRecurse(uint32_t nodeIndex, int depth) const;
 
 // ------------------------------------ Member Variables ---------------------------------------------------------------
     LIGHT_TREE_MEMBERS;
     std::vector<LightTreeNode> mNodes;         // array of nodes 
-    std::vector<uint> mLightIndices;           // array of light indices -- allows us to change the "order" of 
+    std::vector<uint32_t> mLightIndices;       // array of light indices -- allows us to change the "order" of 
                                                // lights in the light tree without mutating the lightset itself
 };
 

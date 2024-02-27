@@ -105,3 +105,9 @@ struct CryptomatteData
 {
     CRYPTOMATTE_DATA_MEMBERS;
 };
+
+enum LightSamplingMode
+{
+    UNIFORM = 0,
+    ADAPTIVE = 1
+};

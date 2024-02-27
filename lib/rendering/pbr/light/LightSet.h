@@ -107,7 +107,8 @@ public:
             bool includeRayTerminationLights, IntegratorSample1D &samples, int depth,  int visibilityMask,
             LightContribution &lCo, float rayDirFootprint) const;
 
-    finline const LightAccelerator* getAccelerator() { return mAccelerator; }
+    finline const LightAccelerator* getAccelerator() const { return mAccelerator; }
+    finline const int* getLightIdMap() const { return mAcceleratorLightIdMap; }
 
     // Set the accelerator for this light set. The accelerator may contain more lights than the LightSet itself.
     // This is because the accelerator's light list is generated during render prep, and includes all of the original

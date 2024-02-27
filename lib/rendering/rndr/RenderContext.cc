@@ -2747,6 +2747,9 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
     fs->mShadingWorkloadChunkSize = mOptions.getShadingWorkloadChunkSize();
     fs->mRequiresCryptomatteBuffer = mRenderOutputDriver->requiresCryptomatteBuffer();
 
+    moonray::pbr::LightSamplingMode lightSamplingMode = static_cast<moonray::pbr::LightSamplingMode>(
+        vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode));
+    fs->mLightSamplingMode = static_cast<int>(lightSamplingMode);
     //
     // From rndr::FrameState.
     //

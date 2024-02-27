@@ -318,7 +318,8 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                                                        uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
                                                        uniform uint32_t &               numPresenceShadowsRays,
                                                        const varying Intersection &     isect,
-                                                       varying uint32_t &               sequenceID)
+                                                       varying uint32_t &               sequenceID,
+                                                 const varying float *          uniform lightSelectionPdfs)
 {
     MNRY_ASSERT(CPP_isIntegratorAccumulatorRunning(pbrTls));
 
@@ -336,13 +337,21 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
     // Trace light sample shadow rays
     for (uniform int lightIndex = 0, s = 0; lightIndex < lightCount; lightIndex++) {
 
+        // If adaptive light sampling is on, check to see if this light was chosen
+        // A pdf of -1 indicates that the light at this light index wasn't picked
+        varying float lightSelectionPdf = 1.f;
+        if (lightSelectionPdfs) {
+            lightSelectionPdf = lightSelectionPdfs[lightIndex];
+            if (lightSelectionPdf < 0.f) continue;
+        }
+
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
         // Draw light samples from the light and compute tentative contributions
         drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
                             *cullingNormal, Ray_getTime(parentRay), sequenceID, lsmp,
                             this->mSampleClampingDepth, sp.mSampleClampingValue, 
-                            Ray_getDirFootprint(parentRay), &rayState, lightIndex);
+                            Ray_getDirFootprint(parentRay), &rayState, lightIndex, lightSelectionPdf);
 
         // Apply Russian Roulette to the light samples
         if (pv.nonMirrorDepth > 0  &&  this->mRussianRouletteThreshold > 0.0f) {
@@ -806,10 +815,18 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
 
     const uniform int lightSampleCount = reduce_max(LightSetSampler_getLightSampleCount(&lSampler));
     const uniform int lightSetSampleCount = LightSetSampler_getSampleCount(&lSampler);
+    const uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
 
     varying LightSample *uniform lsmp = (varying LightSample *uniform)
         Arena_allocArray(arena, lightSampleCount, sizeof(varying LightSample));
     memset(lsmp, 0, sizeof(varying LightSample) * lightSampleCount);
+    const varying Subpixel &sp = rs->mSubpixel;
+    
+    varying float * uniform lightSelectionPdfs = NULL;
+    if ((LightSamplingMode) pbrTls->mFs->mLightSamplingMode == ADAPTIVE) {
+        lightSelectionPdfs = (varying float * uniform) Arena_allocArray(arena, lightCount, sizeof(varying float));
+        chooseLightsToSample(lightSelectionPdfs, lSampler, lightCount, pv, sp, sequenceID, isect, cullingNormal);
+    }
 
     // Store max possible lightset sample count, we'll refine this later by taking
     // the active lanes into account.
@@ -817,7 +834,6 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
                  lightSampleCount * VLEN);
 
     // Draw Bsdf and LightSet samples and compute tentative contributions
-    const varying Subpixel &sp = rs->mSubpixel;
     const varying RayDifferential &ray = rs->mRay;
     drawBsdfSamples(pbrTls, shadingTls, bSampler, lSampler, sp, pv, getP(isect), cullingNormal,
                     Ray_getTime(ray), sequenceID, bsmp, this->mSampleClampingDepth, 
@@ -878,7 +894,9 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
                                                     presenceShadowsRays,
                                                     presenceShadowsRayIndices,
                                                     numPresenceShadowsRaysFilled,
-                                                    isect, sequenceID);
+                                                    isect, sequenceID,
+                                                    lightSelectionPdfs);
+
     if (doIndirect) {
         addIndirectOrDirectVisibleContributionsBundled(this, pbrTls, sp, pv,
                                                        bSampler, bsmp, ray, rayEpsilon, shadowRayEpsilon, isect,

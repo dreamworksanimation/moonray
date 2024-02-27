@@ -84,6 +84,12 @@ LightAccelerator_getLight(const uniform LightAccelerator * uniform acc, uniform 
     return acc->mLights[i];
 }
 
+inline const uniform LightTree * const uniform
+LightAccelerator_getLightTree(const uniform LightAccelerator * uniform acc)
+{
+    return &(acc->mSamplingTree);
+}
+
 extern "C" void
 CPP_lightIntersect(uniform RTCScene scene, varying RTCRayHit& rayHit,
                    const varying int* uniform includeRayTerminationLights,

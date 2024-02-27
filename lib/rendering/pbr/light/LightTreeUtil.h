@@ -30,20 +30,23 @@ struct LightTreeCone
     LightTreeCone() 
         : mAxis(scene_rdl2::math::Vec3f(0.f)),  // central orientation axis
           mCosThetaO(0.f),                      // cosine of the angle bounding the spread of normals around the axis
+          mSinThetaO(0.f),                      // sine of the angle bounding the spread of normals around the axis
           mCosThetaE(0.f),                      // cosine of the angle representing the bound on the emission falloff
           mTwoSided(false) {}                   // does this cone contain a two-sided light?
 
     /// Full Constructor
-    LightTreeCone(const scene_rdl2::math::Vec3f& axis, float cos_theta_o, float cos_theta_e, bool isTwoSided) 
+    LightTreeCone(const scene_rdl2::math::Vec3f& axis, float cosThetaO, float cosThetaE, bool isTwoSided) 
         : mAxis(axis), 
-          mCosThetaO(cos_theta_o), 
-          mCosThetaE(cos_theta_e),
+          mCosThetaO(cosThetaO),
+          mSinThetaO(scene_rdl2::math::sqrt(1.f - cosThetaO*cosThetaO)),
+          mCosThetaE(cosThetaE),
           mTwoSided(isTwoSided) {}
 
     /// Copy Constructor
     LightTreeCone(const LightTreeCone& coneToCopy)
         : mAxis(coneToCopy.mAxis),
           mCosThetaO(coneToCopy.mCosThetaO),
+          mSinThetaO(coneToCopy.mSinThetaO),
           mCosThetaE(coneToCopy.mCosThetaE),
           mTwoSided(coneToCopy.mTwoSided) {}
 
@@ -51,6 +54,7 @@ struct LightTreeCone
     LightTreeCone(const Light* const light)
         : mAxis(light->getDirection(0.f)),
           mCosThetaO(scene_rdl2::math::cos(light->getThetaO())),
+          mSinThetaO(scene_rdl2::math::sin(light->getThetaO())),
           mCosThetaE(scene_rdl2::math::cos(light->getThetaE())),
           mTwoSided(light->isTwoSided()) {}
 
@@ -159,7 +163,7 @@ public:
 
 /// ------------------------------------- Inline Utils --------------------------------------------------
     /// Is this node a leaf?
-    inline bool isLeaf() { return mLightCount == 1; }
+    inline bool isLeaf() const { return mLightCount == 1; }
 
     /// Get the node's starting index in lightIndices
     inline uint getStartIndex() const { return mStartIndex; }
@@ -200,10 +204,53 @@ public:
               const std::vector<uint>& lightIndices, 
               uint lightCount);
 
+    // Calculate the importance weight for the node
+    float importance(const scene_rdl2::math::Vec3f& p, 
+                     const scene_rdl2::math::Vec3f& n, 
+                     const LightTreeNode& sibling,
+                     bool cullLights) const;
+    
+    void printLights(const std::vector<uint>& lightIndices);
+    void print();
+
 private:
+    /// ---------------------------------- Inline Utils --------------------------------------------------
+
+    // cos(max(0, thetaA - thetaB)) (from PBRT v4)
+    // this trick only works because cos is monotonic across [0, pi]
+    inline float cosSubClamped(const float sinThetaA, const float cosThetaA,
+                               const float sinThetaB, const float cosThetaB) const
+    {
+        // if thetaB > thetaA, set the angle difference to 0
+        // (i.e if cosThetaB < cosThetaA, clamp the cosine difference to 1)
+        if (cosThetaB < cosThetaA) { return 1.f; }
+        return cosThetaA * cosThetaB + sinThetaA * sinThetaB;
+    }
+
+    /// ---------------------------------------------------------------------------------------------------
 
     void calcEnergyVariance(uint lightCount, uint startIndex, const Light* const* lights, 
                             const std::vector<uint>& lightIndices);
+
+    // Calculate the uncertainty angle (angle subtended by the bounding box)
+    void calcSinCosThetaU(const float dSqr, const float rSqr, float* sinTheta, float* cosTheta) const;
+
+    /// Calculate the distance term for the importance weight. @see [2] eq (3)
+    float calcDistanceTerm(const scene_rdl2::math::Vec3f& p, const LightTreeNode& sibling, 
+                           const float dSqr, const float rSqr) const;
+
+    /// Calculate the geometry term (solid angle)
+    /// TODO: cull lights before tree traversal?
+    /// @see [1] eq (3)
+    float calcGeometricTerm(const scene_rdl2::math::Vec3f& p, float cosThetaU, float sinThetaU,
+                            const scene_rdl2::math::Vec3f& dirToPt) const;
+
+    /// Material term calculation
+    /// TODO: add some sort of BSDF approximation, perhaps based on Liu et al
+    /// @see [1] eq (3)
+    float calcMaterialTerm(const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n, bool cullLights,
+                           float cosThetaU, float sinThetaU, const scene_rdl2::math::Vec3f& dirToPt) const;
+
 
     LIGHT_TREE_NODE_MEMBERS;
 };

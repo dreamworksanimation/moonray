@@ -310,6 +310,35 @@ drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSe
 
 //-----------------------------------------------------------------------------
 
+void chooseLightsToSample(float* lightSelectionPdfs, const LightSetSampler& lSampler, int lightCount,
+                          const PathVertex& pv, const Subpixel& sp, unsigned& sequenceID,
+                          const shading::Intersection& isect, const scene_rdl2::math::Vec3f* cullingNormal)
+{    
+    // If a light pdf is -1, that means the light was not chosen.
+    // Set all light pdfs to -1 for now
+    for (int i = 0; i < lightCount; ++i) {
+        lightSelectionPdfs[i] = -1.f;
+    }
+
+    // random number sequence to use while traversing the tree
+    IntegratorSample1D lightSelectionSample;
+    const SequenceIDIntegrator sid1D(  pv.nonMirrorDepth,
+                                       sp.mPixel,
+                                       SequenceType::IndexSelection,
+                                       sp.mSubpixelIndex,
+                                       sequenceID );
+
+    lightSelectionSample.restart(sid1D, lightCount);
+    /// TODO: this should not be needed -- there's currently something 
+    /// wrong with our single number random generator
+    lightSelectionSample.setUsePseudoRandom(true);
+
+    // choose lights and update the light mask and light pdfs
+    const LightTree* lightTree = lSampler.getAccelerator()->getLightTree();
+    lightTree->sample(lightSelectionPdfs, isect.getP(), isect.getNg(), cullingNormal, lightSelectionSample, 
+                      lSampler.getLightSet().getLightIdMap(), pv.nonMirrorDepth);
+}
+
 finline void
 integrateLightSetSample(const LightSetSampler &lSampler,
         int lightIndex, const BsdfSampler &bSampler,
@@ -376,7 +405,7 @@ integrateLightSetSample(const LightSetSampler &lSampler,
         // Direct lighting tentative contribution (omits shadowing)
         // using multiple importance sampling:
         const int nk = bSampler.getLobeSampleCount(k);
-        scene_rdl2::math::Color t = factor * f * powerHeuristic(ni * lsmp.pdf, nk * pdf);
+        scene_rdl2::math::Color t = factor * f * powerHeuristic(ni * lsmp.misPdf, nk * pdf);
 
         // Selective clamp of t with clampingValue
         if (pv.nonMirrorDepth >= clampingDepth) {
@@ -434,7 +463,7 @@ void
 drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, 
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs, int lightIndex)
+        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf)
 {
     IntegratorSample3D lightSamples;
     IntegratorSample2D lightFilterSamples;
@@ -519,6 +548,9 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
                 accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, light, /* miss count */ 1);
                 continue;
             }
+
+            lsmp[s].misPdf = lsmp[s].pdf;
+            lsmp[s].pdf *= lightSelectionPdf;
 
             integrateLightSetSample(lSampler, lightIndex, bSampler, pv, lsmp[s],
                 clampingDepth, clampingValue, P);

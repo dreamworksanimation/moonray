@@ -10,6 +10,7 @@
 #define LIGHT_TREE_CONE_MEMBERS                                     \
     HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, Vec3f), mAxis);      \
     HUD_MEMBER(float, mCosThetaO);                                  \
+    HUD_MEMBER(float, mSinThetaO);                                  \
     HUD_MEMBER(float, mCosThetaE);                                  \
     HUD_MEMBER(bool, mTwoSided)
 
@@ -17,6 +18,7 @@
     HUD_BEGIN_VALIDATION(LightTreeCone);                                     \
     HUD_VALIDATE(LightTreeCone, mAxis);                                      \
     HUD_VALIDATE(LightTreeCone, mCosThetaO);                                 \
+    HUD_VALIDATE(LightTreeCone, mSinThetaO);                                 \
     HUD_VALIDATE(LightTreeCone, mCosThetaE);                                 \
     HUD_VALIDATE(LightTreeCone, mTwoSided);                                  \
     HUD_END_VALIDATION

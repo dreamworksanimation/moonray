@@ -25,6 +25,7 @@ struct LightSample {
     Vec3f wi;
     float distance;
     float pdf;
+    float misPdf;
     Color Li;
     Color t;
 
@@ -119,6 +120,11 @@ LightSetSampler_getLightFilterList(const varying LightSetSampler * uniform lSamp
 {
     MNRY_ASSERT(lightIndex < LightSet_getLightCount(lSampler->mLightSet));
     return LightSet_getLightFilterList(lSampler->mLightSet, lightIndex);
+}
+
+inline const uniform LightAccelerator * uniform 
+LightSetSampler_getAccelerator(const varying LightSetSampler * uniform lSampler) {
+    return LightSet_getAccelerator(lSampler->mLightSet);
 }
 
 /// Returns total number of samples for all lights in the light set

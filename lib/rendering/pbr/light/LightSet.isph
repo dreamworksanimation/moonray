@@ -84,6 +84,18 @@ inline const uniform LightFilterList * varying LightSet_getLightFilterList(
     return lightSet->mLightFilterLists[index];
 }
 
+inline const uniform LightAccelerator * uniform 
+LightSet_getAccelerator(const uniform LightSet * uniform lightSet) 
+{ 
+    return lightSet->mAccelerator; 
+}
+
+inline const uniform int * uniform 
+LightSet_getLightIdMap(const uniform LightSet * uniform lightSet) 
+{ 
+    return lightSet->mAcceleratorLightIdMap; 
+}
+
 // Set the accelerator for this light set. The accelerator may contain more lights than the LightSet itself.
 // This is because the accelerator's light list is generated during render prep, and includes all of the original
 // lights specified in the rdl layer. The LightSet has some lights culled away during mcrt, so contains a subset

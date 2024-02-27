@@ -255,6 +255,10 @@ void accumVisibilityAovsOccluded(float* aovs, pbr::TLState* pbrTls, const LightS
                                  int missCount);
 //----------------------------------------------------------------------------
 
+void chooseLightsToSample(float* lightSelectionPdfs, const LightSetSampler& lSampler, int lightCount,
+                          const PathVertex& pv, const Subpixel& sp, unsigned& sequenceID,
+                          const shading::Intersection& isect, const scene_rdl2::math::Vec3f* cullingNormal);
+
 void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSetSampler &lSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f& P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, BsdfSample *bsmp, int clampingDepth,
@@ -263,7 +267,7 @@ void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const Li
 void drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs, int lightIndex);
+        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf);
 
 void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,

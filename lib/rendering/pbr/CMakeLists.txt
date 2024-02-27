@@ -56,6 +56,7 @@ set(sources02
         light/LightAccelerator.ispc
         light/LightSet.ispc
         light/LightTree.ispc
+        light/LightTreeUtil.ispc
         light/LightUtil.ispc
         light/MeshLight.ispc
         light/RectLight.ispc

@@ -329,7 +329,7 @@ private:
             const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
             const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-            const shading::Intersection &isect) const;
+            const shading::Intersection &isect, const float* lightSelectionPdfs) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
             const Subpixel &sp, 

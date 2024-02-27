@@ -10,6 +10,8 @@
 // =====================================================================================================================
 // [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
 //     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
+// [2] Cem Yuksel. 2019. 
+//     "Stochastic Lightcuts"
 // =====================================================================================================================
 
 
@@ -77,3 +79,52 @@ inline uniform float LightTreeNode_getEnergyMean(const uniform LightTreeNode& no
 { 
     return node.mEnergyMean;
 }
+
+// cos(max(0, thetaA - thetaB)) (from PBRT v4)
+// this trick only works because cos is monotonic across [0, pi]
+static varying float cosSubClamped(const varying float sinThetaA, const varying float cosThetaA,
+                                   const varying float sinThetaB, const varying float cosThetaB)
+{
+    // if thetaB > thetaA, set the angle difference to 0
+    // (i.e if cosThetaB < cosThetaA, clamp the cosine difference to 1)
+    if (cosThetaB < cosThetaA) { return 1.f; }
+    return cosThetaA * cosThetaB + sinThetaA * sinThetaB;
+}
+
+/// ----------------------------------------------------------------------------------------------------
+
+// Calculate the importance weight for the node
+varying float LightTreeNode_importance(const uniform LightTreeNode& node,
+                              const varying Vec3f& p, 
+                              const varying Vec3f& n,
+                              const uniform LightTreeNode& sibling,
+                              varying bool cullLights);
+
+// Calculate the uncertainty angle (angle subtended by the bounding box)
+static void calcSinCosThetaU(const varying float dSqr, const uniform float rSqr, 
+                             varying float * uniform sinTheta, varying float * uniform cosTheta);
+
+/// Calculate the distance term for the importance weight. @see [2] eq (3)
+static varying float calcDistanceTerm(const varying Vec3f& p,
+                                      const uniform LightTreeNode& sibling,
+                                      const varying float dSqr,
+                                      const uniform float rSqr);
+
+/// Calculate the geometry term (solid angle)
+/// TODO: cull lights before tree traversal?
+/// @see [1] eq (3)
+varying float calcGeometricTerm(const uniform LightTreeNode& node,
+                                const varying Vec3f& p, 
+                                varying float cosThetaU, 
+                                varying float sinThetaU,
+                                const varying Vec3f& dirToPt);
+
+/// Material term calculation
+/// TODO: add some sort of BSDF approximation, perhaps based on Liu et al
+/// @see [1] eq (3)
+varying float calcMaterialTerm(const varying Vec3f& p, 
+                               const varying Vec3f& n, 
+                               varying bool cullLights,
+                               varying float cosThetaU, 
+                               varying float sinThetaU, 
+                               const varying Vec3f& dirToPt);

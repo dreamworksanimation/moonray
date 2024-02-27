@@ -82,6 +82,11 @@ void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
 
 //----------------------------------------------------------------------------
 
+void chooseLightsToSample(varying float * uniform lightSelectionPdfs, const varying LightSetSampler& lSampler, 
+                          const uniform int lightCount, const varying PathVertex& pv, const varying Subpixel& sp,
+                          varying uint32_t& sequenceID, const varying Intersection& isect, 
+                          const varying Vec3f& cullingNormal);
+
 void drawBsdfSamples(
         uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
         const varying BsdfSampler &bSampler, const varying LightSetSampler &lSampler,
@@ -97,7 +102,7 @@ void drawLightSetSamples(
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
         varying uint32_t sequenceID, varying LightSample * uniform lsmp,
         uniform int clampingDepth, varying float clampingValue, varying float rayDirFootprint,
-        const varying RayState* uniform rs, const uniform int lightIndex);
+        const varying RayState * uniform rs, const uniform int lightIndex, const varying float lightSelectionPdf);
 
 void applyRussianRoulette(
         uniform PbrTLState * uniform pbrTls,
