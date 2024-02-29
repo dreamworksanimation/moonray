@@ -66,9 +66,6 @@ CACHE_ALIGN tbb::atomic<unsigned> gFailedCL1Allocs;
 unsigned MAYBE_UNUSED gPeakRayStateUsage = 0;
 unsigned MAYBE_UNUSED gPeakCL1Usage      = 0;
 
-typedef mcrt_common::TLSInitParams::MemBlockType MemBlockType;
-typedef scene_rdl2::MemBlockManager<MemBlockType> MemBlockManagerType;
-
 struct PoolInfo
 {
     PoolInfo():
@@ -79,10 +76,10 @@ struct PoolInfo
     {
     }
 
-    unsigned          mActualPoolSize;
-    MemBlockManagerType *mMemBlockManager;
-    MemBlockType     *mBlockMemory;
-    uint8_t          *mEntryMemory;
+    unsigned                           mActualPoolSize;
+    scene_rdl2::alloc::MemBlockManager *mMemBlockManager;
+    scene_rdl2::alloc::MemBlock        *mBlockMemory;
+    uint8_t                            *mEntryMemory;
 };
 
 struct Private
@@ -113,9 +110,8 @@ initPool(const unsigned poolSize, const unsigned numTBBThreads,
     // poolSize * 8 seems to be adequate, so for safety poolSize * 16 is used as the
     // minimum number of totalEntries.
     const unsigned totalEntries    = poolSize * std::max(numTBBThreads, 16u);
-
     const unsigned entryStride     = entrySize;
-    const unsigned entriesPerBlock = MemBlockType::getNumEntries();
+    const unsigned entriesPerBlock = scene_rdl2::alloc::MemBlock::getNumEntries();
 
     unsigned numBlocks = totalEntries / entriesPerBlock;
     if (numBlocks * entriesPerBlock < totalEntries) {
@@ -130,14 +126,15 @@ initPool(const unsigned poolSize, const unsigned numTBBThreads,
     // and indexTo<typeName> remain valid
     p.mActualPoolSize = numBlocks * entriesPerBlock;
 
-    const size_t entryMemorySize = MemBlockManagerType::queryEntryMemoryRequired(numBlocks, entryStride);
+    const size_t entryMemorySize = scene_rdl2::alloc::MemBlockManager::queryEntryMemoryRequired(numBlocks, entryStride);
 
     // Uncomment to see how much memory is being allocated for each pool.
     //Logger::info("Attempting to allocate ", entryMemorySize, " bytes for ", poolName, " pool.\n");
 
     p.mEntryMemory = scene_rdl2::alignedMallocArray<uint8_t>(entryMemorySize, CACHE_LINE_SIZE);
-    p.mBlockMemory = scene_rdl2::alignedMallocArrayCtor<MemBlockType>(numBlocks, CACHE_LINE_SIZE);
-    p.mMemBlockManager = MNRY_VERIFY(scene_rdl2::alignedMallocCtor<MemBlockManagerType>(CACHE_LINE_SIZE));
+    p.mBlockMemory = scene_rdl2::alignedMallocArrayCtor<scene_rdl2::alloc::MemBlock>(numBlocks, CACHE_LINE_SIZE);
+
+    p.mMemBlockManager = MNRY_VERIFY(scene_rdl2::alignedMallocCtor<scene_rdl2::alloc::MemBlockManager>(CACHE_LINE_SIZE));
     p.mMemBlockManager->init(numBlocks, p.mBlockMemory, p.mEntryMemory, entryStride);
 }
 
@@ -251,7 +248,7 @@ TLState::TLState(mcrt_common::ThreadLocalState *tls,
             mCL1Pool.init(gPrivate.mCL1.mMemBlockManager);
         }
 
-        // Allocate primary ray queue.
+        // Allocate ray queue (contains RayState* pointers).
         if (initParams.mRayQueueSize) {
             unsigned queueSize = initParams.mRayQueueSize;
             mRayEntries = scene_rdl2::alignedMallocArray<RayQueue::EntryType>

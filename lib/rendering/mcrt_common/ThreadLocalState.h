@@ -38,9 +38,6 @@ struct TLSInitParams
     // suitable for bunded execution.
     void setVectorizedDefaults(bool realtimeRender);
 
-    // Define the basic memory pool building block for RayState pool.
-    typedef scene_rdl2::alloc::MemBlock<uint64_t, uint64_t> MemBlockType;
-
     // Set this to true if we are initializing in the context of performing unit
     // tests, in which case, we can take a bunch of short cuts.
     bool            mUnitTests;
