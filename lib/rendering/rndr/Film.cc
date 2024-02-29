@@ -300,6 +300,7 @@ Film::Film() :
     mCryptomatteBuf(nullptr),
     mAovBufNumFloats(0),
     mAovHasClosestFilter(false),
+    mPixelInfoBuf(nullptr),
     mHeatMapBuf(nullptr),
     mTileExtrapolation(nullptr),
     mResumedFromFileCondition(false)
@@ -464,6 +465,7 @@ Film::init(unsigned w, unsigned h,
     }
 
     delete mPixelInfoBuf;
+    mPixelInfoBuf = nullptr;
 
     if (flags & ALLOC_PIXEL_INFO_BUFFER) {
         mPixelInfoBuf = new scene_rdl2::fb_util::PixelInfoBuffer;
