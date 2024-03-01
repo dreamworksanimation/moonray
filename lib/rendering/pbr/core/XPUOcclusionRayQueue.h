@@ -234,11 +234,14 @@ protected:
 
             // The handler unlocks the GPU device mutex internally once the GPU
             // is finished but there is still some CPU code left for this thread to run.
+            ++tls->mHandlerStackDepth;
             (*mGPUQueueHandler)(tls,
                                 numRays,
                                 rays,
                                 gpuRays,
                                 mGPUDeviceMutex);
+            MNRY_ASSERT(tls->mHandlerStackDepth > 0);
+            --tls->mHandlerStackDepth;
 
         } else {
             // There's too many threads already waiting for the GPU, and we would need to wait
@@ -252,7 +255,10 @@ protected:
                 entries[i] = const_cast<BundledOcclRay*>(rays + i);
             }
 
+            ++tls->mHandlerStackDepth;
             (*mCPUThreadQueueHandler)(tls, numRays, entries, mHandlerData);
+            MNRY_ASSERT(tls->mHandlerStackDepth > 0);
+            --tls->mHandlerStackDepth;
         }
     }
 
