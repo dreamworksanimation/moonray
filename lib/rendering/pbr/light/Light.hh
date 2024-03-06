@@ -105,7 +105,11 @@ enum LightSidednessType
     HUD_MEMBER(float, mClearRadius);                                        \
     HUD_MEMBER(float, mClearRadiusFalloffDistance);                         \
     HUD_MEMBER(float, mClearRadiusInterpolation);                           \
-    HUD_MEMBER(float, mMaxShadowDistance)
+    HUD_MEMBER(float, mMaxShadowDistance);                                  \
+    HUD_ISPC_PAD(mPad1, 4);                                                 \
+    HUD_CPP_MEMBER(tbb::atomic<double>, mSamplingTime, 8);                  \
+    HUD_CPP_MEMBER(tbb::atomic<uint32_t>, mSamplesTaken, 4);                \
+    HUD_CPP_MEMBER(tbb::atomic<uint32_t>, mSamplesKept, 4)
 
 
 #define LIGHT_VALIDATION                                \
@@ -137,6 +141,9 @@ enum LightSidednessType
     HUD_VALIDATE(Light, mClearRadiusFalloffDistance);   \
     HUD_VALIDATE(Light, mClearRadiusInterpolation);     \
     HUD_VALIDATE(Light, mMaxShadowDistance);            \
+    HUD_VALIDATE(Light, mSamplingTime);                 \
+    HUD_VALIDATE(Light, mSamplesTaken);                 \
+    HUD_VALIDATE(Light, mSamplesKept);                  \
     HUD_END_VALIDATION
 
 
