@@ -212,9 +212,10 @@ partitioned1D(const varying IntegratorSample1D& is,
     if (is.mSampleNumber >= kNumSamplesPerSequence) {
         // We use a different sampler when we're going to run out of pre-computed samples.
         // We could partially fill in samples until we run out, but that complicates the logic.
-        const varying uint32_t scramble = SequenceID_getHash(is.mSequenceID, 0xdf4f4915);
-        const varying uint32_t sampleNum = is.mSampleNumber - kNumSamplesPerSequence;
-        output = jitteredR1(sampleNum, scramble);
+        // Previously, we called jitteredR1 here, but it produces nans and otherwise
+        // poorly distributed samples. Instead we're following the USE_RANDOM_1D
+        // code path until we can find an alternative. 
+        getPseudoRandomSample(is, output);
     } else {
         const varying uint32_t scramble = SequenceID_getHash(is.mSequenceID, 0x0740eb57);
         const varying uint32 seqNum = scramble & (kNumSequences - 1u); // scramble3 % kNumSequences;
