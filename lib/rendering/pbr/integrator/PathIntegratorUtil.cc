@@ -19,7 +19,6 @@
 #include <moonray/rendering/rt/rt.h>
 #include <moonray/rendering/shading/bssrdf/VolumeSubsurface.h>
 #include <moonray/rendering/shading/EvalShader.h>
-#include <moonray/common/time/Timer.h>
 
 #define DEBUG_BSDF_SAMPLES 0
 #if DEBUG_BSDF_SAMPLES
@@ -32,7 +31,6 @@
 
 // using namespace scene_rdl2::math; // can't use this as it breaks openvdb in clang.
 using namespace moonray::shading;
-using ManualRenderTimer = moonray::time::TimerAverageDouble;
 
 namespace moonray {
 namespace pbr {

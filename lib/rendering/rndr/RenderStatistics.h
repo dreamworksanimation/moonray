@@ -7,7 +7,6 @@
 
 
 #include "RenderOptions.h"
-#include <moonray/rendering/pbr/core/Scene.h>
 #include <moonray/rendering/rndr/statistics/ArrasLogStream.h>
 #include <moonray/rendering/rndr/statistics/AthenaCSVStream.h>
 #include <moonray/common/mcrt_util/Average.h>
@@ -158,9 +157,6 @@ public:
     void logSamplingStats(const pbr::Statistics& pbrStats,
                           const geom::internal::Statistics& geomStats);
 
-    void logLightStats(const pbr::Statistics& pbrStats, const pbr::Scene* scene,
-                       const scene_rdl2::rdl2::SceneVariables& sceneVars);
-
     // this is a wrapper for the text that comes out of OIIO
     // in the future we may want to dive into the OIIO data structs and
     // generate specific report data here but for now this is done for
@@ -286,7 +282,6 @@ public:
     moonray::util::AverageDouble mTessellationTime;
     moonray::util::AverageDouble mBuildAcceleratorTime;
     moonray::util::AverageDouble mBuildGPUAcceleratorTime;
-    moonray::util::AverageDouble mBuildLightBVHTime;
 
     // on going across frames times.
     moonray::util::AverageDouble mRebuildGeometryTime;
@@ -300,8 +295,6 @@ public:
 
     // shader call stats
     std::unordered_map<scene_rdl2::rdl2::SceneObject *, moonray::util::InclusiveExclusiveAverage<int64> > mShaderCallStats;
-
-    size_t mLightBVHMemoryFootprint;
 
 private:
     using ShaderStatsTable = moonray_stats::StatsTable<5>;

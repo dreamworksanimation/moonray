@@ -16,8 +16,6 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/platform/HybridUniformData.h>
 
-#include <tbb/atomic.h>
-
 
 // Forward declaration of the ISPC types
 namespace ispc {
@@ -257,14 +255,6 @@ public:
         return (pz < 0.0f) ? mSidedness == LIGHT_SIDEDNESS_REGULAR
                            : mSidedness == LIGHT_SIDEDNESS_REVERSE;
     }
-
-    double getSamplingTime() const { return mSamplingTime; }
-    unsigned int getSamplesTaken() const { return mSamplesTaken; }
-    unsigned int getSamplesKept() const { return mSamplesKept; }
-
-    void addTime(double time) { mSamplingTime = mSamplingTime + time; }
-    void incrSamples() { mSamplesTaken++; }
-    void incrSamplesKept() { mSamplesKept++; }
 
 protected:
 

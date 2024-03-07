@@ -171,7 +171,6 @@ RenderStats::reset()
     mBuildGPUAcceleratorTime.reset();
     mRebuildGeometryTime.reset();
     mUpdateSceneTime.reset();
-    mBuildLightBVHTime.reset();
 
     mBuildProceduralTime = 0.0;
     mRtcCommitTime = 0.0;
@@ -183,8 +182,6 @@ RenderStats::reset()
 
     mFrameStartUtilization.userTime = 0;
     mFrameStartUtilization.systemTime = 0;
-
-    mLightBVHMemoryFootprint = 0;
 }
 
 
@@ -1143,156 +1140,6 @@ RenderStats::updateAndLogRenderProgress(std::size_t* current, std::size_t* total
     }
 }
 
-// Given a list of lights, a size cap, and a compare function, sort the lights
-// and log the top lights until you reach the size cap.
-void sortAndPrintLights(std::vector<const pbr::Light*>& lights, StatsTable<4>& table, int numLights, double totalTime,
-                        const std::function<bool(const pbr::Light*, const pbr::Light*)>& compareFunction)
-{
-    std::sort(lights.begin(), lights.end(), compareFunction);
-
-    // Output the top lights, sorted by concern
-    int i = 0;
-    for (const pbr::Light* light : lights) {
-
-        // --- We've reached the size cap, stop ---
-        if (i >= numLights) return;
-
-        // --- Calculate the light efficiency ---
-        int samplesTaken = light->getSamplesTaken();
-        if (samplesTaken <= 0) continue;
-
-        // Calc the % of samples that aren't occluded, black, or invalid
-        float efficiency = light->getSamplesKept() / (float)samplesTaken;
-
-        // --- Get the average sampling time for this light by thread ---
-        double time = light->getSamplingTime() / mcrt_common::getNumTBBThreads();
-
-        // --- Log the light info ---
-        table.emplace_back(/*light name*/       light->getRdlLight()->get(scene_rdl2::rdl2::Light::sLabel), 
-                           /*sampling time*/    time, 
-                           /*% of total time*/  percentage(time / totalTime),
-                           /*% efficiency*/     percentage(efficiency)
-                          );
-        ++i;
-    }
-}
-
-void RenderStats::logLightStats(const pbr::Statistics& pbrStats, const pbr::Scene* scene, 
-                                const scene_rdl2::rdl2::SceneVariables& sceneVars)
-{
-    StatsTable<2> overallTable("Overall Light Statistics");
-    
-    const int numLights = 10; // number of lights to print out individually
-    std::vector<const pbr::Light*> lights;
-
-    // ---------------- Calculate overall light sampling statistics ---------------------
-
-    double totalTime = pbrStats.mLightSamplingTime / mcrt_common::getNumTBBThreads();
-    int lightSamplesSqrt = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplesSqrt);
-    int pixelSamplesSqrt = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sPixelSamplesSqrt);
-    int numPixels        = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sImageWidth) * 
-                           sceneVars.get(scene_rdl2::rdl2::SceneVariables::sImageHeight);
-    int totalUserSamples = lightSamplesSqrt*lightSamplesSqrt * pixelSamplesSqrt*pixelSamplesSqrt * numPixels;
-    
-    float totalEfficiency = 0.f;
-    double allLightsTime = 0.0;
-    for (int i = 0; i < scene->getLightCount(); ++i) {
-        const pbr::Light* light = scene->getLight(i);
-        if (light->getSamplesTaken() <= 0) { continue; }
-        
-        totalEfficiency += (light->getSamplesKept() / (float)light->getSamplesTaken());
-        allLightsTime += light->getSamplingTime() / mcrt_common::getNumTBBThreads();
-
-        lights.push_back(light);
-    }
-
-    float avgTimePerLight = totalTime / scene->getLightCount();
-    float avgEfficiency = totalEfficiency / scene->getLightCount();
-    float avgLightsChosen = pbrStats.getCounter(pbr::STATS_NUM_LIGHTS_CHOSEN) / ((float)totalUserSamples);
-
-    overallTable.emplace_back("Total light sampling time (s)", totalTime);
-    if (sceneVars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode) == 1 /*adaptive*/) {
-        overallTable.emplace_back("Adaptive light sampling overhead (s)", (totalTime - allLightsTime));
-    }
-    overallTable.emplace_back("Avg sampling time per light (s)", avgTimePerLight);
-    overallTable.emplace_back("Avg efficiency per light", percentage(avgEfficiency));
-    overallTable.emplace_back("Avg # of lights sampled per pixel sample", avgLightsChosen);
-
-    StatsTable<2> bvhTable("Light Sampling BVH Stats");
-    if (sceneVars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode) == 1 /*adaptive*/) {
-        bvhTable.emplace_back("Time to build (s)", mBuildLightBVHTime.getSum());
-        bvhTable.emplace_back("Size (KB)", (mLightBVHMemoryFootprint / 1000));
-    }
-
-    // -------------------- Sort and log top lights based on concern -------------------------
-
-    using TopTenTable = StatsTable<4>;
-
-    TopTenTable topTenTable1("Top 10 Lights: By Sampling Time", "Light Name", "Time (s)", 
-                             "\% of total", "Efficiency");
-    TopTenTable topTenTable2("Top 10 Lights: By Inefficiency", "Light Name", "Time (s)", 
-                             "\% of total", "Efficiency");
-
-    // By sampling time
-    sortAndPrintLights(lights, topTenTable1, numLights, totalTime,
-            [](const pbr::Light* a, const pbr::Light* b) { return a->getSamplingTime() > b->getSamplingTime(); });
-
-    // By efficiency (% samples used)
-    sortAndPrintLights(lights, topTenTable2, numLights, totalTime,
-            [](const pbr::Light* a, const pbr::Light* b) { 
-                float efficiencyA = a->getSamplesKept() / (float)a->getSamplesTaken();
-                float efficiencyB = b->getSamplesKept() / (float)b->getSamplesTaken();
-                return efficiencyA < efficiencyB;
-            });
-    
-    // ------------------------------ Output log info ---------------------------------------
-
-    auto writeCSV = [&](std::ostream& outs, bool athenaFormat) {
-        outs.precision(2);
-        outs.setf(std::ios_base::fixed, std::ios_base::floatfield);
-        writeEqualityCSVTable(outs, overallTable, athenaFormat);
-        if (sceneVars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode) == 1 /*adaptive*/) {
-            writeEqualityCSVTable(outs, bvhTable, athenaFormat);
-        }
-        writeCSVTable(outs, topTenTable1, athenaFormat);
-        writeCSVTable(outs, topTenTable2, athenaFormat);
-    };
-
-    if (getLogAthena()) {
-        writeCSV(mAthenaStream, true);
-    }
-    if (getLogCsv()) {
-        writeCSV(mCSVStream, false);
-    }
-
-    if (getLogInfo()) {
-        mInfoStream.setf(std::ios::fixed, std:: ios::floatfield);
-        mInfoStream.precision(2);
-
-        writeEqualityInfoTable(mInfoStream, getPrependString(), overallTable);
-        logInfoEmptyLine();
-        if (sceneVars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode) == 1 /*adaptive*/) {
-            mInfoStream.precision(6);
-            writeEqualityInfoTable(mInfoStream, getPrependString(), bvhTable);
-            logInfoEmptyLine();
-        }
-
-        mInfoStream.precision(2);
-        auto fmt = getHumanColumnFlags(mInfoStream, topTenTable1);
-        fmt.set(0).left();
-        fmt.set(1).left();
-        fmt.set(2).left();
-        fmt.set(3).left();
-        fmt.set(0).width(30);
-        fmt.set(1).width(10);
-        fmt.set(2).width(10);
-        fmt.set(3).width(10);
-        const std::string pre = getPrependString();
-        writeInfoTable(mInfoStream, pre, topTenTable1, fmt);
-        logInfoEmptyLine();
-        writeInfoTable(mInfoStream, pre, topTenTable2, fmt);
-    }
-}
 
 void
 RenderStats::logSamplingStats(const pbr::Statistics& pbrStats, const geom::internal::Statistics& geomStats)

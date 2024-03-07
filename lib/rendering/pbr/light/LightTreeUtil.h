@@ -61,9 +61,6 @@ struct LightTreeCone
     /// Is this LightTreeCone empty?
     bool isEmpty() const { return isZero(mAxis); }
 
-    /// Get the memory footprint of the cone (in bytes)
-    size_t getMemoryFootprint() const { return sizeof(float) * 6 + sizeof(bool); }
-
     /// Get orientation angle in radians
     float getThetaO() const { return scene_rdl2::math::dw_acos(mCosThetaO); }
 
@@ -167,14 +164,6 @@ public:
 /// ------------------------------------- Inline Utils --------------------------------------------------
     /// Is this node a leaf?
     inline bool isLeaf() const { return mLightCount == 1; }
-    /// Get the size of the node (in bytes)
-    inline size_t getMemoryFootprint() { 
-        return sizeof(int) /*mLightIndex*/ 
-             + sizeof(uint32_t) * 3 /*mStartIndex, mRightNodeIndex, mLightCount*/
-             + sizeof(float) * 3 /*mEnergy, mEnergyVariance, mEnergyMean*/
-             + sizeof(float) * 6 /*mBBox (2 Vec3fs)*/
-             + mCone.getMemoryFootprint(); 
-    }
 
     /// Get the node's starting index in lightIndices
     inline uint getStartIndex() const { return mStartIndex; }
