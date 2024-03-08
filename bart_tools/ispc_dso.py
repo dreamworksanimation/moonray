@@ -148,7 +148,7 @@ def defineEvalNormalFn(shaderType, normal, attrNameNormal, attrNameBlend, attrNa
     return text
 
 def mergeJson(source, destination):
-    for key, value in source.items():
+    for key, value in list(source.items()):
         if isinstance(value, dict):
             node = destination.setdefault(key, OrderedDict())
             mergeJson(value, node)
@@ -179,16 +179,16 @@ def declareAttribute(data, text, attr, ns, dataKeywords, aliases, name=''):
         text += ('sceneClass.setGroup("%s", %s::%s);\n' %
                  (data['group'], ns, attr))
     if 'enum' in data:
-        for enum, value in data['enum'].iteritems():
+        for enum, value in data['enum'].items():
             text += ('sceneClass.setEnumValue(%s::%s, %s, "%s");\n' %
                      (ns, attr, value, enum))
     if 'metadata' in data:
-        for metaKey, metaStr in data['metadata'].iteritems():
+        for metaKey, metaStr in data['metadata'].items():
             text += ('sceneClass.setMetadata(%s::%s, "%s", "%s");\n' %
                      (ns, attr, metaKey, metaStr))
 
     # Add rest as metadata, including "comment"
-    for metaKey, metaStr in data.iteritems():
+    for metaKey, metaStr in data.items():
         if not metaKey in dataKeywords :
             text += ('sceneClass.setMetadata(%s::%s, "%s", "%s");\n' %
                      (ns, attr, metaKey, metaStr))
@@ -230,8 +230,8 @@ def addIncludeDependencies(target, source, env):
     Add directive includes as target dependencies.
     '''
     shader = json.loads(env.File(source[0]).get_contents(), object_pairs_hook=OrderedDict)
-    if 'directives' in shader.keys():
-        for attr, data in shader['directives'].iteritems():
+    if 'directives' in list(shader.keys()):
+        for attr, data in shader['directives'].items():
             if attr == 'include' and type(data) == list:
                 for includeFile in data:
                     includeFile = env.File('#%s' % includeFile)
@@ -257,8 +257,8 @@ def BuildIspcDsoSource(target, source, env):
     #        ]
     #    }
     #}
-    if 'directives' in shader.keys():
-        for attr, data in shader['directives'].iteritems():
+    if 'directives' in list(shader.keys()):
+        for attr, data in shader['directives'].items():
             if attr == 'include' and type(data) == list:
                 for includeFile in data:
                     includeFile = env.File('#%s' % includeFile)
@@ -266,8 +266,8 @@ def BuildIspcDsoSource(target, source, env):
                         includeJson = json.loads(includeFile.get_contents(), object_pairs_hook=OrderedDict)
                         mergeJson(includeJson, shader)
                     except ValueError as err:
-                        print 'Error with file: %s' % includeFile
-                        print 'Error: %s' % err
+                        print('Error with file: %s' % includeFile)
+                        print('Error: %s' % err)
 
         shader.pop('directives')
 
@@ -286,15 +286,15 @@ def BuildIspcDsoSource(target, source, env):
     #    ]
     #   }
     #}
-    if 'groups' in shader.keys():
-        for groupsAttr, groupsData in shader['groups'].iteritems():
+    if 'groups' in list(shader.keys()):
+        for groupsAttr, groupsData in shader['groups'].items():
             if groupsAttr == 'order' and type(groupsData) == list:
                 attributesSorted = OrderedDict()
                 for group in groupsData:
-                    for attr, attrData in shader['attributes'].iteritems():
+                    for attr, attrData in shader['attributes'].items():
                         if attrData['group'] == group:
                             attributesSorted[attr] = shader['attributes'].pop(attr)
-                for attr, attrData in shader['attributes'].iteritems():
+                for attr, attrData in shader['attributes'].items():
                     attributesSorted[attr] = shader['attributes'].pop(attr)
                 shader['attributes'] = attributesSorted
         shader.pop('groups')
@@ -311,7 +311,7 @@ def BuildIspcDsoSource(target, source, env):
     text  = '#include <scene_rdl2/scene/rdl2/rdl2.h>\n'
     text += 'using namespace scene_rdl2::rdl2;\n'
     text += 'RDL2_DSO_ATTR_DECLARE_NS(' + ns + ')\n'
-    for attr, data in shader['attributes'].iteritems():
+    for attr, data in shader['attributes'].items():
         if 'multi' in data:
             for i in range(int(data['multi'])):
                 multiAttr = attr + str(i)
@@ -325,7 +325,7 @@ def BuildIspcDsoSource(target, source, env):
     # Obviously, if 'metadata' exists it will also be added as metadata
     dataKeywords = ['type', 'name', 'default', 'flags', 'interface', 'aliases',
                     'group', 'enum', 'multi', 'metadata']
-    for attr, data in shader['attributes'].iteritems():
+    for attr, data in shader['attributes'].items():
 
         # attributes can have aliases
         aliases = list()
@@ -346,7 +346,7 @@ def BuildIspcDsoSource(target, source, env):
 
     if 'labels' in shader:
         text += 'static const char *labels[] = {\n'
-        for variable, label in shader['labels'].iteritems():
+        for variable, label in shader['labels'].items():
             text += '    "%s",\n' % label
         text += '    nullptr\n};\n'
         text += 'sceneClass.declareDataPtr("labels", labels);\n'
@@ -367,7 +367,7 @@ def BuildIspcDsoSource(target, source, env):
     text  = '#include <scene_rdl2/scene/rdl2/rdl2.h>\n'
     text += '#include <scene_rdl2/scene/rdl2/ISPCSupport.h>\n'
     text += 'using namespace scene_rdl2::rdl2;\n'
-    for attr, data in shader['attributes'].iteritems():
+    for attr, data in shader['attributes'].items():
         if 'multi' in data:
             for i in range(int(data['multi'])):
                 attrName = attr + str(i)
@@ -387,7 +387,7 @@ def BuildIspcDsoSource(target, source, env):
     text += '#include <moonray/rendering/shading/ispc/Shading.isph>\n'
     text += '#include <scene_rdl2/scene/rdl2/rdl2.isph>\n'
     text += '#include <scene_rdl2/scene/rdl2/ISPCSupport.h>\n'
-    for attr, data in shader['attributes'].iteritems():
+    for attr, data in shader['attributes'].items():
         if 'multi' in data:
             for i in range(int(data['multi'])):
                 attrName = attr + str(i)
@@ -397,7 +397,7 @@ def BuildIspcDsoSource(target, source, env):
             text = declareISPCAttributeFunctions(data, text, attr, shader)
 
     if 'components' in shader:
-        for comp, data in shader['components'].iteritems():
+        for comp, data in shader['components'].items():
             shaderType = shader['type']
             text += '//-------------------------------------------------\n'
             text += '// Component ' + comp + '\n'
@@ -405,7 +405,7 @@ def BuildIspcDsoSource(target, source, env):
             text += defineEvalCompFn(shaderType, comp, data['color'],
                                      data['factor'], data['show'])
     if 'normals' in shader:
-        for normal, data in shader['normals'].iteritems():
+        for normal, data in shader['normals'].items():
             text += '//-----------------------------------------------------\n'
             text += '// Normal ' + normal + '\n'
             text += '//-----------------------------------------------------\n'
@@ -421,7 +421,7 @@ def BuildIspcDsoSource(target, source, env):
     text = '#pragma once\n'
     if 'labels' in shader:
         val = 1
-        for variable, label in shader['labels'].iteritems():
+        for variable, label in shader['labels'].items():
             text += 'static const int %s = %d;\n' % (variable, val)
             val = val + 1
     f = open(str(target[3]), 'wb')
@@ -434,7 +434,7 @@ def BuildIspcDsoSource(target, source, env):
     text = '#pragma once\n'
     if 'labels' in shader:
         val = 1
-        for variable, label in shader['labels'].iteritems():
+        for variable, label in shader['labels'].items():
             text += 'static const uniform int %s = %d;\n' % (variable, val)
             val = val + 1
     f = open(str(target[4]), 'wb')
@@ -476,7 +476,7 @@ def DWAIspcDso(parentEnv, target, ccSource, ispcSource, jsonSource, **kwargs):
     # The other, less desirable solution would be to remove all the function
     # calls from BuildIspcDsoSource(), but that would substantially reduce
     # the readability of an already fairly complicated function.
-    parentEnv.Depends(builder, BuildIspcDsoSource.func_code.co_filename)
+    parentEnv.Depends(builder, BuildIspcDsoSource.__code__.co_filename)
 
     # now build the dso with the correct paths
     env = parentEnv.Clone();
