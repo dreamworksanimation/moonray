@@ -1093,8 +1093,14 @@ RenderContext::stopFrame()
             mLogTime = true;
             mRenderStats->logInfoEmptyLine();
             mRenderStats->logSamplingStats(*mPbrStatistics, *mGeomStatistics);
-
             mRenderStats->logInfoEmptyLine();
+            if (mExecutionMode == mcrt_common::ExecutionMode::SCALAR) {
+                // we currently don't have a method of timing ispc helper functions, so this deep dive
+                // into light stats is only feasible for scalar mode right now
+                mRenderStats->logLightStats(*mPbrStatistics, mPbrScene.get(), mSceneContext->getSceneVariables());
+                mRenderStats->logInfoEmptyLine();
+            }
+
             mRenderStats->logTexturingStats(*texture::getTextureSampler(), mDebugLoggingEnabled);
 
             mRenderStats->logRenderingStats(*mPbrStatistics,
@@ -1920,7 +1926,7 @@ RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUF
 
     // Update PBR
     RenderTimer timer(mRenderStats->mLoadPbrTime);
-    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), executionMode, *mGeometryManager, loadAllGeometries);
+    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), executionMode, *mGeometryManager, loadAllGeometries, *mRenderStats);
 
     mRenderPrepTimingStats->recTime(RenderPrepTimingStats::RenderPrepTag::UPDATE_PBR);
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::RenderPrepTag::WHOLE);

@@ -41,6 +41,7 @@ public:
             mCounters[i] = 0;
         }
         mMcrtTime = 0.0;
+        mLightSamplingTime = 0.0;
         mMcrtUtilization = 0.0;
     }
 
@@ -48,6 +49,8 @@ public:
         for (unsigned i = 0; i < NUM_STATS_COUNTERS; ++i) {
             mCounters[i] += rhs.mCounters[i];
         }
+        mLightSamplingTime += rhs.mLightSamplingTime;
+        
         return *this;
     }
 

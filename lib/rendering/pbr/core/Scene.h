@@ -13,6 +13,7 @@
 #include <moonray/rendering/mcrt_common/Ray.h>
 #include <moonray/rendering/pbr/light/LightAccelerator.h>
 #include <moonray/rendering/pbr/light/LightSet.h>
+#include <moonray/rendering/rndr/RenderStatistics.h>
 
 #include <moonray/rendering/bvh/shading/Intersection.h>
 #include <moonray/rendering/geom/prim/EmissiveRegion.h>
@@ -42,6 +43,10 @@ namespace geom {
 namespace internal {
 class VolumeAssignmentTable;
 }
+}
+
+namespace rndr {
+class RenderStats;
 }
 
 namespace rt {
@@ -111,7 +116,7 @@ public:
     /// Called in pre-frame / before a shading process is done / post-frame
     /// Update light list, camera and other scene properties
     void preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode executionMode,
-            rt::GeometryManager& geometryManager, bool forceMeshLightGeneration);
+            rt::GeometryManager& geometryManager, bool forceMeshLightGeneration, rndr::RenderStats& stats);
 
     void postFrame();
 

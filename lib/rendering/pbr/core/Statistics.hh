@@ -13,6 +13,7 @@ enum StatCounters
 {
     STATS_PIXEL_SAMPLES,
     STATS_LIGHT_SAMPLES,
+    STATS_NUM_LIGHTS_CHOSEN,
     STATS_BSDF_SAMPLES,
     STATS_SSS_SAMPLES,
 
@@ -84,12 +85,14 @@ enum StatCounters
 #define PBR_STATISTICS_MEMBERS                              \
     HUD_ARRAY(uint64_t, mCounters, NUM_STATS_COUNTERS);     \
     HUD_MEMBER(double, mMcrtTime);                          \
+    HUD_MEMBER(double, mLightSamplingTime);                 \
     HUD_MEMBER(double, mMcrtUtilization)
 
 #define PBR_STATISTICS_VALIDATION                           \
     HUD_BEGIN_VALIDATION(PbrStatistics);                    \
     HUD_VALIDATE(PbrStatistics, mCounters);                 \
     HUD_VALIDATE(PbrStatistics, mMcrtTime);                 \
+    HUD_VALIDATE(PbrStatistics, mLightSamplingTime);        \
     HUD_VALIDATE(PbrStatistics, mMcrtUtilization);          \
     HUD_END_VALIDATION
 
