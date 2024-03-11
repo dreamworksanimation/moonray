@@ -3,6 +3,7 @@
 
 
 #include <moonray/rendering/geom/prim/NamedPrimitive.h>
+#include <moonray/rendering/pbr/core/Scene.h>
 
 #include "RenderStatistics.h"
 #include "Error.h"
