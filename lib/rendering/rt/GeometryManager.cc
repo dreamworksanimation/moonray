@@ -677,8 +677,7 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
                         requestedAttributes.insert(optKeys.begin(), optKeys.end());
                     }
                 } else {
-                    throw scene_rdl2::except::RuntimeError(std::string("Geometry ") + geometry->getName() + 
-                        std::string(" is not in the Layer"));
+                    geometry->warn("Geometry is not in the Layer");
                 }
 
                 shading::PerGeometryAttributeKeySet::const_iterator itr =
