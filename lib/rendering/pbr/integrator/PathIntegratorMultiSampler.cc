@@ -13,7 +13,6 @@
 #include "PathIntegrator.h"
 #include "PathIntegratorUtil.h"
 
-#include <moonray/common/time/Timer.h>
 #include <moonray/rendering/pbr/core/Aov.h>
 #include <moonray/rendering/pbr/core/Constants.h>
 #include <moonray/rendering/pbr/core/DebugRay.h>
@@ -21,7 +20,6 @@
 #include "VolumeTransmittance.h"
 
 // using namespace scene_rdl2::math; // can't use this as it breaks openvdb in clang.
-using ManualRenderTimer = moonray::time::TimerAverageDouble;
 
 namespace moonray {
 namespace pbr {
@@ -172,10 +170,6 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
     IntegratorSample1D rrSamples;
     rrSamples.resume(sid, pv.nonMirrorDepth * sampleCount);
 
-    moonray::util::AverageDouble samplingTime;
-    ManualRenderTimer overallTimer(samplingTime);
-    overallTimer.start();
-
     for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
 
         // If adaptive light sampling is on, check to see if this light was chosen
@@ -187,12 +181,6 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         }
 
         const Light *light = lSampler.getLight(lightIndex);
-
-        pbrTls->mStatistics.incCounter(STATS_NUM_LIGHTS_CHOSEN);
-
-        moonray::util::AverageDouble lsmpTime;
-        ManualRenderTimer timer(lsmpTime);
-        timer.start();
 
         // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
         // terminating ray paths too early. We exclude them from light samples because these samples represent
@@ -214,10 +202,8 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
         }
 
         for (int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
-            light->incrSamples();
-
-            if (lsmp[s].isInvalid()) { 
-                continue; 
+            if (lsmp[s].isInvalid()) {
+                continue;
             }
             scene_rdl2::math::Color lightT = lsmp[s].t;
             // This matches the behavior in the vectorized codepath.
@@ -243,9 +229,6 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                 // only do extra calculations if clear radius falloff enabled
                 if (light->getClearRadiusFalloffDistance() != 0.f && 
                     tfar < light->getClearRadius() + light->getClearRadiusFalloffDistance()) {
-
-                    light->incrSamplesKept();
-
                     // compute unoccluded pixel value
                     lightT *= (1.0f - presence);
                     mcrt_common::Ray trRay(P, lsmp[s].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
@@ -299,8 +282,6 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                     }
                 }
             } else {
-                light->incrSamplesKept();
-
                 // Take into account presence and transmittance
                 lightT *= (1.0f - presence);
                 mcrt_common::Ray trRay(P, lsmp[s].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
@@ -369,13 +350,7 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
                 }
             }
         }
-
-        timer.stop();
-        light->addTime(lsmpTime.getSum());
     }
-
-    overallTimer.stop();
-    pbrTls->mStatistics.mLightSamplingTime += samplingTime.getSum();
 
     // tldr; Add inactive lights to the visibility aov
     // In order to encompass all of the cases where the point's normal faces away from the light, we have to
@@ -671,16 +646,9 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // light acceleration structure. Otherwise, sample all lights.  
     float* lightSelectionPdfs = nullptr;
     if (static_cast<LightSamplingMode>(pbrTls->mFs->mLightSamplingMode) == LightSamplingMode::ADAPTIVE) {
-        moonray::util::AverageDouble samplingTime;
-        ManualRenderTimer lightSamplingTimer(samplingTime);
-        lightSamplingTimer.start();
-
         int lightCount = lSampler.getLightCount();
         lightSelectionPdfs = arena->allocArray<float>(lightCount);
         chooseLightsToSample(lightSelectionPdfs, lSampler, lightCount, pv, sp, sequenceID, isect, cullingNormal);
-
-        lightSamplingTimer.stop();
-        pbrTls->mStatistics.mLightSamplingTime += samplingTime.getSum();
     }
 
     // Draw Bsdf and LightSet samples and compute tentative contributions.

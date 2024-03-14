@@ -16,8 +16,6 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/platform/HybridUniformData.h>
 
-#include <tbb/atomic.h>
-
 
 // Forward declaration of the ISPC types
 namespace ispc {
@@ -258,18 +256,6 @@ public:
                            : mSidedness == LIGHT_SIDEDNESS_REVERSE;
     }
 
-    // ------------ Light sampling statistics functions ---------------
-    
-    double getSamplingTime() const { return mSamplingTime; }
-    unsigned int getSamplesTaken() const { return mSamplesTaken; }
-    unsigned int getSamplesKept() const { return mSamplesKept; }
-
-    // Marking these funcs const so they can be used on const lights,
-    // but the member variables they alter are mutable
-    void addTime(double time) const { mSamplingTime = mSamplingTime + time; }
-    void incrSamples() const { mSamplesTaken++; }
-    void incrSamplesKept() const { mSamplesKept++; }
-
 protected:
 
     /// Derived classes should call this method in their update() function.
@@ -297,10 +283,6 @@ protected:
     static const scene_rdl2::math::Mat4f sRotateX180;
 
     LIGHT_MEMBERS;
-
-    mutable tbb::atomic<double> mSamplingTime;
-    mutable tbb::atomic<uint32_t> mSamplesTaken;
-    mutable tbb::atomic<uint32_t> mSamplesKept;
 
 private:
     /// Copy is disabled

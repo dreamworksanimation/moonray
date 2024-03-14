@@ -105,8 +105,7 @@ enum LightSidednessType
     HUD_MEMBER(float, mClearRadius);                                        \
     HUD_MEMBER(float, mClearRadiusFalloffDistance);                         \
     HUD_MEMBER(float, mClearRadiusInterpolation);                           \
-    HUD_MEMBER(float, mMaxShadowDistance);                                  \
-    HUD_ISPC_PAD(mPad1, 20)
+    HUD_MEMBER(float, mMaxShadowDistance)
 
 
 #define LIGHT_VALIDATION                                \

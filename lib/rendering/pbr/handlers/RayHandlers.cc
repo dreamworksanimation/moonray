@@ -83,13 +83,7 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
             isOccluded = accel->occluded(rtRay);
         }
 
-        const Light *light = static_cast<BundledOcclRayData *>(
-                    pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight;
-        light->incrSamples();
-
         if (!isOccluded || disableShadowing) {
-            light->incrSamplesKept();
-
             // At this point, we know that the ray is not occluded, but we still need to
             // apply volume transmittance to the final radiance value.
             scene_rdl2::math::Color tr = getTransmittance(pbrTls, occlRay);
@@ -109,6 +103,9 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
         } else {
             // LPE: visibility aovs when we don't hit light
             if (occlRay.mDataPtrHandle != nullHandle) {
+
+                const Light *light = static_cast<BundledOcclRayData *>(
+                    pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight;
 
                 // see PathIntegrator::addDirectVisibleLightSampleContributions()
                 if (light->getClearRadiusFalloffDistance() != 0.f &&

@@ -344,7 +344,6 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
             lightSelectionPdf = lightSelectionPdfs[lightIndex];
             if (lightSelectionPdf < 0.f) continue;
         }
-        addToCounter(pbrTls->mStatistics, STATS_NUM_LIGHTS_CHOSEN, getActiveLaneCount());
 
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
