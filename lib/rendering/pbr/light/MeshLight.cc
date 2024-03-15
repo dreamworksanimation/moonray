@@ -1292,7 +1292,10 @@ MeshLight::buildBVHRecurse(const scene_rdl2::math::BBox3f& bbox, std::vector<Fac
         }
     );
 
-    mid = pMid - faces.begin();
+    // Careful: Since all these indices are 32-bit ints, we can't have more than 2^31-1
+    // faces in the BVH.
+    MNRY_ASSERT(static_cast<long>(pMid - faces.begin()) < std::numeric_limits<int>::max());
+    mid = static_cast<int>(pMid - faces.begin());
 
     // If we did not successfully partition the faces, fall back to a naive partition.
     // There is no known scenario where the partition would be unsuccessful, so there

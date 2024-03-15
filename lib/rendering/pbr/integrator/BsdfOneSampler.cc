@@ -130,7 +130,7 @@ BsdfOneSampler::sampleCdf(float r, float &pdf) const
     MNRY_ASSERT(mLobeCount > 0);
 
     const float *ptr = std::upper_bound(mLobeCdf, mLobeCdf + mLobeCount - 1, r);
-    const int cdfIndex = ptr - mLobeCdf;
+    const int cdfIndex = static_cast<int>(ptr - mLobeCdf);
     MNRY_ASSERT(cdfIndex >= 0);
     MNRY_ASSERT(cdfIndex < mLobeCount);
 

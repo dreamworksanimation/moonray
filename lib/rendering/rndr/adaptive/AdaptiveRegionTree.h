@@ -253,7 +253,7 @@ class AdaptiveRegionTree
         // Binary search for the mid-point value.
         const auto lbiter = std::upper_bound(accumulatedError.cbegin(), accumulatedError.cend(), half);
 
-        int i;
+        long i;
         if (accumulatedError.back() == 0.f)
             i = accumulatedError.size() / 2;
         else

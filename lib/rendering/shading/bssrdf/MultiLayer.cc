@@ -90,7 +90,7 @@ MultiLayerBssrdf::selectIndex(float r1) const
                (r1 < mCdfs[1]  ?  1  :  2));
     }     
     const float *ptr = std::upper_bound(mCdfs, mCdfs + mLobeCount, r1);
-    unsigned int layerIndex = ptr - mCdfs;
+    unsigned int layerIndex = static_cast<unsigned int>(ptr - mCdfs);
     return  max(layerIndex, mLobeCount - 1);
 }
 

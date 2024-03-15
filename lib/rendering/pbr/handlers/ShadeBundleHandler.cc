@@ -450,7 +450,9 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     // Send terminated and primary ray radiance samples to radiance queue.
     //
 
-    unsigned numTerminated = currRadiance - radiances;
+    // Careful: pointer subtraction may overflow 32 bits if we have more than 2^32-1 radiances
+    MNRY_ASSERT(static_cast<size_t>(currRadiance - radiances) < std::numeric_limits<int>::max());
+    unsigned numTerminated = static_cast<unsigned>(currRadiance - radiances);
 
     if (numTerminated) {
         pbrTls->addRadianceQueueEntries(numTerminated, radiances);

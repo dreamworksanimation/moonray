@@ -536,18 +536,18 @@ private:
     {
         static_assert(Traits::producer_traits == ProducerTraits::SINGLE_PRODUCER,
                       "Batch mode supported for single producer only");
-        index_t num_elements_to_process = std::distance(first, last);
+        auto num_elements_to_process = std::distance(first, last);
 
         while (first != last) {
             // We're the only writer. m_size will only decrease, meaning this is pessimistic (which is perfect).
-            const auto container_size = m_size.load(std::memory_order_acquire);
+            const uint32_t container_size = m_size.load(std::memory_order_acquire);
             if (container_size == capacity()) {
                 wait(m_size, container_size);
             }
 
-            const index_t mini_batch_size = std::min(num_elements_to_process, capacity() - container_size);
+            const long mini_batch_size = std::min<long>(num_elements_to_process, capacity() - container_size);
 
-            MNRY_ASSERT(mini_batch_size <= static_cast<index_t>(std::distance(first, last)));
+            MNRY_ASSERT(mini_batch_size <= static_cast<long>(std::distance(first, last)));
             const auto           next    = std::next(first, mini_batch_size);
             [[gnu::unused]] bool success = try_push_batch_impl(first, next, mini_batch_size);
             MNRY_ASSERT(success);

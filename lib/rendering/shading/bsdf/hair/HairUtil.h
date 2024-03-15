@@ -280,7 +280,7 @@ public:
     static scene_rdl2::math::Vec2f
     demuxFloat(float f) {
         assert(f >= 0 && f < 1);
-        uint64_t v = f * (1ull << 32);
+        uint32_t v = static_cast<uint32_t>(f * (1ull << 32));
         uint32_t bits[2] = {compact1By1(v), compact1By1(v >> 1)};
         return scene_rdl2::math::Vec2f(bits[0] / float(1 << 16), bits[1] / float(1 << 16));
     }

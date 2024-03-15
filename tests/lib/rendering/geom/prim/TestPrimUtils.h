@@ -72,7 +72,7 @@ public:
         return mIntDist(mGenerator);
     }
 
-    int randomLong()
+    long randomLong()
     { 
         return mLongDist(mGenerator);
     }

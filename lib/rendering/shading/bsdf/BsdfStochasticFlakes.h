@@ -31,7 +31,7 @@ unsigned int
 selectIndexFromCdf(const float* cdfs, unsigned int count, const float r, float &remapped_r)
 {
     const float *ptr = std::upper_bound(cdfs, cdfs+count, r);
-    unsigned int index = ptr - cdfs;
+    unsigned int index = static_cast<unsigned int>(ptr - cdfs);
     index =  scene_rdl2::math::min(index, count - 1);
     float cdfRange = cdfs[index];
     if (index >= 1) {

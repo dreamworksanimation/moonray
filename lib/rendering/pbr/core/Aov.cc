@@ -2688,7 +2688,7 @@ MaterialAovs::getLabelIndex(const std::string &label) const
     auto result = std::find(mLabels.begin(), mLabels.end(), label);
     if (result == mLabels.end()) return -1; // not found
 
-    return result - mLabels.begin();
+    return static_cast<int>(result - mLabels.begin());
 }
 
 int
@@ -2697,7 +2697,7 @@ MaterialAovs::getMaterialLabelIndex(const std::string &label) const
     auto result = std::find(mMaterialLabels.begin(), mMaterialLabels.end(), label);
     if (result == mMaterialLabels.end()) return -1; // not found
 
-    return result - mMaterialLabels.begin();
+    return static_cast<int>(result - mMaterialLabels.begin());
 }
 
 int
@@ -2706,7 +2706,7 @@ MaterialAovs::getGeomLabelIndex(const std::string &label) const
     auto result = std::find(mGeomLabels.begin(), mGeomLabels.end(), label);
     if (result == mGeomLabels.end()) return -1; // not found
 
-    return result - mGeomLabels.begin();
+    return static_cast<int>(result - mGeomLabels.begin());
 }
 
 int

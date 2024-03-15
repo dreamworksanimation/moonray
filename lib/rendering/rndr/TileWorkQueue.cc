@@ -123,8 +123,8 @@ TileWorkQueue::init(RenderMode mode,
 
         unsigned samplesPerPixel = pass.mEndSampleIdx - pass.mStartSampleIdx;
         unsigned samplesPerTile = (pass.mEndPixelIdx - pass.mStartPixelIdx) * samplesPerPixel;
-        unsigned tilesPerGroup = std::lround(static_cast<float>(desiredSamplesPerGroup) /
-                                             static_cast<float>(samplesPerTile));
+        unsigned tilesPerGroup = static_cast<unsigned>(std::lround(static_cast<float>(desiredSamplesPerGroup) /
+                                                       static_cast<float>(samplesPerTile)));
         tilesPerGroup = scene_rdl2::math::clamp<unsigned>(tilesPerGroup, minTilesPerGroup, maxTilesPerGroup);
         MNRY_ASSERT(tilesPerGroup);
 

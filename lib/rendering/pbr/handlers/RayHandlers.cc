@@ -202,7 +202,7 @@ computeOcclusionQueriesBundled(pbr::TLState *pbrTls, unsigned numEntries,
         [](BundledOcclRay *r){return r->mOcclTestType == OcclTestType::STANDARD;});
 
     // Exclude all the no-op entries so we don't run occlusion tests for them
-    unsigned numStandardEntries = noOpEntries - entries;
+    unsigned numStandardEntries = static_cast<unsigned>(noOpEntries - entries);
     unsigned numNoOpEntries = numEntries - numStandardEntries;
     numEntries = numStandardEntries;
 
