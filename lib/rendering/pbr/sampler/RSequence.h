@@ -102,7 +102,7 @@ inline float jitteredR1(uint32_t i, uint32_t scramble) noexcept
     static_assert(std::numeric_limits<decltype(scramble1)>::max() >= kMoebiusTransformationSize,
         "For a good distribution, we should be at least as big as our array");
     const uint32_t idx = hash16_s6(scramble1) % kMoebiusTransformationSize;
-    const float s0 = bitsToFloat(static_cast<uint32_t>(hash16_s6(scramble0) << 16u));
+    const float s0 = bitsToFloat(static_cast<uint32_t>(hash16_s6(scramble0)) << 16u);
 
     const float p = s0 + i * moebiusTransformationValues[idx];
     const float k = lambda * delta  / (i + i0);

@@ -121,7 +121,7 @@ inline varying float jitteredR1(varying uint32_t i, varying uint32_t scramble)
     const varying uint16_t scramble1 = (scramble >> 16u) & 0xFFFFu;
 
     const varying uint32_t idx = hash16_s6(scramble1) % kMoebiusTransformationSize;
-    const varying float s0 = bitsToFloat(useHighOrderBits((uint32_t)(hash16_s6(scramble0) << 16u)));
+    const varying float s0 = bitsToFloat(useHighOrderBits((uint32_t)hash16_s6(scramble0) << 16u));
 
     const varying float p = s0 + i * moebiusTransformationValues[idx];
     const varying float k = lambda * delta  / (i + i0);

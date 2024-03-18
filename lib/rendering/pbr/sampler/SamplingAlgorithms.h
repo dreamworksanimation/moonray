@@ -152,10 +152,12 @@ finline void partitioned1D(const SequenceID& seqid, uint32_t n, float* const out
     if (unlikely(n + nsamples >= kNumSamplesPerSequence)) {
         // We use a different sampler when we're going to run out of pre-computed samples.
         // We could partially fill in samples until we run out, but that complicates the logic.
-        // Previously, we called jitteredR1 here, but it produces 
-        // poorly distributed samples. Instead we're following the USE_RANDOM_1D
-        // code path until we can find an alternative. 
-        random1D(seqid, n, out, nsamples);
+        const uint32_t scramble = seqid.getHash(0xdf4f4915);
+        for (utype i = 0; i < nsamples; ++i) {
+            const utype sampleNum = n - kNumSamplesPerSequence + i;
+            const float sample = jitteredR1(sampleNum, scramble);
+            out[i] = sample;
+        }
     } else {
         const auto scramble = seqid.getHash(0x0740eb57);
         // If the array size is a power of two, the compiler should mask this
