@@ -2140,17 +2140,21 @@ RenderDriver::createXPUQueues()
     const unsigned cpuThreadQueueSize = 65536; // number of rays
     uint32_t rayHandlerFlags = 0;
 
+    mXPURayQueue = new pbr::XPURayQueue(numCPUThreads,
+                                        /* cpuThreadQueueSize, */ 1024, // 1024 for now as we're not yet using the GPU
+                                        pbr::rayBundleHandler,
+                                        pbr::xpuRayBundleHandler,
+                                        (void *)((uint64_t)rayHandlerFlags));
+
     mXPUOcclusionRayQueue = new pbr::XPUOcclusionRayQueue(numCPUThreads,
                                                           cpuThreadQueueSize,
                                                           pbr::occlusionQueryBundleHandler,
-                                                          pbr::xpuOcclusionQueryBundleHandlerGPU,
+                                                          pbr::xpuOcclusionQueryBundleHandler,
                                                           (void *)((uint64_t)rayHandlerFlags));
 
-    // TODO: mXPURayQueue
-
     pbr::forEachTLS([&](pbr::TLState *tls) {
+        tls->setXPURayQueue(mXPURayQueue);
         tls->setXPUOcclusionRayQueue(mXPUOcclusionRayQueue);
-        // TODO: mXPURayQueue
     });
 }
 

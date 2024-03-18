@@ -136,7 +136,7 @@ TLSInitParams::TLSInitParams()
 // TODO. Client code should be fine tuning the sizes of queues in bundled mode.
 void TLSInitParams::setVectorizedDefaults(bool realtimeRender)
 {
-    mPerThreadRayStatePoolSize = 1024 * 64;
+    mPerThreadRayStatePoolSize = 1024 * 256;
 
     // TLState allocList configuration
     // 64k items per thread is often way more than we need in CPU vector mode,
