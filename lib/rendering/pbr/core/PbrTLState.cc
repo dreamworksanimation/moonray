@@ -540,7 +540,7 @@ TLState::addRayQueueEntries(unsigned numEntries, RayState **entries)
         return;
     }
     if (mXPURayQueue) {
-        mXPURayQueue->addEntries(mTopLevelTls, numEntries, entries, mArena);
+        mXPURayQueue->addEntries(mTopLevelTls, numEntries, entries);
     } else {
         mRayQueue.addEntries(mTopLevelTls, numEntries, entries, mArena);
     }

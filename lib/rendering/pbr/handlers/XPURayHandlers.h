@@ -11,18 +11,11 @@ namespace moonray {
 namespace pbr {
 
 // Unlocks the mutex when we're done with the GPU
-void xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
-                         unsigned numRayStates,
-                         RayState **rayStates,
-                         const rt::GPURay *gpuRays,
-                         tbb::spin_mutex& mutex);
-
-// Unlocks the mutex when we're done with the GPU
-void xpuOcclusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
-                                    unsigned numRays,
-                                    BundledOcclRay *rays,
-                                    const rt::GPURay *gpuRays,
-                                    tbb::spin_mutex& mutex);
+void xpuOcclusionQueryBundleHandlerGPU(mcrt_common::ThreadLocalState *tls,
+                                       unsigned numRays,
+                                       BundledOcclRay *rays,
+                                       const rt::GPURay *gpuRays,
+                                       tbb::spin_mutex& mutex);
 
 } // namespace pbr
 } // namespace moonray

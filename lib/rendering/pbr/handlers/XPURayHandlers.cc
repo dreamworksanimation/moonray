@@ -186,23 +186,12 @@ computeXPUOcclusionQueriesOnGPU(mcrt_common::ThreadLocalState *tls,
 
 }
 
-
 void
-xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
-                    unsigned numRayStates,
-                    RayState **rayStates,
-                    const rt::GPURay *gpuRays,
-                    tbb::spin_mutex& mutex)
-{
-    // TODO
-}
-
-void
-xpuOcclusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
-                               unsigned numRays,
-                               BundledOcclRay *rays,
-                               const rt::GPURay *gpuRays,
-                               tbb::spin_mutex& mutex)
+xpuOcclusionQueryBundleHandlerGPU(mcrt_common::ThreadLocalState *tls,
+                                  unsigned numRays,
+                                  BundledOcclRay *rays,
+                                  const rt::GPURay *gpuRays,
+                                  tbb::spin_mutex& mutex)
 {
     pbr::TLState *pbrTls = tls->mPbrTls.get();
 

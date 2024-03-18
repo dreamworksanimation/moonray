@@ -35,9 +35,15 @@ void occlusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
                                  unsigned numEntries, BundledOcclRay **entries,
                                  void *userData);
 
+unsigned computeOcclusionQueriesBundled(pbr::TLState *pbrTls, unsigned numEntries,
+                                        BundledOcclRay **entries, BundledRadiance *results,
+                                        RayHandlerFlags flags);
+
 void presenceShadowsQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
                                        unsigned numEntries, BundledOcclRay **entries,
                                        void *userData);
 
 } // namespace pbr
 } // namespace moonray
+
+

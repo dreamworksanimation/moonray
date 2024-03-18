@@ -159,7 +159,7 @@ protected:
 
         MNRY_ASSERT(totalEntries);
 
-        // We always want to copy entries since there may be cycles which allow
+        // We always want to copy entries since there may be cycles which allows
         // other code to add to this queue further down in the callstack. This is
         // something this queue supports and encourages.
         EntryType *entries = arena->allocArray<EntryType>(totalEntries);
