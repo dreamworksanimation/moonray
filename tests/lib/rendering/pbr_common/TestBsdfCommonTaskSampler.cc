@@ -9,7 +9,6 @@
 
 #include "BsdfFactory.h"
 #include "TestBsdfCommon.h"
-#include "TestBsdfSampler.h"
 #include "TestUtil.h"
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/pbr/integrator/BsdfSampler.h>

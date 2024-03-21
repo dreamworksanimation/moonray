@@ -1,7 +1,7 @@
 # Copyright 2023-2024 DreamWorks Animation LLC
 # SPDX-License-Identifier: Apache-2.0
 
-set(target moonray_rendering_pbr_tests)
+set(target moonray_rendering_pbr_lights)
 
 # ----------------------------------------
 # compile some ispc sources to object files
@@ -10,16 +10,8 @@ add_library(${objLib} OBJECT)
 
 target_sources(${objLib}
     PRIVATE
-        BsdfFactory.ispc
-        TestBsdf.ispc
-        TestBsdfOneSampler.ispc
-        TestBssrdf.ispc
-        TestDistribution.ispc
-        TestLightSetSampler.ispc
         TestLights.ispc
         TestLightUtil.ispc
-        TestSampler.ispc
-        TestUtil.ispc
 )
 
 file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
@@ -31,7 +23,7 @@ set_target_properties(${objLib} PROPERTIES
 
 target_link_libraries(${objLib}
     PRIVATE
-        Moonray::rendering_bvh_shading
+        test_rendering_pbr_common_ispc
         Moonray::rendering_pbr)
 
 # Set standard compile/link options
@@ -44,23 +36,8 @@ add_executable(${target})
 target_sources(${target}
     PRIVATE
         main.cc
-        TestBsdfCommon.cc
-        TestBsdfCommonTaskOneSampler.cc
-        TestBsdfCommonTaskSampler.cc
-        TestBsdfOneSampler.cc
-        TestBsdfOneSamplerv.cc
-        TestBsdfSampler.cc
-        TestBsdfv.cc
-        TestBsdfvTask.cc
-        TestBssrdf.cc
-        TestDebugRays.cc
-        TestDistribution.cc
         TestLights.cc
-        TestLightSetSampler.cc
-        TestLightTree.cc
         TestLightUtil.cc
-        TestSampler.cc
-        TestSceneContext.cc
         # pull in our ispc object files
         $<TARGET_OBJECTS:${objLib}>
 )
@@ -88,6 +65,7 @@ target_link_libraries(${target}
         SceneRdl2::render_util
         SceneRdl2::scene_rdl2
         TBB::tbb
+        test_rendering_pbr_common
 )
 
 # Set standard compile/link options
