@@ -95,7 +95,7 @@ void drawBsdfSamples(
         varying uint32_t sequenceID, varying BsdfSample * uniform bsmp, uniform int clampingDepth,
         varying float clampingValue, varying Flags indirectFlags, varying float rayDirFootprint);
 
-void drawLightSetSamples(
+void drawLightSamples(
         uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
         const varying LightSetSampler &lSampler, const varying BsdfSampler &bSampler,
         const varying Subpixel &sp, const varying PathVertex &pv,

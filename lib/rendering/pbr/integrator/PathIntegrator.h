@@ -323,13 +323,19 @@ private:
             scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
             const shading::Intersection &isect) const;
 
-    void addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
-            const Subpixel &sp, const PathVertex &pv,
-            const LightSetSampler &lSampler, LightSample *lsmp,
+    void addDirectVisibleLightSampleContributions(pbr::TLState* pbrTls, Subpixel const& sp, 
+            const PathVertex& pv, const LightSetSampler& lSampler, LightSample* lsmp,
+            const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
+            scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
+            const shading::Intersection& isect, const Light* light) const;
+
+    void sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
+            const Subpixel& sp, const PathVertex& pv,
+            const LightSetSampler& lSampler, LightSample* lsmp,
             const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
-            const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
-            scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-            const shading::Intersection &isect, const float* lightSelectionPdfs) const;
+            const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
+            scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
+            const shading::Intersection& isect, const float* lightSelectionPdfs) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
             const Subpixel &sp, 

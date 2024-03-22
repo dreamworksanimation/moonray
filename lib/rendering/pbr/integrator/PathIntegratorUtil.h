@@ -264,7 +264,7 @@ void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const Li
         float time, unsigned sequenceID, BsdfSample *bsmp, int clampingDepth,
         float clampingValue, shading::BsdfLobe::Type indirectFlags, float rayDirFootprint);
 
-void drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
+void drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
         float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf);

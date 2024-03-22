@@ -149,19 +149,176 @@ PathIntegrator::addDirectVisibleBsdfSampleContributions(pbr::TLState *pbrTls,
     }
 }
 
+void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrTls, Subpixel const& sp, 
+        const PathVertex& pv, const LightSetSampler& lSampler, LightSample* lsmp,
+        const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
+        scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
+        const shading::Intersection& isect, const Light* light) const
+{
+    const int lightSampleCount = lSampler.getLightSampleCount();
+
+    for (int i = 0; i < lightSampleCount; ++i) {
+
+        if (lsmp[i].isInvalid()) {
+            continue;
+        }
+        scene_rdl2::math::Color lightT = lsmp[i].t;
+        if (isBlack(lightT)) {
+            continue;
+        }
+        const scene_rdl2::math::Vec3f &P = parentRay.getOrigin();
+        float tfar = lsmp[i].distance * sHitEpsilonEnd;
+        float time = parentRay.getTime();
+        int rayDepth = parentRay.getDepth() + 1;
+        mcrt_common::RayDifferential shadowRay(P, lsmp[i].wi,
+            parentRay.getOriginX(), lsmp[i].wi,
+            parentRay.getOriginY(), lsmp[i].wi,
+            rayEpsilon, tfar, time, rayDepth);
+        float presence = 0.0f;
+        scene_rdl2::math::Color tr;
+
+        const FrameState &fs = *pbrTls->mFs;
+        const bool hasUnoccludedFlag = fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded);
+        int32_t assignmentId = isect.getLayerAssignmentId();
+        if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId)) {
+            // Calculate clear radius falloff
+            // only do extra calculations if clear radius falloff enabled
+            if (light->getClearRadiusFalloffDistance() != 0.f && 
+                tfar < light->getClearRadius() + light->getClearRadiusFalloffDistance()) {
+
+                // compute unoccluded pixel value
+                lightT *= (1.0f - presence);
+                mcrt_common::Ray trRay(P, lsmp[i].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
+                tr = transmittance(pbrTls, trRay, sp.mPixel, sp.mSubpixelIndex, sequenceID, light);
+
+                radiance += calculateShadowFalloff(light, tfar, tr * lightT);  
+            }
+
+            // Visibility LPE
+            // A ray is occluded, we must record that for the shadow aov.
+            if (aovs) {
+                EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+                const LightAovs &lightAovs = *fs.mLightAovs;
+
+                // If there is no visibility AOV and if we don't have unoccluded flags, then we don't need to bother
+                // with accumulating these values here.
+                if (lightAovs.hasVisibilityEntries() || hasUnoccludedFlag) {
+
+                    const AovSchema &aovSchema = *fs.mAovSchema;
+                    bool addVisibility = true;
+                    for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
+                        if (!lsmp[i].lp.lobe[l]) continue;
+
+                        const shading::BsdfLobe &lobe = *lsmp[i].lp.lobe[l];
+                        const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[i].lp.t[l];
+                        int lpeStateId = pv.lpeStateId;
+                        // transition
+                        lpeStateId = lightAovs.scatterEventTransition(pbrTls,
+                            lpeStateId, lSampler.getBsdf(), lobe);
+                        lpeStateId = lightAovs.lightEventTransition(pbrTls,
+                            lpeStateId, light);
+
+                        // Update visibility aov only for the first bounce
+                        if (addVisibility && parentRay.getDepth() == 0) {
+                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
+                                scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs)) {
+                                // add visibility aov at most once per shadow ray
+                                addVisibility = false;
+                            }
+                        }
+
+                        // unoccluded prefix LPEs
+                        if (hasUnoccludedFlag) {
+                            // If it's occluded but we have the unoccluded flag set, only contribute this to any 
+                            // pre-occlusion aovs.
+                            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, nullptr,
+                                            AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
+                        }
+                    }
+                }
+            }
+        } else {
+            // Take into account presence and transmittance
+            lightT *= (1.0f - presence);
+            mcrt_common::Ray trRay(P, lsmp[i].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
+            tr = transmittance(pbrTls, trRay, sp.mPixel, sp.mSubpixelIndex, sequenceID, light);
+            radiance += tr * lightT;
+
+            // LPE
+            if (aovs) {
+                EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+                const AovSchema &aovSchema = *fs.mAovSchema;
+                const LightAovs &lightAovs = *fs.mLightAovs;
+                bool addVisibility = true;
+                for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
+                    if (!lsmp[i].lp.lobe[l]) continue;
+                    const shading::BsdfLobe &lobe = *lsmp[i].lp.lobe[l];
+                    const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[i].lp.t[l];
+                    const scene_rdl2::math::Color &lobeVal = tr * lsmp[i].lp.t[l] * (1.0f - presence);
+                    const shading::Bsdf &bsdf = lSampler.getBsdf();
+                    // transition
+                    int lpeStateId = pv.lpeStateId;
+                    lpeStateId = lightAovs.scatterEventTransition(pbrTls,
+                        lpeStateId, bsdf, lobe);
+                    lpeStateId = lightAovs.lightEventTransition(pbrTls,
+                        lpeStateId, light);
+
+                    // Accumulate aovs depending on whether or not the unoccluded flag is set.
+                    if (hasUnoccludedFlag) {
+                        // If the unoccluded flag is set we have to add occluded and unoccluded 
+                        // (without presence and volume transmittance) separately.
+                        aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, &lobeVal, 
+                                          AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
+                    } else {
+                        // Otherwise, just add the contribution to all non-pre-occlusion aovs.
+                        aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lobeVal, nullptr, 
+                                          AovSchema::sLpePrefixNone, lpeStateId, aovs);
+                    }
+
+                    // Update visibility aov only for the first bounce
+                    if (addVisibility && parentRay.getDepth() == 0) {
+                        if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
+                            scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f),
+                            lpeStateId, aovs)) {
+                            // add visibility aov at most once per shadow ray
+                            addVisibility = false;
+                        }
+                    }
+                }
+            }
+
+            // TODO: we don't store light sample normal
+            // If the intersection distance is closer than the distant light, then
+            // assume the hit wasn't due to a distant or env light.
+            if (DebugRayRecorder::isRecordingEnabled()) {
+                if (lsmp[i].distance < std::min(sDistantLightDistance, sEnvLightDistance)) {
+                    mcrt_common::Ray debugRay(P, lsmp[i].wi, 0.0f);
+                    RAYDB_EXTEND_RAY_NO_HIT(pbrTls, debugRay, lsmp[i].distance);
+                    RAYDB_SET_CONTRIBUTION(pbrTls, lsmp[i].Li);
+                    RAYDB_ADD_TAGS(pbrTls, TAG_AREALIGHT);
+                } else {
+                    mcrt_common::Ray debugRay(P, lsmp[i].wi, 0.0f);
+                    RAYDB_EXTEND_RAY_NO_HIT(pbrTls, debugRay, 40.0f);
+                    RAYDB_SET_CONTRIBUTION(pbrTls, lsmp[i].Li);
+                    RAYDB_ADD_TAGS(pbrTls, TAG_ENVLIGHT);
+                }
+            }
+        }
+    }
+}
+
 void
-PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
-        Subpixel const& sp, const PathVertex &pv,
-        const LightSetSampler &lSampler, LightSample *lsmp,
+PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
+        Subpixel const& sp, const PathVertex& pv,
+        const LightSetSampler& lSampler, LightSample* lsmp,
         const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
-        const mcrt_common::RayDifferential &parentRay, float rayEpsilon, float shadowRayEpsilon,
-        scene_rdl2::math::Color &radiance, unsigned& sequenceID, float *aovs,
-        const shading::Intersection &isect, const float* lightSelectionPdfs) const
+        const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
+        scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
+        const shading::Intersection& isect, const float* lightSelectionPdfs) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
-    // Trace light sample shadow rays
+
     const int lightCount = lSampler.getLightCount();
-    const int lightSampleCount = lSampler.getLightSampleCount();
     const int sampleCount = lSampler.getSampleCount();
 
     const SequenceIDRR sid(sp.mPixel,
@@ -189,167 +346,20 @@ PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState *pbrTls,
             continue;
         }
 
-        // Draw light samples from the light and compute tentative contributions
-        drawLightSetSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, parentRay.getTime(), 
-                            sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, 
-                            parentRay.getDirFootprint(), aovs, lightIndex, lightSelectionPdf);
+        // ---------------  Draw light samples from the light and compute tentative contributions ----------------------
+        drawLightSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, parentRay.getTime(), 
+                         sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, 
+                         parentRay.getDirFootprint(), aovs, lightIndex, lightSelectionPdf);
 
-        // Apply Russian Roulette to the light samples
         if (pv.nonMirrorDepth > 0 && mRussianRouletteThreshold > 0.0f) {
             applyRussianRoulette(lSampler, lsmp, sp, pv, sequenceID, 
                                  mRussianRouletteThreshold, 
                                  mInvRussianRouletteThreshold, rrSamples);
         }
 
-        for (int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
-            if (lsmp[s].isInvalid()) {
-                continue;
-            }
-            scene_rdl2::math::Color lightT = lsmp[s].t;
-            // This matches the behavior in the vectorized codepath.
-            if (isBlack(lightT)) {
-                continue;
-            }
-            const scene_rdl2::math::Vec3f &P = parentRay.getOrigin();
-            float tfar = lsmp[s].distance * sHitEpsilonEnd;
-            float time = parentRay.getTime();
-            int rayDepth = parentRay.getDepth() + 1;
-            mcrt_common::RayDifferential shadowRay(P, lsmp[s].wi,
-                parentRay.getOriginX(), lsmp[s].wi,
-                parentRay.getOriginY(), lsmp[s].wi,
-                rayEpsilon, tfar, time, rayDepth);
-            float presence = 0.0f;
-            scene_rdl2::math::Color tr;
-
-            const FrameState &fs = *pbrTls->mFs;
-            const bool hasUnoccludedFlag = fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded);
-            int32_t assignmentId = isect.getLayerAssignmentId();
-            if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId)) {
-                // Calculate clear radius falloff
-                // only do extra calculations if clear radius falloff enabled
-                if (light->getClearRadiusFalloffDistance() != 0.f && 
-                    tfar < light->getClearRadius() + light->getClearRadiusFalloffDistance()) {
-                    // compute unoccluded pixel value
-                    lightT *= (1.0f - presence);
-                    mcrt_common::Ray trRay(P, lsmp[s].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
-                    tr = transmittance(pbrTls, trRay, sp.mPixel, sp.mSubpixelIndex, sequenceID, light);
-
-                    radiance += calculateShadowFalloff(light, tfar, tr * lightT);  
-                }
-
-                // Visibility LPE
-                // A ray is occluded, we must record that for the shadow aov.
-                if (aovs) {
-                    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-                    const LightAovs &lightAovs = *fs.mLightAovs;
-
-                    // If there is no visibility AOV and if we don't have unoccluded flags, then we don't need to bother
-                    // with accumulating these values here.
-                    if (lightAovs.hasVisibilityEntries() || hasUnoccludedFlag) {
-
-                        const AovSchema &aovSchema = *fs.mAovSchema;
-                        const Light *light = lSampler.getLight(lightIndex);
-                        bool addVisibility = true;
-                        for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
-                            if (!lsmp[s].lp.lobe[l]) continue;
-
-                            const shading::BsdfLobe &lobe = *lsmp[s].lp.lobe[l];
-                            const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[s].lp.t[l];
-                            int lpeStateId = pv.lpeStateId;
-                            // transition
-                            lpeStateId = lightAovs.scatterEventTransition(pbrTls,
-                                lpeStateId, lSampler.getBsdf(), lobe);
-                            lpeStateId = lightAovs.lightEventTransition(pbrTls,
-                                lpeStateId, light);
-
-                            // Update visibility aov only for the first bounce
-                            if (addVisibility && parentRay.getDepth() == 0) {
-                                if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
-                                    scene_rdl2::math::Vec2f(0.0f, 1.0f), lpeStateId, aovs)) {
-                                    // add visibility aov at most once per shadow ray
-                                    addVisibility = false;
-                                }
-                            }
-
-                            // unoccluded prefix LPEs
-                            if (hasUnoccludedFlag) {
-                                // If it's occluded but we have the unoccluded flag set, only contribute this to any 
-                                // pre-occlusion aovs.
-                                aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, nullptr,
-                                                  AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Take into account presence and transmittance
-                lightT *= (1.0f - presence);
-                mcrt_common::Ray trRay(P, lsmp[s].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
-                tr = transmittance(pbrTls, trRay, sp.mPixel, sp.mSubpixelIndex, sequenceID, light);
-                radiance += tr * lightT;
-
-                // LPE
-                if (aovs) {
-                    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-                    const AovSchema &aovSchema = *fs.mAovSchema;
-                    const LightAovs &lightAovs = *fs.mLightAovs;
-                    const Light *light = lSampler.getLight(lightIndex);
-                    bool addVisibility = true;
-                    for (unsigned l = 0; l < shading::Bsdf::maxLobes; ++l) {
-                        if (!lsmp[s].lp.lobe[l]) continue;
-                        const shading::BsdfLobe &lobe = *lsmp[s].lp.lobe[l];
-                        const scene_rdl2::math::Color &unoccludedLobeVal = lsmp[s].lp.t[l];
-                        const scene_rdl2::math::Color &lobeVal = tr * lsmp[s].lp.t[l] * (1.0f - presence);
-                        const shading::Bsdf &bsdf = lSampler.getBsdf();
-                        // transition
-                        int lpeStateId = pv.lpeStateId;
-                        lpeStateId = lightAovs.scatterEventTransition(pbrTls,
-                            lpeStateId, bsdf, lobe);
-                        lpeStateId = lightAovs.lightEventTransition(pbrTls,
-                            lpeStateId, light);
-
-                        // Accumulate aovs depending on whether or not the unoccluded flag is set.
-                        if (hasUnoccludedFlag) {
-                            // If the unoccluded flag is set we have to add occluded and unoccluded 
-                            // (without presence and volume transmittance) separately.
-                            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, unoccludedLobeVal, &lobeVal, 
-                                              AovSchema::sLpePrefixUnoccluded, lpeStateId, aovs);
-                        } else {
-                            // Otherwise, just add the contribution to all non-pre-occlusion aovs.
-                            aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lobeVal, nullptr, 
-                                              AovSchema::sLpePrefixNone, lpeStateId, aovs);
-                        }
-
-                        // Update visibility aov only for the first bounce
-                        if (addVisibility && parentRay.getDepth() == 0) {
-                            if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
-                                scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f),
-                                lpeStateId, aovs)) {
-                                // add visibility aov at most once per shadow ray
-                                addVisibility = false;
-                            }
-                        }
-                    }
-                }
-
-                // TODO: we don't store light sample normal
-                // If the intersection distance is closer than the distant light, then
-                // assume the hit wasn't due to a distant or env light.
-                if (DebugRayRecorder::isRecordingEnabled()) {
-                    if (lsmp[s].distance < sDistantLightDistance) {
-                        mcrt_common::Ray debugRay(P, lsmp[s].wi, 0.0f);
-                        RAYDB_EXTEND_RAY_NO_HIT(pbrTls, debugRay, lsmp[s].distance);
-                        RAYDB_SET_CONTRIBUTION(pbrTls, lsmp[s].Li);
-                        RAYDB_ADD_TAGS(pbrTls, TAG_AREALIGHT);
-                    } else {
-                        mcrt_common::Ray debugRay(P, lsmp[s].wi, 0.0f);
-                        RAYDB_EXTEND_RAY_NO_HIT(pbrTls, debugRay, 40.0f);
-                        RAYDB_SET_CONTRIBUTION(pbrTls, lsmp[s].Li);
-                        RAYDB_ADD_TAGS(pbrTls, TAG_ENVLIGHT);
-                    }
-                }
-            }
-        }
+        // ---------------- Trace shadow rays and add any light sample contributions -----------------------------------
+        addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, parentRay, rayEpsilon, 
+                                                 shadowRayEpsilon, radiance, sequenceID, aovs, isect, light);
     }
 
     // tldr; Add inactive lights to the visibility aov
@@ -688,7 +698,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // contributions. We trace one ray per valid sample and affect all
     // contributions for that sample accordingly.
 
-    addDirectVisibleLightSampleContributions(pbrTls, sp, pv, lSampler, lsmp, bSampler, cullingNormal, ray,
+    sampleAndAddDirectLightContributions(pbrTls, sp, pv, lSampler, lsmp, bSampler, cullingNormal, ray,
             rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect, lightSelectionPdfs);
     checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
 

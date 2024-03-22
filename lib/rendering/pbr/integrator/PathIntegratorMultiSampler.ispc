@@ -296,30 +296,145 @@ addDirectVisibleBsdfSampleContributionsBundled( const uniform PathIntegrator * u
     }
 }
 
+void addDirectVisibleLightSampleContributionsBundled(       uniform PbrTLState *     uniform pbrTls,
+                                                      const varying LightSetSampler &        lSampler,
+                                                            varying LightSample *    uniform lsmp,
+                                                      const varying RayDifferential &        parentRay,
+                                                      const varying float                    rayEpsilon,
+                                                      const varying float                    shadowRayEpsilon,
+                                                      const varying Subpixel &               sp,
+                                                      const varying PathVertex &             pv,
+                                                      const varying RayState &               rayState,
+                                                            varying uint32_t &               srcRayIndices,
+                                                            varying BundledOcclRay * uniform dstOcclRays,
+                                                            uniform uint32_t *       uniform dstOcclRayIndices,
+                                                            uniform uint32_t &               numOcclRays,
+                                                            varying BundledOcclRay * uniform presenceShadowsRays,
+                                                            uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
+                                                            uniform uint32_t &               numPresenceShadowsRays,
+                                                      const varying Intersection &           isect,
+                                                      const uniform Light *          uniform light,
+                                                            uniform int &                    lightSamplesSoFar)
+{
+    varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
+
+    for (uniform int is = 0; is < lightSampleCount; lightSamplesSoFar++, is++) {
+
+        // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
+        // terminating ray paths too early. To accomplish this, we force the occlusion test result to unoccluded.
+        varying OcclTestType occlTestType = STANDARD;
+        if (Light_getIsRayTerminator(light)) {
+            occlTestType = FORCE_NOT_OCCLUDED;
+        }
+
+        varying LightSample *uniform currSamp = &lsmp[is];
+
+        if (LightSample_isValid(currSamp)) {
+
+            // Only trace up to the lsmp[s].distance. It is set to the distance to
+            // the intersected light in this direction, if any.
+            snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_ADD_DIRECT_VISIBLE_LIGHTING);
+
+            // LPE
+            varying uint32_t data = PBR_nullHandle;
+            const uniform FrameState &fs = *pbrTls->mFs;
+            const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
+            if (!AovSchema_empty(aovSchema)) {
+                const LightSampleLPE &lp = lsmp[is].lp;
+                const uniform LightAovs * uniform lightAovs =
+                    (const uniform LightAovs * uniform) pbrTls->mFs->mLightAovs;
+
+                varying int lpeStateId[BSDF_MAX_LOBE];
+                varying int numItems = 0;
+
+                // LightSample contains up to BSDF_MAX_LOBE
+                for (uniform int i = 0; i < BSDF_MAX_LOBE; ++i) {
+                    if (!isActive(lp.lobe[i])) {
+                        lpeStateId[i] = -1;
+                        continue;
+                    }
+
+                    const varying BsdfLobe &lobe = *lp.lobe[i];
+                    const varying Bsdf &bsdf = *LightSetSampler_getBsdf(&lSampler);
+
+                    // transition
+                    lpeStateId[i] = rayState.mPathVertex.lpeStateId;
+                    lpeStateId[i] = LightAovs_scatterEventTransition(lightAovs, lpeStateId[i], bsdf, lobe);
+                    if (lpeStateId[i] >= 0) {
+                        // compute the state id as-if we hit the light,
+                        // the occlusionQueryHandler will need to actually compute
+                        // the occlusion
+                        lpeStateId[i] = LightAovs_lightEventTransition(lightAovs, lpeStateId[i], light);
+                    }
+                    if (lpeStateId[i] < 0) continue;
+
+                    ++numItems;
+                }
+
+                if (numItems > 0) {
+                    data = PbrTLState_allocList(pbrTls, sizeof(uniform BundledOcclRayData), numItems);
+                }
+
+                varying int next = 0;
+                for (uniform int i = 0; i < BSDF_MAX_LOBE; ++i) {
+                    if (lpeStateId[i] < 0) continue;
+                    MNRY_ASSERT(data != PBR_nullHandle);
+                    MNRY_ASSERT(numItems > 0);
+                    uniform BundledOcclRayData * varying b =
+                        (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, next);
+                    b->mFlags = LPE | LIGHT_SAMPLE;
+                    b->mLpeRadiance = lp.t[i]; // Scatter required
+                    b->mLpeStateId = lpeStateId[i];
+                    ++next;
+                    if (next < numItems) {
+                        b = (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, next);
+                        b->mFlags = LPE | LIGHT_SAMPLE;
+                        b->mLpeStateId = 0;
+                    }
+                }
+            }
+
+            prepareOcclusionTestRays(pbrTls, light, rayState, parentRay,
+                rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->t, currSamp->distance,
+                data, srcRayIndices,
+                &dstOcclRays[lightSamplesSoFar], dstOcclRayIndices,
+                numOcclRays,
+                &presenceShadowsRays[lightSamplesSoFar], dstPresenceShadowsRayIndices,
+                numPresenceShadowsRays, occlTestType, isect);
+        }
+
+        // TODO: Ray debugging.
+
+        unmasked {
+            srcRayIndices += VLEN;
+        }
+    }
+}
+
 void
-addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * uniform this,
-                                                       uniform PbrTLState *     uniform pbrTls,
-                                                       uniform ShadingTLState * uniform shadingTls,
-                                                 const varying LightSetSampler &        lSampler,
-                                                 const varying BsdfSampler &            bSampler,
-                                                       varying LightSample *    uniform lsmp,
-                                                 const varying RayDifferential &        parentRay,
-                                                 const varying Vec3f *          uniform cullingNormal,
-                                                 const varying float                    rayEpsilon,
-                                                 const varying float                    shadowRayEpsilon,
-                                                 const varying Subpixel &               sp,
-                                                 const varying PathVertex &             pv,
-                                                 const varying RayState &               rayState,
-                                                       varying uint32_t                 srcRayIndices,
-                                                       varying BundledOcclRay * uniform dstOcclRays,
-                                                       uniform uint32_t *       uniform dstOcclRayIndices,
-                                                       uniform uint32_t &               numOcclRays,
-                                                       varying BundledOcclRay * uniform presenceShadowsRays,
-                                                       uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
-                                                       uniform uint32_t &               numPresenceShadowsRays,
-                                                       const varying Intersection &     isect,
-                                                       varying uint32_t &               sequenceID,
-                                                 const varying float *          uniform lightSelectionPdfs)
+sampleAndAddDirectLightContributionsBundled( const uniform PathIntegrator * uniform this,
+                                                   uniform PbrTLState *     uniform pbrTls,
+                                                   uniform ShadingTLState * uniform shadingTls,
+                                             const varying LightSetSampler &        lSampler,
+                                             const varying BsdfSampler &            bSampler,
+                                                   varying LightSample *    uniform lsmp,
+                                             const varying RayDifferential &        parentRay,
+                                             const varying Vec3f *          uniform cullingNormal,
+                                             const varying float                    rayEpsilon,
+                                             const varying float                    shadowRayEpsilon,
+                                             const varying Subpixel &               sp,
+                                             const varying PathVertex &             pv,
+                                             const varying RayState &               rayState,
+                                                   varying uint32_t                 srcRayIndices,
+                                                   varying BundledOcclRay * uniform dstOcclRays,
+                                                   uniform uint32_t *       uniform dstOcclRayIndices,
+                                                   uniform uint32_t &               numOcclRays,
+                                                   varying BundledOcclRay * uniform presenceShadowsRays,
+                                                   uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
+                                                   uniform uint32_t &               numPresenceShadowsRays,
+                                             const varying Intersection &           isect,
+                                                   varying uint32_t &               sequenceID,
+                                             const varying float *          uniform lightSelectionPdfs)
 {
     MNRY_ASSERT(CPP_isIntegratorAccumulatorRunning(pbrTls));
 
@@ -327,6 +442,7 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
     uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
     const uniform int sampleCount = LightSetSampler_getSampleCount(&lSampler);
 
+    // Set up russian roulette 1D random sequence
     SequenceID sid;
     SequenceID_init(sid, sp.mPixel, (uniform uint32_t)SequenceTypeRussianRouletteLight,
             (uint32_t)sp.mSubpixelIndex, sequenceID);
@@ -335,7 +451,7 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
     rrSamples.mSampleNumber = pv.nonMirrorDepth * sampleCount;
 
     // Trace light sample shadow rays
-    for (uniform int lightIndex = 0, s = 0; lightIndex < lightCount; lightIndex++) {
+    for (uniform int lightIndex = 0, lightSamplesSoFar = 0; lightIndex < lightCount; lightIndex++) {
 
         // If adaptive light sampling is on, check to see if this light was chosen
         // A pdf of -1 indicates that the light at this light index wasn't picked
@@ -347,13 +463,13 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
 
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
-        // Draw light samples from the light and compute tentative contributions
-        drawLightSetSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
-                            *cullingNormal, Ray_getTime(parentRay), sequenceID, lsmp,
-                            this->mSampleClampingDepth, sp.mSampleClampingValue, 
-                            Ray_getDirFootprint(parentRay), &rayState, lightIndex, lightSelectionPdf);
+        // ---------------  Draw light samples from the light and compute tentative contributions ----------------------
+        drawLightSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
+                         *cullingNormal, Ray_getTime(parentRay), sequenceID, lsmp,
+                         this->mSampleClampingDepth, sp.mSampleClampingValue, 
+                         Ray_getDirFootprint(parentRay), &rayState, lightIndex, lightSelectionPdf);
 
-        // Apply Russian Roulette to the light samples
+        // ---------------- Apply Russian roulette to the light samples ------------------------------------------------
         if (pv.nonMirrorDepth > 0  &&  this->mRussianRouletteThreshold > 0.0f) {
             applyRussianRoulette(pbrTls, lSampler, lsmp, sp, pv, sequenceID,
                                 this->mRussianRouletteThreshold, 
@@ -361,97 +477,10 @@ addDirectVisibleLightSampleContributionsBundled( const uniform PathIntegrator * 
                                 rrSamples);
         }
 
-        for (uniform int is = 0; is < lightSampleCount; s++, is++) {
-
-            // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
-            // terminating ray paths too early. To accomplish this, we force the occlusion test result to unoccluded.
-            varying OcclTestType occlTestType = STANDARD;
-            if (Light_getIsRayTerminator(light)) {
-                occlTestType = FORCE_NOT_OCCLUDED;
-            }
-
-            varying LightSample *uniform currSamp = &lsmp[is];
-
-            if (LightSample_isValid(currSamp)) {
-
-                // Only trace up to the lsmp[s].distance. It is set to the distance to
-                // the intersected light in this direction, if any.
-                snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_ADD_DIRECT_VISIBLE_LIGHTING);
-
-                // LPE
-                varying uint32_t data = PBR_nullHandle;
-                const uniform FrameState &fs = *pbrTls->mFs;
-                const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
-                if (!AovSchema_empty(aovSchema)) {
-                    const LightSampleLPE &lp = lsmp[is].lp;
-                    const uniform LightAovs * uniform lightAovs =
-                        (const uniform LightAovs * uniform) pbrTls->mFs->mLightAovs;
-
-                    varying int lpeStateId[BSDF_MAX_LOBE];
-                    varying int numItems = 0;
-
-                    // LightSample contains up to BSDF_MAX_LOBE
-                    for (uniform int i = 0; i < BSDF_MAX_LOBE; ++i) {
-                        if (!isActive(lp.lobe[i])) {
-                            lpeStateId[i] = -1;
-                            continue;
-                        }
-
-                        const varying BsdfLobe &lobe = *lp.lobe[i];
-                        const varying Bsdf &bsdf = *LightSetSampler_getBsdf(&lSampler);
-
-                        // transition
-                        lpeStateId[i] = rayState.mPathVertex.lpeStateId;
-                        lpeStateId[i] = LightAovs_scatterEventTransition(lightAovs, lpeStateId[i], bsdf, lobe);
-                        if (lpeStateId[i] >= 0) {
-                            // compute the state id as-if we hit the light,
-                            // the occlusionQueryHandler will need to actually compute
-                            // the occlusion
-                            lpeStateId[i] = LightAovs_lightEventTransition(lightAovs, lpeStateId[i], light);
-                        }
-                        if (lpeStateId[i] < 0) continue;
-
-                        ++numItems;
-                    }
-
-                    if (numItems > 0) {
-                        data = PbrTLState_allocList(pbrTls, sizeof(uniform BundledOcclRayData), numItems);
-                    }
-
-                    varying int next = 0;
-                    for (uniform int i = 0; i < BSDF_MAX_LOBE; ++i) {
-                        if (lpeStateId[i] < 0) continue;
-                        MNRY_ASSERT(data != PBR_nullHandle);
-                        MNRY_ASSERT(numItems > 0);
-                        uniform BundledOcclRayData * varying b =
-                            (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, next);
-                        b->mFlags = LPE | LIGHT_SAMPLE;
-                        b->mLpeRadiance = lp.t[i]; // Scatter required
-                        b->mLpeStateId = lpeStateId[i];
-                        ++next;
-                        if (next < numItems) {
-                            b = (uniform BundledOcclRayData * varying) PbrTLState_getListItem(pbrTls, data, next);
-                            b->mFlags = LPE | LIGHT_SAMPLE;
-                            b->mLpeStateId = 0;
-                        }
-                    }
-                }
-
-                prepareOcclusionTestRays(pbrTls, light, rayState, parentRay,
-                    rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->t, currSamp->distance,
-                    data, srcRayIndices,
-                    &dstOcclRays[s], dstOcclRayIndices,
-                    numOcclRays,
-                    &presenceShadowsRays[s], dstPresenceShadowsRayIndices,
-                    numPresenceShadowsRays, occlTestType, isect);
-            }
-
-            // TODO: Ray debugging.
-
-            unmasked {
-                srcRayIndices += VLEN;
-            }
-        }
+        // ---------------- Trace shadow rays and add any light sample contributions -----------------------------------
+        addDirectVisibleLightSampleContributionsBundled(pbrTls, lSampler, lsmp, parentRay, rayEpsilon, shadowRayEpsilon,
+                sp, pv, rayState, srcRayIndices, dstOcclRays, dstOcclRayIndices, numOcclRays, presenceShadowsRays,
+                dstPresenceShadowsRayIndices, numPresenceShadowsRays, isect, light, lightSamplesSoFar);
     }
 
     // tldr; Add inactive lights to the visibility aov
@@ -885,17 +914,17 @@ computeRadianceBsdfMultiSampler(const uniform PathIntegrator * uniform this,
         Arena_allocArray(arena, numOcclRaysToAlloc * VLEN + 1, sizeof(uniform uint32_t));
     uniform uint32_t numPresenceShadowsRaysFilled = 0;
 
-    addDirectVisibleLightSampleContributionsBundled(this, pbrTls, shadingTls, lSampler, bSampler, lsmp, ray,
-                                                    &cullingNormal, rayEpsilon, shadowRayEpsilon, sp, pv, *rs,
-                                                    programIndex,
-                                                    occlRays,
-                                                    occlRayIndices,
-                                                    numOcclRaysFilled,
-                                                    presenceShadowsRays,
-                                                    presenceShadowsRayIndices,
-                                                    numPresenceShadowsRaysFilled,
-                                                    isect, sequenceID,
-                                                    lightSelectionPdfs);
+    sampleAndAddDirectLightContributionsBundled(this, pbrTls, shadingTls, lSampler, bSampler, lsmp, ray,
+                                                &cullingNormal, rayEpsilon, shadowRayEpsilon, sp, pv, *rs,
+                                                programIndex,
+                                                occlRays,
+                                                occlRayIndices,
+                                                numOcclRaysFilled,
+                                                presenceShadowsRays,
+                                                presenceShadowsRayIndices,
+                                                numPresenceShadowsRaysFilled,
+                                                isect, sequenceID,
+                                                lightSelectionPdfs);
 
     if (doIndirect) {
         addIndirectOrDirectVisibleContributionsBundled(this, pbrTls, sp, pv,

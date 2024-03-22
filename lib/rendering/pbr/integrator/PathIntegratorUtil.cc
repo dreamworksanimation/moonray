@@ -460,7 +460,7 @@ void accumVisibilityAovsOccluded(float* aovs, pbr::TLState* pbrTls, const LightS
 }
 
 void
-drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
+drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, 
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
         float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf)
@@ -476,87 +476,85 @@ drawLightSetSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const
 
     Statistics &stats = pbrTls->mStatistics;
 
-    {
-        const Light *light = lSampler.getLight(lightIndex);
-        const LightFilterList *lightFilterList = lSampler.getLightFilterList(lightIndex);
+    const Light *light = lSampler.getLight(lightIndex);
+    const LightFilterList *lightFilterList = lSampler.getLightFilterList(lightIndex);
 
-        const int lightSampleCount = lSampler.getLightSampleCount();
+    const int lightSampleCount = lSampler.getLightSampleCount();
 
-        // Setup sampler sequence
-        // We want one shared sequence for depth 0.
-        const SequenceIDIntegrator sid(  pv.nonMirrorDepth,
-                                         sp.mPixel,
-                                         light->getHash(),
-                                         SequenceType::Light,
-                                         spIndex,
-                                         sequenceID );
-        int samplesSoFar = 0;
+    // Setup sampler sequence
+    // We want one shared sequence for depth 0.
+    const SequenceIDIntegrator sid(  pv.nonMirrorDepth,
+                                     sp.mPixel,
+                                     light->getHash(),
+                                     SequenceType::Light,
+                                     spIndex,
+                                     sequenceID );
+    int samplesSoFar = 0;
+    if (pv.nonMirrorDepth == 0) {
+        samplesSoFar = sp.mSubpixelIndex * lightSampleCount;       // used here and below
+        lightSamples.resume(sid, samplesSoFar);
+    } else {
+        lightSamples.restart(sid, lightSampleCount);
+    }
+
+    if (lightFilterNeedsSamples) {
+        const SequenceIDIntegrator sidFilter(  pv.nonMirrorDepth,
+                                               sp.mPixel,
+                                               light->getHash(),
+                                               SequenceType::LightFilter,
+                                               spIndex,
+                                               sequenceID );
+        const SequenceIDIntegrator sidFilter3D(  pv.nonMirrorDepth,
+                                                 sp.mPixel,
+                                                 light->getHash(),
+                                                 SequenceType::LightFilter3D,
+                                                 spIndex,
+                                                 sequenceID );
+
         if (pv.nonMirrorDepth == 0) {
-            samplesSoFar = sp.mSubpixelIndex * lightSampleCount;       // used here and below
-            lightSamples.resume(sid, samplesSoFar);
+            lightFilterSamples.resume(sidFilter, samplesSoFar);
+            lightFilterSamples3D.resume(sidFilter3D, samplesSoFar);
+
         } else {
-            lightSamples.restart(sid, lightSampleCount);
+            lightFilterSamples.restart(sidFilter, lightSampleCount);
+            lightFilterSamples3D.restart(sidFilter3D, lightSampleCount);
         }
+    }
 
-        if (lightFilterNeedsSamples) {
-            const SequenceIDIntegrator sidFilter(  pv.nonMirrorDepth,
-                                                   sp.mPixel,
-                                                   light->getHash(),
-                                                   SequenceType::LightFilter,
-                                                   spIndex,
-                                                   sequenceID );
-            const SequenceIDIntegrator sidFilter3D(  pv.nonMirrorDepth,
-                                                     sp.mPixel,
-                                                     light->getHash(),
-                                                     SequenceType::LightFilter3D,
-                                                     spIndex,
-                                                     sequenceID );
-
-            if (pv.nonMirrorDepth == 0) {
-                lightFilterSamples.resume(sidFilter, samplesSoFar);
-                lightFilterSamples3D.resume(sidFilter3D, samplesSoFar);
-
-            } else {
-                lightFilterSamples.restart(sidFilter, lightSampleCount);
-                lightFilterSamples3D.restart(sidFilter3D, lightSampleCount);
-            }
-        }
-
-        // Loop over each light's samples
-        for (int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
-            // Draw the sample and test validity
-            scene_rdl2::math::Vec3f lightSample;
-            lightSamples.getSample(&lightSample[0], pv.nonMirrorDepth);
+    // Loop over each light's samples
+    for (int i = 0; i < lightSampleCount; ++i) {
+        // Draw the sample and test validity
+        scene_rdl2::math::Vec3f lightSample;
+        lightSamples.getSample(&lightSample[0], pv.nonMirrorDepth);
             
-            // Initialize to some value so you don't get NaNs if 
-            // lightFilterNeedsSamples is false (see MOONRAY-4649)
-            LightFilterRandomValues lightFilterSample = {
-                            scene_rdl2::math::Vec2f(0.f, 0.f), 
-                            scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)};
-            if (lightFilterNeedsSamples) {
-                lightFilterSamples.getSample(&lightFilterSample.r2[0], pv.nonMirrorDepth);
-                lightFilterSamples3D.getSample(&lightFilterSample.r3[0], pv.nonMirrorDepth);
-            }
-            lSampler.sampleIntersectAndEval(pbrTls->mTopLevelTls,
-                                            light, lightFilterList,
-                                            P, N, lightFilterSample, time, lightSample,
-                                            lsmp[s], rayDirFootprint);
-
-            if (lsmp[s].isInvalid()) {
-                // These samples occur on the shadow terminator -- they are invalid because they face
-                // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
-                accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, light, /* miss count */ 1);
-                continue;
-            }
-
-            lsmp[s].misPdf = lsmp[s].pdf;
-            lsmp[s].pdf *= lightSelectionPdf;
-
-            integrateLightSetSample(lSampler, lightIndex, bSampler, pv, lsmp[s],
-                clampingDepth, clampingValue, P);
-
-            stats.incCounter(STATS_LIGHT_SAMPLES);
+        // Initialize to some value so you don't get NaNs if 
+        // lightFilterNeedsSamples is false
+        LightFilterRandomValues lightFilterSample = {
+                        scene_rdl2::math::Vec2f(0.f, 0.f), 
+                        scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)};
+        if (lightFilterNeedsSamples) {
+            lightFilterSamples.getSample(&lightFilterSample.r2[0], pv.nonMirrorDepth);
+            lightFilterSamples3D.getSample(&lightFilterSample.r3[0], pv.nonMirrorDepth);
         }
+        lSampler.sampleIntersectAndEval(pbrTls->mTopLevelTls,
+                                        light, lightFilterList,
+                                        P, N, lightFilterSample, time, lightSample,
+                                        lsmp[i], rayDirFootprint);
+
+        if (lsmp[i].isInvalid()) {
+            // These samples occur on the shadow terminator -- they are invalid because they face
+            // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
+            accumVisibilityAovsOccluded(aovs, pbrTls, lSampler, bSampler, pv, light, /* miss count */ 1);
+            continue;
+        }
+
+        lsmp[i].misPdf = lsmp[i].pdf;
+        lsmp[i].pdf *= lightSelectionPdf;
+
+        integrateLightSetSample(lSampler, lightIndex, bSampler, pv, lsmp[i],
+            clampingDepth, clampingValue, P);
+
+        stats.incCounter(STATS_LIGHT_SAMPLES);
     }
 }
 

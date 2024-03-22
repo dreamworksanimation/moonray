@@ -356,7 +356,7 @@ void accumVisibilityAovsOccluded(const uniform PbrTLState * uniform pbrTls,
 }
 
 void
-drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
+drawLightSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * uniform shadingTls,
         const varying LightSetSampler &lSampler, const varying BsdfSampler &bSampler,
         const varying Subpixel &sp, const varying PathVertex &pv,
         const varying Vec3f &P, const varying Vec3f &cullingNormal, varying float time,
@@ -376,86 +376,82 @@ drawLightSetSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState 
     uniform int lightCount = LightSetSampler_getLightCount(&lSampler);
     varying int lightSampleCount = LightSetSampler_getLightSampleCount(&lSampler);
 
-    {
-        const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
-        const uniform LightFilterList * uniform lightFilterList =
-            LightSetSampler_getLightFilterList(&lSampler, lightIndex);
+    const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
+    const uniform LightFilterList * uniform lightFilterList =
+        LightSetSampler_getLightFilterList(&lSampler, lightIndex);
 
-        // Setup sampler sequence
-        // We want one shared sequence for depth 0.
-        SequenceID_init(sid, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                Light_getHash(light), (uniform uint32_t)SequenceTypeLight,
+    // Setup sampler sequence
+    // We want one shared sequence for depth 0.
+    SequenceID_init(sid, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
+            Light_getHash(light), (uniform uint32_t)SequenceTypeLight,
+            spIndex, sequenceID);
+    IntegratorSample3D_init(lightSamples, sid);
+
+    if (lightFilterNeedsSamples) {
+        SequenceID_init(sidFilter, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
+                Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter,
                 spIndex, sequenceID);
-        IntegratorSample3D_init(lightSamples, sid);
+        IntegratorSample2D_init(lightFilterSamples, sidFilter);
 
+        SequenceID_init(sidFilter3D, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
+                Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter3D,
+                spIndex, sequenceID);
+        IntegratorSample3D_init(lightFilterSamples3D, sidFilter3D);
+    }
+
+    if (pv.nonMirrorDepth == 0) {
+        const int samplesSoFar = sp.mSubpixelIndex * lightSampleCount;
+        lightSamples.mSampleNumber = samplesSoFar;
         if (lightFilterNeedsSamples) {
-            SequenceID_init(sidFilter, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                    Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter,
-                    spIndex, sequenceID);
-            IntegratorSample2D_init(lightFilterSamples, sidFilter);
+            lightFilterSamples.mSampleNumber = samplesSoFar;
+            lightFilterSamples3D.mSampleNumber = samplesSoFar;
+        }
+    } else {
+        lightSamples.mTotalSamples = lightSampleCount;
+        if (lightFilterNeedsSamples) {
+            lightFilterSamples.mTotalSamples = lightSampleCount;
+            lightFilterSamples3D.mTotalSamples = lightSampleCount;
+        }
+    }
 
-            SequenceID_init(sidFilter3D, (uint32_t)pv.nonMirrorDepth, sp.mPixel,
-                    Light_getHash(light), (uniform uint32_t)SequenceTypeLightFilter3D,
-                    spIndex, sequenceID);
-            IntegratorSample3D_init(lightFilterSamples3D, sidFilter3D);
+    // Loop over each light' samples
+    for (uniform int i = 0; i < lightSampleCount; ++i) {
+
+        varying LightSample &currSamp = lsmp[i];
+
+        snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_LIGHT_SAMPLES_PRE);
+
+        // Draw the sample and test validity
+        varying Vec3f lightSample;
+        getSample(lightSamples, &lightSample.x, pv.nonMirrorDepth, *pbrTls->mFs);
+
+        varying LightFilterRandomValues lightFilterSample;
+        if (lightFilterNeedsSamples) {
+            getSample(lightFilterSamples, &lightFilterSample.r2.x, pv.nonMirrorDepth, *pbrTls->mFs);
+            getSample(lightFilterSamples3D, &lightFilterSample.r3.x, pv.nonMirrorDepth, *pbrTls->mFs);
         }
 
-        if (pv.nonMirrorDepth == 0) {
-            const int samplesSoFar = sp.mSubpixelIndex * lightSampleCount;
-            lightSamples.mSampleNumber = samplesSoFar;
-            if (lightFilterNeedsSamples) {
-                lightFilterSamples.mSampleNumber = samplesSoFar;
-                lightFilterSamples3D.mSampleNumber = samplesSoFar;
-            }
-        } else {
-            lightSamples.mTotalSamples = lightSampleCount;
-            if (lightFilterNeedsSamples) {
-                lightFilterSamples.mTotalSamples = lightSampleCount;
-                lightFilterSamples3D.mTotalSamples = lightSampleCount;
-            }
+        LightSetSampler_sampleIntersectAndEval(&lSampler, shadingTls, light, lightFilterList,
+                P, cullingNormal, lightFilterSample, time, lightSample, currSamp, rayDirFootprint);
+        if (LightSample_isInvalid(&(currSamp))) {
+            // These samples occur on the shadow terminator -- they are invalid because they face
+            // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
+            accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
+                                        pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
+                                        light, 1);
+            continue;
         }
+        currSamp.misPdf = currSamp.pdf;
+        currSamp.pdf *= lightSelectionPdf;
 
-        // Loop over each light' samples
-        for (uniform int i = 0, s = 0; i < lightSampleCount; ++i, ++s) {
+        snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_LIGHT_SAMPLES_POST);
 
-            MNRY_ASSERT(s < LightSetSampler_getSampleCount(&lSampler));
+        MNRY_ASSERT(isNormalized(currSamp.wi));
 
-            varying LightSample &currSamp = lsmp[s];
+        integrateLightSetSample(lSampler, lightIndex, bSampler, pv, currSamp,
+                clampingDepth, clampingValue);
 
-            snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_LIGHT_SAMPLES_PRE);
-
-            // Draw the sample and test validity
-            varying Vec3f lightSample;
-            getSample(lightSamples, &lightSample.x, pv.nonMirrorDepth, *pbrTls->mFs);
-
-            varying LightFilterRandomValues lightFilterSample;
-            if (lightFilterNeedsSamples) {
-                getSample(lightFilterSamples, &lightFilterSample.r2.x, pv.nonMirrorDepth, *pbrTls->mFs);
-                getSample(lightFilterSamples3D, &lightFilterSample.r3.x, pv.nonMirrorDepth, *pbrTls->mFs);
-            }
-
-            LightSetSampler_sampleIntersectAndEval(&lSampler, shadingTls, light, lightFilterList,
-                    P, cullingNormal, lightFilterSample, time, lightSample, currSamp, rayDirFootprint);
-            if (LightSample_isInvalid(&(currSamp))) {
-                // These samples occur on the shadow terminator -- they are invalid because they face
-                // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
-                accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
-                                            pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
-                                            light, 1);
-                continue;
-            }
-            currSamp.misPdf = currSamp.pdf;
-            currSamp.pdf *= lightSelectionPdf;
-
-            snapshotLaneUtilization(pbrTls->mStatistics, STATS_VEC_LIGHT_SAMPLES_POST);
-
-            MNRY_ASSERT(isNormalized(currSamp.wi));
-
-            integrateLightSetSample(lSampler, lightIndex, bSampler, pv, currSamp,
-                    clampingDepth, clampingValue);
-
-            addToCounter(pbrTls->mStatistics, STATS_LIGHT_SAMPLES, getActiveLaneCount());
-        }
+        addToCounter(pbrTls->mStatistics, STATS_LIGHT_SAMPLES, getActiveLaneCount());
     }
 }
 
