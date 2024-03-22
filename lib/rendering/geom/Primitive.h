@@ -159,48 +159,35 @@ protected:
         motionBlurParams.getMotionStepTimes(t0, t1);
 
         // Set up aux vertex buffer for Bezier control points
-        int numBezierControlPoints = numVertexSets + numVelocitySets + numAccelerationSets;
+        int numBezierControlPoints = scene_rdl2::math::min(4, numVertexSets + numVelocitySets + numAccelerationSets);
         VertexBuffer<VecType, InterleavedTraits> bezierControlPoints(numVertices, numBezierControlPoints);
 
         // We make use of parallel_for to loop over vertices
         tbb::blocked_range<size_t> range = tbb::blocked_range<size_t>(0, numVertices);
 
-        if (numVelocitySets == 1) {
+        if (numAccelerationSets == 1 && numVelocitySets >= 1) {
             // If there's 1 velocity set, we support either linear or quadratic motion.
-            MNRY_ASSERT_REQUIRE(numVertexSets == 1);
             const shading::PrimitiveAttribute<Vec3f>& vel =
                 primAttrTab->getAttribute(shading::StandardAttributes::sVelocity, 0);
-            if (numAccelerationSets == 1) {
-                // Acceleration-based, quadratic motion
-                const shading::PrimitiveAttribute<Vec3f>& acc =
-                    primAttrTab->hasAttribute(shading::StandardAttributes::sAcceleration)    ?
-                    primAttrTab->getAttribute(shading::StandardAttributes::sAcceleration, 0) :
-                    primAttrTab->getAttribute(shading::TypedAttributeKey<Vec3f>("accel"));
-                tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
-                    for (size_t i = r.begin(); i < r.end(); i++) {
-                        VecType p = vertices(i, 0);
-                        VecType v = vel[i];
-                        VecType a = acc[i];
-                        VecType p0 = p + t0 * v + 0.5f * t0 * t0 * a;
-                        VecType p1 = p + t1 * v + 0.5f * t1 * t1 * a;
-                        VecType v0 = v + t0 * a;
-                        bezierControlPoints(i, 0) = p0;
-                        bezierControlPoints(i, 1) = p0 + 0.5f * (t1 - t0) * v0;
-                        bezierControlPoints(i, 2) = p1;
-                    }
-                });
-            } else {
-                // Linear motion
-                tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
-                    for (size_t i = r.begin(); i < r.end(); i++) {
-                        VecType p = vertices(i, 0);
-                        VecType v = vel[i];
-                        bezierControlPoints(i, 0) = p + t0 * v;
-                        bezierControlPoints(i, 1) = p + t1 * v;
-                    }
-                });
-            }
-        } else {  // numVelocitySets == 2
+            // Acceleration-based, quadratic motion
+            const shading::PrimitiveAttribute<Vec3f>& acc =
+                primAttrTab->hasAttribute(shading::StandardAttributes::sAcceleration)    ?
+                primAttrTab->getAttribute(shading::StandardAttributes::sAcceleration, 0) :
+                primAttrTab->getAttribute(shading::TypedAttributeKey<Vec3f>("accel"));
+            tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
+                for (size_t i = r.begin(); i < r.end(); i++) {
+                    VecType p = vertices(i, 0);
+                    VecType v = vel[i];
+                    VecType a = acc[i];
+                    VecType p0 = p + t0 * v + 0.5f * t0 * t0 * a;
+                    VecType p1 = p + t1 * v + 0.5f * t1 * t1 * a;
+                    VecType v0 = v + t0 * a;
+                    bezierControlPoints(i, 0) = p0;
+                    bezierControlPoints(i, 1) = p0 + 0.5f * (t1 - t0) * v0;
+                    bezierControlPoints(i, 2) = p1;
+                }
+            });
+        } else if (numVelocitySets == 2) {
             // The 2 positions and 2 velocities supplied for each vertex defines the Hermite form of a cubic curve.
             // Here we convert to a Bezier representation, using the Hermite data to construct the 4 Bezier control points.
             // Suppose the supplied positions are p0 and p1, and the corresponding velocities v0 and v1, the subscripts
@@ -256,6 +243,18 @@ protected:
                     bezierControlPoints(i, 3) = vertices(i, 1);
                 }
             });
+        } else if (numVelocitySets == 1) {
+            // Linear motion
+            const shading::PrimitiveAttribute<Vec3f>& vel =
+                primAttrTab->getAttribute(shading::StandardAttributes::sVelocity, 0);
+            tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
+                for (size_t i = r.begin(); i < r.end(); i++) {
+                    VecType p = vertices(i, 0);
+                    VecType v = vel[i];
+                    bezierControlPoints(i, 0) = p + t0 * v;
+                    bezierControlPoints(i, 1) = p + t1 * v;
+                }
+            });
         }
 
         vertices = std::move(bezierControlPoints);
@@ -299,47 +298,34 @@ protected:
         motionBlurParams.getMotionStepTimes(t0, t1);
 
         // Set up aux vertex buffer for Bezier control points
-        int numBezierControlPoints = numVertexSets + numVelocitySets + numAccelerationSets;
+        int numBezierControlPoints = scene_rdl2::math::min(4, numVertexSets + numVelocitySets + numAccelerationSets);
         VertexBuffer<Vec3fa, InterleavedTraits> bezierControlPoints(numVertices, numBezierControlPoints);
 
         // We make use of parallel_for to loop over vertices
         tbb::blocked_range<size_t> range = tbb::blocked_range<size_t>(0, numVertices);
 
-        if (numVelocitySets == 1) {
+        if (numAccelerationSets == 1 && numVelocitySets >= 1) {
             // If there's 1 velocity set, we support either linear or quadratic motion.
-            MNRY_ASSERT_REQUIRE(numVertexSets == 1);
             const shading::PrimitiveAttribute<Vec3f>& vel = primAttrTab->getAttribute(shading::StandardAttributes::sVelocity, 0);
-            if (numAccelerationSets == 1) {
-                // Acceleration-based, quadratic motion
-                const shading::PrimitiveAttribute<Vec3f>& acc =
-                    primAttrTab->hasAttribute(shading::StandardAttributes::sAcceleration)    ?
-                    primAttrTab->getAttribute(shading::StandardAttributes::sAcceleration, 0) :
-                    primAttrTab->getAttribute(shading::TypedAttributeKey<Vec3f>("accel"));
-                tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
-                    for (size_t i = r.begin(); i < r.end(); i++) {
-                        Vec3fa p = vertices(i, 0);
-                        Vec3fa v = Vec3fa(vel[i], 0.f);
-                        Vec3fa a = Vec3fa(acc[i], 0.f);
-                        Vec3fa p0 = p + t0 * v + 0.5f * t0 * t0 * a;
-                        Vec3fa p1 = p + t1 * v + 0.5f * t1 * t1 * a;
-                        Vec3fa v0 = v + t0 * a;
-                        bezierControlPoints(i, 0) = p0;
-                        bezierControlPoints(i, 1) = p0 + 0.5f * (t1 - t0) * v0;
-                        bezierControlPoints(i, 2) = p1;
-                    }
-                });
-            } else {
-                // Linear motion
-                tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
-                    for (size_t i = r.begin(); i < r.end(); i++) {
-                        Vec3fa p = vertices(i, 0);
-                        Vec3fa v = Vec3fa(vel[i], 0.f);
-                        bezierControlPoints(i, 0) = p + t0 * v;
-                        bezierControlPoints(i, 1) = p + t1 * v;
-                    }
-                });
-            }
-        } else {  // numVelocitySets == 2
+            // Acceleration-based, quadratic motion
+            const shading::PrimitiveAttribute<Vec3f>& acc =
+                primAttrTab->hasAttribute(shading::StandardAttributes::sAcceleration)    ?
+                primAttrTab->getAttribute(shading::StandardAttributes::sAcceleration, 0) :
+                primAttrTab->getAttribute(shading::TypedAttributeKey<Vec3f>("accel"));
+            tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
+                for (size_t i = r.begin(); i < r.end(); i++) {
+                    Vec3fa p = vertices(i, 0);
+                    Vec3fa v = Vec3fa(vel[i], 0.f);
+                    Vec3fa a = Vec3fa(acc[i], 0.f);
+                    Vec3fa p0 = p + t0 * v + 0.5f * t0 * t0 * a;
+                    Vec3fa p1 = p + t1 * v + 0.5f * t1 * t1 * a;
+                    Vec3fa v0 = v + t0 * a;
+                    bezierControlPoints(i, 0) = p0;
+                    bezierControlPoints(i, 1) = p0 + 0.5f * (t1 - t0) * v0;
+                    bezierControlPoints(i, 2) = p1;
+                }
+            });
+        } else if (numVelocitySets == 2) {
             // The 2 positions and 2 velocities supplied for each vertex defines the Hermite form of a cubic curve.
             // Here we convert to a Bezier representation, using the Hermite data to construct the 4 Bezier control points.
             // Suppose the supplied positions are p0 and p1, and the corresponding velocities v0 and v1, the subscripts
@@ -391,6 +377,18 @@ protected:
                     bezierControlPoints(i, 1) = vertices(i, 0) + oneThirdDt * Vec3fa(vel0[i], 0.f);
                     bezierControlPoints(i, 2) = vertices(i, 1) - oneThirdDt * Vec3fa(vel1[i], 0.f);
                     bezierControlPoints(i, 3) = vertices(i, 1);
+                }
+            });
+        } else if (numVelocitySets == 1) {
+            // Linear motion
+            const shading::PrimitiveAttribute<Vec3f>& vel =
+                primAttrTab->getAttribute(shading::StandardAttributes::sVelocity, 0);
+            tbb::parallel_for(range, [&](const tbb::blocked_range<size_t> &r) {
+                for (size_t i = r.begin(); i < r.end(); i++) {
+                    Vec3fa p = vertices(i, 0);
+                    Vec3fa v = Vec3fa(vel[i], 0.f);
+                    bezierControlPoints(i, 0) = p + t0 * v;
+                    bezierControlPoints(i, 1) = p + t1 * v;
                 }
             });
         }
