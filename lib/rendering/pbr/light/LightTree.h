@@ -81,6 +81,22 @@ private:
         }
     }
 
+    // Returns whether all lights are in the same position
+    inline bool lightsAreCoincident(const LightTreeNode& node, const Light* const* lights)
+    {
+        int startIndex = node.getStartIndex();
+        int lightCount = node.getLightCount();
+
+        const scene_rdl2::math::Vec3f firstLightPosition = lights[startIndex]->getPosition(0.f);
+        for (int i = startIndex + 1; i < startIndex + lightCount; ++i) {
+            const scene_rdl2::math::Vec3f& p = lights[i]->getPosition(0.f);
+            if (!scene_rdl2::math::isEqual(p, firstLightPosition)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     // Returns a new list of buckets and splits with empty buckets/splits removed,
     // as well as the number of splits that remain
     inline int purgeEmptyBuckets(LightTreeBucket* newBuckets, SplitCandidate* newSplits,
@@ -188,6 +204,9 @@ private:
     ///     @param minSplit The SplitCandidate with the lowest cost for this axis
     ///
     float splitAxis(SplitCandidate& minSplit, int axis, const LightTreeNode& node) const;
+
+    /// Splits the node into two nodes, where it's just an even split of all the lights in the parent node
+    float splitLightsEvenly(LightTreeNode& leftNode, LightTreeNode& rightNode, const LightTreeNode& parent) const;
 
 
     /// Choose a light from the hierarchy using importance sampling. We traverse the hierarchy by using a random number, 

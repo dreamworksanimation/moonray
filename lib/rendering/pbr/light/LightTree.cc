@@ -96,6 +96,12 @@ float LightTree::split(LightTreeNode& leftNode, LightTreeNode& rightNode, uint32
         return /* zero split cost */ 0;
     }
 
+    if (lightsAreCoincident(node, mBoundedLights)) {
+        // if lights are all stacked on top of each other,
+        // just split the number of lights evenly
+        return splitLightsEvenly(leftNode, rightNode, node);
+    } 
+    
     // find the axis with the lowest split cost
     float minCost = -1.f;
     SplitCandidate minSplit;
@@ -118,6 +124,27 @@ float LightTree::split(LightTreeNode& leftNode, LightTreeNode& rightNode, uint32
     // partition into left and right nodes using the chosen SplitCandidate
     minSplit.performSplit(leftNode, rightNode, mBoundedLights, mLightIndices, node);
     return minCost;
+}
+
+float LightTree::splitLightsEvenly(LightTreeNode& leftNode, LightTreeNode& rightNode, const LightTreeNode& parent) const
+{
+    // just evenly split the lights into both nodes
+    const auto startIt = mLightIndices.begin() + parent.getStartIndex();
+    // start the right node lights halfway through
+    const auto rightStartIt = startIt + (parent.getLightCount() / 2);
+
+    // create left and right child nodes
+    const uint32_t lightCountLeft  = rightStartIt - startIt;
+    const uint32_t lightCountRight = parent.getLightCount() - lightCountLeft;
+    const uint32_t startIndexLeft  = parent.getStartIndex();
+    const uint32_t startIndexRight = parent.getStartIndex() + lightCountLeft;
+
+    // initialize nodes
+    leftNode.init(lightCountLeft, startIndexLeft, mBoundedLights, mLightIndices);
+    rightNode.init(lightCountRight, startIndexRight, mBoundedLights, mLightIndices);
+
+    // we currently aren't using this cost anywhere, so it can be zero
+    return 0.f;
 }
 
 float LightTree::splitAxis(SplitCandidate& minSplit, int axis, const LightTreeNode& node) const
