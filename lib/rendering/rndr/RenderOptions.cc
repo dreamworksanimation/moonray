@@ -323,8 +323,8 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         foundAtIndex = args.getFlagValues("-size", 2, values);
         validFlags.push_back("-size");
         while (foundAtIndex >= 0) {
-            addOverride(overrides, "__SceneVariables__", "frame width", values[0], "", true);
-            addOverride(overrides, "__SceneVariables__", "frame height", values[1], "", true);
+            addOverride(overrides, "__SceneVariables__", "image width", values[0], "", true);
+            addOverride(overrides, "__SceneVariables__", "image height", values[1], "", true);
             foundAtIndex = args.getFlagValues("-size", 2, values, foundAtIndex + 1);
         }
 
@@ -551,7 +551,7 @@ RenderOptions::getUsageMessage(const std::string& programName, bool guiMode)
 "                              0,1 or 0-1 => 0 1\n"
 "\n"
 "    -size 1920 1080\n"
-"        Canonical frame width and height (in pixels).\n"
+"        Canonical image width and height (in pixels).\n"
 "\n"
 "    -res 1.0\n"
 "        Resolution divisor for frame dimensions.\n"
