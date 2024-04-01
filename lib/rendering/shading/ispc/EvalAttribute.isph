@@ -618,13 +618,14 @@ evalNormal(
     const varying State &state,
     const varying Vec3f& normalMapValue,
     const varying float normalDial,
-    const uniform int normalMapSpace)
+    const uniform int normalMapSpace,
+    const uniform bool adaptNormal)
 {
     varying bool needsAdapting;
     varying Vec3f result = evalNormalImpl(sceneObject, tls, state,
                                           normalMapValue, normalDial, normalMapSpace,
                                           needsAdapting);
-    if (needsAdapting) {
+    if (adaptNormal && needsAdapting) {
         // hack the result if it is not physically plausible
         result = Intersection_adaptNormal((const varying Intersection &) state, result);
     }
@@ -638,14 +639,15 @@ evalToonNormal(
     const varying State &state,
     const varying Vec3f& normalMapValue,
     const varying float normalDial,
-    const uniform int normalMapSpace)
+    const uniform int normalMapSpace,
+    const uniform bool adaptNormal)
 {
     // Intended for use only by diffuse lobes from NPR materials.
     varying bool needsAdapting;
     varying Vec3f result = evalNormalImpl(sceneObject, tls, state,
                                           normalMapValue, normalDial, normalMapSpace,
                                           needsAdapting);
-    if (needsAdapting) {
+    if (adaptNormal && needsAdapting) {
         // hack the result if it is not physically plausible,
         // unless the material is requesting physically implausible normals.
 
@@ -669,7 +671,8 @@ evalNormal(const uniform SceneObject      * uniform  sceneObject,
            const varying State                      &state,
            const uniform Float3AttrKey    * uniform  valueKey,
            const uniform FloatAttrKeyISPC * uniform  dialKey,
-           const uniform IntAttrKey       * uniform  spaceKey)
+           const uniform IntAttrKey       * uniform  spaceKey,
+           const uniform bool adaptNormal)
 {
     Vec3f N = state.mN;
 
@@ -693,7 +696,8 @@ evalNormal(const uniform SceneObject      * uniform  sceneObject,
     return evalNormal(sceneObject, tls, state,
                       normalMapValue,
                       normalDial,
-                      normalMapSpace);
+                      normalMapSpace,
+                      adaptNormal);
 }
 inline Vec3f
 evalNormal(const uniform Material      * uniform  sceneObject,
@@ -701,10 +705,11 @@ evalNormal(const uniform Material      * uniform  sceneObject,
            const varying State                   &state,
            const uniform Float3AttrKey * uniform  valueKey,
            const uniform FloatAttrKey  * uniform  dialKey,
-           const uniform IntAttrKey * uniform  spaceKey)
+           const uniform IntAttrKey * uniform  spaceKey,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject, tls, state,
-                      valueKey, dialKey, spaceKey);
+                      valueKey, dialKey, spaceKey, adaptNormal);
 }
 inline Vec3f
 evalNormal(const uniform Map           * uniform  sceneObject,
@@ -712,10 +717,11 @@ evalNormal(const uniform Map           * uniform  sceneObject,
            const varying State                   &state,
            const uniform Float3AttrKey * uniform  valueKey,
            const uniform FloatAttrKey  * uniform  dialKey,
-           const uniform IntAttrKey * uniform  spaceKey)
+           const uniform IntAttrKey * uniform  spaceKey,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject, tls, state,
-                      valueKey, dialKey, spaceKey);
+                      valueKey, dialKey, spaceKey, adaptNormal);
 }
 inline Vec3f
 evalNormal(const uniform Displacement  * uniform  sceneObject,
@@ -723,10 +729,11 @@ evalNormal(const uniform Displacement  * uniform  sceneObject,
            const varying State                   &state,
            const uniform Float3AttrKey * uniform  valueKey,
            const uniform FloatAttrKey  * uniform  dialKey,
-           const uniform IntAttrKey * uniform  spaceKey)
+           const uniform IntAttrKey * uniform  spaceKey,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject, tls, state,
-                      valueKey, dialKey, spaceKey);
+                      valueKey, dialKey, spaceKey, adaptNormal);
 }
 /// @}
 
@@ -740,7 +747,8 @@ evalNormal(const uniform SceneObject      * uniform  sceneObject,
            const uniform NormalMap        * uniform  normalMap,
            const uniform SampleNormalPtr             sampleNormalFn,
            const varying float normalDial,
-                 varying float            * uniform  lengthN)
+                 varying float            * uniform  lengthN,
+           const uniform bool adaptNormal)
 {
     if (!normalMap || !sampleNormalFn || isZero(normalDial)) {
         return state.mN;
@@ -761,7 +769,8 @@ evalNormal(const uniform SceneObject      * uniform  sceneObject,
                       state,
                       normalMapValue,
                       normalDial,
-                      1); // render space
+                      1,
+                      adaptNormal); // render space
 }
 
 inline varying Vec3f
@@ -771,7 +780,8 @@ evalNormal(const uniform Material      * uniform  sceneObject,
            const uniform NormalMap        * uniform  normalMap,
            const uniform SampleNormalPtr             sampleNormalFn,
            const varying float normalDial,
-                 varying float            * uniform  lengthN)
+                 varying float            * uniform  lengthN,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject,
                       tls,
@@ -779,7 +789,8 @@ evalNormal(const uniform Material      * uniform  sceneObject,
                       normalMap,
                       sampleNormalFn,
                       normalDial,
-                      lengthN);
+                      lengthN,
+                      adaptNormal);
 }
 inline varying Vec3f
 evalNormal(const uniform Material      * uniform  sceneObject,
@@ -787,7 +798,8 @@ evalNormal(const uniform Material      * uniform  sceneObject,
            const varying State                      &state,
            const uniform NormalMap        * uniform  normalMap,
            const uniform SampleNormalPtr             sampleNormalFn,
-           const varying float normalDial)
+           const varying float normalDial,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject,
                       tls,
@@ -795,7 +807,8 @@ evalNormal(const uniform Material      * uniform  sceneObject,
                       normalMap,
                       sampleNormalFn,
                       normalDial,
-                      NULL);
+                      NULL,
+                      adaptNormal);
 }
 inline varying Vec3f
 evalNormal(const uniform Map              * uniform  sceneObject,
@@ -803,7 +816,8 @@ evalNormal(const uniform Map              * uniform  sceneObject,
            const varying State                      &state,
            const uniform NormalMap        * uniform  normalMap,
            const uniform SampleNormalPtr             sampleNormalFn,
-           const varying float normalDial)
+           const varying float normalDial,
+           const uniform bool adaptNormal)
 {
     return evalNormal((const SceneObject * uniform) sceneObject,
                       tls,
@@ -811,7 +825,8 @@ evalNormal(const uniform Map              * uniform  sceneObject,
                       normalMap,
                       sampleNormalFn,
                       normalDial,
-                      NULL);
+                      NULL,
+                      adaptNormal);
 }
 /// @}
 
@@ -825,7 +840,8 @@ evalToonNormal(const uniform SceneObject      * uniform  sceneObject,
                const uniform NormalMap        * uniform  normalMap,
                const uniform SampleNormalPtr             sampleNormalFn,
                const varying float normalDial,
-                     varying float            * uniform  lengthN)
+                     varying float            * uniform  lengthN,
+               const uniform bool adaptNormal)
 {
     if (!normalMap || !sampleNormalFn || isZero(normalDial)) {
         return state.mN;
@@ -846,7 +862,8 @@ evalToonNormal(const uniform SceneObject      * uniform  sceneObject,
                           state,
                           normalMapValue,
                           normalDial,
-                          1); // render space
+                          1,
+                          adaptNormal); // render space
 }
 
 inline varying Vec3f
@@ -856,7 +873,8 @@ evalToonNormal(const uniform Material      * uniform  sceneObject,
                const uniform NormalMap        * uniform  normalMap,
                const uniform SampleNormalPtr             sampleNormalFn,
                const varying float normalDial,
-                     varying float            * uniform  lengthN)
+                     varying float            * uniform  lengthN,
+               const uniform bool adaptNormal)
 {
     return evalToonNormal((const SceneObject * uniform) sceneObject,
                           tls,
@@ -864,7 +882,8 @@ evalToonNormal(const uniform Material      * uniform  sceneObject,
                           normalMap,
                           sampleNormalFn,
                           normalDial,
-                          lengthN);
+                          lengthN,
+                          adaptNormal);
 }
 /// @}
 

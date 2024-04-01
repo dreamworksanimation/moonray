@@ -90,7 +90,7 @@ void initIntersectionPhase1(shading::Intersection &isect,
 
     // Are we entering or leaving the volume enclosed by the surface hit ?
     // TODO: does this affect hair shading in any way ?
-    if (isect.isFlatPoint() || dot(isect.getNg(), ray.getDirection()) < 0.0f) {
+    if (isect.hasExplicitAttributes() || dot(isect.getNg(), ray.getDirection()) < 0.0f) {
         isect.setIsEntering(true);
     } else {
         // Flip both geometric and shading normal towards the "viewer"

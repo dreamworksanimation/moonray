@@ -42,6 +42,8 @@ bool State::isSubsurfaceAllowed() const { return mIntersection->isSubsurfaceAllo
 bool State::isIndirect()          const { return mIntersection->isIndirect();          }
 bool State::isHifi()              const { return mIntersection->isHifi();              }
 
+bool State::hasExplicitAttributes() const { return mIntersection->hasExplicitAttributes(); }
+
 float State::getMediumIor() const { return mIntersection->getMediumIor(); }
 
 math::Vec3f State::adaptNormal(const math::Vec3f &Ns) const { return mIntersection->adaptNormal(Ns); }

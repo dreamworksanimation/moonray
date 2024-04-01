@@ -74,6 +74,12 @@ Intersection_adaptNormal(const varying Intersection &isect, const varying Vec3f 
     return result;
 }
 
+varying unsigned int32
+Intersection_hasExplicitAttributes(const varying Intersection &isect)
+{
+    return Flags_get(isect.mFlags, (uniform uint32_t)INTERSECTION_FLAGS_HAS_EXPLICIT_ATTRIBUTES);
+}
+
 varying Vec3f
 Intersection_adaptToonNormal(const varying Intersection &isect, const varying Vec3f &Ns)
 {

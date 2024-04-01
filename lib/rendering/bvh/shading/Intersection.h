@@ -48,8 +48,9 @@ public:
         UseAdaptNormal          = 1 << 10,
 
         // Determines whether or not we'll test the normal 
-        // for backfacing points ( see MOONSHINE-1562 )
-        IsFlatPoint             = 1 << 11
+        // for geometry with explicit attributes such as points
+        // rendered as oriented disks
+        HasExplicitAttributes   = 1 << 11
     };
 
 
@@ -121,7 +122,7 @@ public:
 
     finline void setDifferentialGeometry(const scene_rdl2::math::Vec3f &Ng, const scene_rdl2::math::Vec3f &N,
             const scene_rdl2::math::Vec2f &St, const scene_rdl2::math::Vec3f &dPds, const scene_rdl2::math::Vec3f &dPdt,
-            bool hasDerivatives, bool isFlatPoint=false)
+            bool hasDerivatives, bool hasExplicitAttributes=false)
     {
         mNg = Ng;
         mN = N;
@@ -130,7 +131,7 @@ public:
         mdPdt = dPdt;
 
         mFlags.set(HasGeometryDerivatives, hasDerivatives);
-        mFlags.set(IsFlatPoint, isFlatPoint);
+        mFlags.set(HasExplicitAttributes, hasExplicitAttributes);
     }
 
     void setTable(scene_rdl2::alloc::Arena *arena, const AttributeTable * const table) {
@@ -398,7 +399,7 @@ public:
     finline bool hasGeometryDerivatives() const  { return mFlags.get(HasGeometryDerivatives); }
 
     /// Returns true if rendering flat points
-    finline bool isFlatPoint() const  { return mFlags.get(IsFlatPoint); }
+    finline bool hasExplicitAttributes() const  { return mFlags.get(HasExplicitAttributes); }
 
     /// Differential Geometry
     finline const scene_rdl2::math::Vec3f &getP() const        {  return mP;  }

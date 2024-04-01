@@ -543,6 +543,14 @@ public:
                 component.getTint(),
                 false); // true for reflection, false for transmission
 
+        if (mPreventLightCulling) {
+            // Force lobe to be "spherical" to prevent light culling
+            // when light sample is on backside
+            const shading::BsdfLobe::Type lobeType = shading::BsdfLobe::ALL_DIFFUSE;
+            lobe->setType(lobeType);
+            lobe->setIsSpherical(true);
+        }
+
         scene_rdl2::math::Color scale(weight);
 
         if (isUnder(combineBehavior)) {

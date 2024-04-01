@@ -311,7 +311,8 @@ QuadMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
                                          St,
                                          dPds,
                                          dPdt,
-                                         true); // has derivatives
+                                         true, // has derivatives
+                                         hasExplicitAttributes);
 
     // calculate dfds/dfdt for primitive attributes that request differential
     if (table->requestDerivatives()) {

@@ -159,7 +159,6 @@ add_subdirectory(lib)
 add_subdirectory(cmd)
 add_subdirectory(dso)
 if(GLD STREQUAL "$ENV{STUDIO}")
-    add_subdirectory(bart_tools)
     if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         install(FILES
             ${CMAKE_CURRENT_SOURCE_DIR}/SDKScript

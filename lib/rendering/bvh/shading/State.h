@@ -82,6 +82,8 @@ public:
     bool isIndirect()           const;
     bool isHifi()               const;
 
+    bool hasExplicitAttributes() const;
+
     float getMediumIor() const;
 
     scene_rdl2::math::Vec3f adaptNormal(const scene_rdl2::math::Vec3f &Ns) const;

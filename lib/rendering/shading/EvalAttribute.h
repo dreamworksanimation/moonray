@@ -32,6 +32,10 @@ getNormalMap(const scene_rdl2::rdl2::Shader* const obj,
              const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObject*>& valueKey,
              const float dialValue)
 {
+    if (!valueKey.isValid()) {
+        return nullptr;
+    }
+
     const scene_rdl2::rdl2::SceneObject* sceneObject = obj->get(valueKey);
     if (sceneObject == nullptr || scene_rdl2::math::isZero(dialValue)) {
         return nullptr;
@@ -74,7 +78,8 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const scene_rdl2::math::Vec3f& normalMapValue,
            const float normalDial,
            const int normalMapSpace,
-           float *lengthN = nullptr);
+           float *lengthN = nullptr,
+           bool adaptNormal = true);
 
 scene_rdl2::math::Vec3f
 evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
@@ -83,7 +88,8 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
                const scene_rdl2::math::Vec3f& normalMapValue,
                const float normalDial,
                const int normalMapSpace,
-               float *lengthN = nullptr);
+               float *lengthN = nullptr,
+               bool adaptNormal = true);
 
 /// Evaluate normal mapping, given an object input normal attribute key and the
 /// corresponding input normal dial attribute key. The normal map is assumed to
@@ -101,7 +107,8 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>& spaceKey,
            shading::TLState *tls,
            const State& state,
-           float& lengthN)
+           float& lengthN,
+           bool adaptNormal = true)
 {
     const scene_rdl2::math::Vec3f &N = state.getN();
 
@@ -120,8 +127,8 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
     sample(obj, map, tls, state, &normalMapColor);
 
     scene_rdl2::math::Vec3f normalMapValue(normalMapColor.r,
-                               normalMapColor.g,
-                               normalMapColor.b);
+                                           normalMapColor.g,
+                                           normalMapColor.b);
 
     int normalMapSpace = obj->get(spaceKey);
     return evalNormal(obj,
@@ -130,7 +137,8 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
                       normalMapValue,
                       normalMapDial,
                       normalMapSpace,
-                      &lengthN);
+                      &lengthN,
+                      adaptNormal);
 }
 
 /// NOTE: This function can be safely removed after support for moonshine 5 and 6
@@ -141,10 +149,18 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>& dialKey,
            const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>& spaceKey,
            shading::TLState *tls,
-           const State& state)
+           const State& state,
+           bool adaptNormal = true)
 {
     float lengthN;
-    return evalNormal(obj, valueKey, dialKey, spaceKey, tls, state, lengthN);
+    return evalNormal(obj,
+                      valueKey,
+                      dialKey,
+                      spaceKey,
+                      tls,
+                      state,
+                      lengthN,
+                      adaptNormal);
 }
 
 /// Evaluate normal mapping, given a NormalMap attribute key and the
@@ -159,7 +175,8 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const float dialValue,
            shading::TLState *tls,
            const State& state,
-           float *lengthN = nullptr)
+           float *lengthN = nullptr,
+           bool adaptNormal = true)
 {
     const scene_rdl2::rdl2::NormalMap* normalMap = getNormalMap(obj, valueKey, dialValue);
     if (normalMap == nullptr)
@@ -171,8 +188,11 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
     sampleNormal(obj, normalMap, tls, state, &normalMapValue);
 
     return evalNormal(obj, tls, state,
-                      normalMapValue, dialValue, 1 /* render space */,
-                      lengthN);
+                      normalMapValue,
+                      dialValue,
+                      1 /* render space */,
+                      lengthN,
+                      adaptNormal);
 }
 
 finline scene_rdl2::math::Vec3f
@@ -181,7 +201,8 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
                const float dialValue,
                shading::TLState *tls,
                const State& state,
-               float *lengthN = nullptr)
+               float *lengthN = nullptr,
+               bool adaptNormal = true)
 {
     const scene_rdl2::rdl2::NormalMap* normalMap = getNormalMap(obj, valueKey, dialValue);
     if (normalMap == nullptr)
@@ -193,8 +214,11 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
     sampleNormal(obj, normalMap, tls, state, &normalMapValue);
 
     return evalToonNormal(obj, tls, state,
-                          normalMapValue, dialValue, 1 /* render space */,
-                          lengthN);
+                          normalMapValue,
+                          dialValue,
+                          1 /* render space */,
+                          lengthN,
+                          adaptNormal);
 }
 
 /// Same as evalColor but for floats

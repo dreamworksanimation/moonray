@@ -3000,7 +3000,8 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
                                          St,
                                          dPds,
                                          dPdt,
-                                         true); // has derivatives
+                                         true, // has derivatives
+                                         hasExplicitAttributes);
 
     const scene_rdl2::rdl2::Geometry* geometry = intersection.getGeometryObject();
     MNRY_ASSERT(geometry != nullptr);

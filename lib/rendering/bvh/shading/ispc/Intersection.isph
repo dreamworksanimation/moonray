@@ -32,7 +32,12 @@ enum IntersectionFlags {
 
     // INTERSECTION_FLAGS_HAS_ALL_REQUIRED_ATTRIBUTES = 1 << 9, // Present in Intersection.h, so leaving room for it here
 
-    INTERSECTION_FLAGS_USE_ADAPT_NORMAL            = 1 <<10
+    INTERSECTION_FLAGS_USE_ADAPT_NORMAL            = 1 <<10,
+
+    // Determines whether or not we'll test the normal 
+    // for geometry with explicit attributes such as points
+    // rendered as oriented disks
+    INTERSECTION_FLAGS_HAS_EXPLICIT_ATTRIBUTES     = 1 <<11
 };
 
 // Ispc compiler bug (?) doesn't let us initialize using the IntersectionFlags
@@ -171,6 +176,7 @@ setUseAdaptNormal(varying Intersection * uniform me, uniform bool useAdaptNormal
 varying Vec3f Intersection_adaptNormal(const varying Intersection &isect, const varying Vec3f &Ns);
 varying Vec3f Intersection_adaptToonNormal(const varying Intersection &isect, const varying Vec3f &Ns);
 
+varying unsigned int32 Intersection_hasExplicitAttributes(const varying Intersection &isect);
 
 varying bool isProvided(const varying Intersection &me, const uniform int32_t key);
 varying bool isProvided(const varying Intersection &me, const varying int32_t key);

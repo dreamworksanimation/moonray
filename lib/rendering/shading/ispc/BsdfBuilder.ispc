@@ -1576,6 +1576,14 @@ BsdfBuilder_addLambertianBTDF(
                          btdf.mTint,
                          false); // true for reflection, false for transmission
 
+    if (me.mPreventLightCulling) {
+        // Force lobe to be "spherical" to prevent light culling
+        // when light sample is on backside
+        const uniform BsdfLobeType lobeType = BSDF_LOBE_TYPE_ALL_DIFFUSE;
+        BsdfLobe_setType(lobe, lobeType);
+        BsdfLobe_setIsSpherical(lobe, true);
+    }
+
     varying Color scale = Color_ctor(weight);
 
     cif (isUnder(combineBehavior)) {
