@@ -97,14 +97,18 @@ evalNormal(const rdl2::Shader* const obj,
            const float normalDial,
            const int normalMapSpace,
            float *lengthN,
-           bool adaptNormal)
+           scene_rdl2::math::Vec3f* unadaptedNormal)
 {
     bool needsAdapting;
     math::Vec3f result = evalNormalImpl(obj, tls, state,
                                         normalMapValue, normalDial, normalMapSpace,
                                         needsAdapting,
                                         lengthN);
-    if (adaptNormal && needsAdapting) {
+    if (unadaptedNormal != nullptr) {
+        *unadaptedNormal = result;
+    }
+
+    if (needsAdapting) {
         // hack the result if it is not physically plausible
         result = state.adaptNormal(result);
     }
@@ -119,14 +123,19 @@ evalToonNormal(const rdl2::Shader* const obj,
                const float normalDial,
                const int normalMapSpace,
                float *lengthN,
-               bool adaptNormal)
+               scene_rdl2::math::Vec3f* unadaptedNormal)
 {
     // Intended for use by diffuse lobes from NPR materials only.
     bool needsAdapting;
     math::Vec3f result = evalNormalImpl(obj, tls, state,
                                         normalMapValue, normalDial, normalMapSpace,
                                         needsAdapting);
-    if (adaptNormal && needsAdapting) {
+
+    if (unadaptedNormal != nullptr) {
+        *unadaptedNormal = result;
+    }
+
+    if (needsAdapting) {
         // hack the result if it is not physically plausible,
         // unless the material is requesting physically implausible normals.
 

@@ -79,7 +79,7 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const float normalDial,
            const int normalMapSpace,
            float *lengthN = nullptr,
-           bool adaptNormal = true);
+           scene_rdl2::math::Vec3f* unadaptedNormal = nullptr);
 
 scene_rdl2::math::Vec3f
 evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
@@ -89,7 +89,7 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
                const float normalDial,
                const int normalMapSpace,
                float *lengthN = nullptr,
-               bool adaptNormal = true);
+               scene_rdl2::math::Vec3f* unadaptedNormal = nullptr);
 
 /// Evaluate normal mapping, given an object input normal attribute key and the
 /// corresponding input normal dial attribute key. The normal map is assumed to
@@ -108,9 +108,12 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            shading::TLState *tls,
            const State& state,
            float& lengthN,
-           bool adaptNormal = true)
+           scene_rdl2::math::Vec3f* unadaptedNormal = nullptr)
 {
     const scene_rdl2::math::Vec3f &N = state.getN();
+    if (unadaptedNormal != nullptr) {
+        *unadaptedNormal = state.getN();
+    }
 
     const scene_rdl2::rdl2::SceneObject* sceneObject = obj->getBinding(valueKey);
     if (sceneObject == nullptr) {
@@ -138,7 +141,7 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
                       normalMapDial,
                       normalMapSpace,
                       &lengthN,
-                      adaptNormal);
+                      unadaptedNormal);
 }
 
 /// NOTE: This function can be safely removed after support for moonshine 5 and 6
@@ -150,7 +153,7 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            const scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>& spaceKey,
            shading::TLState *tls,
            const State& state,
-           bool adaptNormal = true)
+           scene_rdl2::math::Vec3f* unadaptedNormal = nullptr)
 {
     float lengthN;
     return evalNormal(obj,
@@ -160,7 +163,7 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
                       tls,
                       state,
                       lengthN,
-                      adaptNormal);
+                      unadaptedNormal);
 }
 
 /// Evaluate normal mapping, given a NormalMap attribute key and the
@@ -176,11 +179,14 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
            shading::TLState *tls,
            const State& state,
            float *lengthN = nullptr,
-           bool adaptNormal = true)
+           scene_rdl2::math::Vec3f* unadaptedNormal = nullptr)
 {
     const scene_rdl2::rdl2::NormalMap* normalMap = getNormalMap(obj, valueKey, dialValue);
     if (normalMap == nullptr)
     {
+        if (unadaptedNormal != nullptr) {
+            *unadaptedNormal = state.getN();
+        }
         return state.getN();
     }
 
@@ -192,7 +198,7 @@ evalNormal(const scene_rdl2::rdl2::Shader* const obj,
                       dialValue,
                       1 /* render space */,
                       lengthN,
-                      adaptNormal);
+                      unadaptedNormal);
 }
 
 finline scene_rdl2::math::Vec3f
@@ -202,11 +208,14 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
                shading::TLState *tls,
                const State& state,
                float *lengthN = nullptr,
-               bool adaptNormal = true)
+               scene_rdl2::math::Vec3f* unadaptedNormal = nullptr)
 {
     const scene_rdl2::rdl2::NormalMap* normalMap = getNormalMap(obj, valueKey, dialValue);
     if (normalMap == nullptr)
     {
+        if (unadaptedNormal != nullptr) {
+            *unadaptedNormal = state.getN();
+        }
         return state.getN();
     }
 
@@ -218,7 +227,7 @@ evalToonNormal(const scene_rdl2::rdl2::Shader* const obj,
                           dialValue,
                           1 /* render space */,
                           lengthN,
-                          adaptNormal);
+                          unadaptedNormal);
 }
 
 /// Same as evalColor but for floats
