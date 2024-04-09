@@ -25,7 +25,8 @@ enum AttributeMapType {
     ID = 16,
     VELOCITY = 17,
     ACCELERATION = 18,
-    MOTIONVEC = 19
+    MOTIONVEC = 19,
+    OBSERVER_DIRECTION = 20
 };
 
 ISPC_UTIL_EXPORT_ENUM_TO_HEADER(AttributeMapType);
@@ -139,6 +140,11 @@ sample(const uniform Map *            uniform  map,
         sample.b = state.mdNdt.z;
     } else if (getAttrMapType(map) == MAP_COLOR) {
         sample = evalAttrColor(map, tls, state);
+    } else if (getAttrMapType(map) == OBSERVER_DIRECTION) {
+        const Vec3f& wo = getWo(state);
+        sample.r = wo.x;
+        sample.g = wo.y;
+        sample.b = wo.z;
     } else {
         MNRY_ASSERT(0); // unsupported primitive attribute type
     }

@@ -246,6 +246,11 @@ AttributeMap::sample(const scene_rdl2::rdl2::Map* self, moonray::shading::TLStat
         sample->b = dndt.z;
     } else if (me->get(attrMapType) == ispc::AttributeMapType::MAP_COLOR) {
         *sample = evalColor(me, attrColor, tls, state);
+    } else if (me->get(attrMapType) == ispc::AttributeMapType::OBSERVER_DIRECTION) {
+        const Vec3f& wo = state.getWo();
+        sample->r = wo.x;
+        sample->g = wo.y;
+        sample->b = wo.z;
     } else {
         MNRY_ASSERT(0, "unsupported primitive attribute type");
     }

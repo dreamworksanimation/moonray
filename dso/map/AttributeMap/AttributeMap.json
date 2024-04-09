@@ -26,7 +26,8 @@
                 "id": "16",
                 "velocity": "17",
                 "acceleration": "18",
-                "motionvec": "19"
+                "motionvec": "19",
+                "observer direction": "20"
             },
             "default": "0"
         },
