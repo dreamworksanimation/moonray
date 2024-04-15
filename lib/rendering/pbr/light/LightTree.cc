@@ -31,11 +31,17 @@ void LightTree::build(const Light* const* boundedLights, uint32_t boundedLightCo
     // pre-allocate since we know the size of the array
     mLightIndices.reserve(boundedLightCount);
 
-    if (boundedLightCount > 0) {
-        // create list of indices to order lights in tree
-        for (int i = 0; i < mBoundedLightCount; ++i) {
+    // create list of indices to order lights in tree
+    for (int i = 0; i < boundedLightCount; ++i) {
+        // don't use mesh lights in light bvh
+        if (dynamic_cast<const MeshLight*>(boundedLights[i])) {
+            mBoundedLightCount--;
+        } else {
             mLightIndices.push_back(i);
         }
+    }
+
+    if (mBoundedLightCount > 0) {
 
         // create root node
         mNodes.emplace_back();
@@ -203,15 +209,6 @@ void LightTree::sample(float* lightSelectionPdfs, const scene_rdl2::math::Vec3f&
                        const scene_rdl2::math::Vec3f* cullingNormal, const IntegratorSample1D& lightSelectionSample,
                        const int* lightIdMap, int nonMirrorDepth) const
 {
-    // Sample ALL unbounded lights
-    /// TODO: the paper has some probability specifying whether to sample unbounded lights vs. the BVH
-    /// Then, if the unbounded light set is chosen, it randomly picks an unbounded light to sample from the set. 
-    /// Since we use so few unbounded lights, I figure it would be better to just sample all unbounded lights for now
-    for (int unboundedLightIdx = 0; unboundedLightIdx < mUnboundedLightCount; ++unboundedLightIdx) {
-        int lightIndex = mBoundedLightCount + unboundedLightIdx;
-        chooseLight(lightSelectionPdfs, lightIndex, /*lightPdf*/ 1.f, lightIdMap);
-    }
-
     // For bounded lights, importance sample the BVH with adaptive tree splitting
     if (mBoundedLightCount > 0) {
         const bool cullLights = cullingNormal != nullptr;

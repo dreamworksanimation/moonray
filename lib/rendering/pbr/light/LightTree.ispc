@@ -28,15 +28,6 @@ void LightTree_sample(const uniform LightTree * const uniform me,
                       const varying IntegratorSample1D& lightSelectionSample,
                       const uniform int * uniform lightIdMap)
 {
-    // Sample ALL unbounded lights
-    /// TODO: the paper has some probability specifying whether to sample unbounded lights vs. the BVH
-    /// Then, if the unbounded light set is chosen, it randomly picks an unbounded light to sample from the set. 
-    /// Since we use so few unbounded lights, I figure it would be better to just sample all unbounded lights for now
-    for (uniform int unboundedLightIdx = 0; unboundedLightIdx < me->mUnboundedLightCount; ++unboundedLightIdx) {
-        uniform int lightIndex = me->mBoundedLightCount + unboundedLightIdx;
-        LightTree_chooseLight(lightSelectionPdfs, lightIndex, /*lightPdf*/ 1.f, lightIdMap);
-    }
-
     // For bounded lights, importance sample the BVH with adaptive tree splitting
     const varying bool cullLights = cullingNormal != nullptr;
     uniform int startNodes[2] = {0, -1}; // {root index, null index}

@@ -167,9 +167,10 @@ DistantLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uni
     return radiance;
 }
 
-// Unbounded lights aren't included in the LightTree sampling BVH, so these values aren't needed
-inline uniform float DistantLight_getThetaO(const uniform Light * uniform li) { return 0.f; }
-inline uniform float DistantLight_getThetaE(const uniform Light * uniform li) { return 0.f; }
+// A value of -1 for both indicates that this type of light (unbounded) 
+// should always be sampled (i.e. not included in the light sampling BVH)
+inline uniform float DistantLight_getThetaO(const uniform Light * uniform li) { return -1.f; }
+inline uniform float DistantLight_getThetaE(const uniform Light * uniform li) { return -1.f; }
 
 //----------------------------------------------------------------------------
 

@@ -6,6 +6,7 @@
 #include "Light.h"
 #include "LightTreeUtil.h"
 #include "LightTree.hh"
+#include "MeshLight.h"
 
 namespace moonray {
 namespace pbr {

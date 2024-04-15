@@ -603,9 +603,10 @@ MeshLight_eval(const uniform Light * uniform li,
     return radiance;
 }
 
-// TODO: update with correct values once MeshLight is supported with adaptive light sampling
-inline uniform float MeshLight_getThetaO(const uniform Light * uniform li) { return 0.f; }
-inline uniform float MeshLight_getThetaE(const uniform Light * uniform li) { return 0.f; }
+// A value of -1 for both indicates that this type of light
+// should always be sampled (i.e. not included in the light sampling BVH)
+inline uniform float MeshLight_getThetaO(const uniform Light * uniform li) { return -1.f; }
+inline uniform float MeshLight_getThetaE(const uniform Light * uniform li) { return -1.f; }
 
 //----------------------------------------------------------------------------
 

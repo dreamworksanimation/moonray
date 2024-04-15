@@ -452,16 +452,23 @@ sampleAndAddDirectLightContributionsBundled( const uniform PathIntegrator * unif
 
     // Trace light sample shadow rays
     for (uniform int lightIndex = 0, lightSamplesSoFar = 0; lightIndex < lightCount; lightIndex++) {
+        const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
+        // Sample ALL unbounded and mesh lights, regardless of light sampling mode
+        // TODO: the paper used for adaptive light sampling has some probability specifying whether to sample unbounded 
+        // lights vs. the BVH. Then, if the unbounded light set is chosen, it randomly picks an unbounded light to 
+        // sample from the set. Since we use so few unbounded lights, I figure it would be better to just sample all 
+        // unbounded lights for now
+        bool lightInBVH = Light_getThetaE(light) >= 0.f && Light_getThetaO(light) >= 0.f;
+        
         // If adaptive light sampling is on, check to see if this light was chosen
         // A pdf of -1 indicates that the light at this light index wasn't picked
         varying float lightSelectionPdf = 1.f;
-        if (lightSelectionPdfs) {
+        if (lightSelectionPdfs && lightInBVH) {
             lightSelectionPdf = lightSelectionPdfs[lightIndex];
             if (lightSelectionPdf < 0.f) continue;
         }
 
-        const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
         // ---------------  Draw light samples from the light and compute tentative contributions ----------------------
         drawLightSamples(pbrTls, shadingTls, lSampler, bSampler, sp, pv, getP(isect),
