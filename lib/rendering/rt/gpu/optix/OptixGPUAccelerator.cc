@@ -206,7 +206,7 @@ public:
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
             // reference it can start accessing it
-            mSharedGroups[ref] = group;
+            *mSharedGroups[ref] = group;
         }
         // wait for the first visited instance to construct the shared scene
         SharedGroupMap::const_iterator it = mSharedGroups.find(ref);
@@ -218,7 +218,7 @@ public:
         MNRY_ASSERT_REQUIRE(pImpl->getType() == geom::internal::Primitive::INSTANCE);
         auto pInstance = static_cast<geom::internal::Instance*>(pImpl);
 
-        createInstance(*pInstance, mSharedGroups[ref]);
+        createInstance(*pInstance, *mSharedGroups[ref]);
     }
 
     virtual void visitVdbVolume(geom::VdbVolume& v) override
@@ -1179,10 +1179,6 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
 {
     scene_rdl2::logging::Logger::info("GPU: Freeing accelerator");
 
-    for (const auto& groupEntry : mSharedGroups) {
-        delete groupEntry.second;
-    }
-    delete mRootGroup;
 
     // delete in the opposite order of creation
     if (mPipeline != nullptr) {
@@ -1281,7 +1277,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
             // reference it can start accessing it
-            groups[ref] = group;
+            *groups[ref] = group;
         }
     } else {
         OptixGPUBVHBuilder geomBuilder(allowUnsupportedFeatures,
@@ -1340,7 +1336,7 @@ OptixGPUAccelerator::build(CUstream cudaStream,
     unsigned int sbtOffset = 0;
     mRootGroup->setSBTOffset(sbtOffset);
     for (auto& groupEntry : mSharedGroups) {
-        OptixGPUPrimitiveGroup *group = groupEntry.second;
+        OptixGPUPrimitiveGroup *group = *groupEntry.second;
         group->setSBTOffset(sbtOffset);
     }
 
@@ -1553,7 +1549,7 @@ OptixGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
         std::vector<HitGroupRecord> hitgroupRecs;
         mRootGroup->getSBTRecords(mProgramGroups, hitgroupRecs);
         for (auto& groupEntry : mSharedGroups) {
-            OptixGPUPrimitiveGroup *group = groupEntry.second;
+            OptixGPUPrimitiveGroup *group = *groupEntry.second;
             group->getSBTRecords(mProgramGroups, hitgroupRecs);
         }
 

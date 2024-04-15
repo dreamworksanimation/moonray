@@ -59,8 +59,8 @@ MNRY_STATIC_ASSERT(ALLOC_LIST_MAX_NUM_ITEMS <=
                   ((ALLOC_LIST_INFO_BITS >> ALLOC_LIST_INFO_BIT_SHIFT) + 1));
 
 // Per frame counter, gets reset each frame.
-CACHE_ALIGN tbb::atomic<unsigned> gFailedRayStateAllocs;
-CACHE_ALIGN tbb::atomic<unsigned> gFailedCL1Allocs;
+CACHE_ALIGN std::atomic<unsigned> gFailedRayStateAllocs;
+CACHE_ALIGN std::atomic<unsigned> gFailedCL1Allocs;
 
 // For memory profiling, see DEBUG_RECORD_PEAK_RAYSTATE_USAGE.
 unsigned MAYBE_UNUSED gPeakRayStateUsage = 0;
@@ -390,7 +390,7 @@ TLState::poolAlloc(const char * const typeName,
                    unsigned numEntries,
                    ResType **entries,
                    OverlappedAccType accumStall,
-                   tbb::atomic<unsigned> &numFailedAllocs)
+                   std::atomic<unsigned> &numFailedAllocs)
 {
     // 99.9999% case, allocation should succeed.
     bool success = pool.allocList(numEntries, entries);

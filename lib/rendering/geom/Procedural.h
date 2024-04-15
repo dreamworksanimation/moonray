@@ -27,14 +27,13 @@ namespace moonray {
 namespace geom {
 
 struct GeometryStatistics {
-    GeometryStatistics(): mFaceCount {0}, mMeshVertexCount {0},
-        mCurvesCount {0}, mCVCount {0}, mInstanceCount {0} {}
+    GeometryStatistics() : mFaceCount(0), mMeshVertexCount(0), mCurvesCount(0), mCVCount(0), mInstanceCount(0) {}
 
-    tbb::atomic<Primitive::size_type> mFaceCount;
-    tbb::atomic<Primitive::size_type> mMeshVertexCount;
-    tbb::atomic<Primitive::size_type> mCurvesCount;
-    tbb::atomic<Primitive::size_type> mCVCount;
-    tbb::atomic<Primitive::size_type> mInstanceCount;
+    Primitive::size_type mFaceCount;
+    Primitive::size_type mMeshVertexCount;
+    Primitive::size_type mCurvesCount;
+    Primitive::size_type mCVCount;
+    Primitive::size_type mInstanceCount;
 };
 
 //----------------------------------------------------------------------------

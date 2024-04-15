@@ -1380,7 +1380,7 @@ GeometryManager::getEmissiveRegions(const scene_rdl2::rdl2::Layer* layer,
 }
 
 // Counter to provide unique thread ids
-tbb::atomic<unsigned> gThreadIdCounter;
+std::atomic<unsigned> gThreadIdCounter;
 
 GeometryManager::GM_RESULT
 GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
@@ -1415,7 +1415,7 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
     struct ThreadID {
         // When we create a ThreadID, the counter increments and so
         // each thread gets a unique human readable id.
-        ThreadID() : mId(gThreadIdCounter.fetch_and_increment()){}
+        ThreadID() : mId(gThreadIdCounter.fetch_add(1)){}
         unsigned mId;
     };
     typedef tbb::enumerable_thread_specific< ThreadID > EnumerableThreadID;

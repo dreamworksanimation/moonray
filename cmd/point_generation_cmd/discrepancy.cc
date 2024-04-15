@@ -85,7 +85,7 @@ public:
         return mLUB;
     }
 
-    static tbb::atomic<SeedType> sSeed;
+    static std::atomic<SeedType> sSeed;
 
 private:
     float mLUB;
@@ -93,7 +93,7 @@ private:
     const PointContainer& mPoints;
 };
 
-tbb::atomic<SeedType> MeasureStarDiscrepancySplit::sSeed;
+std::atomic<SeedType> MeasureStarDiscrepancySplit::sSeed;
 
 // Estimate the star discrepancy for a set of points by repeatedly random
 // sampling.
