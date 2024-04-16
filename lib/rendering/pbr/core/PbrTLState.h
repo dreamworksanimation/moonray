@@ -184,7 +184,7 @@ private:
                            unsigned numEntries,
                            ResType **entries,
                            OverlappedAccType accumStall,
-                           std::atomic<unsigned> &numFailedAlloc);
+                           tbb::atomic<unsigned> &numFailedAlloc);
 
     DISALLOW_COPY_OR_ASSIGNMENT(TLState);
 };

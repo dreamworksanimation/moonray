@@ -569,7 +569,7 @@ RenderContext::updateGeometry(const std::vector<moonray::ObjectData>& updateData
             });
 
             // change the status to update if it was none.
-            mGeometryManager->compareAndSwapFlag(rt::ChangeFlag::NONE, rt::ChangeFlag::ALL);
+            mGeometryManager->compareAndSwapFlag(rt::ChangeFlag::ALL, rt::ChangeFlag::NONE);
             mGeometryManager->updateGeometryData(mLayer, geometry, meshNames,
                 vertexBuffers, world2render, currentFrame, motionBlurParams,
                 getNumTBBThreads());
@@ -2643,18 +2643,14 @@ RenderContext::reportGeometryStatistics()
                 perGeomStatistics.emplace_back(
                         sceneObject->asA<scene_rdl2::rdl2::Geometry>()->getName(),
                         statistics);
+                totalGeomStatistics.mFaceCount += statistics.mFaceCount;
+                totalGeomStatistics.mMeshVertexCount += statistics.mMeshVertexCount;
+                totalGeomStatistics.mCurvesCount += statistics.mCurvesCount;
+                totalGeomStatistics.mCVCount += statistics.mCVCount;
+                totalGeomStatistics.mInstanceCount += statistics.mInstanceCount;
             }
         });
     });
-
-    for (int i = 0; i < perGeomStatistics.size(); ++i) {
-        totalGeomStatistics.mFaceCount += perGeomStatistics[i].second.mFaceCount;
-        totalGeomStatistics.mMeshVertexCount += perGeomStatistics[i].second.mMeshVertexCount;
-        totalGeomStatistics.mCurvesCount += perGeomStatistics[i].second.mCurvesCount;
-        totalGeomStatistics.mCVCount += perGeomStatistics[i].second.mCVCount;
-        totalGeomStatistics.mInstanceCount += perGeomStatistics[i].second.mInstanceCount;
-    }
-
     mRenderStats->logGeometryUsage(totalGeomStatistics, perGeomStatistics);
 }
 

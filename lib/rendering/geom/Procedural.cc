@@ -25,7 +25,7 @@ class PrimitiveMemoryAccumulator : public PrimitiveVisitor
 {
 public:
     PrimitiveMemoryAccumulator(
-            std::atomic<Primitive::size_type>& usage,
+            tbb::atomic<Primitive::size_type>& usage,
             SharedPrimitiveSet& sharedPrimitives,
             bool inPrimitiveGroup = false) :
         mUsage(usage), mSharedPrimitives(sharedPrimitives),
@@ -63,7 +63,7 @@ public:
     }
 
 private:
-    std::atomic<Primitive::size_type>& mUsage;
+    tbb::atomic<Primitive::size_type>& mUsage;
     SharedPrimitiveSet& mSharedPrimitives;
     bool mInPrimitiveGroup;
 };
@@ -123,7 +123,7 @@ private:
 Procedural::size_type
 Procedural::getMemory()
 {
-    std::atomic<Primitive::size_type> usage {0u};
+    tbb::atomic<Primitive::size_type> usage {0u};
     SharedPrimitiveSet sharedPrimitives;
     PrimitiveMemoryAccumulator accumulator(usage, sharedPrimitives);
     forEachPrimitive(accumulator);

@@ -271,7 +271,7 @@ testLightPDF(const Vec3f &p, const Vec3f &n, const LightTester *lightTester,
     // compute ref pdfs (only for unit test debugging)
     //
 
-    std::atomic<unsigned> refValidSampleCount;
+    tbb::atomic<unsigned> refValidSampleCount;
     refValidSampleCount = 0;
 
     double refPdf = doReductionOverUnitSquare<double>(0.0,
@@ -326,7 +326,7 @@ testLightPDF(const Vec3f &p, const Vec3f &n, const LightTester *lightTester,
     // compute test pdf
     //
 
-    std::atomic<unsigned> testValidSampleCount;
+    tbb::atomic<unsigned> testValidSampleCount;
     testValidSampleCount = 0;
 
     double testPdf = doReductionOverUnitSquare<double>(0.0,
@@ -394,7 +394,7 @@ testLightPDF(const Vec3f &p, const Vec3f &n, const LightTester *lightTester,
     // compute test pdf of ISPC light
     //
 
-    std::atomic<unsigned> testIspcValidSampleCount;
+    tbb::atomic<unsigned> testIspcValidSampleCount;
     testIspcValidSampleCount = 0;
 
     double testIspcPdf = doReductionOverUnitSquare<double>(0.0,
@@ -525,7 +525,7 @@ testLightCanIlluminate(const Vec3f &, const Vec3f &, const LightTester *lightTes
     // Test C++ light implementation
     //
 
-    std::atomic<int32_t> seed;
+    tbb::atomic<int32_t> seed;
     seed = initialSeed;
 
     tbb::parallel_for(tbb::blocked_range<unsigned>(0, NUM_CAN_ILLUMINATE_TESTS,
@@ -651,11 +651,11 @@ testLightIntersection(const Vec3f &p, const Vec3f &n, const LightTester *lightTe
     // Test C++ implementation
     //
 
-    std::atomic<unsigned> cppIsectsEqual;
+    tbb::atomic<unsigned> cppIsectsEqual;
     cppIsectsEqual = 0;
-    std::atomic<unsigned> cppNoIntersection;
+    tbb::atomic<unsigned> cppNoIntersection;
     cppNoIntersection = 0;
-    std::atomic<unsigned> cppInvalidSamples;
+    tbb::atomic<unsigned> cppInvalidSamples;
     cppInvalidSamples = 0;
 
     tbb::parallel_for (tbb::blocked_range<unsigned>(0u, NUM_SAMPLES_PER_AXIS, GRAINSIZE_PER_AXIS),
@@ -780,11 +780,11 @@ testLightIntersection(const Vec3f &p, const Vec3f &n, const LightTester *lightTe
     // Test ISPC implementation
     //
 
-    std::atomic<unsigned> ispcIsectsEqual;
+    tbb::atomic<unsigned> ispcIsectsEqual;
     ispcIsectsEqual = 0;
-    std::atomic<unsigned> ispcNoIntersection;
+    tbb::atomic<unsigned> ispcNoIntersection;
     ispcNoIntersection = 0;
-    std::atomic<unsigned> ispcInvalidSamples;
+    tbb::atomic<unsigned> ispcInvalidSamples;
     ispcInvalidSamples = 0;
 
     tbb::parallel_for (tbb::blocked_range<unsigned>(0u, NUM_SAMPLES_PER_AXIS, GRAINSIZE_PER_AXIS),

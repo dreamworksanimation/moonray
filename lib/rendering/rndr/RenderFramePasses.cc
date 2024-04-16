@@ -148,8 +148,8 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
 
     // This counter verifies that we don't leave this function until all threads
     // have started working.
-    CACHE_ALIGN std::atomic<unsigned> numTBBThreads;
-    CACHE_ALIGN std::atomic<bool> canceled;
+    CACHE_ALIGN tbb::atomic<unsigned> numTBBThreads;
+    CACHE_ALIGN tbb::atomic<bool> canceled;
 
     numTBBThreads = 0;
     canceled = false;
