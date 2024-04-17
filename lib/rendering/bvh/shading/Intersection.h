@@ -78,7 +78,7 @@ public:
         MNRY_STATIC_ASSERT(offsetof(Intersection, mdSdx) == 136);
         MNRY_STATIC_ASSERT(offsetof(Intersection, mWo) == 192);
 #pragma warning(pop)
-        MNRY_STATIC_ASSERT(sizeof(Intersection) == CACHE_LINE_SIZE * 4);
+        MNRY_STATIC_ASSERT(sizeof(Intersection) == CACHE_LINE_SIZE * (CACHE_LINE_SIZE == 64 ? 4 : 2));
 
         init(); // This init is redundant and could go.
     }

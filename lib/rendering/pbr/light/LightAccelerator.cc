@@ -17,11 +17,17 @@ namespace pbr {
 using namespace scene_rdl2::math;
 
 // Define the types which depend on the vector width
-#if (VLEN == 8u)
+#if (VLEN == 4u)
+    const auto& rtcIntersectv = rtcIntersect4;
+    typedef RTCRayHit4 RTCRayHitv;
+    typedef RTCRay4 RTCRayv;
+    __align(32) static constexpr int sAllValidMask[4] = {
+        -1, -1, -1, -1};
+#elif (VLEN == 8u)
     const auto& rtcIntersectv = rtcIntersect8;
     typedef RTCRayHit8 RTCRayHitv;
     typedef RTCRay8 RTCRayv;
-    static constexpr __align(32) int sAllValidMask[8] = {
+     __align(32) static constexpr int sAllValidMask[8] = {
         -1, -1, -1, -1, -1, -1, -1, -1};
 #elif (VLEN == 16u)
     const auto& rtcIntersectv = rtcIntersect16;

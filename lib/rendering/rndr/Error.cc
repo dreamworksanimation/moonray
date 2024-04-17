@@ -22,7 +22,7 @@ const std::string
 getErrorDescription()
 {
     std::array<char, 1024> errbuf;
-#if (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
+#if __APPLE__ || (_POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600) && ! _GNU_SOURCE
     std::string e("Unknown error");
     if (strerror_r(errno, errbuf.data(), errbuf.size()) >= 0) {
         e = errbuf.data();

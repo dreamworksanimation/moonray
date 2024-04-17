@@ -3,6 +3,9 @@
 
 
 #pragma once
+#ifdef __APPLE__
+#include <scene_rdl2/common/platform/platform.hh>
+#endif
 #include <scene_rdl2/common/platform/HybridVaryingData.hh>
 
 //----------------------------------------------------------------------------
@@ -76,12 +79,19 @@
     HVD_MEMBER(RayExtension, ext);                         \
     HVD_MEMBER(Flags, mFlags)
 
+#if CACHE_LINE_SIZE == 128
+#define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD   (4)
+#else
+#define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD   0
+#endif
+
 #define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS               \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginX);      \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirX);         \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginY);      \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirY);         \
-    HVD_MEMBER(float, mOrigTfar)
+    HVD_MEMBER(float, mOrigTfar);                                      \
+    HVD_ARRAY(uint32_t, pad1, MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD)
 
 #define MCRT_COMMON_RAY_DIFFERENTIAL_VALIDATION(vlen)       \
     HVD_BEGIN_VALIDATION(RayDifferential, vlen);            \

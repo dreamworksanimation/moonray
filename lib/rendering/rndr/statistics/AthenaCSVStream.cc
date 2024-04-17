@@ -18,6 +18,19 @@
 #include <sys/socket.h>
 #include <unistd.h> //gethostname
 
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
+#ifndef SOCK_NONBLOCK
+#include <fcntl.h>
+#define SOCK_NONBLOCK O_NONBLOCK
+#endif
+
 namespace {
 constexpr unsigned int LOG_USER = 1;
 constexpr unsigned int LOG_INFO = 6;

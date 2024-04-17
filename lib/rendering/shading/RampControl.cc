@@ -81,7 +81,7 @@ computeFKMonotonoSlope(float i0, float o0,
         return;
     } else {
         if (alpha*alpha + beta*beta > 9.0f) {
-            const float tau = 3.0f / sqrt(alpha*alpha + beta*beta);
+            const float tau = 3.0f / scene_rdl2::math::sqrt(alpha*alpha + beta*beta);
             slope1 = tau * slope1;
             slope2 = tau * slope2;
         }

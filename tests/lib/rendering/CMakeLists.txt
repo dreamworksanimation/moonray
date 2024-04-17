@@ -1,22 +1,10 @@
 # Copyright 2023-2024 DreamWorks Animation LLC
 # SPDX-License-Identifier: Apache-2.0
 
-add_subdirectory(pbr_common)
 add_subdirectory(geom)
 add_subdirectory(lpe)
 add_subdirectory(mcrt_common)
-add_subdirectory(pbr_bsdf_sampler)
-add_subdirectory(pbr_bsdfv)
-add_subdirectory(pbr_bssdf)
-add_subdirectory(pbr_debug_rays)
-add_subdirectory(pbr_distribution)
-add_subdirectory(pbr_light_tree)
-add_subdirectory(pbr_light_set_sampler)
-add_subdirectory(pbr_lights)
-add_subdirectory(pbr_one_sampler)
-add_subdirectory(pbr_one_samplerv)
-add_subdirectory(pbr_sampler)
-add_subdirectory(pbr_scene_context)
+add_subdirectory(pbr)
 add_subdirectory(rndr)
 add_subdirectory(rt)
 add_subdirectory(shading)

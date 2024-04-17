@@ -89,7 +89,8 @@ function(make_ispc_target target sources stubsDestination)
     set_target_properties(${target} PROPERTIES
         ISPC_HEADER_SUFFIX _ispc_stubs.h
         ISPC_HEADER_DIRECTORY /${relBinDir}/${stubsDestination}
-        ISPC_INSTRUCTION_SETS avx2-i32x8
+        ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
+	LINKER_LANGUAGE CXX
     )
 
     target_link_libraries(${target}
@@ -130,6 +131,26 @@ function(make_ispc_target target sources stubsDestination)
         ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${stubsDestination})
 
     add_dependencies(${target} ${target}_make_dir)
+
+    get_target_property(objLibDeps ${target} DEPENDENCY)
+    if(NOT objLibDeps STREQUAL "")
+        add_dependencies(${objLibDeps} 
+            embree
+            ${PROJECT_NAME}::bvh_shading_ispc
+            ${PROJECT_NAME}::common_mcrt_macros
+            ${PROJECT_NAME}::rendering_lpe
+            ${PROJECT_NAME}::rendering_mcrt_common
+            ${PROJECT_NAME}::rendering_shading
+            ${PROJECT_NAME}::shading_ispc
+            ${PROJECT_NAME}::shading_eval_ispc
+            SceneRdl2::common_math
+            SceneRdl2::common_platform
+            SceneRdl2::math_ispc
+            SceneRdl2::render_util
+            SceneRdl2::scene_rdl2
+            ${target}_make_dir
+        )
+    endif()
 endfunction()
 
 make_ispc_target(rendering_pbr_ispc_00 "${sources00}" core)
@@ -163,9 +184,15 @@ add_flex_bison_dependency(${lexTarget} ${yaccTarget})
 # create object files from sample points
 
 function(symbolsFromBinFilename binFile resultStart resultEnd)
-    string(REGEX REPLACE "[\/\.\-]" "_" base ${binFile})
-    string(CONCAT start "_binary_" ${base} "_start")
-    string(CONCAT end "_binary_" ${base} "_end")
+    if(IsDarwinPlatform)
+        get_filename_component(base ${binFile} NAME_WLE)
+        string(CONCAT start "_binary_" ${base} )
+        string(CONCAT end "_binary_" ${base} "_len")
+    else()
+        string(REGEX REPLACE "[\/\.\-]" "_" base ${binFile})
+        string(CONCAT start "_binary_" ${base} "_start")
+        string(CONCAT end "_binary_" ${base} "_end")
+    endif()
     set(${resultStart} ${start} PARENT_SCOPE)
     set(${resultEnd} ${end} PARENT_SCOPE)
 endfunction()
@@ -246,14 +273,23 @@ writeSamplingDefinitionsHeader("${headerDefs}") # passing a list requires quotes
 foreach(binFile ${binFiles})
     get_filename_component(baseName ${binFile} NAME_WLE)
     set(objFile sampler/${baseName}.o)
-    add_custom_command(
-        OUTPUT  ${objFile}
-        DEPENDS ${binFile}
-        COMMAND objcopy --input-target=binary --binary-architecture=i386
-                        --output-target=elf64-x86-64
-                        "${binFile}"
-                        "${objFile}"
-    )
+    set(srcFile sampler/${baseName}.c)
+
+    if(IsDarwinPlatform)
+        add_custom_command(
+            OUTPUT  ${objFile}
+            DEPENDS ${binFile}
+            COMMAND xxd -i -n _binary_${baseName} "${binFile}" "${srcFile}" && cc -c "${srcFile}" -o "${objFile}")
+    else()
+        add_custom_command(
+            OUTPUT  ${objFile}
+            DEPENDS ${binFile}
+            COMMAND objcopy --input-target=binary --binary-architecture=i386
+                            --output-target=elf64-x86-64
+                            "${binFile}"
+                            "${objFile}")
+    endif()
+
     # build a list of the results
     list(APPEND samplerObjs ${objFile})
 endforeach()
@@ -261,6 +297,21 @@ endforeach()
 # --------------------------------------------------------------
 
 add_dependencies(${component} pbr_make_dirs)
+
+get_target_property(rendering_pbr_ispc_00_target_objects rendering_pbr_ispc_00 TARGET_OBJECTS)
+get_target_property(rendering_pbr_ispc_01_target_objects rendering_pbr_ispc_01 TARGET_OBJECTS)
+get_target_property(rendering_pbr_ispc_02_target_objects rendering_pbr_ispc_02 TARGET_OBJECTS)
+get_target_property(rendering_pbr_ispc_03_target_objects rendering_pbr_ispc_03 TARGET_OBJECTS)
+get_target_property(rendering_pbr_ispc_04_target_objects rendering_pbr_ispc_04 TARGET_OBJECTS)
+get_target_property(rendering_pbr_ispc_05_target_objects rendering_pbr_ispc_05 TARGET_OBJECTS)
+set(ISPC_TARGET_OBJECTS
+        ${rendering_pbr_ispc_00_target_objects}
+        ${rendering_pbr_ispc_01_target_objects}
+        ${rendering_pbr_ispc_02_target_objects}
+        ${rendering_pbr_ispc_03_target_objects}
+        ${rendering_pbr_ispc_04_target_objects}
+        ${rendering_pbr_ispc_05_target_objects})
+
 
 target_sources(${component}
     PRIVATE
@@ -329,12 +380,7 @@ target_sources(${component}
         ${aovMatParser_cc}
 
         # pull in our ispc object files
-        $<TARGET_OBJECTS:rendering_pbr_ispc_00>
-        $<TARGET_OBJECTS:rendering_pbr_ispc_01>
-        $<TARGET_OBJECTS:rendering_pbr_ispc_02>
-        $<TARGET_OBJECTS:rendering_pbr_ispc_03>
-        $<TARGET_OBJECTS:rendering_pbr_ispc_04>
-        $<TARGET_OBJECTS:rendering_pbr_ispc_05>
+        ${ISPC_TARGET_OBJECTS}
 
         # sampler object files
         ${samplerObjs}
@@ -359,6 +405,7 @@ target_link_libraries(${component}
         ${PROJECT_NAME}::rendering_rt
         ${PROJECT_NAME}::rendering_shading
         ${PROJECT_NAME}::shading_eval_ispc
+        ${PROJECT_NAME}::shading_ispc
         ${PROJECT_NAME}::texturing_sampler
         OpenImageIO::OpenImageIO
         Random123::Random123
@@ -367,6 +414,47 @@ target_link_libraries(${component}
         SceneRdl2::scene_rdl2
         TBB::tbb
 )
+
+get_target_property(objLibDeps_00 rendering_pbr_ispc_00 DEPENDENCY)
+get_target_property(objLibDeps_01 rendering_pbr_ispc_01 DEPENDENCY)
+get_target_property(objLibDeps_02 rendering_pbr_ispc_02 DEPENDENCY)
+get_target_property(objLibDeps_03 rendering_pbr_ispc_03 DEPENDENCY)
+get_target_property(objLibDeps_04 rendering_pbr_ispc_04 DEPENDENCY)
+get_target_property(objLibDeps_05 rendering_pbr_ispc_05 DEPENDENCY)
+
+if(NOT objLibDeps_00 STREQUAL "")
+    add_dependencies(${objLibDeps_00} 
+        ${PROJECT_NAME}::bvh_shading_ispc
+        ${PROJECT_NAME}::common_mcrt_macros
+        ${PROJECT_NAME}::rendering_lpe
+        ${PROJECT_NAME}::rendering_mcrt_common
+        ${PROJECT_NAME}::rendering_shading
+        ${PROJECT_NAME}::shading_ispc
+        ${PROJECT_NAME}::shading_eval_ispc
+        SceneRdl2::common_math
+        SceneRdl2::common_platform
+        SceneRdl2::math_ispc
+        SceneRdl2::render_util
+        SceneRdl2::scene_rdl2
+    )
+    add_dependencies(${objLibDeps_01} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_02} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_03} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_04} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_05} ${objLibDeps_00})
+endif()
+
+add_dependencies(${component} 
+        rendering_pbr_ispc_00
+        rendering_pbr_ispc_01
+        rendering_pbr_ispc_02
+        rendering_pbr_ispc_03
+        rendering_pbr_ispc_04
+        rendering_pbr_ispc_05)
+
+if(IsDarwinPlatform)
+    set_target_properties(${component} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+endif()
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(${component})
@@ -389,6 +477,14 @@ target_compile_definitions(${component}
     PUBLIC
         STL_VERSION=${stlVersion}
 )
+
+if(MOONRAY_USE_OPTIX)
+    target_compile_definitions(${component}
+        PRIVATE MOONRAY_USE_OPTIX)
+elseif(MOONRAY_USE_METAL)
+    target_compile_definitions(${component}
+        PRIVATE MOONRAY_USE_METAL)
+endif()
 
 # -------------------------------------
 # Install the target and the export set

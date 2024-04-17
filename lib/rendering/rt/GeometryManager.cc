@@ -40,7 +40,9 @@
 #include <tbb/parallel_for.h>
 #include <tbb/parallel_for_each.h>
 
+#ifndef __APPLE__
 #include <malloc.h>    // malloc_trim
+#endif
 
 namespace moonray {
 namespace rt {
@@ -669,13 +671,13 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
 
                 if (geometryRootShadersToLoad.find(geometry) != geometryRootShadersToLoad.end()) {
                     const auto& rootShaders = geometryRootShadersToLoad[geometry];
-                    for (const scene_rdl2::rdl2::RootShader* const s : rootShaders) {
-                        const auto& table = s->get<shading::RootShader>().getAttributeTable();
-                        const auto& reqKeys = table->getRequiredAttributes();
-                        requestedAttributes.insert(reqKeys.begin(), reqKeys.end());
-                        const auto& optKeys = table->getOptionalAttributes();
-                        requestedAttributes.insert(optKeys.begin(), optKeys.end());
-                    }
+                for (const scene_rdl2::rdl2::RootShader* const s : rootShaders) {
+                    const auto& table = s->get<shading::RootShader>().getAttributeTable();
+                    const auto& reqKeys = table->getRequiredAttributes();
+                    requestedAttributes.insert(reqKeys.begin(), reqKeys.end());
+                    const auto& optKeys = table->getOptionalAttributes();
+                    requestedAttributes.insert(optKeys.begin(), optKeys.end());
+                }
                 } else {
                     geometry->warn("Geometry is not in the Layer");
                 }
@@ -1500,9 +1502,11 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
     tessellationTimer.stop();
     mOptions.stats.mTessellationTime += previousTessellationTime;
 
+#ifndef __APPLE__
     // return unused memory from malloc() arena to OS so process memory usage
     // stats are accurate
     malloc_trim(0);
+#endif
 
     mOptions.stats.logString("Tessellation finished.");
 
@@ -1541,9 +1545,11 @@ void GeometryManager::updateAccelerator(const scene_rdl2::rdl2::Layer* layer,
             geometrySets, &g2s);
     }
 
+#ifndef __APPLE__
     // return unused memory from malloc() arena to OS so process memory usage
     // stats are accurate
     malloc_trim(0);
+#endif
 
     mOptions.stats.logString("BVH build finished.");
 
@@ -1563,6 +1569,7 @@ void GeometryManager::updateAccelerator(const scene_rdl2::rdl2::Layer* layer,
 }
 
 void GeometryManager::updateGPUAccelerator(bool allowUnsupportedFeatures,
+                                            const uint32_t numCPUThreads,
                                            const scene_rdl2::rdl2::Layer* layer)
 {
     mGPUAccelerator.reset();
@@ -1580,7 +1587,7 @@ void GeometryManager::updateGPUAccelerator(bool allowUnsupportedFeatures,
 
     std::vector<std::string> warningMsgs;
     std::string errorMsg;
-    mGPUAccelerator.reset(new GPUAccelerator(allowUnsupportedFeatures, layer, geometrySets, &g2s, warningMsgs, &errorMsg));
+    mGPUAccelerator.reset(new GPUAccelerator(allowUnsupportedFeatures, numCPUThreads, layer, geometrySets, &g2s, warningMsgs, &errorMsg));
 
     buildGPUBVHTimer.stop();
 

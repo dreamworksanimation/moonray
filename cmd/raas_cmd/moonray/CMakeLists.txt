@@ -22,8 +22,15 @@ target_link_libraries(${target}
         SceneRdl2::render_util
         SceneRdl2::scene_rdl2
         OpenImageIO::OpenImageIO
-        atomic
         ${MKL}
+
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
+            atomic
+        >
+
+        $<$<CXX_COMPILER_ID:Clang>:
+            atomic
+        >
 )
 
 if (MOONRAY_ENABLE_ATHENA_LOGGING)

@@ -241,7 +241,7 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
     R = wi - 2.0f * dot(wi, N) * N;
 
     // acos optimization to linearize dot product
-    const float specAngle = pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
+    const float specAngle = scene_rdl2::math::pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
 
     if (specAngle <= 0.0f) {
         return sBlack;

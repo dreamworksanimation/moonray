@@ -35,7 +35,9 @@
 #ifdef __INTEL_COMPILER
 // We don't need any include for half float instructions
 #else // else __INTEL_COMPILER
+#ifndef __ARM_NEON__
 #include <x86intrin.h>          // _mm_cvtps_ph, _cvtph_ps : for GCC build
+#endif
 #endif // end else __INTEL_COMPILER
 
 //#define SINGLE_THREAD_READ

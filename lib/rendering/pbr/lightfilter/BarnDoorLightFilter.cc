@@ -421,7 +421,7 @@ namespace {   // functions for local use only
         // for |x|>1 so that the blur radius is 1.
         const float variance = 0.1f;
 
-        return 0.5f * (1.f + erf( x / ( sqrtf(variance) * sqrtf(2.f) ) ) );
+        return 0.5f * (1.f + scene_rdl2::math::erf( x / ( sqrtf(variance) * sqrtf(2.f) ) ) );
     }
 
     // Unfortunately, the normal distribution has infinite extent which is

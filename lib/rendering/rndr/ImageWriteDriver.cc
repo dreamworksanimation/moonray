@@ -16,9 +16,11 @@
 #include <scene_rdl2/render/util/TimeUtil.h>
 
 #include <cstdlib>              // getenv, EXIT_SUCCESS
+#ifndef __APPLE__
 #include <malloc.h>             // malloc_trim
-#include <sys/types.h>          // getpid
 #include <sys/sysinfo.h>        // sysinfo
+#endif
+#include <sys/types.h>          // getpid
 #include <unistd.h>             // getpid, gethostname
 
 // This directive is used to dump all ImageWriteDriver related memory tracking information
@@ -26,6 +28,14 @@
 
 // This directive is used to dump max bgCache control related condition
 //#define DEBUG_MSG_MAXBGCACHE
+
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
 
 namespace moonray {
 namespace rndr {
@@ -110,7 +120,9 @@ ImageWriteDriver::updateSnapshotData(ImageWriteCacheUqPtr& imageWriteCachePtr)
         mSnapshotData = std::move(imageWriteCachePtr);
         mSnapshotDataFreshness.start();
     }
-    malloc_trim(0); // Return unused memory from malloc() arena to OS 
+#ifndef __APPLE__
+    malloc_trim(0); // Return unused memory from malloc() arena to OS
+#endif
 }
 
 void
@@ -120,7 +132,9 @@ ImageWriteDriver::resetSnapshotData()
         std::lock_guard<std::mutex> lock(mSnapshotDataMutex);
         mSnapshotData.reset();
     }
-    malloc_trim(0); // Return unused memory from malloc() arena to OS 
+#ifndef __APPLE__
+    malloc_trim(0); // Return unused memory from malloc() arena to OS
+#endif
 }
 
 void
@@ -140,8 +154,9 @@ ImageWriteDriver::enqImageWriteCache(ImageWriteCacheUqPtr& imageWriteCachePtr) /
 
     mImageWriteCacheList.push_back(std::move(imageWriteCachePtr));
 
-    malloc_trim(0); // Return unused memory from malloc() arena to OS 
-
+#ifndef __APPLE__
+    malloc_trim(0); // Return unused memory from malloc() arena to OS
+#endif
 #   ifdef DEBUG_MSG_MEMUSAGE
     std::cerr << ">> ImageWriteDriver.cc enqImageWriteCache() " << showMemUsage() << std::endl;    
 #   endif // end DEBUG_MSG_MEMUSAGE

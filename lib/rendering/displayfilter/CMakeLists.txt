@@ -26,7 +26,7 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(${objLib} PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx2-i32x8
+    ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
     # If we don't request the C++ linker, cmake will complain about
     # a missing variable CMAKE_ISPC_CREATE_SHARED_LIBRARY. This seems
     # to be a bug in CMake-3.23's ISPC support
@@ -42,13 +42,25 @@ target_link_libraries(${objLib}
         SceneRdl2::common_math
         SceneRdl2::scene_rdl2
 )
+
+get_target_property(objLibDeps ${objLib} DEPENDENCY)
+if(NOT objLibDeps STREQUAL "")
+    add_dependencies(${objLibDeps} 
+        SceneRdl2::common_fb_util
+        SceneRdl2::common_platform
+        SceneRdl2::common_math
+        SceneRdl2::scene_rdl2
+    )
+endif()
+
 # ----------------------------------------
 
+get_target_property(ISPC_TARGET_OBJECTS ${objLib} TARGET_OBJECTS)
 target_sources(${component}
     PRIVATE
         InputBuffer.cc
         # pull in our ispc object files
-        $<TARGET_OBJECTS:${objLib}>
+        ${ISPC_TARGET_OBJECTS}
 )
 
 set_property(TARGET ${component}
@@ -78,6 +90,8 @@ target_link_libraries(${component}
         SceneRdl2::common_platform
         SceneRdl2::scene_rdl2
 )
+
+add_dependencies(${component} ${objLib})
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(${component})

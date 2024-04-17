@@ -53,4 +53,7 @@ moonray_dso_simple(rendering_geom_prim_TestMaterial
 )
 
 add_test(NAME ${target} COMMAND ${target})
-set_tests_properties(${target} PROPERTIES LABELS "unit")
+set_tests_properties(${target} PROPERTIES
+    LABELS "unit"
+    WORKING_DIRECTORY $<TARGET_FILE_DIR:${target}>
+)

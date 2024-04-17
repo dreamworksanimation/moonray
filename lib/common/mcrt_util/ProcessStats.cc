@@ -6,6 +6,10 @@
 #include "ProcessStats.h"
 
 #include <unistd.h>
+#ifdef __APPLE__
+#include <libproc.h>
+#include <mach/mach_time.h>
+#endif 
 
 namespace moonray {
 
@@ -14,20 +18,32 @@ namespace util {
 int64
 ProcessUtilization::getUserSeconds(const ProcessUtilization &start) const
 {
+#ifdef __APPLE__
+    return (this->userTime - start.userTime) / 1E9; // Nano to Sec
+#else
     return (this->userTime - start.userTime) / sysconf(_SC_CLK_TCK);
+#endif 
 }
 
 int64
 ProcessUtilization::getSystemSeconds(const ProcessUtilization &start) const
 {
+#ifdef __APPLE__
+    return (this->systemTime - start.systemTime) / 1E9; // Nano to Sec
+#else
     return (this->systemTime - start.systemTime) / sysconf(_SC_CLK_TCK);
+#endif 
 }
 
 ProcessStats::ProcessStats()
 {
+#ifdef __APPLE__
+    // Don't need to try to open /proc
+#else
     mStatmFile.open("/proc/self/statm");
     mIOStatFile.open("/proc/self/io");
     mProcStatFile.open("/proc/self/stat");
+#endif
 }
 
 
@@ -37,6 +53,11 @@ ProcessStats::getBytesRead() const
     std::string inStr;
     int64  bytesRead = 0;
 
+#ifdef __APPLE__
+
+    // TODO: figure a way to gets the process bytes read
+
+#else
     mReadIOMutex.lock();
     if(mIOStatFile.good()) {
         mIOStatFile >> inStr >> bytesRead;
@@ -49,6 +70,8 @@ ProcessStats::getBytesRead() const
         mIOStatFile.open("/proc/self/io");
     }
     mReadIOMutex.unlock();
+#endif
+
     return bytesRead;
 
 }
@@ -57,6 +80,23 @@ int64
 ProcessStats::getProcessMemory() const
 {
     int64 currentMemoryUsage = 0;
+
+#ifdef __APPLE__
+
+    pid_t pid;
+    struct proc_taskinfo info;
+    int size;
+
+    mMemoryReadMutex.lock();
+    pid = getpid();
+
+    size = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, sizeof(info));
+    if (size == PROC_PIDTASKINFO_SIZE) {
+        currentMemoryUsage = info.pti_resident_size; // Already in bytes
+    }
+    mMemoryReadMutex.unlock();
+
+#else
 
     mMemoryReadMutex.lock();
     if(mStatmFile.good()) {
@@ -79,6 +119,8 @@ ProcessStats::getProcessMemory() const
         mStatmFile.open("/proc/self/statm");
     }
     mMemoryReadMutex.unlock();
+
+#endif
     return currentMemoryUsage;
 }
 
@@ -89,6 +131,27 @@ ProcessStats::getProcessUtilization() const
 
     ProcessUtilization result;
     std::string inStr;
+
+#ifdef __APPLE__
+
+    pid_t pid;
+    struct proc_taskinfo info;
+    int size;
+    mach_timebase_info_data_t timebase_info = {0};
+        
+    mach_timebase_info(&timebase_info);
+
+    mSystemUtilMutex.lock();
+    pid = getpid();
+
+    size = proc_pidinfo(pid, PROC_PIDTASKINFO, 0, &info, sizeof(info));
+    if (size == PROC_PIDTASKINFO_SIZE) {
+        result.userTime = (info.pti_total_user) * timebase_info.numer / timebase_info.denom; // Nanosecs
+        result.systemTime = (info.pti_total_system) * timebase_info.numer / timebase_info.denom; // Nanosecs
+    }
+    mSystemUtilMutex.unlock();
+
+#else
 
     mSystemUtilMutex.lock();
     if(mProcStatFile.good()) {
@@ -117,6 +180,8 @@ ProcessStats::getProcessUtilization() const
         mProcStatFile.open("/proc/self/stat");
     }
     mSystemUtilMutex.unlock();
+#endif
+
     return result;
 
 }

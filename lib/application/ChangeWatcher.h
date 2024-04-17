@@ -18,8 +18,10 @@ namespace moonray {
 class ChangeWatcher
 {
 public:
-    ChangeWatcher();
-    ~ChangeWatcher();
+    ChangeWatcher() {}
+    virtual ~ChangeWatcher() {}
+    
+    static ChangeWatcher *CreateChangeWatcher();
 
     /**
      * Install a file watcher for the file at the given path. Any modification
@@ -28,20 +30,15 @@ public:
      *
      * @param   filePath    The path to a file you wish to watch.
      */
-    void watchFile(const std::string& filePath);
+    virtual void watchFile(const std::string& filePath) = 0;
 
     /// Returns true if any of the watched files have changed since the last
     /// time hasChanged() was called. This is non-blocking and will return
     /// immediately. Adds the filenames of the changed files to changedFiles.
-    bool hasChanged(std::set<std::string> * changedFiles = nullptr);
+    virtual bool hasChanged(std::set<std::string> * changedFiles = nullptr) = 0;
 
     /// Waits (blocks) until one of the watched files is changed.
-    void waitForChange();
-
-private:
-    int mNotifyDesc;
-    std::vector<char> mReadBuffer;
-    std::multimap<int, std::pair<std::string, std::string> > mFileFilter;
+    virtual void waitForChange() = 0;
 };
 
 } // namespace moonray

@@ -429,7 +429,7 @@ public:
 
     // The RenderDriver owns the XPU queues but other objects like TLState may
     // have pointers to them so they can queue up rays.
-    void createXPUQueues();
+    void createXPUQueues(const rt::GPUAccelerator* gpuAccel);
     unsigned flushXPUQueues(mcrt_common::ThreadLocalState *tls, scene_rdl2::alloc::Arena *arena);
     void freeXPUQueues();
 

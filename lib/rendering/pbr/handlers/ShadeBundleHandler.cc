@@ -54,6 +54,8 @@ convertAOSRayStatesToSOA(pbr::TLState *tls,
     mcrt_common::convertAOSToSOAIndexed_AVX512
 #elif (VLEN == 8u)
     mcrt_common::convertAOSToSOAIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+    mcrt_common::convertAOSToSOAIndexed_NEON
 #else
     #error Requires at least AVX to build.
 #endif
@@ -74,6 +76,8 @@ convertAOSIntersectionsToSOA(pbr::TLState *tls,
     mcrt_common::convertAOSToSOAIndexed_AVX512
 #elif (VLEN == 8u)
     mcrt_common::convertAOSToSOAIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+    mcrt_common::convertAOSToSOAIndexed_NEON
 #else
     #error Requires at least AVX to build.
 #endif

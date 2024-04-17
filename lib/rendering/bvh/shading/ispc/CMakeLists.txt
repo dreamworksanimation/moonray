@@ -45,7 +45,7 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(${component} PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx2-i32x8
+    ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
     # If we don't request the C++ linker, cmake will complain about
     # a missing variable CMAKE_ISPC_CREATE_SHARED_LIBRARY. This seems
     # to be a bug in CMake-3.23's ISPC support
@@ -64,6 +64,7 @@ target_link_libraries(${component}
     PUBLIC
         ${PROJECT_NAME}::rendering_mcrt_common
         SceneRdl2::common_platform
+        SceneRdl2::scene_rdl2
 )
 
 # If at Dreamworks add a SConscript stub file so others can use this library.

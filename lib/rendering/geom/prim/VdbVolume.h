@@ -15,6 +15,7 @@
 
 #include <moonray/rendering/bvh/shading/Intersection.h>
 #include <moonray/rendering/bvh/shading/PrimitiveAttribute.h>
+#include <moonray/rendering/bvh/shading/State.h>
 #include <moonray/rendering/geom/MotionBlurParams.h>
 #include <moonray/rendering/mcrt_common/Ray.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
@@ -104,7 +105,7 @@ computeEmissionDistributionImpl(const scene_rdl2::rdl2::Geometry* rdlGeometry,
 
     // check for overflow
     if (denseResolution != 0 && res[0] != denseResolution / (res[1] * res[2])) {
-        float emissionSampleRate = clamp(rdlGeometry->get<scene_rdl2::rdl2::Float>("emission_sample_rate"));
+        float emissionSampleRate = scene_rdl2::math::clamp(rdlGeometry->get<scene_rdl2::rdl2::Float>("emission_sample_rate"));
         // The cube root of 2 ^ 31 is about 1290.
         float factor = 3.f * 1290.f / (res[0] + res[1] + res[2]);
         // round to nearest 2 decimal

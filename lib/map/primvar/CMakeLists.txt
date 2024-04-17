@@ -24,7 +24,8 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(${objLib} PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}/ispc
-    ISPC_INSTRUCTION_SETS avx2-i32x8
+    ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
+    LINKER_LANGUAGE CXX
 )
 # We need to create the destination directory for the ispc_stubs.h
 # files before building the objects
@@ -43,13 +44,24 @@ target_link_libraries(${objLib}
 Moonray_ispc_compile_options(${objLib})
 Moonray_link_options(${objLib})
 
+get_target_property(objLibDeps ${objLib} DEPENDENCY)
+if(NOT objLibDeps STREQUAL "")
+    add_dependencies(${objLibDeps}
+        ${PROJECT_NAME}::shading_ispc
+        SceneRdl2::scene_rdl2
+        SceneRdl2::common_platform
+        ${objLib}_make_dir
+    )
+endif()
+
 # ----------------------------------------
 
+get_target_property(ISPC_TARGET_OBJECTS ${objLib} TARGET_OBJECTS)
 target_sources(${component}
     PRIVATE
         Primvar.cc
         # pull in our ispc object files
-        $<TARGET_OBJECTS:${objLib}>
+        ${ISPC_TARGET_OBJECTS}
 )
 
 set_property(TARGET ${component}
@@ -74,8 +86,11 @@ target_include_directories(${component}
 target_link_libraries(${component}
     PUBLIC
         ${PROJECT_NAME}::shading_ispc
+        ${PROJECT_NAME}::rendering_bvh_shading
         SceneRdl2::scene_rdl2
 )
+
+add_dependencies(${component} ${objLib})
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(${component})

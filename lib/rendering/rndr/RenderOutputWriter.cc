@@ -1527,19 +1527,35 @@ RenderOutputWriter::fVecToHVec(const PageAlignedBuff& fVec, unsigned short* hVec
 #   endif // end RUNTIME_VERIFY_FTOH
 }
 
+
 // static function
 float
 RenderOutputWriter::htof(const unsigned short h)
 {
+
+#if defined(__ARM_NEON__)   // TODO: Verify this
+	float output;
+	vst1q_f32(&output, vcvt_f32_f16(vld1_u16(&h)));
+	return output;
+#else
     return _cvtsh_ss(h); // Convert half 16bit float to full 32bit float
+#endif
 }
+
 
 // static function
 unsigned short
 RenderOutputWriter::ftoh(const float f)
 {
+
+#if defined(__ARM_NEON__)   // TODO: Verify this
+	__fp16 output;
+	vst1_f16(&output, vcvt_f16_f32(vld1q_f32(&f)));
+	return output;
+#else
     return _cvtss_sh(f, 0); // Convert full 32bit float to half 16bit float
                             // An immediate value controlling rounding using bits : 0=Nearest 
+#endif
 }
 
 // static function

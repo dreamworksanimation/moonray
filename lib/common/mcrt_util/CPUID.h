@@ -3,6 +3,8 @@
 
 #pragma once
 
+#if !defined(__APPLE__)
+
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -289,5 +291,7 @@ private:
 } // namespace util
 } // namespace moonray
 
+
 #pragma warning pop
 
+#endif 

@@ -17,7 +17,9 @@ struct Map;
 struct Material;
 
 // Enable / disable shader call & timing statistics tracking
+#if !defined(ISPC_TARGET_NEON) // avoid illegal instruction generated in clock()
 #define SHADING_BRACKET_TIMING_ENABLED
+#endif
 //#undef SHADING_BRACKET_TIMING_ENABLED
 
 #ifdef SHADING_BRACKET_TIMING_ENABLED
@@ -27,7 +29,7 @@ struct Material;
     addTimeInShader(OBJ, TLS, start, end, NUM_ITEMS);
 #else
 #define SHADING_START_CLOCK()
-#define SHADING_END_CLOCK(OBJ, TLS)
+#define SHADING_END_CLOCK(OBJ, TLS, NUM_ITEMS)
 #endif
 
 #ifdef SHADING_PRINT_DEBUG_BSDF_INFO_ENABLED

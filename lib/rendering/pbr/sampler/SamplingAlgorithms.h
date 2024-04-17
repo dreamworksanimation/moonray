@@ -270,7 +270,7 @@ finline void rotate2D(float& u, float& v, float theta)
 
     float sinTheta;
     float cosTheta;
-    sincosf(theta, &sinTheta, &cosTheta);
+    scene_rdl2::math::sincos(theta, &sinTheta, &cosTheta);
     u = ucpy * cosTheta - vcpy * sinTheta;
     v = ucpy * sinTheta + vcpy * cosTheta;
 }
@@ -323,7 +323,7 @@ finline void polarToCartesian(float r, float phi, float& x, float& y)
     float cosPhi;
     float sinPhi;
 
-    sincosf(phi, &sinPhi, &cosPhi);
+    scene_rdl2::math::sincos(phi, &sinPhi, &cosPhi);
 
     x = r * cosPhi;
     y = r * sinPhi;

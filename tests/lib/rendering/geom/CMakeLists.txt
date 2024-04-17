@@ -30,5 +30,8 @@ Moonray_cxx_compile_options(${target})
 Moonray_link_options(${target})
 
 add_test(NAME ${target} COMMAND ${target})
-set_tests_properties(${target} PROPERTIES LABELS "unit")
+set_tests_properties(${target} PROPERTIES
+    LABELS "unit"
+    WORKING_DIRECTORY $<TARGET_FILE_DIR:${target}>
+)
 add_subdirectory(prim)

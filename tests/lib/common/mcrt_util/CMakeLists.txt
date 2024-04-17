@@ -16,10 +16,17 @@ target_sources(${target}
 
 target_link_libraries(${target}
     PRIVATE
-        atomic
         Moonray::common_mcrt_util
         pthread
         SceneRdl2::pdevunit
+
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
+            atomic
+        >
+
+        $<$<CXX_COMPILER_ID:Clang>:
+            atomic
+        >
 )
 
 # Set standard compile/link options
@@ -29,4 +36,7 @@ Moonray_cxx_compile_options(${target})
 Moonray_link_options(${target})
 
 add_test(NAME ${target} COMMAND ${target})
-set_tests_properties(${target} PROPERTIES LABELS "unit")
+set_tests_properties(${target} PROPERTIES
+    LABELS "unit"
+    WORKING_DIRECTORY $<TARGET_FILE_DIR:${target}>
+)

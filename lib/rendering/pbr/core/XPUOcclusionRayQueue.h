@@ -6,6 +6,7 @@
 #include <moonray/rendering/mcrt_common/Bundle.h>
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/rt/gpu/GPURay.h>
+#include <moonray/rendering/rt/gpu/GPUAccelerator.h>
 
 // warning #1684: conversion from pointer to
 // same-sized integral type (potential portability problem)
@@ -72,6 +73,7 @@ public:
 
     XPUOcclusionRayQueue(unsigned numCPUThreads,
                          unsigned cpuThreadQueueSize,
+                         const rt::GPUAccelerator* gpuAccel,
                          CPUHandler cpuThreadQueueHandler,
                          GPUHandler gpuQueueHandler,
                          void *handlerData) :
@@ -86,11 +88,20 @@ public:
         MNRY_ASSERT(mCPUThreadQueueHandler);
         MNRY_ASSERT(mGPUQueueHandler);
 
+        mUsingUMA = gpuAccel->getUMAAvailable();
+
         // Create a queue for each CPU thread
         mCPUThreadQueueEntries.resize(mNumCPUThreads);
         mCPUThreadQueueNumQueued.resize(mNumCPUThreads);
+
         for (size_t i = 0; i < numCPUThreads; i++) {
-            mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<BundledOcclRay>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
+            if (mUsingUMA) {
+                mCPUThreadQueueEntries[i] = (BundledOcclRay*)gpuAccel->getCPURayBuf(
+                                                            i, mCPUThreadQueueSize, sizeof(BundledOcclRay));
+            }
+            else {
+                mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<BundledOcclRay>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
+            }
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
@@ -101,7 +112,12 @@ public:
     {
         for (size_t i = 0; i < mNumCPUThreads; i++) {
             MNRY_ASSERT(mCPUThreadQueueNumQueued[i] == 0);
-            scene_rdl2::util::alignedFree(mCPUThreadQueueEntries[i]);
+            if (mUsingUMA) {
+                // Nothing to do - the GPUAccelerator will destroy the buffer
+            }
+            else {
+                scene_rdl2::util::alignedFree(mCPUThreadQueueEntries[i]);
+            }
         }
     }
 
@@ -190,7 +206,12 @@ protected:
 
         MNRY_ASSERT(numRays);
 
-        if (mThreadsWaitingForGPU.load() < 3 && numRays > 1024) {
+#ifdef __APPLE__
+        const int maxWaitingCPUThreads = 64;
+#else
+        const int maxWaitingCPUThreads = 3;
+#endif
+        if (mThreadsWaitingForGPU.load() < maxWaitingCPUThreads && numRays > 1024) {
             // There are an acceptable number of threads waiting to access the GPU, so we
             // just wait our turn.  But, before we try to acquire the GPU lock, we get the
             // buffer of rays ready for the GPU.
@@ -203,14 +224,26 @@ protected:
 
             pbr::TLState *pbrTls = tls->mPbrTls.get();
             scene_rdl2::alloc::Arena *arena = &tls->mArena;
-            rt::GPURay* gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
+            rt::GPURay* gpuRays;
 
+            const FrameState &fs = *pbrTls->mFs;
+            rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
+            
+            if (mUsingUMA) {
+                gpuRays = accel->getGPURaysBuf(pbrTls->mThreadIdx);
+            } else {
+                gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
+            }
+            
             // Now that the thread knows it's running on the GPU, it still needs to wait its
             // turn for the GPU.  Before waiting, it needs to prepare the GPURays.
             for (size_t i = 0; i < numRays; ++i) {
                 const BundledOcclRay &occlRay = rays[i];
                 MNRY_ASSERT(occlRay.isValid());
 
+#ifndef __APPLE__
+                // Optix doesn't access these values from the cpu ray directly, so we copy the
+                // values here into a GPU-accessible buffer
                 gpuRays[i].mOriginX = occlRay.mOrigin.x;
                 gpuRays[i].mOriginY = occlRay.mOrigin.y;
                 gpuRays[i].mOriginZ = occlRay.mOrigin.z;
@@ -221,13 +254,16 @@ protected:
                 gpuRays[i].mMaxT = occlRay.mMaxT;
                 gpuRays[i].mTime = occlRay.mTime;
                 gpuRays[i].mShadowReceiverId = occlRay.mShadowReceiverId;
+#endif
                 const scene_rdl2::rdl2::Light* light = static_cast<BundledOcclRayData *>(
                     pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight->getRdlLight();
                 gpuRays[i].mLightId = reinterpret_cast<intptr_t>(light);
             }
 
+#ifndef __APPLE__
             // Acquire the GPU.
             mGPUDeviceMutex.lock();
+#endif
 
             // This thread is no longer waiting to access the GPU, because it has the GPU.
             mThreadsWaitingForGPU--;
@@ -271,6 +307,7 @@ protected:
     GPUHandler                   mGPUQueueHandler;
     tbb::spin_mutex              mGPUDeviceMutex;
     void *                       mHandlerData;
+    bool                         mUsingUMA;
 };
 
 } // namespace pbr

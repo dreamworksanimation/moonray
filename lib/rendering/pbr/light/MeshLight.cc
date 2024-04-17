@@ -1918,6 +1918,8 @@ CPP_initShadingState(const MeshLight* light, shading::TLState* tls, int* geomID,
     mcrt_common::convertAOSToSOA_AVX512
 #elif (VLEN == 8u)
     mcrt_common::convertAOSToSOA_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+    mcrt_common::convertAOSToSOA_NEON
 #else
     #error Requires at least AVX to build.
 #endif

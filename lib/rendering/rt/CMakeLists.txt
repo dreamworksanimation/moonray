@@ -9,7 +9,7 @@ set(exportGroup ${PROJECT_NAME}Targets)
 add_library(${component} SHARED "")
 add_library(${PROJECT_NAME}::${component} ALIAS ${component})
 
-if (MOONRAY_USE_CUDA)
+if(MOONRAY_USE_OPTIX)
     # ----------------------------------------
     # compile optix sources to ptx files
     set(optixLib ${component}_optix)
@@ -38,6 +38,37 @@ if (MOONRAY_USE_CUDA)
     )
 endif()
 
+if (MOONRAY_USE_METAL)
+    # ----------------------------------------
+    # compile Metal sources to air files
+    set(metalLib ${component}_metal)
+
+    add_library(${metalLib} STATIC)
+
+    set(srcName gpu/Metal/MetalGPUPrograms.metal)
+
+    target_sources(${metalLib}
+        PRIVATE
+            ${srcName}
+    )
+    set_source_files_properties(${srcName} 
+        PROPERTIES 
+            LANGUAGE METAL
+            COMPILE_FLAGS "
+                -std=metal3.1
+                -ffast-math
+                -gline-tables-only
+                -frecord-sources"
+    )
+
+    set_target_properties(${metalLib}
+        PROPERTIES
+            LINKER_LANGUAGE METAL)
+
+    add_dependencies(${component} ${metalLib})
+endif()
+
+
 #---------------------------------------
 
 target_sources(${component}
@@ -48,9 +79,10 @@ target_sources(${component}
         GeometryManagerExecTracker.cc
         IntersectionFilters.cc
         gpu/GPUAccelerator.cc
+        gpu/GPUAccelerator.h
 )
 
-if (MOONRAY_USE_CUDA)
+if(MOONRAY_USE_OPTIX)
     target_sources(${component}
         PRIVATE
             gpu/optix/OptixGPUAccelerator.cc
@@ -58,6 +90,30 @@ if (MOONRAY_USE_CUDA)
             gpu/optix/OptixGPUPrimitive.cc
             gpu/optix/OptixGPUPrimitiveGroup.cc
             gpu/optix/OptixGPUUtils.cc
+
+            gpu/optix/OptixGPUAccelerator.h
+            gpu/optix/OptixGPUInstance.h
+            gpu/optix/OptixGPUPrimitive.h
+            gpu/optix/OptixGPUPrimitiveGroup.h
+            gpu/optix/OptixGPUUtils.h
+    )
+endif()
+
+if (MOONRAY_USE_METAL)
+    set_source_files_properties(gpu/GPUAccelerator.cc PROPERTIES COMPILE_FLAGS "-x objective-c++")
+    target_sources(${component}
+        PRIVATE
+            gpu/Metal/MetalGPUAccelerator.mm
+            gpu/Metal/MetalGPUInstance.mm
+            gpu/Metal/MetalGPUPrimitive.mm
+            gpu/Metal/MetalGPUPrimitiveGroup.mm
+            gpu/Metal/MetalGPUUtils.mm
+
+            gpu/Metal/MetalGPUAccelerator.h
+            gpu/Metal/MetalGPUInstance.h
+            gpu/Metal/MetalGPUPrimitive.h
+            gpu/Metal/MetalGPUPrimitiveGroup.h
+            gpu/Metal/MetalGPUUtils.h
     )
 endif()
 
@@ -81,11 +137,27 @@ target_link_libraries(${component}
         TBB::tbb
 )
 
-if (MOONRAY_USE_CUDA)
+if (IsDarwinPlatform)
+    # Undefined symbols for architecture arm64:
+    #   "moonray::pbr::ImageDistribution::~ImageDistribution()"
+    #   "moonray::pbr::PerspectiveCamera::PerspectiveCamera(scene_rdl2::rdl2::Camera const*)"
+    #   "moonray::pbr::Camera::update(scene_rdl2::math::Mat4<scene_rdl2::math::Vec4<double>> const&)"
+    #   "vtable for moonray::pbr::ProjectiveCamera"
+    set_target_properties(${component} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+endif()
+
+if(MOONRAY_USE_OPTIX)
     target_link_libraries(${component}
         PUBLIC
             CUDA::cudart
             OptiX::OptiX
+    )
+endif()
+
+if (MOONRAY_USE_METAL)
+    target_link_libraries(${component}
+        PUBLIC
+            Metal::Metal
     )
 endif()
 
@@ -104,9 +176,12 @@ elseif(${RT_TARGET_ARCHITECTURE} MATCHES "^AVX$")
         PUBLIC __TARGET_AVX__ __AVX__)
 endif()
 
-if (MOONRAY_USE_CUDA)
+if(MOONRAY_USE_OPTIX)
     target_compile_definitions(${component}
-        PRIVATE MOONRAY_USE_CUDA)
+        PRIVATE MOONRAY_USE_OPTIX)
+elseif(MOONRAY_USE_METAL)
+    target_compile_definitions(${component}
+        PRIVATE MOONRAY_USE_METAL)
 endif()
 
 # Set standard compile/link options
@@ -120,10 +195,16 @@ Moonray_link_options(${component})
 # -------------------------------------
 include(GNUInstallDirs)
 
-if (MOONRAY_USE_CUDA)
+if(MOONRAY_USE_OPTIX)
     # install optix ptx files
     install(
         FILES $<TARGET_OBJECTS:${optixLib}>
+        DESTINATION shaders
+    )
+elseif(MOONRAY_USE_METAL)
+    # install Metal lib files
+    install(
+        FILES $<TARGET_FILE_DIR:${metalLib}>/default.metallib
         DESTINATION shaders
     )
 endif()

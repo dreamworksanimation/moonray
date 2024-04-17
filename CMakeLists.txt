@@ -3,14 +3,20 @@
 
 cmake_minimum_required (VERSION 3.23.1)
 
-include(packageVersion)  # Sets versionString, projectString and PACKAGE_NAME
+include(OMR_PackageVersion)  # Sets versionString, projectString and PACKAGE_NAME
+set(languages LANGUAGES CXX C)
+if(NOT CMAKE_XCODE_BUILD_SYSTEM)
+    list(APPEND languages ISPC)
+endif()
 project(${projectString}
     VERSION ${versionString}
-    LANGUAGES CXX C ISPC)
+    ${languages})
 
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPER)
 list(APPEND CMAKE_MESSAGE_CONTEXT ${PROJECT_NAME})
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+include(OMR_Platform)
 
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     include(CTest)
@@ -29,8 +35,14 @@ option(${PROJECT_NAME_UPPER}_BUILD_TESTING
     "Whether or not to build the unittests" YES)
 option(${PROJECT_NAME_UPPER}_DWA_BUILD
     "Whether to enable DWA-specific features" NO)
-option(MOONRAY_USE_CUDA
-    "Whether to use CUDA (and Optix) - Enables XPU mode and Optix denoising" YES)
+
+if(IsLinuxPlatform)
+    option(MOONRAY_USE_OPTIX "Whether to enable XPU mode and Optix denoising" YES)
+elseif(IsDarwinPlatform)
+    option(MOONRAY_USE_METAL "Whether to enable XPU mode and OIDN Metal denoising" YES)
+endif()
+
+
 
 # Ideally MOONRAY_DWA_BUILD should be set to YES externally (e.g. by rez-build), but this
 # is a fallback to enable it if STUDIO=GLD...
@@ -53,8 +65,7 @@ find_package(FLEX)  # built-in
 set(BUILD_SHARED_LIBS ON)
 find_package(Boost REQUIRED)
 
-
-if (MOONRAY_USE_CUDA)
+if(MOONRAY_USE_OPTIX)
     include(CheckLanguage)
     check_language(CUDA)
     if(CMAKE_CUDA_COMPILER)
@@ -66,12 +77,31 @@ if (MOONRAY_USE_CUDA)
     find_package(OptiX REQUIRED)
 endif()
 
+if (MOONRAY_USE_METAL)
+    if(IsDarwinPlatform)
+        check_language(OBJCXX)
+        if(CMAKE_OBJCXX_COMPILER)
+            enable_language(OBJCXX)
+        else()
+            message(STATUS "No OBJCC support")
+        endif()
+    endif()
+    find_library(Metal Metal)
+    add_library(Metal::Metal INTERFACE IMPORTED)
+    set_target_properties(Metal::Metal PROPERTIES
+        IMPORTED_LINK_INTERFACE_LANGUAGES "CXX")
+endif()
+
 find_package(Amorphous QUIET)
 if(${Amorphous_FOUND})
     set(AMORPHOUS Amorphous::Amorphous)
     set(${PROJECT_NAME_UPPER}_BUILD_AMORPHOUS_VOLUME YES)
 endif()
-find_package(Libatomic REQUIRED)
+
+if(NOT IsDarwinPlatform)
+    find_package(Libatomic REQUIRED)
+endif()
+
 find_package(ZLIB REQUIRED)
 find_package(IlmBase QUIET)
 find_package(Imath QUIET)
@@ -112,13 +142,16 @@ endif()
 # ================================================
 # Set the RPATH for binaries in the install tree
 # ================================================
-if (NOT "" STREQUAL "$ENV{REZ_ICC_ROOT}")
-    set(COMPILER_LIBRARY_DIR "$ENV{REZ_ICC_ROOT}/lib")
-endif()
+set(CMAKE_INSTALL_RPATH ${GLOBAL_INSTALL_RPATH})
+if(NOT IsDarwinPlatform)
+    if (NOT "" STREQUAL "$ENV{REZ_ICC_ROOT}")
+      set(COMPILER_LIBRARY_DIR "$ENV{REZ_ICC_ROOT}/lib")
+    endif()
 
-set(CMAKE_BUILD_RPATH ${COMPILER_LIBRARY_DIR})
-set(CMAKE_INSTALL_RPATH $ORIGIN $ORIGIN/../lib64 ${COMPILER_LIBRARY_DIR})
+    set(CMAKE_BUILD_RPATH ${COMPILER_LIBRARY_DIR})
+endif()
 set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
 
 # ===============================================
 # Set the install directory for rdl2 dsos

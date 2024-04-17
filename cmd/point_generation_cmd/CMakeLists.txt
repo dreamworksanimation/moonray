@@ -10,7 +10,7 @@ target_sources(${target} PRIVATE
     blue_noise_pd_progressive_generation.cc
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -25,7 +25,7 @@ target_sources(${target} PRIVATE
     util.h
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -40,7 +40,7 @@ target_sources(${target} PRIVATE
     pd_generation.h
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -56,7 +56,7 @@ target_sources(${target} PRIVATE
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
 target_link_libraries(${target} PRIVATE TBB::tbb)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -67,7 +67,7 @@ target_sources(${target} PRIVATE
     ascii_to_binary.cc
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -83,7 +83,7 @@ target_sources(${target} PRIVATE
     stratified_best_candidate.cc
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -95,7 +95,7 @@ target_sources(${target} PRIVATE
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
 target_link_libraries(${target} PRIVATE TBB::tbb)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 # ===========================================
@@ -106,7 +106,7 @@ target_sources(${target} PRIVATE
     pmj02.cc
 )
 target_compile_features(${target} PRIVATE cxx_std_17)
-target_link_options(${target} PRIVATE -Wl,--enable-new-dtags)
+target_link_options(${target} PRIVATE ${GLOBAL_LINK_FLAGS})
 
 
 install(TARGETS

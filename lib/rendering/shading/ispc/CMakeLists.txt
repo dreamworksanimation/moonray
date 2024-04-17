@@ -52,7 +52,7 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 set_target_properties(shading_eval_ispc PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx2-i32x8
+    ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
     # If we don't request the C++ linker, cmake will complain about
     # a missing variable CMAKE_ISPC_CREATE_SHARED_LIBRARY. This seems
     # to be a bug in CMake-3.23's ISPC support
@@ -70,10 +70,15 @@ target_include_directories(shading_eval_ispc
 
 target_link_libraries(shading_eval_ispc
     PUBLIC
+        ${PROJECT_NAME}::bvh_shading_ispc
         ${PROJECT_NAME}::texturing_sampler
         SceneRdl2::common_platform
         SceneRdl2::scene_rdl2
 )
+
+if(IsDarwinPlatform)
+    set_target_properties(shading_eval_ispc PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+endif()
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(shading_eval_ispc)
@@ -81,6 +86,15 @@ SConscript_Stub(shading_eval_ispc)
 # Set standard compile/link options
 Moonray_ispc_compile_options(shading_eval_ispc)
 Moonray_link_options(shading_eval_ispc)
+
+get_target_property(objLibDeps shading_eval_ispc DEPENDENCY)
+if(NOT objLibDeps STREQUAL "")
+    add_dependencies(${objLibDeps}
+        ${PROJECT_NAME}::texturing_sampler
+        SceneRdl2::common_platform
+        SceneRdl2::scene_rdl2
+    )
+endif()
 
 # -------------------------------------------------------------------
 
@@ -176,6 +190,10 @@ file(RELATIVE_PATH relBinDir ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR})
 function(make_ispc_target target sources stubsDestination)
     add_library(${target} OBJECT)
 
+    if(IsDarwinPlatform)
+        set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
+    endif()
+
     target_sources(${target} PRIVATE ${sources})
     foreach(source ${sources})
         string(REGEX REPLACE "(.*)\.ispc"
@@ -187,7 +205,7 @@ function(make_ispc_target target sources stubsDestination)
     set_target_properties(${target} PROPERTIES
         ISPC_HEADER_SUFFIX _ispc_stubs.h
         ISPC_HEADER_DIRECTORY /${relBinDir}/${stubsDestination}
-        ISPC_INSTRUCTION_SETS avx2-i32x8
+        ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
     )
 
     set_property(TARGET ${target}
@@ -212,12 +230,22 @@ function(make_ispc_target target sources stubsDestination)
     Moonray_ispc_compile_options(${target})
     Moonray_link_options(${target})
 
+
     # We need to create the destination directory for the ispc_stubs.h
     # files before building the objects
     add_custom_target(${target}_make_dir COMMAND
         ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/${stubsDestination})
 
     add_dependencies(${target} ${target}_make_dir)
+
+    get_target_property(objLibDeps ${target} DEPENDENCY)
+    if(NOT objLibDeps STREQUAL "")
+        add_dependencies(${objLibDeps} 
+            SceneRdl2::common_platform
+            SceneRdl2::scene_rdl2
+            ${target}_make_dir
+        )
+    endif()
 
     install(TARGETS ${target}
         EXPORT ${exportGroup}
@@ -248,12 +276,16 @@ make_ispc_target(shading_ispc_10 "${sources10}" bssrdf)
 # code out into a separate file and build it in debug.
 add_library(eval_attribute_debug_hack_ispc OBJECT)
 
+if(IsDarwinPlatform)
+    set_target_properties(eval_attribute_debug_hack_ispc PROPERTIES LINKER_LANGUAGE CXX)
+endif()
+
 target_sources(eval_attribute_debug_hack_ispc PRIVATE EvalAttributeDebugHack.ispc)
 
 set_target_properties(eval_attribute_debug_hack_ispc PROPERTIES
     ISPC_HEADER_SUFFIX _ispc_stubs.h
     ISPC_HEADER_DIRECTORY /${relBinDir}
-    ISPC_INSTRUCTION_SETS avx2-i32x8
+    ISPC_INSTRUCTION_SETS ${GLOBAL_ISPC_INSTRUCTION_SETS}
 )
 
 target_include_directories(eval_attribute_debug_hack_ispc
@@ -276,6 +308,14 @@ SConscript_Stub(eval_attribute_debug_hack_ispc)
 Moonray_ispc_compile_options(eval_attribute_debug_hack_ispc)
 Moonray_link_options(eval_attribute_debug_hack_ispc)
 
+get_target_property(eval_attribute_debug_hack_ispc_deps eval_attribute_debug_hack_ispc DEPENDENCY)
+if(NOT eval_attribute_debug_hack_ispc_deps STREQUAL "")
+    add_dependencies(${eval_attribute_debug_hack_ispc_deps} 
+        SceneRdl2::common_platform
+        SceneRdl2::scene_rdl2
+    )
+endif()
+
 # ... now disable optimizations for this hack file
 target_compile_options(eval_attribute_debug_hack_ispc
     PRIVATE
@@ -285,6 +325,32 @@ target_compile_options(eval_attribute_debug_hack_ispc
 
 # ----------------------------------------
 
+get_target_property(shading_ispc_00_target_objects shading_ispc_00 TARGET_OBJECTS)
+get_target_property(shading_ispc_01_target_objects shading_ispc_01 TARGET_OBJECTS)
+get_target_property(shading_ispc_02_target_objects shading_ispc_02 TARGET_OBJECTS)
+get_target_property(shading_ispc_03_target_objects shading_ispc_03 TARGET_OBJECTS)
+get_target_property(shading_ispc_04_target_objects shading_ispc_04 TARGET_OBJECTS)
+get_target_property(shading_ispc_05_target_objects shading_ispc_05 TARGET_OBJECTS)
+get_target_property(shading_ispc_06_target_objects shading_ispc_06 TARGET_OBJECTS)
+get_target_property(shading_ispc_07_target_objects shading_ispc_07 TARGET_OBJECTS)
+get_target_property(shading_ispc_08_target_objects shading_ispc_08 TARGET_OBJECTS)
+get_target_property(shading_ispc_09_target_objects shading_ispc_09 TARGET_OBJECTS)
+get_target_property(shading_ispc_10_target_objects shading_ispc_10 TARGET_OBJECTS)
+get_target_property(eval_attribute_debug_hack_ispc_target_objects eval_attribute_debug_hack_ispc TARGET_OBJECTS)
+
+set(ISPC_TARGET_OBJECTS
+        ${shading_ispc_00_target_objects}
+        ${shading_ispc_01_target_objects}
+        ${shading_ispc_02_target_objects}
+        ${shading_ispc_03_target_objects}
+        ${shading_ispc_04_target_objects}
+        ${shading_ispc_05_target_objects}
+        ${shading_ispc_06_target_objects}
+        ${shading_ispc_07_target_objects}
+        ${shading_ispc_08_target_objects}
+        ${shading_ispc_09_target_objects}
+        ${shading_ispc_10_target_objects}
+        ${eval_attribute_debug_hack_ispc_target_objects})
 
 target_sources(shading_ispc
     PRIVATE
@@ -292,18 +358,7 @@ target_sources(shading_ispc
         bsdf/BsdfUtil.cc
         Shadingv.cc
         # pull in our ispc object files
-        $<TARGET_OBJECTS:shading_ispc_00>
-        $<TARGET_OBJECTS:shading_ispc_01>
-        $<TARGET_OBJECTS:shading_ispc_02>
-        $<TARGET_OBJECTS:shading_ispc_03>
-        $<TARGET_OBJECTS:shading_ispc_04>
-        $<TARGET_OBJECTS:shading_ispc_05>
-        $<TARGET_OBJECTS:shading_ispc_06>
-        $<TARGET_OBJECTS:shading_ispc_07>
-        $<TARGET_OBJECTS:shading_ispc_08>
-        $<TARGET_OBJECTS:shading_ispc_09>
-        $<TARGET_OBJECTS:shading_ispc_10>
-        $<TARGET_OBJECTS:eval_attribute_debug_hack_ispc>
+        ${ISPC_TARGET_OBJECTS}
 )
 
 set_property(TARGET shading_ispc
@@ -346,6 +401,56 @@ target_link_libraries(shading_ispc
         SceneRdl2::common_platform
         SceneRdl2::scene_rdl2
 )
+
+if(IsDarwinPlatform)
+    set_target_properties(shading_ispc PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+endif()
+
+get_target_property(objLibDeps_00 shading_ispc_00 DEPENDENCY)
+get_target_property(objLibDeps_01 shading_ispc_01 DEPENDENCY)
+get_target_property(objLibDeps_02 shading_ispc_02 DEPENDENCY)
+get_target_property(objLibDeps_03 shading_ispc_03 DEPENDENCY)
+get_target_property(objLibDeps_04 shading_ispc_04 DEPENDENCY)
+get_target_property(objLibDeps_05 shading_ispc_05 DEPENDENCY)
+get_target_property(objLibDeps_06 shading_ispc_06 DEPENDENCY)
+get_target_property(objLibDeps_07 shading_ispc_07 DEPENDENCY)
+get_target_property(objLibDeps_08 shading_ispc_08 DEPENDENCY)
+get_target_property(objLibDeps_09 shading_ispc_09 DEPENDENCY)
+get_target_property(objLibDeps_10 shading_ispc_10 DEPENDENCY)
+get_target_property(eval_attribute_debug_hack_ispc_deps eval_attribute_debug_hack_ispc DEPENDENCY)
+
+if(NOT objLibDeps_00 STREQUAL "")
+    add_dependencies(${objLibDeps_00} 
+        OpenImageIO::OpenImageIO
+        SceneRdl2::common_platform
+        SceneRdl2::scene_rdl2
+    )
+    add_dependencies(${objLibDeps_01} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_02} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_03} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_04} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_05} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_06} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_07} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_08} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_09} ${objLibDeps_00})
+    add_dependencies(${objLibDeps_10} ${objLibDeps_00})
+    add_dependencies(${eval_attribute_debug_hack_ispc_deps} ${objLibDeps_00})
+endif()
+
+add_dependencies(shading_ispc
+        shading_ispc_00
+        shading_ispc_01
+        shading_ispc_02
+        shading_ispc_03
+        shading_ispc_04
+        shading_ispc_05
+        shading_ispc_06
+        shading_ispc_07
+        shading_ispc_08
+        shading_ispc_09
+        shading_ispc_10
+        eval_attribute_debug_hack_ispc ${eval_attribute_debug_hack_ispc_deps})
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(shading_ispc)

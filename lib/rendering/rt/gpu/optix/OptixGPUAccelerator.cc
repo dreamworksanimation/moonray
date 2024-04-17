@@ -1011,6 +1011,7 @@ OptixGPUBVHBuilder::getShadowLinkingReceivers(const geom::internal::NamedPrimiti
 
 
 OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
+                                         const uint32_t numCPUThreads,
                                          const scene_rdl2::rdl2::Layer *layer,
                                          const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                                          const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
@@ -1579,7 +1580,11 @@ OptixGPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*
 }
 
 void
-OptixGPUAccelerator::occluded(const unsigned numRays, const GPURay* rays) const
+OptixGPUAccelerator::occluded(const uint32_t /*queueIdx*/,
+                         const uint32_t numRays,
+                         const GPURay* rays,
+                         const void* /*cpuRays*/,
+                         size_t /*cpuRayStride*/) const
 {
     // std::cout << "occluded(): " << numRays << std::endl;
 

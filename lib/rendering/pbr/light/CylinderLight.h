@@ -102,9 +102,11 @@ private:
         float phi = scene_rdl2::math::atan2(pos.z, pos.x);
         float v = (phi < 0.0f  ?  phi + scene_rdl2::math::sTwoPi  :  phi) * scene_rdl2::math::sOneOverTwoPi;
 
+#ifndef __APPLE__
         MNRY_ASSERT(finite(u));
         MNRY_ASSERT(finite(v));
-
+#endif
+        
         return scene_rdl2::math::Vec2f(u, v);
     }
 

@@ -16,13 +16,15 @@ target_link_libraries(${target}
         ${PROJECT_NAME}::rendering_shading
         SceneRdl2::render_logging
         SceneRdl2::render_util
-)
 
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9)
-        target_link_libraries(${target} PRIVATE atomic)
-    endif()
-endif()
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
+            atomic
+        >
+
+        $<$<CXX_COMPILER_ID:Clang>:
+            atomic
+        >
+)
 
 # Set standard compile/link options
 Moonray_cxx_compile_definitions(${target})

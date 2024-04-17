@@ -117,12 +117,17 @@ namespace rt {
 // all of the CUDA/Optix headers to the rest of Moonray.  All this needs to expose
 // to the outside world is an occluded() method and a constructor that takes a scene.
 
+#ifdef MOONRAY_USE_OPTIX
 class OptixGPUAccelerator;
+#elif MOONRAY_USE_METAL
+class MetalGPUAccelerator;
+#endif
 
 class GPUAccelerator
 {
 public:
     GPUAccelerator(bool allowUnsupportedFeatures,
+                   const uint32_t numCPUThreads,
                    const scene_rdl2::rdl2::Layer *layer,
                    const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                    const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
@@ -141,17 +146,30 @@ public:
     // output intersect results are placed in here
     GPURayIsect* getOutputIsectBuf() const;
 
-    void occluded(const unsigned numRays, const GPURay* rays) const;
+    void occluded(const uint32_t queueIdx,
+                  const uint32_t numRays,
+                  const GPURay* rays,
+                  const void* cpuRays,
+                  size_t cpuRayStride) const;
 
     // output occlusion results are placed in here
-    unsigned char* getOutputOcclusionBuf() const;
+    unsigned char* getOutputOcclusionBuf(uint32_t queueIdx) const;
+    ::moonray::rt::GPURay* getGPURaysBuf(uint32_t queueIdx) const;
+
+    void* getCPURayBuf(const uint32_t queueIdx,
+                       size_t numRays,
+                       size_t stride) const;
 
     static unsigned int getRaysBufSize();
+    static bool getUMAAvailable();
+    static bool supportsMultipleQueues();
 
 private:
 
-#ifdef MOONRAY_USE_CUDA
-    std::unique_ptr<OptixGPUAccelerator> mImpl;
+#ifdef MOONRAY_USE_OPTIX
+     std::unique_ptr<OptixGPUAccelerator> mImpl;
+#elif MOONRAY_USE_METAL
+    std::unique_ptr<MetalGPUAccelerator> mImpl;
 #endif
 
 };

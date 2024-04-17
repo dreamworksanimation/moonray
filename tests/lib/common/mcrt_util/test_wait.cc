@@ -48,6 +48,11 @@ bool operator==(const NonScalar& a, const NonScalar& b) noexcept
     return a.m_a == b.m_a && a.m_b == b.m_b;
 }
 
+bool operator!=(const NonScalar& a, const NonScalar& b) noexcept
+{
+    return a.m_a != b.m_a || a.m_b != b.m_b;
+}
+
 NonScalar operator+(const NonScalar& a, const NonScalar& b) noexcept
 {
     return { a.m_a + b.m_a, a.m_b + b.m_b };

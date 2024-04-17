@@ -17,6 +17,14 @@ target_link_libraries(${target}
         ${PROJECT_NAME}::rendering_rndr
         ${PROJECT_NAME}::rendering_shading
         SceneRdl2::render_util
+
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
+            atomic
+        >
+
+        $<$<CXX_COMPILER_ID:Clang>:
+            atomic
+        >
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

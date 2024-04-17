@@ -17,9 +17,13 @@
 #include <algorithm>            // clamp
 #include <errno.h>              // errno
 #include <fcntl.h>              // open
-#include <malloc.h>             // malloc_trim
 #include <string.h>             // strerror
+#ifndef __APPLE__
+#include <malloc.h>             // malloc_trim
 #include <sys/sendfile.h>       // sendfile
+#else
+#include <copyfile.h>           // copyfile
+#endif
 #include <sys/stat.h>           // fstat
 #include <sys/types.h>          // fstat
 #include <unistd.h>             // unlink, close, isatty
@@ -490,6 +494,16 @@ ImageWriteCacheTmpFileItem::copyFile(const std::string &dstName, std::string &er
         return false;
     }
 
+#ifdef __APPLE__
+    int result = fcopyfile(mTmpFileFd, dstFd, NULL,
+                           COPYFILE_ACL|COPYFILE_STAT|COPYFILE_XATTR|COPYFILE_DATA);
+    if (result == -1) {
+        close(dstFd);
+        errMsg = scene_rdl2::util::buildString("Failed tmpFile copy to destination location '",
+                                   copyDestName.c_str(), "' ", strerror(errno));
+        return false;
+    }
+#else
     struct stat stat_src;
     if (fstat(mTmpFileFd, &stat_src) == -1) {
         close(dstFd);
@@ -513,6 +527,7 @@ ImageWriteCacheTmpFileItem::copyFile(const std::string &dstName, std::string &er
         sentSize += size;
         sendSize -= size;
     }
+#endif
 
     if (close(dstFd) == -1) {
         errMsg = scene_rdl2::util::buildString("Failed close file of '", copyDestName.c_str(), "' ",
@@ -660,8 +675,9 @@ ImageWriteCache::freeInternalData()
 
     mImageWriteCacheSpecs.clear();
     mImageWriteCacheSpecs.shrink_to_fit();
-
-    malloc_trim(0); // Return unused memory from malloc() arena to OS 
+#ifndef __APPLE__
+    malloc_trim(0); // Return unused memory from malloc() arena to OS
+#endif
 }
 
 void

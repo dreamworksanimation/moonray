@@ -128,14 +128,14 @@ HairState::calculateHairFrame(const Vec3f& wo,
         mHairBinorm = frame.getY();
     }
 
-    mThetaO = sHalfPi - acos(UdotO);
+    mThetaO = sHalfPi - scene_rdl2::math::acos(UdotO);
     sincos(mThetaO, &mSinThetaO, &mCosThetaO);
 
     if (mUsingCustomNormal) {
         scene_rdl2::math::Vec3f proj = normalize(wo - hairDir * dot(wo, hairDir));
         const float cosPhiO = clamp(dot(proj, mHairNorm), -1.0f, 1.0f);
         const float sinPhiO = clamp(dot(proj, mHairBinorm), -1.0f, 1.0f);
-        mPhiO = atan2(sinPhiO, cosPhiO);
+        mPhiO = scene_rdl2::math::atan2(sinPhiO, cosPhiO);
     } else {
         // normal is aligned to view direction
         mPhiO = sPhiO;
@@ -208,25 +208,25 @@ HairState::computeAngles(const Vec3f &direction,
 {
     const float cosTheta = dot(direction,
                                hairDir);
-    outTheta = sHalfPi - acos(clamp(cosTheta, -1.0f, 1.0f));
+    outTheta = sHalfPi - scene_rdl2::math::acos(clamp(cosTheta, -1.0f, 1.0f));
 
     // Project direction into azimuth plane
     Vec3f proj = direction - hairDir * dot(direction, hairDir);
     float l = lengthSqr(proj);
     if (l <= sEpsilon) { outPhi = 0.0f; return; }
-    proj /= sqrt(l);
+    proj /= scene_rdl2::math::sqrt(l);
 
     const float cosPhi = clamp(dot(proj, mHairNorm), -1.0f, 1.0f);
     if (mUsingCustomNormal) {
         const float sinPhi = clamp(dot(proj, mHairBinorm), -1.0f, 1.0f);
-        outPhi = atan2(sinPhi, cosPhi);
+        outPhi = scene_rdl2::math::atan2(sinPhi, cosPhi);
     } else {
         // normal is aligned to view direction
         // WARNING: We exploit the symmetry of the bsdf in the azimuth, to use
         // acos instead of atan2. We get a phi value only in half the possible
         // range of directions. Don't use these angles to generate directions!!!
         // Only use these angles to evaluate the pdf or the bsdf.
-        outPhi = acos(cosPhi);
+        outPhi = scene_rdl2::math::acos(cosPhi);
     }
 }
 
@@ -244,7 +244,7 @@ HairState::updateAngles(const Vec3f &wi,
         scene_rdl2::math::Vec3f proj = normalize(mWo - mHairDir * dot(mWo, mHairDir));
         const float cosPhiO = clamp(dot(proj, mHairNorm), -1.0f, 1.0f);
         const float sinPhiO = clamp(dot(proj, mHairBinorm), -1.0f, 1.0f);
-        mPhiO = atan2(sinPhiO, cosPhiO);
+        mPhiO = scene_rdl2::math::atan2(sinPhiO, cosPhiO);
     } else {
         // normal is aligned to view direction
         mPhiO = sPhiO;
@@ -254,12 +254,12 @@ HairState::updateAngles(const Vec3f &wi,
     mPhiH   = (mPhiO + mPhiI) * 0.5f;
     mThetaD = scene_rdl2::math::abs(mThetaO - mThetaI)    * 0.5f;
 
-    mCosPhiDOverTwo = cos(mPhiD*0.5f);
+    mCosPhiDOverTwo = scene_rdl2::math::cos(mPhiD*0.5f);
     sincos(mThetaD, &mSinThetaD, &mCosThetaD);
 
     // "Light Scattering from Human Hair Fibers" - Marschner et al
     // Appendix B
-    const float tmp = sqrt(mEta*mEta - mSinThetaD*mSinThetaD);
+    const float tmp = scene_rdl2::math::sqrt(mEta*mEta - mSinThetaD*mSinThetaD);
     mEtaP  = tmp / mCosThetaD;
     mEtaPP = mEta*mEta*mCosThetaD / tmp;
 

@@ -157,17 +157,17 @@ TransmissionCookTorranceEnergyCompensation::sampleR(
     if (etaI < etaT) {
         const float n = TransmissionAlbedo::netaRange(etaT/etaI);
         const float power = (0.133f*n+3.02f)*r*r+(-0.66f*n-5.12f)*r+3.009f;
-        cosThetaI = pow(r1, power);
+        cosThetaI = scene_rdl2::math::pow(r1, power);
     } else {
         const float n = TransmissionAlbedo::netaRange(etaI/etaT);
         const float power = (0.38f*n+2.4f)*r*r+(-0.68f*n-4.34f)*r+2.57f;
-        cosThetaI = pow(r1, power);
+        cosThetaI = scene_rdl2::math::pow(r1, power);
     }
     cosThetaI = scene_rdl2::math::clamp(cosThetaI, 0.0f, 0.99f);
     float sinThetaI =
             scene_rdl2::math::clamp((1.0f - cosThetaI * cosThetaI));
     if (sinThetaI > 0.0f)
-        sinThetaI = sqrt(sinThetaI);
+        sinThetaI = scene_rdl2::math::sqrt(sinThetaI);
     else
         sinThetaI = 0.0f;
     const float phiI = 2.0f * sPi * r2;

@@ -30,6 +30,7 @@ class OptixGPUAccelerator
 {
 public:
     OptixGPUAccelerator(bool allowUnsupportedFeatures,
+                        const uint32_t numCPUThreads,
                         const scene_rdl2::rdl2::Layer *layer,
                         const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                         const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
@@ -43,11 +44,23 @@ public:
 
     GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
 
-    void occluded(const unsigned numRays, const GPURay* rays) const;
+    void occluded(const uint32_t queueIdx, const unsigned numRays, const GPURay* rays, const void* cpuRays, size_t cpuRayStride) const;
 
-    unsigned char* getOutputOcclusionBuf() const { return mOutputOcclusionBuf; }
+    GPURay* getGPURaysBuf(uint32_t queueIdx) const {
+        return nullptr;
+    }
+    void* getCPURayBuf(const uint32_t queueIdx,
+                       size_t numRays,
+                       size_t stride) const {
+        return nullptr;
+    }
+
+    unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const { return mOutputOcclusionBuf; }
 
     static unsigned int getRaysBufSize() { return mRaysBufSize; }
+    static bool getUMAAvailable() { return false; }
+    static bool supportsMultipleQueues() { return false; }
+
 
 private:
     bool build(CUstream cudaStream,

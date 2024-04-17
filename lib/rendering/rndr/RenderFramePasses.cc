@@ -40,7 +40,9 @@
 #endif // end RUNTIME_VERIFY_PIX_SAMPLE_SPAN
 
 // This directive is used to fall back to the original TBB version of MCRT thread pool for emergency purposes.
-//#define TBB_MCRT_THREADPOOL
+#ifdef __APPLE__
+#define TBB_MCRT_THREADPOOL
+#endif
 
 #ifdef TBB_MCRT_THREADPOOL
 #include <tbb/task_group.h>
@@ -142,7 +144,11 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     std::string msg = ostr.str();
     scene_rdl2::logging::Logger::info(msg);
     if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
+#   ifdef PLATFORM_APPLE
+    scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, nullptr);
+#   else
     scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, calcCpuIdFunc);
+#   endif // end ifndef PLATFORM_APPLE
 #   endif // end else TBB_MCRT_THREADPOOL
 #   endif // end ifndef FORCE_SINGLE_THREADED_RENDERING
 

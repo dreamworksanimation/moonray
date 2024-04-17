@@ -27,6 +27,10 @@ namespace geom {
     typedef simd::avxf simdf;
     typedef simd::avxi simdi;
     typedef simd::avxb simdb;
+#elif defined(__SSSE3__)
+    typedef simd::ssef simdf;
+    typedef simd::ssei simdi;
+    typedef simd::sseb simdb;
 #endif
 
 typedef scene_rdl2::math::BBox3f    BBox3f;

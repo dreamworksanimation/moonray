@@ -81,16 +81,16 @@ CookTorranceEnergyCompensation::sample(
     float cosThetaI;
     switch(type) {
     case ispc::MICROFACET_DISTRIBUTION_BECKMANN:
-        cosThetaI = pow(r1,
+        cosThetaI = scene_rdl2::math::pow(r1,
                         2.767f*r*r-5.4f*r+2.99412f);
         break;
     case ispc::MICROFACET_DISTRIBUTION_GGX:
     default:
-        cosThetaI = pow(r1,
+        cosThetaI = scene_rdl2::math::pow(r1,
                         1.1933f*r*r-2.0969f*r+1.3698f);
     }
 
-    const float sinThetaI = sqrt(1.0f - cosThetaI*cosThetaI);
+    const float sinThetaI = scene_rdl2::math::sqrt(1.0f - cosThetaI*cosThetaI);
     const float phiI = 2.0f * sPi * r2;
 
     const Vec3f m = computeLocalSphericalDirection(cosThetaI, sinThetaI, phiI);

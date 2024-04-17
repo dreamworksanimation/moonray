@@ -25,7 +25,10 @@
 
 #include <scene_rdl2/render/util/CpuSocketUtil.h>
 #include <scene_rdl2/render/util/Memory.h>
+
+#ifndef PLATFORM_APPLE
 #include <scene_rdl2/render/util/ProcCpuAffinity.h>
+#endif
 
 #include <random>
 
@@ -598,6 +601,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 void
 RenderDriver::setProcCpuAffinity(TLSInitParams& tlsInitParams)
 {
+#ifndef PLATFORM_APPLE
     mEnableRenderPrepCpuAffinity = false;
     tlsInitParams.mEnableMcrtCpuAffinity = true; // default is MCRT CPU-Affinity = ON
 
@@ -696,6 +700,7 @@ RenderDriver::setProcCpuAffinity(TLSInitParams& tlsInitParams)
         Logger::error(ostr.str());
         if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
     }
+#endif
 }
 
 RenderDriver::~RenderDriver()
@@ -2133,7 +2138,7 @@ RenderDriver::revertFilmData(RenderOutputDriver *renderOutputDriver,
 }
 
 void
-RenderDriver::createXPUQueues()
+RenderDriver::createXPUQueues(const rt::GPUAccelerator* gpuAccel)
 {
     unsigned numCPUThreads = mcrt_common::getNumTBBThreads();
     // This queue size was determined empirically through performance testing.
@@ -2148,6 +2153,7 @@ RenderDriver::createXPUQueues()
 
     mXPUOcclusionRayQueue = new pbr::XPUOcclusionRayQueue(numCPUThreads,
                                                           cpuThreadQueueSize,
+                                                          gpuAccel,
                                                           pbr::occlusionQueryBundleHandler,
                                                           pbr::xpuOcclusionQueryBundleHandler,
                                                           (void *)((uint64_t)rayHandlerFlags));

@@ -50,18 +50,29 @@ computeXPUOcclusionQueriesOnGPU(mcrt_common::ThreadLocalState *tls,
     rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
     const bool disableShadowing = !fs.mIntegrator->getEnableShadowing();
 
+    int queueIndex = 0;
+    if (accel->supportsMultipleQueues()) {
+        queueIndex = tls->mThreadIdx;
+    }
+    
     {
         EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_GPU_OCCLUSION);
 
         // Call the GPU and wait for it to finish processing these rays.
-        accel->occluded(numRays, gpuRays);
+        accel->occluded(queueIndex, numRays, gpuRays, rays, sizeof(rays[0]));
     }
 
     // we need to copy the occlusion results here because another thread might be
     // using the GPU (and that buffer) once we release the mutex below
-    unsigned char *isOccluded = accel->getOutputOcclusionBuf();
-    unsigned char* isOccludedCopy = arena->allocArray<unsigned char>(numRays, CACHE_LINE_SIZE);
-    memcpy(isOccludedCopy, isOccluded, sizeof(unsigned char) * numRays);
+    unsigned char *isOccluded = accel->getOutputOcclusionBuf(queueIndex);
+    unsigned char* isOccludedCopy = isOccluded;
+    
+    if (!accel->supportsMultipleQueues()) {
+        // we need to copy the occlusion results here because another thread might be
+        // using the GPU (and that buffer) once we release the mutex below
+        isOccludedCopy = arena->allocArray<unsigned char>(numRays, CACHE_LINE_SIZE);
+        memcpy(isOccludedCopy, isOccluded, sizeof(unsigned char) * numRays);
+    }
 
 /*
     {
@@ -102,9 +113,11 @@ computeXPUOcclusionQueriesOnGPU(mcrt_common::ThreadLocalState *tls,
     }
 */
 
+#if MOONRAY_USE_OPTIX
     // We unlock the GPU as we are finished with it.  The code below runs
     // on the CPU.
     mutex.unlock();
+#endif
 
     // Create the BundledRadiance objects as required based on the occlusion
     // test results.

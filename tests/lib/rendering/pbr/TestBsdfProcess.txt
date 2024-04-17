@@ -1,0 +1,8 @@
+# Copyright 2023-2024 DreamWorks Animation LLC
+# SPDX-License-Identifier: Apache-2.0
+
+grep 'returned a zero probability' pbr_test.results | sed 's/ (/,/' | sed 's/%)//' > pbr_test.results.zerop.csv
+grep 'importance vs. uniform sampling relative error' pbr_test.results | sed 's/ = /,/' > pbr_test.results.uiimprel.csv
+grep 'pdf integral' pbr_test.results | sed 's/ = /,/' > pbr_test.results.pdfi.csv
+grep 'eval integral' pbr_test.results | sed 's/ = /,/' > pbr_test.results.fi.csv
+

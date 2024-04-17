@@ -3026,6 +3026,8 @@ CPP_aovSetMaterialAovs(pbr::TLState *pbrTls,
             const float onev[16] = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 #elif (VLEN == 8u)
             const float onev[8] = { 1, 1, 1, 1, 1, 1, 1, 1 };
+#elif (VLEN == 4u)
+            const float onev[4] = { 1, 1, 1, 1 };
 #else
             #error Unknown vector width
 #endif

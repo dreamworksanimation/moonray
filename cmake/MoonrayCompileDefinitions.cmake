@@ -26,7 +26,8 @@ function(${PROJECT_NAME}_cxx_compile_definitions target)
             >
 
         PUBLIC
-            __AVX__
+            ${GLOBAL_COMPILE_DEFINITIONS}
+            ${GLOBAL_CPP_FLAGS}
             GL_GLEXT_PROTOTYPES=1                   # This define makes function symbols to be available as extern declarations.
             TBB_SUPPRESS_DEPRECATED_MESSAGES        # Suppress 'deprecated' messages from TBB
 
@@ -34,6 +35,8 @@ function(${PROJECT_NAME}_cxx_compile_definitions target)
             ${openvdb_abi}                          # Which version of the openvdb ABI to use
             OPENVDB_USE_BLOSC                       # Denotes whether VDB was built with Blosc support. Shouldn't this be defined by openvdb?
             OPENVDB_USE_LOG4CPLUS                   # Should openvdb use log4cplus (vs. std::cerr) for log messages?
+            _LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR=1 # Clang - enable auto_ptr when targeting c++17
+            _LIBCPP_ENABLE_CXX17_REMOVED_RANDOM_SHUFFLE=1 # Clang - ensure std::random_shuffle is available
     )
     if(MOONRAY_DWA_BUILD)
         target_compile_definitions(${target}

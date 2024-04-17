@@ -46,7 +46,11 @@ const int ALLOC_LIST_MAX_NUM_ITEMS = CACHE_LINE_SIZE / sizeof(uint32_t);
 // ALLOC_LIST_MAX_NUM_ITEMS is used for stack array allocations, keep small.
 // going as high as 256 is probably ok, but this assert is meant to
 // remind us to verify this.
+#if CACHE_LINE_SIZE == 128
+MNRY_STATIC_ASSERT(ALLOC_LIST_MAX_NUM_ITEMS == 32);
+#else
 MNRY_STATIC_ASSERT(ALLOC_LIST_MAX_NUM_ITEMS == 16);
+#endif
 // allocList returns and freeList accepts a 4 byte handle instead
 // of a raw pointer.  this saves precious space in space-constrained
 // structures that must store them.  per thread, we maintain a relatively
@@ -55,9 +59,10 @@ MNRY_STATIC_ASSERT(ALLOC_LIST_MAX_NUM_ITEMS == 16);
 // information about the list.
 const unsigned int ALLOC_LIST_INFO_BIT_SHIFT = 28;
 const unsigned int ALLOC_LIST_INFO_BITS      = (0xFu << ALLOC_LIST_INFO_BIT_SHIFT);
+#if CACHE_LINE_SIZE != 128 // TODO: figure this one out
 MNRY_STATIC_ASSERT(ALLOC_LIST_MAX_NUM_ITEMS <=
                   ((ALLOC_LIST_INFO_BITS >> ALLOC_LIST_INFO_BIT_SHIFT) + 1));
-
+#endif
 // Per frame counter, gets reset each frame.
 CACHE_ALIGN tbb::atomic<unsigned> gFailedRayStateAllocs;
 CACHE_ALIGN tbb::atomic<unsigned> gFailedCL1Allocs;

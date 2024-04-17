@@ -67,7 +67,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#ifndef __APPLE__
 #include <malloc.h>
+#endif
 #include <memory>
 #include <string>
 #include <vector>
@@ -996,7 +998,7 @@ RenderContext::startFrame()
     // e.g. unsupported geometry, out of VRAM, etc.  In this case we don't have
     // any XPU queues.
     if (mGeometryManager->isGPUEnabled()) {
-        mDriver->createXPUQueues();
+        mDriver->createXPUQueues(frameState.mGPUAccel);
     } else {
         mDriver->freeXPUQueues();
     }
@@ -1931,7 +1933,7 @@ RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUF
             // XPU doesn't support BVH updates.  Also, moving the camera in moonray_gui
             // is a rt::ChangeFlag::UPDATE and we don't want to rebuild the GPU
             // data for that case.
-            mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, mLayer);
+            mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
         }
     }
     mRenderStats->mBuildGPUAcceleratorTime =
@@ -2388,9 +2390,11 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
 
     timer.stop();
 
+#ifndef __APPLE__
     // return unused memory from malloc() arena to OS so process memory usage
     // stats are accurate
     malloc_trim(0);
+#endif
 
     mRenderStats->logEndGeneratingProcedurals();
 
@@ -2493,14 +2497,22 @@ RenderContext::collectShaderStats()
             scene_rdl2::rdl2::SceneObject *obj = entry.second;
             moonray::util::InclusiveExclusiveAverage<int64> shaderCallStat;
             if (obj->isA<scene_rdl2::rdl2::Shader>()) {
-                obj->asA<scene_rdl2::rdl2::Shader>()->forEachThreadLocalObjectState([&shaderCallStat] (const shading::ThreadLocalObjectState &s) {
-                        shaderCallStat += s.mShaderCallStat;
-                    }, numRenderThreads);
+                const moonray::shading::ThreadLocalObjectState* threadLocalState =
+                    obj->asA<scene_rdl2::rdl2::Shader>()->getThreadLocalObjectState();
+                if (threadLocalState != nullptr) {
+                    for (int i = 0; i < numRenderThreads; i++) {
+                        shaderCallStat += threadLocalState[i].mShaderCallStat;
+                    }
+                }
                 mRenderStats->mShaderCallStats[obj] = shaderCallStat;
             } else if (obj->isA<scene_rdl2::rdl2::Map>()) {
-                obj->asA<scene_rdl2::rdl2::Map>()->forEachThreadLocalObjectState([&shaderCallStat] (const shading::ThreadLocalObjectState &s) {
-                        shaderCallStat += s.mShaderCallStat;
-                    }, numRenderThreads);
+                const moonray::shading::ThreadLocalObjectState* threadLocalState =
+                    obj->asA<scene_rdl2::rdl2::Map>()->getThreadLocalObjectState();
+                if (threadLocalState != nullptr) {
+                    for (int i = 0; i < numRenderThreads; i++) {
+                        shaderCallStat += threadLocalState[i].mShaderCallStat;
+                    }
+                }
                 mRenderStats->mShaderCallStats[obj] = shaderCallStat;
             }
         });
@@ -2608,7 +2620,7 @@ RenderContext::reportGeometryMemory()
           } else if (a.second > b.second) {
               return true;
           } else {
-              return a.first.compare(b.first) <= 0;
+              return a.first.compare(b.first) > 0;
           }
     });
 

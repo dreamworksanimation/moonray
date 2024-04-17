@@ -177,7 +177,7 @@ IsotropicBsdfTable::getIndexThetaH(float thetaH) const
     // below the surface due to interpolated normals
     MNRY_ASSERT(thetaH >= 0.0f  /* &&  thetaH <= sHalfPi */);
 
-    return sqrt(thetaH / sHalfPi) * (mSizeThetaH - sFloatIndexEpsilon);
+    return scene_rdl2::math::sqrt(thetaH / sHalfPi) * (mSizeThetaH - sFloatIndexEpsilon);
 }
 
 
@@ -248,8 +248,8 @@ IsotropicBsdfTable::localWoWi2IndexHD(const Vec3f &localWo, const Vec3f &localWi
     if (H.z < sEpsilon) {
         return false;
     }
-    float thetaH = acos(clamp(H.z, -1.0f, 1.0f));
-    float phiH = atan2(H.y, H.x);
+    float thetaH = scene_rdl2::math::acos(clamp(H.z, -1.0f, 1.0f));
+    float phiH = scene_rdl2::math::atan2(H.y, H.x);
 
     // Compute difference vector
     static const ReferenceFrame frame;
@@ -257,8 +257,8 @@ IsotropicBsdfTable::localWoWi2IndexHD(const Vec3f &localWo, const Vec3f &localWi
     D = rotate(D, frame.getY(), -thetaH);
 
     // Compute thetaD, phiD
-    float thetaD = acos(clamp(D.z, -1.0f, 1.0f));
-    float phiD = atan2(D.y, D.x);
+    float thetaD = scene_rdl2::math::acos(clamp(D.z, -1.0f, 1.0f));
+    float phiD = scene_rdl2::math::atan2(D.y, D.x);
 
     // Convert to indices
     indexThetaH = getIndexThetaH(thetaH);

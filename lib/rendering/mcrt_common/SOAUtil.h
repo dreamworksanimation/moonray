@@ -30,9 +30,11 @@ inline void convertAOSToSOA_AVX512(unsigned numElems,
     MNRY_STATIC_ASSERT(SRC_AOS_STRIDE % (AVX512_VLEN * 4) == 0);
     MNRY_STATIC_ASSERT(DST_SOA_STRIDE % (AVX512_VLEN * 4) == 0);
 
+#ifndef __APPLE__
     MNRY_ASSERT(isAligned(src, AVX512_SIMD_MEMORY_ALIGNMENT));
     MNRY_ASSERT(isAligned(dst, AVX512_SIMD_MEMORY_ALIGNMENT));
-
+#endif
+    
     const unsigned numFullBlocks = numElems / AVX512_VLEN;
     const unsigned numChunksPerBlock = SRC_AOS_SIZE / AVX512_SIMD_MEMORY_ALIGNMENT;
 
@@ -48,7 +50,7 @@ inline void convertAOSToSOA_AVX512(unsigned numElems,
     //
     for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX512_VLEN] =
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX512_VLEN] =
         {
             (const uint32_t *)(&aosData[0]),
             (const uint32_t *)(&aosData[1]),
@@ -93,7 +95,7 @@ inline void convertAOSToSOA_AVX512(unsigned numElems,
 
         MNRY_ASSERT(remainingEntries < AVX512_VLEN);
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX512_VLEN];
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX512_VLEN];
 
         // Fill in valid entries.
         for (unsigned i = 0; i < remainingEntries; ++i) {
@@ -154,7 +156,7 @@ inline void convertAOSToSOAIndexed_AVX512(unsigned numElems,
     //
     for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX512_VLEN] =
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX512_VLEN] =
         {
             (const uint32_t *)(&aosData[sortIndices[0]]),
             (const uint32_t *)(&aosData[sortIndices[SORT_INDEX_STRIDE >> 2]]),
@@ -198,7 +200,7 @@ inline void convertAOSToSOAIndexed_AVX512(unsigned numElems,
 
         MNRY_ASSERT(remainingEntries < AVX512_VLEN);
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX512_VLEN];
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX512_VLEN];
 
         // Fill in valid entries.
         for (unsigned i = 0; i < remainingEntries; ++i) {
@@ -315,7 +317,7 @@ convertAOSToSOA_AVX(unsigned numElems,
     //
     for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX_VLEN] =
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX_VLEN] =
         {
             (const uint32_t *)(&aosData[0]),
             (const uint32_t *)(&aosData[1]),
@@ -358,7 +360,7 @@ convertAOSToSOA_AVX(unsigned numElems,
 
         MNRY_ASSERT(remainingEntries < AVX_VLEN);
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX_VLEN];
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX_VLEN];
 
         // Fill in valid entries.
         for (unsigned i = 0; i < remainingEntries; ++i) {
@@ -389,6 +391,162 @@ convertAOSToSOA_AVX(unsigned numElems,
         }
     }
 }
+
+template<unsigned SRC_AOS_SIZE,
+         unsigned SRC_AOS_STRIDE,
+         unsigned DST_SOA_STRIDE,
+         unsigned PREFETCH_DISTANCE>
+inline void
+convertAOSToSOA_NEON(unsigned numElems,
+                    const uint32_t *__restrict src,
+                    uint32_t *__restrict dst)
+{
+    MNRY_STATIC_ASSERT(SRC_AOS_SIZE <= SRC_AOS_STRIDE);
+    MNRY_STATIC_ASSERT(SRC_AOS_SIZE % (SSE_VLEN * 4) == 0);
+    MNRY_STATIC_ASSERT(SRC_AOS_STRIDE % (SSE_VLEN * 4) == 0);
+    MNRY_STATIC_ASSERT(DST_SOA_STRIDE % (SSE_VLEN * SSE_SIMD_REGISTER_SIZE) == 0);
+
+    MNRY_ASSERT(scene_rdl2::util::isAligned(src, SSE_SIMD_MEMORY_ALIGNMENT));
+    MNRY_ASSERT(scene_rdl2::util::isAligned(dst, SSE_SIMD_MEMORY_ALIGNMENT));
+
+    const unsigned numFullBlocks = numElems / SSE_VLEN;
+    const unsigned numChunksPerBlock = SRC_AOS_SIZE / SSE_SIMD_MEMORY_ALIGNMENT;
+
+    struct ALIGN(SSE_SIMD_MEMORY_ALIGNMENT) AOSData
+    {
+        uint8_t mData[SRC_AOS_STRIDE];
+    };
+
+    const AOSData *aosData = (const AOSData *)src;
+
+    //
+    // Transpose all full blocks.
+    //
+    for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
+
+        const uint32_t *__restrict srcRows[SSE_VLEN] =
+        {
+            (const uint32_t *)(&aosData[0]),
+            (const uint32_t *)(&aosData[1]),
+            (const uint32_t *)(&aosData[2]),
+            (const uint32_t *)(&aosData[3]),
+        };
+
+        aosData += SSE_VLEN;
+
+        for (unsigned i = 0; i < numChunksPerBlock; ++i) {
+
+            uint32_t *__restrict dstChunk = dst + (SSE_VLEN * SSE_VLEN) * i;
+
+            scene_rdl2::math::transposeAOSToSOA_4x4(srcRows, dstChunk);
+
+            srcRows[0] += SSE_VLEN;
+            srcRows[1] += SSE_VLEN;
+            srcRows[2] += SSE_VLEN;
+            srcRows[3] += SSE_VLEN;
+        }
+
+        // Take destination stride into account.
+        dst += DST_SOA_STRIDE >> 2;
+    }
+
+    //
+    // Transpose remaining entries into a partially filled block.
+    //
+    unsigned remainingEntries = numElems - (numFullBlocks * SSE_VLEN);
+
+    if (remainingEntries) {
+
+        MNRY_ASSERT(remainingEntries < SSE_VLEN);
+
+        const uint32_t *__restrict srcRows[SSE_VLEN];
+
+        // Fill in valid entries.
+        for (unsigned i = 0; i < remainingEntries; ++i) {
+            srcRows[i] = (const uint32_t *)(&aosData[i]);
+        }
+
+        // Duplicate final entries to fill out trailing lanes.
+        const uint32_t *finalRow = (const uint32_t *)(&aosData[remainingEntries - 1]);
+        for (unsigned i = remainingEntries; i < SSE_VLEN; ++i) {
+            srcRows[i] = finalRow;
+        }
+
+        // Process remaining chunks in this block whilst prefetching from the next block.
+        for (unsigned i = 0; i < numChunksPerBlock; ++i) {
+
+            scene_rdl2::math::transposeAOSToSOA_4x4(srcRows, dst);
+
+            srcRows[0] += SSE_VLEN;
+            srcRows[1] += SSE_VLEN;
+            srcRows[2] += SSE_VLEN;
+            srcRows[3] += SSE_VLEN;
+
+            dst += (SSE_VLEN * SSE_VLEN);
+        }
+    }
+}
+
+template<unsigned SRC_SOA_SIZE,         // DST_AOS_SIZE is derived from this.
+         unsigned SRC_SOA_STRIDE,
+         unsigned INDEX_STRIDE,
+         unsigned PREFETCH_DISTANCE>
+inline void
+convertSOAToAOSIndexed_NEON(unsigned numElems,
+                            const uint32_t *indices,
+                            const uint32_t *__restrict src,
+                            uint32_t **__restrict dst)
+{
+    const unsigned DST_AOS_SIZE = SRC_SOA_SIZE / SSE_VLEN;
+
+    MNRY_STATIC_ASSERT(SRC_SOA_SIZE <= SRC_SOA_STRIDE);
+    MNRY_STATIC_ASSERT(SRC_SOA_SIZE % (SSE_SIMD_REGISTER_SIZE * SSE_VLEN) == 0);
+    MNRY_STATIC_ASSERT(SRC_SOA_STRIDE % (SSE_SIMD_REGISTER_SIZE * SSE_VLEN) == 0);
+    MNRY_STATIC_ASSERT(DST_AOS_SIZE % SSE_SIMD_REGISTER_SIZE == 0);
+    MNRY_STATIC_ASSERT(INDEX_STRIDE % sizeof(uint32_t) == 0);
+
+    MNRY_ASSERT(scene_rdl2::util::isAligned(src, SSE_SIMD_MEMORY_ALIGNMENT));
+    MNRY_ASSERT(scene_rdl2::util::isAligned(dst, SSE_SIMD_MEMORY_ALIGNMENT));
+    MNRY_ASSERT(numElems);
+
+    uint32_t dummy[DST_AOS_SIZE >> 2];
+
+    const unsigned numChunksPerBlock = SRC_SOA_SIZE / (SSE_VLEN * SSE_VLEN * 4);
+
+    unsigned currIdx = 0;
+
+    do {
+        // Find indices within current SOA block.
+        unsigned baseIdx = indices[currIdx];
+        unsigned endIdx = (baseIdx + SSE_VLEN) & ~SSE_VLEN_MASK;
+
+        uint32_t *__restrict dstRows[SSE_VLEN] = { dummy, dummy, dummy, dummy };
+
+        do {
+            dstRows[indices[currIdx] & SSE_VLEN_MASK] = dst[currIdx];
+            ++currIdx;
+            --numElems;
+        } while (numElems && indices[currIdx] < endIdx);
+
+        const uint32_t *soaBlock = src + ((SRC_SOA_STRIDE * (baseIdx >> SSE_VLEN_SHIFT)) / 4);
+        MNRY_ASSERT(scene_rdl2::util::isAligned(soaBlock, SSE_SIMD_MEMORY_ALIGNMENT));
+
+        for (unsigned i = 0; i < numChunksPerBlock; ++i) {
+
+            const uint32_t *__restrict srcChunk = soaBlock + (SSE_VLEN * SSE_VLEN) * i;
+
+            scene_rdl2::math::transposeSOAToAOS_4x4(srcChunk, dstRows);
+
+            dstRows[0] += SSE_VLEN;
+            dstRows[1] += SSE_VLEN;
+            dstRows[2] += SSE_VLEN;
+            dstRows[3] += SSE_VLEN;
+        }
+
+    } while (numElems);
+}
+
+
 
 template<unsigned SRC_AOS_SIZE,
          unsigned SRC_AOS_STRIDE,
@@ -425,7 +583,7 @@ convertAOSToSOAIndexed_AVX(unsigned numElems,
     //
     for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX_VLEN] =
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX_VLEN] =
         {
             (const uint32_t *)(&aosData[sortIndices[0]]),
             (const uint32_t *)(&aosData[sortIndices[SORT_INDEX_STRIDE >> 2]]),
@@ -467,7 +625,7 @@ convertAOSToSOAIndexed_AVX(unsigned numElems,
 
         MNRY_ASSERT(remainingEntries < AVX_VLEN);
 
-        const CACHE_ALIGN uint32_t *__restrict srcRows[AVX_VLEN];
+        CACHE_ALIGN const uint32_t *__restrict srcRows[AVX_VLEN];
 
         // Fill in valid entries.
         for (unsigned i = 0; i < remainingEntries; ++i) {
@@ -495,6 +653,103 @@ convertAOSToSOAIndexed_AVX(unsigned numElems,
             srcRows[7] += AVX_VLEN;
 
             dst += (AVX_VLEN * AVX_VLEN);
+        }
+    }
+}
+
+template<unsigned SRC_AOS_SIZE,
+         unsigned SRC_AOS_STRIDE,
+         unsigned DST_SOA_STRIDE,
+         unsigned SORT_INDEX_STRIDE,
+         unsigned PREFETCH_DISTANCE>
+inline void
+convertAOSToSOAIndexed_NEON(unsigned numElems,
+                           const uint32_t *__restrict src,
+                           uint32_t *__restrict dst,
+                           const uint32_t *sortIndices)
+{
+    MNRY_STATIC_ASSERT(SRC_AOS_SIZE <= SRC_AOS_STRIDE);
+    MNRY_STATIC_ASSERT(SRC_AOS_SIZE % (SSE_VLEN * 4) == 0);
+    MNRY_STATIC_ASSERT(SRC_AOS_STRIDE % (SSE_VLEN * 4) == 0);
+    MNRY_STATIC_ASSERT(DST_SOA_STRIDE % (SSE_VLEN * SSE_SIMD_REGISTER_SIZE) == 0);
+    MNRY_STATIC_ASSERT(SORT_INDEX_STRIDE % sizeof(uint32_t) == 0);
+
+    MNRY_ASSERT(scene_rdl2::util::isAligned(src, SSE_SIMD_MEMORY_ALIGNMENT));
+    MNRY_ASSERT(scene_rdl2::util::isAligned(dst, SSE_SIMD_MEMORY_ALIGNMENT));
+
+    const unsigned numFullBlocks = numElems / SSE_VLEN;
+    const unsigned numChunksPerBlock = SRC_AOS_SIZE / SSE_SIMD_MEMORY_ALIGNMENT;
+
+    struct ALIGN(SSE_SIMD_MEMORY_ALIGNMENT) AOSData
+    {
+        uint8_t mData[SRC_AOS_STRIDE];
+    };
+
+    const AOSData *aosData = (const AOSData *)src;
+
+    //
+    // Transpose all full blocks.
+    //
+    for (unsigned iblock = 0; iblock < numFullBlocks; ++iblock) {
+
+        const uint32_t *__restrict srcRows[SSE_VLEN] =
+        {
+            (const uint32_t *)(&aosData[sortIndices[0]]),
+            (const uint32_t *)(&aosData[sortIndices[SORT_INDEX_STRIDE >> 2]]),
+            (const uint32_t *)(&aosData[sortIndices[SORT_INDEX_STRIDE >> 1]]),
+            (const uint32_t *)(&aosData[sortIndices[3 * (SORT_INDEX_STRIDE >> 2)]])
+        };
+        sortIndices += SSE_VLEN * (SORT_INDEX_STRIDE >> 2);
+
+        for (unsigned i = 0; i < numChunksPerBlock; ++i) {
+
+            uint32_t *__restrict dstChunk = dst + (SSE_VLEN * SSE_VLEN) * i;
+
+            scene_rdl2::math::transposeAOSToSOA_4x4(srcRows, dstChunk);
+
+            srcRows[0] += SSE_VLEN;
+            srcRows[1] += SSE_VLEN;
+            srcRows[2] += SSE_VLEN;
+            srcRows[3] += SSE_VLEN;
+        }
+
+        // Take destination stride into account.
+        dst += DST_SOA_STRIDE >> 2;
+    }
+
+    //
+    // Transpose remaining entries into a partially filled block.
+    //
+    unsigned remainingEntries = numElems - (numFullBlocks * SSE_VLEN);
+
+    if (remainingEntries) {
+
+        MNRY_ASSERT(remainingEntries < SSE_VLEN);
+
+        const uint32_t *__restrict srcRows[SSE_VLEN];
+
+        // Fill in valid entries.
+        for (unsigned i = 0; i < remainingEntries; ++i) {
+            srcRows[i] = (const uint32_t *)(&aosData[sortIndices[i * (SORT_INDEX_STRIDE >> 2)]]);
+        }
+
+        // Duplicate final entries to fill out trailing lanes.
+        const uint32_t *finalRow = (const uint32_t *)(&aosData[sortIndices[(remainingEntries - 1) * (SORT_INDEX_STRIDE >> 2)]]);
+        for (unsigned i = remainingEntries; i < SSE_VLEN; ++i) {
+            srcRows[i] = finalRow;
+        }
+
+        // Process remaining chunks in this block whilst prefetching from the next block.
+        for (unsigned i = 0; i < numChunksPerBlock; ++i) {
+
+            scene_rdl2::math::transposeAOSToSOA_4x4(srcRows, dst);
+
+            srcRows[0] += SSE_VLEN;
+            srcRows[1] += SSE_VLEN;
+            srcRows[2] += SSE_VLEN;
+            srcRows[3] += SSE_VLEN;
+
+            dst += (SSE_VLEN * SSE_VLEN);
         }
     }
 }

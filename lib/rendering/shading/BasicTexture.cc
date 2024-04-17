@@ -14,6 +14,13 @@
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
 
+#ifdef __ARM_NEON__
+// This works around OIIO including x86 based headers due to detection of SSE
+// support due to sse2neon.h being included elsewhere
+#define __IMMINTRIN_H
+#define __NMMINTRIN_H
+#endif
+
 #include <OpenImageIO/texture.h>
 
 #include <memory>
@@ -143,7 +150,7 @@ public:
         mIspc.mIsValid = false;
 
         mTextureHandles.assign(1, nullptr);
-        mIspc.mTextureHandles = reinterpret_cast<intptr_t *>(&mTextureHandles[0]);
+        mIspc.mTextureHandles = reinterpret_cast<int64_t *>(&mTextureHandles[0]);
 
         // load and prepare the texture...
         std::string errorString;

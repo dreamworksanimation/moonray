@@ -13,6 +13,8 @@
 
 #include <embree4/rtcore.h>
 
+#include <scene_rdl2/common/platform/Platform.h>
+
 namespace scene_rdl2 {
 
 namespace rdl2 {

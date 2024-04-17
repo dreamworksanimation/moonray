@@ -10,7 +10,11 @@
 #include <moonray/common/mcrt_util/Average.h>
 #include <scene_rdl2/common/platform/Platform.h>
 
+#if __ARM_NEON__
+#include <scene_rdl2/common/arm/emulation.h>
+#else
 #include <x86intrin.h>
+#endif
 
 namespace moonray {
 namespace time {
@@ -20,7 +24,11 @@ namespace time {
 
 // Returns a performance counter in ticks
 __forceinline uint64 getTicks()  {
+#if __ARM_NEON__
+    return _rdtsc();
+#else
     return __rdtsc();
+#endif
 }
 
 

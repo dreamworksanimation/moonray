@@ -23,15 +23,21 @@
 // Much of this code mimics the code in GCC 12.1's atomic_wait code. The general problem is that futexes are only
 // defined on 32-bit integers, and we have to make it work on the general types supported by std::atomic.
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 #include <climits>
 #include <linux/futex.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#endif
 
 #if !defined(_GLIBCXX_HAVE_LINUX_FUTEX)
 #error Expecting platform wait support
+#endif
+#endif
+
+#if defined(__clang__)
+#include <climits>
+#include <sys/syscall.h>
+#include <unistd.h>
 #endif
 
 inline void do_pause()
@@ -40,6 +46,12 @@ inline void do_pause()
     YieldProcessor();
 #elif defined (__ICC)
     _mm_pause();
+#elif defined(__clang__)
+  #if defined(__aarch64__)
+    __asm__ volatile("yield" ::: "memory");
+  #else // __aarch64__
+    __asm__ volatile("pause");
+  #endif // __aarch64__
 #else
     __builtin_ia32_pause();
 #endif
@@ -112,7 +124,7 @@ inline bool spin_lock(Pred pred) noexcept
     return atomic_spin(pred, []{ return true; });
 }
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) && !defined(__clang__)
 template <typename T>
 inline bool wait_aligned(const T* ptr) noexcept
 {
@@ -151,7 +163,11 @@ struct WaiterPoolBase
 #if defined(__cpp_lib_hardware_interference_size)
     static constexpr size_t s_align = std::hardware_destructive_interference_size;
 #else
+  #if defined(__arm64__)
+    static constexpr size_t s_align = 128;
+  #else
     static constexpr size_t s_align = 64;
+  #endif
 #endif
 
     alignas(s_align) platform_wait_t m_wait = 0;
@@ -381,7 +397,7 @@ inline void wait(const std::atomic<T>& a, T old, std::memory_order order = std::
 {
 #if defined(__cpp_lib_atomic_wait)
     a.wait(old, order);
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
     const T* const addr = reinterpret_cast<const T*>(std::addressof(a));
     wait_impl::atomic_wait_address_v(addr, old, [order, &a] { return a.load(order); });
 #else
@@ -394,7 +410,7 @@ inline void notify_one(std::atomic<T>& a) noexcept
 {
 #if defined(__cpp_lib_atomic_wait)
     a.notify_one();
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
     const T* const addr = reinterpret_cast<const T*>(std::addressof(a));
     wait_impl::atomic_notify_address(addr, false);
 #endif
@@ -405,7 +421,7 @@ inline void notify_all(std::atomic<T>& a) noexcept
 {
 #if defined(__cpp_lib_atomic_wait)
     a.notify_all();
-#elif defined(__GNUC__)
+#elif defined(__GNUC__) && !defined(__clang__)
 #pragma warning push
 #pragma warning disable 444 // destructor for base class isn't virtual
     const T* const addr = reinterpret_cast<const T*>(std::addressof(a));

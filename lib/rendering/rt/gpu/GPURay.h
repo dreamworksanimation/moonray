@@ -3,6 +3,10 @@
 
 #pragma once
 
+#ifndef __METAL__
+#include <stdint.h>
+#endif
+
 namespace moonray {
 namespace rt {
 
@@ -15,13 +19,15 @@ namespace rt {
 
 struct GPURay
 {
+#ifndef __APPLE__
     float mOriginX, mOriginY, mOriginZ;
     float mDirX, mDirY, mDirZ;
     float mMinT;
     float mMaxT;
     float mTime;
+#endif
     int mShadowReceiverId;
-    unsigned long long mLightId;
+    uint64_t mLightId;
 };
 
 // Used for intersect() queries but not occluded()

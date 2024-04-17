@@ -1137,6 +1137,8 @@ CPP_addRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
         mcrt_common::convertSOAToAOSIndexed_AVX512
 #elif (VLEN == 8u)
         mcrt_common::convertSOAToAOSIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+        mcrt_common::convertSOAToAOSIndexed_NEON
 #else
 #error Requires at least AVX to build.
 #endif
@@ -1188,6 +1190,8 @@ CPP_addOcclusionQueueEntries(pbr::TLState *pbrTls, const BundledOcclRayv *occlRa
         mcrt_common::convertSOAToAOSIndexed_AVX512
 #elif (VLEN == 8u)
         mcrt_common::convertSOAToAOSIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+        mcrt_common::convertSOAToAOSIndexed_NEON
 #else
 #error Requires at least AVX to build.
 #endif
@@ -1239,6 +1243,8 @@ CPP_addPresenceShadowsQueueEntries(pbr::TLState *pbrTls, const BundledOcclRayv *
         mcrt_common::convertSOAToAOSIndexed_AVX512
 #elif (VLEN == 8u)
         mcrt_common::convertSOAToAOSIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+        mcrt_common::convertSOAToAOSIndexed_NEON
 #else
 #error Requires at least AVX to build.
 #endif
@@ -1290,6 +1296,8 @@ CPP_addRadianceQueueEntries(pbr::TLState *pbrTls, const BundledRadiancev *radian
         mcrt_common::convertSOAToAOSIndexed_AVX512
 #elif (VLEN == 8u)
         mcrt_common::convertSOAToAOSIndexed_AVX
+#elif (VLEN == 4u) && defined(__ARM_NEON__)
+        mcrt_common::convertSOAToAOSIndexed_NEON
 #else
 #error Requires at least AVX to build.
 #endif

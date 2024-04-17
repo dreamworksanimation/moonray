@@ -9,10 +9,17 @@ set(exportGroup ${PROJECT_NAME}Targets)
 add_library(${component} SHARED "")
 add_library(${PROJECT_NAME}::${component} ALIAS ${component})
 
+if(IsDarwinPlatform)
+    set(PlatformSpecificSources macos/ChangeWatcherImpl.mm)
+else(IsLinuxPlatform)
+    set(PlatformSpecificSources linux/ChangeWatcherImpl.cc)
+endif()
+
 target_sources(${component}
     PRIVATE
-        ChangeWatcher.cc
         RaasApplication.cc
+        RaasApplication.h
+        ${PlatformSpecificSources}
 )
 
 set_property(TARGET ${component}
@@ -33,6 +40,11 @@ target_link_libraries(${component}
         SceneRdl2::render_logging
         ${PROJECT_NAME}::rendering_rndr
 )
+
+if(IsDarwinPlatform)
+    find_library(CoreServices CoreServices REQUIRED)
+    target_link_libraries(${component} PUBLIC ${CoreServices})
+endif()
 
 # If at Dreamworks add a SConscript stub file so others can use this library.
 SConscript_Stub(${component})

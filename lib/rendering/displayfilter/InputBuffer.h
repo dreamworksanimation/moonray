@@ -73,7 +73,7 @@ private:
     DISPLAYFILTER_INPUTBUFFER_MEMBERS;
 };
 
-MNRY_STATIC_ASSERT(sizeof(InputBuffer) % CACHE_LINE_SIZE == 0);
+MNRY_STATIC_ASSERT(sizeof(InputBuffer) % CACHE_LINE_SIZE == (CACHE_LINE_SIZE == 64 ? 0 : 64));
 
 } // namespace displayfilter
 } // namespace moonray

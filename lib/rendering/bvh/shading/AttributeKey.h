@@ -19,12 +19,18 @@ using scene_rdl2::rdl2::attributeType;
 namespace moonray {
 namespace shading {
 
+// A NORMAL preprocessor macro is defined as a result of
+// moonray/lib/rendering/pbr/core/AovMat.ll
+// We need to temporarily disable it to define our enum
+#pragma push_macro("NORMAL")
+#undef NORMAL
 enum class Vec3Type
 {
     POINT,
     VECTOR,
     NORMAL
 };
+#pragma pop_macro("NORMAL")
 
 /// @class AttributeKey
 /// @brief a light weight index with type/name/size info for fast lookup

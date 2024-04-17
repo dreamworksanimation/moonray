@@ -31,6 +31,14 @@
 #include <sys/param.h>
 #include <unistd.h>
 
+#ifndef HOST_NAME_MAX
+# ifdef _POSIX_HOST_NAME_MAX
+#  define HOST_NAME_MAX _POSIX_HOST_NAME_MAX
+# else
+#  define HOST_NAME_MAX 255
+# endif
+#endif
+
 namespace moonray {
 namespace rndr {
 
@@ -480,6 +488,7 @@ RenderStats::logRenderOptions(const RenderOptions& options, std::ostream& outs, 
 {
     const bool csvStream = format == OutputFormat::athenaCSV || format == OutputFormat::fileCSV;
 
+#ifndef __APPLE__  // TODO: Temporary, reimplement this
     util::CPUID cpuid;
 
     StatsTable<2> hardwareTable("Hardware Support");
@@ -599,6 +608,7 @@ RenderStats::logRenderOptions(const RenderOptions& options, std::ostream& outs, 
             writeEqualityInfoTable(outs, getPrependString(), luaTable);
         }
     }
+#endif
 }
 
 void

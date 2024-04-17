@@ -1068,9 +1068,9 @@ void
 LightStageCylinderBsdfSlice::computeCylLightStagePNT(float thetaO, Vec3f &P,
         Vec3f &N, Vec3f &T) const
 {
-    N = Vec3f(sin(thetaO), 0.0f, cos(thetaO));
+    N = Vec3f(scene_rdl2::math::sin(thetaO), 0.0f, scene_rdl2::math::cos(thetaO));
     P = N * getCylRadius();
-    T = Vec3f(cos(thetaO), 0.0f, -sin(thetaO));
+    T = Vec3f(scene_rdl2::math::cos(thetaO), 0.0f, -scene_rdl2::math::sin(thetaO));
     P = transformPoint(getCyl2W(), P);
     T = transformVector(getCyl2W(), T);
     N = transformNormal(getW2Cyl(), N);
@@ -1208,7 +1208,7 @@ Color
 LightStageCylinderBsdfSlice::getBsdf(const Vec3f &localWo, const Vec3f &localWi,
         const Vec2f &smoothThetaWoRange, bool useLerp) const
 {
-    const float thetaWo = acos(max(localWo.z, 0.0f));
+    const float thetaWo = scene_rdl2::math::acos(max(localWo.z, 0.0f));
     if (thetaWo >= smoothThetaWoRange[1]) {
         return getBsdfSample(localWo, localWi, useLerp);
     }
@@ -1242,9 +1242,9 @@ LightStageCylinderBsdfSlice::getBsdfSample(const Vec3f &localWo,
     if (cosThetaO < sEpsilon) {
         return Color(0.0f);
     }
-    float thetaO = acos(cosThetaO);
+    float thetaO = scene_rdl2::math::acos(cosThetaO);
     float findexThetaO = thetaO / sHalfPi * (mSizeThetaO - sFloatIndexEpsilon);
-    int indexThetaO = int(floor(findexThetaO));
+    int indexThetaO = int(scene_rdl2::math::floor(findexThetaO));
     MNRY_ASSERT(indexThetaO >= 0  &&  indexThetaO < mSizeThetaO);
 
     // Compute P, N, T on the cylinder in light-stage space
@@ -1255,7 +1255,7 @@ LightStageCylinderBsdfSlice::getBsdfSample(const Vec3f &localWo,
     // Convert localWi to cylinder local space (see computeCylLightStagePNT()):
     // We rotate around N such that phiO = pi:
     // phiO' = pi;  phiI' = phiI + (pi - phiO)
-    float phiO = atan2(localWo.y, localWo.x);
+    float phiO = scene_rdl2::math::atan2(localWo.y, localWo.x);
     Vec3f cylWi = rotate(localWi, Vec3f(0.0f, 0.0f, 1.0f),
             (mTop  ?  -phiO  :  sPi - phiO));
 

@@ -1,6 +1,8 @@
 // Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
+#if !defined(__APPLE__)
+
 #include "CPUID.h"
 
 namespace moonray {
@@ -14,3 +16,4 @@ CPUID::AtomicSize CPUID::s_atomic_sizes;
 } // namespace util
 } // namespace moonray
 
+#endif

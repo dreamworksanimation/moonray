@@ -92,6 +92,10 @@ target_include_directories(${component}
         $<INSTALL_INTERFACE:include>
 )
 
+if(IsDarwinPlatform)
+    set_target_properties(${component} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
+endif()
+
 target_link_libraries(${component}
     PUBLIC
         SceneRdl2::common_except
@@ -114,8 +118,15 @@ target_link_libraries(${component}
         OpenImageIO::OpenImageIO
         OpenVDB::OpenVDB
         TBB::tbb
-        atomic
         embree
+
+        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
+            atomic
+        >
+
+        $<$<CXX_COMPILER_ID:Clang>:
+            atomic
+        >
 )
 
 # If at Dreamworks add a SConscript stub file so others can use this library.

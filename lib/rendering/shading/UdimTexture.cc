@@ -14,6 +14,12 @@
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
 
+#ifdef __ARM_NEON__
+// This works around OIIO including x86 based headers due to detection of SSE
+// support due to sse2neon.h being included elsewhere
+#define __IMMINTRIN_H
+#define __NMMINTRIN_H
+#endif
 #include <OpenImageIO/texture.h>
 
 #include <tbb/blocked_range.h>
@@ -218,7 +224,7 @@ public:
         mHeights.assign(mNumTextures, 0);
         mPixelAspectRatios.assign(mNumTextures, 0.0f);
         mTextureHandles.assign(mNumTextures, nullptr);
-        mIspc.mTextureHandles = reinterpret_cast<intptr_t *>(&mTextureHandles[0]);
+        mIspc.mTextureHandles = reinterpret_cast<int64_t *>(&mTextureHandles[0]);
         mTextureOptions.resize(mNumTextures * QualityCount);
 
         size_t udimPos = filename.find("<UDIM>");

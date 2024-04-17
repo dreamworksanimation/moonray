@@ -7,6 +7,14 @@
 #include <scene_rdl2/common/platform/HybridUniformData.hh>
 
 // Sizeof members of STL types for ispc
+#if defined(__APPLE__)
+#define SIZEOF_BGEXTRAAOVS          24
+#define SIZEOF_LPE_STATEMACHINE     8
+#define SIZEOF_LABELSUBSTITUTIONS   40
+#define SIZEOF_STD_VECTOR           24
+#define SIZEOF_VARIANCEAOVMAP       80
+#define AOV_SCHEMA_MEMBERS_PADDING  6
+#else
 #if STL_VERSION <= 4
 #define SIZEOF_BGEXTRAAOVS          24
 #define SIZEOF_LPE_STATEMACHINE     8
@@ -20,6 +28,7 @@
 #define SIZEOF_STD_VECTOR           24
 #define AOV_SCHEMA_MEMBERS_PADDING  6
 #endif
+#endif // __APPLE__
 
 // The ispc code does not have access to the AovSchemaID enumeration.
 // Its getStateVar function is written using this enum

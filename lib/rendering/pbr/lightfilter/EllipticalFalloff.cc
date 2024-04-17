@@ -72,8 +72,12 @@ evalSuperEllipse(float x, float y,   // cartesian point we are evaluating at
     } else {
         /* Harder, rounded corner case */
         float re = 2.0f / roundness;   /* roundness exponent */
-        float q  = a * b * pow(pow(b*x, re) + pow(a*y, re), -1/re);
-        float r  = A * B * pow(pow(B*x, re) + pow(A*y, re), -1/re);
+        float q  = a * b * scene_rdl2::math::pow(
+                                scene_rdl2::math::pow(b*x, re) +
+                                scene_rdl2::math::pow(a*y, re), -1/re);
+        float r  = A * B * scene_rdl2::math::pow(
+                                scene_rdl2::math::pow(B*x, re) +
+                                scene_rdl2::math::pow(A*y, re), -1/re);
 
         /* smoothstep(r, q, 1) */
         if (1 > r) {
@@ -135,12 +139,14 @@ EllipticalFalloff::setFov(float innerFov, float outerFov)
         mInnerW = 0.0f; mInnerH = 0.0f;
         mOuterW = 0.0f; mOuterH = 0.0f;
     } else if (widthToHeight <= 1.0f) {
-        mInnerH = tan(deg2rad(innerFov * 0.5f)) / tan(deg2rad(outerFov * 0.5f));
+        mInnerH = scene_rdl2::math::tan(deg2rad(innerFov * 0.5f)) /
+                    scene_rdl2::math::tan(deg2rad(outerFov * 0.5f));
         mOuterH = 1.0f;
         mInnerW = mInnerH * widthToHeight;
         mOuterW = (mOuterH - mInnerH) * widthToHeight + mInnerW;
     } else {
-        mInnerW = tan(deg2rad(innerFov * 0.5f)) / tan(deg2rad(outerFov * 0.5f));
+        mInnerW = scene_rdl2::math::tan(deg2rad(innerFov * 0.5f)) /
+                    scene_rdl2::math::tan(deg2rad(outerFov * 0.5f));
         mOuterW = 1.0f;
         mInnerH = mInnerW / widthToHeight;
         mOuterH = (mOuterW - mInnerW) / widthToHeight + mInnerH;

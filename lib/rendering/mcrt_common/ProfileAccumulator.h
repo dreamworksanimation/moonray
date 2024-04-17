@@ -15,7 +15,11 @@
 #pragma once
 #include <scene_rdl2/render/util/Memory.h>
 #include <scene_rdl2/render/util/MiscUtils.h>
+#if __ARM_NEON__
+#include <scene_rdl2/common/arm/emulation.h>
+#else
 #include <x86intrin.h>
+#endif
 
 #include <atomic>
 #include <cstring>
@@ -34,7 +38,9 @@ namespace mcrt_common {
 __forceinline uint64_t
 getProfileAccumulatorTicks()
 {
-#if 1
+#if __ARM_NEON__
+    return _rdtsc();
+#elif 1
     return __rdtsc();
 #else
     unsigned aux;
@@ -58,7 +64,11 @@ struct Accumulator;
 struct ThreadLocalAccumulator;
 
 extern bool gAccumulatorsActive;
+#ifndef __APPLE__
 MNRY_DURING_ASSERTS(extern alignas(CACHE_LINE_SIZE) std::atomic_int gNumAccumulatorsActive);
+#else
+MNRY_DURING_ASSERTS(extern std::atomic_int gNumAccumulatorsActive);
+#endif
 
 struct AccumulatorResult
 {
