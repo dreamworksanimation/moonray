@@ -36,14 +36,6 @@ option(${PROJECT_NAME_UPPER}_BUILD_TESTING
 option(${PROJECT_NAME_UPPER}_DWA_BUILD
     "Whether to enable DWA-specific features" NO)
 
-if(IsLinuxPlatform)
-    option(MOONRAY_USE_OPTIX "Whether to enable XPU mode and Optix denoising" YES)
-elseif(IsDarwinPlatform)
-    option(MOONRAY_USE_METAL "Whether to enable XPU mode and OIDN Metal denoising" YES)
-endif()
-
-
-
 # Ideally MOONRAY_DWA_BUILD should be set to YES externally (e.g. by rez-build), but this
 # is a fallback to enable it if STUDIO=GLD...
 if(GLD STREQUAL "$ENV{STUDIO}")
