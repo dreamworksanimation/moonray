@@ -495,7 +495,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     const SortedEntry *endEntry = sortedEntries + numEntries;
 
     float *presences = arena->allocArray<float>(shadingWorkloadChunkSize);
-    bool *continueDeepRays = arena->allocArray<bool>(shadingWorkloadChunkSize);
 
     // Split total work load into workloads which can be kept within the
     // cache hierarchy.
@@ -586,112 +585,6 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
         // Evaluate any extra aovs on this material
         if (!cutout && aovs) {
             aovAccumExtraAovsBundled(pbrTls, fs, rayStates, presences, isectsSOA, &material, workLoadSize);
-        }
-
-        {
-            // ***** Handle spawning continuation rays for multi-layer deeps
-
-            // Count the number of deep layer rays we need
-            unsigned numDeepLayerRays = 0;
-            for (unsigned i = 0; i < workLoadSize; ++i) {
-                continueDeepRays[i] = false;
-
-                RayState *rs = rayStates[i];
-                mcrt_common::RayDifferential *ray = &rs->mRay;
-
-                // We only care about primary rays here
-                if (ray->getDepth() > 0) {
-                    continue;
-                }
-
-                // We must be rendering to the deep buffer
-                if (rs->mDeepDataHandle == pbr::nullHandle) {
-                    continue;
-                }
-                pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
-
-                // Check the current layer depth against the maximum
-                if (deepData->mLayer == fs.mIntegrator->getDeepMaxLayers() - 1) {
-                    continue;
-                }
-
-                // Use fewer samples for deeper layers
-                // +1 because we are computing the samples in the *next* layer
-                int samplesDivision = 1 << ((deepData->mLayer + 1) * 2);  // 1, 4, 16, 64 ...
-                if ((rs->mSubpixel.mSubpixelIndex % samplesDivision) > 0) {
-                    continue;
-                }
-
-                continueDeepRays[i] = true;
-                numDeepLayerRays++;
-            }
-
-            // Create the deep layer rays if needed
-            RayState **deepLayerRays = nullptr;
-            if (numDeepLayerRays) {
-                deepLayerRays = pbrTls->allocRayStates(numDeepLayerRays);
-                numDeepLayerRays = 0;
-
-                for (unsigned i = 0; i < workLoadSize; ++i) {\
-                    if (!continueDeepRays[i]) {
-                        continue;
-                    }
-
-                    RayState *rs = rayStates[i];
-                    pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
-
-                    // Setup the deep layer ray
-
-                    RayState *deepLayerRay = deepLayerRays[numDeepLayerRays++];
-                    float deepLayerBias = fs.mIntegrator->getDeepLayerBias();
-
-                    // Copy the raystate, but we will need to reset a few things.
-                    // We could create a new ray but then we'd need to call the camera
-                    //  and a bunch of other logic, and that would be slower.
-                    *deepLayerRay = *rs;
-
-                    // Move the origin back to the original origin.
-                    deepLayerRay->mRay.org -= rs->mRay.dir * rs->mRay.tfar;
-
-                    // Set tnear to ignore the currently intersected geometry
-                    deepLayerRay->mRay.tnear = rs->mRay.tfar + deepLayerBias;
-
-                    // Restore tfar to the original camera ray tfar
-                    deepLayerRay->mRay.tfar = rs->mRay.getOrigTfar();
-                    deepLayerRay->mRay.setOrigTfar(deepLayerRay->mRay.tfar);
-
-                    // Reset all the intersection state, throughput, and depths
-                    deepLayerRay->mRay.geomID = -1;
-                    deepLayerRay->mRay.primID = -1;
-                    deepLayerRay->mRay.instID = -1;
-                    deepLayerRay->mPathVertex.pathThroughput = scene_rdl2::math::Color(1.f);
-                    deepLayerRay->mPathVertex.pathPixelWeight = 1.f;
-                    deepLayerRay->mPathVertex.aovPathPixelWeight = 1.f;
-                    deepLayerRay->mPathVertex.pathDistance = 0.f;
-                    deepLayerRay->mPathVertex.minRoughness = scene_rdl2::math::Vec2f(0.0f);
-                    deepLayerRay->mPathVertex.diffuseDepth = 0;
-                    deepLayerRay->mPathVertex.subsurfaceDepth = 0;
-                    deepLayerRay->mPathVertex.glossyDepth = 0;
-                    deepLayerRay->mPathVertex.mirrorDepth = 0;
-                    deepLayerRay->mPathVertex.nonMirrorDepth = 0;
-                    deepLayerRay->mPathVertex.presenceDepth = 0;
-                    deepLayerRay->mPathVertex.totalPresence = 0.f;
-                    deepLayerRay->mPathVertex.hairDepth = 0;
-                    deepLayerRay->mPathVertex.volumeDepth = 0;
-                    deepLayerRay->mPathVertex.accumOpacity = 0.f;
-
-                    // Need a new DeepData for this new ray
-                    deepLayerRay->mDeepDataHandle = pbrTls->allocList(sizeof(pbr::DeepData), 1);
-                    pbr::DeepData *deepData2 =
-                        static_cast<pbr::DeepData*>(pbrTls->getListItem(deepLayerRay->mDeepDataHandle, 0));
-                    deepData2->mHitDeep = false;
-                    deepData2->mRefCount = 1;
-                    deepData2->mLayer = deepData->mLayer + 1;
-                }
-
-                // Trace deep layer rays
-                pbrTls->addRayQueueEntries(numDeepLayerRays, deepLayerRays);
-            }
         }
 
         {

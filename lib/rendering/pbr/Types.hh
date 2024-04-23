@@ -161,7 +161,7 @@ enum OcclTestType
     HUD_MEMBER(uint32_t, mHitDeep);                                     \
     HUD_MEMBER(float, mSubpixelX);                                      \
     HUD_MEMBER(float, mSubpixelY);                                      \
-    HUD_MEMBER(int, mLayer);                                            \
+    HUD_MEMBER(int, mPad);                                              \
     HUD_MEMBER(float, mRayZ);                                           \
     HUD_MEMBER(float, mDeepT);                                          \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDeepNormal);    \
@@ -175,7 +175,7 @@ enum OcclTestType
     HUD_VALIDATE(DeepData, mHitDeep);                   \
     HUD_VALIDATE(DeepData, mSubpixelX);                 \
     HUD_VALIDATE(DeepData, mSubpixelY);                 \
-    HUD_VALIDATE(DeepData, mLayer);                     \
+    HUD_VALIDATE(DeepData, mPad);                       \
     HUD_VALIDATE(DeepData, mRayZ);                      \
     HUD_VALIDATE(DeepData, mDeepT);                     \
     HUD_VALIDATE(DeepData, mDeepNormal);                \

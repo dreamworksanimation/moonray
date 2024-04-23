@@ -212,9 +212,6 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
     mEnableSSS            = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableSSS);
     mEnableShadowing      = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableShadowing);
 
-    mDeepMaxLayers = vars.get(scene_rdl2::rdl2::SceneVariables::sDeepMaxLayers);
-    mDeepLayerBias = vars.get(scene_rdl2::rdl2::SceneVariables::sDeepLayerBias);
-
     // Create attr keys for the deep IDs so we can retrieve the IDs from the
     //  primitive attributes during integration.
     mDeepIDAttrIdxs.clear();
@@ -1244,121 +1241,93 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
 
         float *deepVolumeAovs = aovParams.mDeepVolumeAovs;
 
-        for (int layer = 0; layer < mDeepMaxLayers; layer++) {
+        DeepParams deepParams;
+        deepParams.mDeepBuffer = deepBuffer;
+        deepParams.mPixelX = pixelX;
+        deepParams.mPixelY = pixelY;
+        deepParams.mSampleX = sample.pixelX;
+        deepParams.mSampleY = sample.pixelY;
+        deepParams.mPixelSamples = pixelSamples;
+        deepParams.mHitDeep = false;
+        deepParams.mVolumeAovs = deepVolumeAovs;
 
-            int samplesDivision = 1 << (layer * 2);  // 1, 4, 16, 64 ...
-            if ((subpixelIndex % samplesDivision) > 0) {
-                continue;
+        // This is the only place we pass a non-null deepParams as we only want to
+        // populate the deep buffer for the primary ray.
+
+        // First render normally, capturing the deep volume segments (if any) and
+        // the flat radiance + aovs.  Check if we hit any volumes with the primary ray.
+        bool hitVolume = false;
+        scene_rdl2::math::Color deepRadiance;
+        float deepTransparency;
+        computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, deepRadiance,
+                               deepTransparency, vt, sequenceID, aovs, depth,
+                               &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
+                               false, hitVolume);
+
+        float deepAlpha = 1.f - deepTransparency;
+
+        radiance = deepRadiance;
+        alpha = deepAlpha;
+        pathPixelWeight = pv.pathPixelWeight;
+
+        if (hitVolume) {
+            // We hit a volume.  Render again with the volume disabled to get the
+            // correct hard surface radiance without volume attenuation applied.
+            // Note that we can't alter the radiance or aovs computed above.  We need
+            // independent hs* data structures for this.
+            mcrt_common::RayDifferential hsRay;
+            Subpixel hsSp;
+            PathVertex hsPv;
+            initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
+                           pixelSamples, sample, hsRay, hsSp, hsPv);
+
+            // LPE
+            if (aovs) {
+                EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+
+                const LightAovs &lightAovs = *fs.mLightAovs;
+
+                // transition
+                hsPv.lpeStateId = lightAovs.cameraEventTransition(pbrTls);
             }
 
-            if (layer > 0) {
-                float tfar = ray.tfar;
-                initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
-                               pixelSamples, sample, ray, sp, pv);
-                ray.tnear = tfar + mDeepLayerBias;
-
-                // LPE
-                if (aovs) {
-                    fs.mAovSchema->initFloatArray(aovParams.mDeepAovs);
-                    const LightAovs &lightAovs = *fs.mLightAovs;
-                    pv.lpeStateId = lightAovs.cameraEventTransition(pbrTls);
-                }
-            }
-
-            DeepParams deepParams;
-            deepParams.mDeepBuffer = deepBuffer;
-            deepParams.mPixelX = pixelX;
-            deepParams.mPixelY = pixelY;
-            deepParams.mSampleX = sample.pixelX;
-            deepParams.mSampleY = sample.pixelY;
-            deepParams.mPixelSamples = pixelSamples;
-            deepParams.mHitDeep = false;
-            deepParams.mVolumeAovs = deepVolumeAovs;
-
-            // This is the only place we pass a non-null deepParams as we only want to
-            // populate the deep buffer for the primary ray.
-
-            // First render normally, capturing the deep volume segments (if any) and
-            // the flat radiance + aovs.  Check if we hit any volumes with the primary ray.
-            bool hitVolume = false;
-            scene_rdl2::math::Color deepRadiance;
-            float deepTransparency;
-            float *deepAovs = (layer == 0) ? aovs : aovParams.mDeepAovs;
-            computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, deepRadiance,
-                                   deepTransparency, vt, sequenceID, deepAovs, depth,
+            scene_rdl2::math::Color hsRadiance;
+            float hsTransparency;
+            float *hsAovs = aovParams.mDeepAovs;
+            computeRadianceRecurse(pbrTls, hsRay, hsSp, hsPv, nullptr, hsRadiance,
+                                   hsTransparency, vt, hsSequenceID, hsAovs, depth,
                                    &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
-                                   false, hitVolume);
+                                   true, hitVolume);
 
-            float deepAlpha = 1.f - deepTransparency;
+            float hsAlpha = 1.f;
 
-            if (layer == 0) {
-                radiance = deepRadiance;
-                alpha = deepAlpha;
-                pathPixelWeight = pv.pathPixelWeight;
+            if (deepParams.mHitDeep) {
+                // put the hard surface deep intersection into the deep buffer
+                scene_rdl2::math::Vec3f hsNormal = hsRay.getNg();
+                deepBuffer->addSample(pbrTls, deepParams.mPixelX, deepParams.mPixelY,
+                                      deepParams.mSampleX, deepParams.mSampleY, 0,
+                                      deepParams.mDeepIDs, hsRay.tfar, hsRay.dir.z, hsNormal,
+                                      hsAlpha, hsRadiance, hsAovs, 1.f, 1.f);
             }
 
-            if (hitVolume) {
-                // We hit a volume.  Render again with the volume disabled to get the
-                // correct hard surface radiance without volume attenuation applied.
-                // Note that we can't alter the radiance or aovs computed above.  We need
-                // independent hs* data structures for this.
-                mcrt_common::RayDifferential hsRay;
-                Subpixel hsSp;
-                PathVertex hsPv;
-                initPrimaryRay(pbrTls, scene->getCamera(), pixelX, pixelY, subpixelIndex,
-                               pixelSamples, sample, hsRay, hsSp, hsPv);
-
-                // LPE
-                if (aovs) {
-                    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-
-                    const LightAovs &lightAovs = *fs.mLightAovs;
-
-                    // transition
-                    hsPv.lpeStateId = lightAovs.cameraEventTransition(pbrTls);
-                }
-
-                scene_rdl2::math::Color hsRadiance;
-                float hsTransparency;
-                float *hsAovs = aovParams.mDeepAovs;
-                computeRadianceRecurse(pbrTls, hsRay, hsSp, hsPv, nullptr, hsRadiance,
-                                       hsTransparency, vt, hsSequenceID, hsAovs, depth,
-                                       &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
-                                       true, hitVolume);
-
-                float hsAlpha = 1.f;
-
-                if (deepParams.mHitDeep) {
-                    // put the hard surface deep intersection into the deep buffer
-                    scene_rdl2::math::Vec3f hsNormal = hsRay.getNg();
-                    deepBuffer->addSample(pbrTls, deepParams.mPixelX, deepParams.mPixelY,
-                                          deepParams.mSampleX, deepParams.mSampleY, layer,
-                                          deepParams.mDeepIDs, hsRay.tfar, hsRay.dir.z, hsNormal,
-                                          hsAlpha, hsRadiance, hsAovs, 1.f, 1.f);
-                }
-
-            } else {
-                // We didn't hit a volume.  Fill in the hard surface data with the existing
-                // radiance+aov values.
-                if (deepParams.mHitDeep) {
-                    // put the hard surface deep intersection into the deep buffer
-                    scene_rdl2::math::Vec3f deepNormal = ray.getNg();
-                    deepBuffer->addSample(pbrTls, deepParams.mPixelX, deepParams.mPixelY,
-                                          deepParams.mSampleX, deepParams.mSampleY, layer,
-                                          deepParams.mDeepIDs, ray.tfar, ray.dir.z, deepNormal,
-                                          deepAlpha, deepRadiance, deepAovs, 1.f, 1.f);
-                } else {
-                    break; // out of layer loop
-                }
+        } else {
+            // We didn't hit a volume.  Fill in the hard surface data with the existing
+            // radiance+aov values.
+            if (deepParams.mHitDeep) {
+                // put the hard surface deep intersection into the deep buffer
+                scene_rdl2::math::Vec3f deepNormal = ray.getNg();
+                deepBuffer->addSample(pbrTls, deepParams.mPixelX, deepParams.mPixelY,
+                                      deepParams.mSampleX, deepParams.mSampleY, 0,
+                                      deepParams.mDeepIDs, ray.tfar, ray.dir.z, deepNormal,
+                                      deepAlpha, deepRadiance, aovs, 1.f, 1.f);
             }
+        }
 
-            if (checkForNanSimple(radiance, "Path integrator", sp)) {
-                // Put a negative value in alpha to denote an invalid sample.
-               radiance = scene_rdl2::math::sBlack;
-               alpha = -1.0f;
-            }
-
-        } // layer
+        if (checkForNanSimple(radiance, "Path integrator", sp)) {
+            // Put a negative value in alpha to denote an invalid sample.
+           radiance = scene_rdl2::math::sBlack;
+           alpha = -1.0f;
+        }
 
     } else {
 

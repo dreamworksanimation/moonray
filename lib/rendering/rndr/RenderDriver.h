@@ -701,8 +701,6 @@ private:
     float                      mCachedTargetAdaptiveError;
     uint                       mCachedDeepVolCompressionRes;
     std::vector<std::string>   mCachedDeepIDChannelNames;
-    int                        mCachedDeepMaxLayers;
-    float                      mCachedDeepLayerBias;
     scene_rdl2::math::Viewport mCachedViewport;
     SamplingMode               mCachedSamplingMode;
     unsigned                   mCachedDisplayFilterCount;

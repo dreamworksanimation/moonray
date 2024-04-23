@@ -517,7 +517,6 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
     mCachedDeepZTolerance(0.0),
     mCachedTargetAdaptiveError(0.0f),
     mCachedDeepVolCompressionRes(0),
-    mCachedDeepMaxLayers(0),
     mCachedViewport(scene_rdl2::math::Viewport(0, 0, 0, 0)),
     mCachedSamplingMode(SamplingMode::UNIFORM),
     mCachedDisplayFilterCount(0),
@@ -794,8 +793,6 @@ RenderDriver::startFrame(const FrameState &fs)
         needToUpdateBasedOnAdaptiveError ||
         mFs.mDeepVolCompressionRes != mCachedDeepVolCompressionRes ||
         *(mFs.mDeepIDChannelNames) != mCachedDeepIDChannelNames ||
-        mFs.mDeepMaxLayers != mCachedDeepMaxLayers ||
-        mFs.mDeepLayerBias != mCachedDeepLayerBias ||
         mFs.mSamplingMode != mCachedSamplingMode ||
         mFs.mDisplayFilterCount != mCachedDisplayFilterCount) {
 
@@ -833,7 +830,6 @@ RenderDriver::startFrame(const FrameState &fs)
                     mFs.mDeepZTolerance,
                     mFs.mDeepVolCompressionRes,
                     *(mFs.mDeepIDChannelNames),
-                    mFs.mDeepMaxLayers,
                     mFs.mNumRenderThreads,
                     *mFs.mAovSchema,
                     mFs.mDisplayFilterCount,
@@ -1013,8 +1009,6 @@ RenderDriver::startFrame(const FrameState &fs)
     mCachedTargetAdaptiveError = mFs.mTargetAdaptiveError;
     mCachedDeepVolCompressionRes = mFs.mDeepVolCompressionRes;
     mCachedDeepIDChannelNames = *(mFs.mDeepIDChannelNames);
-    mCachedDeepMaxLayers = mFs.mDeepMaxLayers;
-    mCachedDeepLayerBias = mFs.mDeepLayerBias;
     mCachedViewport = mFs.mViewport;
     mCachedSamplingMode = mFs.mSamplingMode;
     mCachedDisplayFilterCount = mFs.mDisplayFilterCount;

@@ -80,7 +80,6 @@ public:
               float deepZTolerance,
               unsigned deepVolCompressionRes,
               const std::vector<std::string>& deepIDChannelNames,
-              int deepMaxLayers,
               unsigned numRenderThreads,
               const pbr::AovSchema &aovSchema,
               const int numDisplayFilters,

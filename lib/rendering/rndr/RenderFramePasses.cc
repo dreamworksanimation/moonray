@@ -1272,7 +1272,6 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
             pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
             deepData->mRefCount = 1;
             deepData->mHitDeep = 0;
-            deepData->mLayer = 0;
         }
 
         if (cryptomatteBuffer != nullptr) {

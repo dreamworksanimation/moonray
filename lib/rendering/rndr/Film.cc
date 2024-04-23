@@ -325,7 +325,6 @@ Film::init(unsigned w, unsigned h,
            float deepZTolerance,
            unsigned deepVolCompressionRes,
            const std::vector<std::string>& deepIDChannelNames,
-           int deepMaxLayers,
            unsigned numRenderThreads,
            const pbr::AovSchema &aovSchema,
            const int numDisplayFilters,
@@ -439,7 +438,7 @@ Film::init(unsigned w, unsigned h,
                            numRenderThreads,
                            aovSchema,
                            deepIDChannelNames,
-                           deepMaxLayers);
+                           1);
     } else {
         delete mDeepBuf;
         mDeepBuf = nullptr;
@@ -984,7 +983,7 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                     constexpr int channels[3] = { 0, 1, 2 };
                     const float vals[3] = { br->mRadiance[0], br->mRadiance[1], br->mRadiance[2] };
                     film.mDeepBuf->addSample(pbrTls, px, py,
-                                             deepData->mSubpixelX, deepData->mSubpixelY, deepData->mLayer,
+                                             deepData->mSubpixelX, deepData->mSubpixelY, 0,
                                              deepData->mDeepIDs, deepData->mDeepT, deepData->mRayZ,
                                              deepData->mDeepNormal, br->mRadiance[3],
                                              channels, 3, vals,
@@ -1148,7 +1147,7 @@ Film::addAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
                             int channels[1] = { (int)aovIdx + 3 };
                             float vals[1] = { ba->mAovs[aov] };
                             film->mDeepBuf->addSample(pbrTls, px, py,
-                                                      deepData->mSubpixelX, deepData->mSubpixelY, deepData->mLayer,
+                                                      deepData->mSubpixelX, deepData->mSubpixelY, 0,
                                                       deepData->mDeepIDs, deepData->mDeepT, deepData->mRayZ,
                                                       deepData->mDeepNormal, 0.f,
                                                       channels, 1, vals,
@@ -1329,7 +1328,7 @@ Film::addFilteredAovSampleBundleHandler(mcrt_common::ThreadLocalState *tls,
                             int channels[1] = { (int)aovIdx + 3 };
                             float vals[1] = { ba->mAovs[aov] };
                             film->mDeepBuf->addSample(pbrTls, px, py,
-                                                      deepData->mSubpixelX, deepData->mSubpixelY, deepData->mLayer,
+                                                      deepData->mSubpixelX, deepData->mSubpixelY, 0,
                                                       deepData->mDeepIDs, deepData->mDeepT, deepData->mRayZ,
                                                       deepData->mDeepNormal, 0.f,
                                                       channels, 1, vals,

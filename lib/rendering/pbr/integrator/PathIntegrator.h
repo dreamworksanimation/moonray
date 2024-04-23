@@ -252,8 +252,6 @@ public:
     int getLightSampleCount() const { return mLightSamples; }
 
     const std::vector<int>& getDeepIDAttrIdxs() const { return mDeepIDAttrIdxs; }
-    int getDeepMaxLayers() const { return mDeepMaxLayers; }
-    float getDeepLayerBias() const { return mDeepLayerBias; }
 
     int getCryptoUVAttrIdx() const { return mCryptoUVAttrIdx; }
 

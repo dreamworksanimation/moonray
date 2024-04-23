@@ -2736,9 +2736,6 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
             "More than 6 deep ID channels specified."));
     }
 
-    fs->mDeepMaxLayers = vars.get(scene_rdl2::rdl2::SceneVariables::sDeepMaxLayers);
-    fs->mDeepLayerBias = vars.get(scene_rdl2::rdl2::SceneVariables::sDeepLayerBias);
-
     //
     // From pbr::FrameState (all the data which the pbr library requires should
     // be set here).
