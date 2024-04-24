@@ -5,9 +5,6 @@
 
 #include "Camera.h"
 
-#include <scene_rdl2/common/math/Mat4.h>
-#include <scene_rdl2/common/math/Vec3.h>
-
 namespace moonray {
 namespace pbr {
 
@@ -18,6 +15,8 @@ public:
     explicit SphericalCamera(const scene_rdl2::rdl2::Camera* rdlCamera);
 
 private:
+    void initAttributeKeys(const scene_rdl2::rdl2::SceneClass& sceneClass);
+
     bool getIsDofEnabledImpl() const override;
 
     void updateImpl(const scene_rdl2::math::Mat4d& world2render) override;
@@ -31,6 +30,12 @@ private:
 
     scene_rdl2::math::Vec3f createDirection(float x, float y) const;
 
+    static bool sAttributeKeyInitialized;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>  sInsideOutKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sOffsetRadiusKey;
+
+    bool  mInsideOut;
+    float mOffsetRadius;
 };
 
 } // namespace pbr
