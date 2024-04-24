@@ -131,9 +131,7 @@ if(${Mkl_FOUND})
     set(MKL Mkl::Mkl)
 endif()
 
-# ================================================
 # Set the RPATH for binaries in the install tree
-# ================================================
 set(CMAKE_INSTALL_RPATH ${GLOBAL_INSTALL_RPATH})
 if(NOT IsDarwinPlatform)
     set(CMAKE_BUILD_RPATH ${COMPILER_LIBRARY_DIR})
