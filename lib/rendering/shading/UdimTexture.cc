@@ -213,8 +213,12 @@ public:
 
         std::vector<std::string> udimFilenames;
         if (!getUdimFilenames(filename, udimFilenames)) {
-            errorMsg = "Failed to locate udim textures for filename: \"" + filename +  "\"";
-            return false;
+            if (useDefaultColor) {
+                return true;
+            } else {
+                errorMsg = "Failed to locate udim textures for filename: \"" + filename +  "\"";
+                return false;
+            }
         }
 
         mNumTextures = calculateNumTextures(filename, udimFilenames);
