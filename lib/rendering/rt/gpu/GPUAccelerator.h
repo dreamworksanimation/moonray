@@ -114,8 +114,8 @@ namespace moonray {
 namespace rt {
 
 // We hide the details of this class behind an impl because we don't want to expose
-// all of the CUDA/Optix headers to the rest of Moonray.  All this needs to expose
-// to the outside world is an occluded() method and a constructor that takes a scene.
+// all of the CUDA/Optix/Metal headers to the rest of Moonray.  All this needs to expose
+// to the outside world are intersect()/occluded() methods and a constructor that takes a scene.
 
 #ifdef MOONRAY_USE_OPTIX
 class OptixGPUAccelerator;
@@ -127,7 +127,7 @@ class GPUAccelerator
 {
 public:
     GPUAccelerator(bool allowUnsupportedFeatures,
-                   const uint32_t numCPUThreads,
+                   const uint32_t numCPUThreads, // numQueues
                    const scene_rdl2::rdl2::Layer *layer,
                    const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,
                    const scene_rdl2::rdl2::Layer::GeometryToRootShadersMap* g2s,
@@ -141,6 +141,10 @@ public:
 
     std::string getGPUDeviceName() const;
 
+    // The queueIdx in these functions is the same as the CPU-side threadIdx, as
+    // each CPU-side thread that is submitting rays to the GPU has a separate
+    // queue on the GPU.  This allows multiple CPU threads to use the GPU independently.
+
     void intersect(const unsigned numRays, const GPURay* rays) const;
 
     // output intersect results are placed in here
@@ -153,8 +157,8 @@ public:
                   size_t cpuRayStride) const;
 
     // output occlusion results are placed in here
-    unsigned char* getOutputOcclusionBuf(uint32_t queueIdx) const;
-    ::moonray::rt::GPURay* getGPURaysBuf(uint32_t queueIdx) const;
+    unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const;
+    ::moonray::rt::GPURay* getGPURaysBuf(const uint32_t queueIdx) const;
 
     void* getCPURayBuf(const uint32_t queueIdx,
                        size_t numRays,

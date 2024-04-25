@@ -1018,15 +1018,14 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
                                          std::vector<std::string>& warningMsgs,
                                          std::string* errorMsg) :
     mAllowUnsupportedFeatures {allowUnsupportedFeatures},
+    mNumCPUThreads {numCPUThreads},
     mContext {nullptr},
     mModule {nullptr},
     mRoundLinearCurvesModule {nullptr},
     mRoundLinearCurvesMBModule {nullptr},
     mRoundCubicBsplineCurvesModule {nullptr},
     mRoundCubicBsplineCurvesMBModule {nullptr},
-    mPipeline {nullptr},
-    mRootGroup {nullptr},
-    mOutputOcclusionBuf {nullptr}
+    mRootGroup {nullptr}
 {
     // The constructor fully initializes the GPU.  We are ready to trace rays afterwards.
 
@@ -1126,14 +1125,17 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
 
     scene_rdl2::logging::Logger::info("GPU: Creating pipeline");
 
-    if (!createOptixPipeline(mContext,
-                             pipelineCompileOptions,
-                             { 1, // maxTraceDepth
-                               OPTIX_COMPILE_DEBUG_LEVEL_NONE },
-                             mProgramGroups,
-                             &mPipeline,
-                             errorMsg)) {
-        return;
+    mPipeline.resize(mNumCPUThreads, nullptr);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (!createOptixPipeline(mContext,
+                                pipelineCompileOptions,
+                                { 1, // maxTraceDepth
+                                OPTIX_COMPILE_DEBUG_LEVEL_NONE },
+                                mProgramGroups,
+                                &(mPipeline[i]),
+                                errorMsg)) {
+            return;
+        }
     }
 
     scene_rdl2::logging::Logger::info("GPU: Creating traversables");
@@ -1153,24 +1155,44 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
 
     scene_rdl2::logging::Logger::info("GPU: Allocating rays buffer");
 
-    if (mRaysBuf.alloc(mRaysBufSize) != cudaSuccess) {
-        *errorMsg = "GPU: Error allocating rays buffer";
-        return;
+    mRaysBuf.resize(mNumCPUThreads);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (mRaysBuf[i].alloc(mRaysBufSize) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating rays buffer";
+            return;
+        }
     }
 
-    if (cudaMallocHost(&mOutputOcclusionBuf, sizeof(unsigned char) * mRaysBufSize) != cudaSuccess) {
-        *errorMsg = "GPU: Error allocating output occlusion buffer";
-        return;
+    mOutputOcclusionBuf.resize(mNumCPUThreads, nullptr);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (cudaMallocHost(&(mOutputOcclusionBuf[i]), sizeof(unsigned char) * mRaysBufSize) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating output occlusion buffer";
+            return;
+        }
     }
 
-    if (mIsOccludedBuf.alloc(mRaysBufSize) != cudaSuccess) {
-        *errorMsg = "GPU: Error allocating occlusion buffer";
-        return;
+    mIsOccludedBuf.resize(mNumCPUThreads);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (mIsOccludedBuf[i].alloc(mRaysBufSize) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating occlusion buffer";
+            return;
+        }
     }
 
-    if (mParamsBuf.alloc(1) != cudaSuccess) {
-        *errorMsg = "GPU: Error allocating params buffer";
-        return;
+    mParamsBuf.resize(mNumCPUThreads);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (mParamsBuf[i].alloc(1) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating params buffer";
+            return;
+        }
+    }
+
+    mCudaStreams.resize(mNumCPUThreads);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (cudaStreamCreateWithFlags(&(mCudaStreams[i]), CU_STREAM_NON_BLOCKING) != cudaSuccess) {
+            *errorMsg = "Unable to create the CUDA stream";
+            return;
+        }
     }
 
     scene_rdl2::logging::Logger::info("GPU: Setup complete");
@@ -1186,8 +1208,10 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
     delete mRootGroup;
 
     // delete in the opposite order of creation
-    if (mPipeline != nullptr) {
-        optixPipelineDestroy(mPipeline);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (mPipeline[i] != nullptr) {
+            optixPipelineDestroy(mPipeline[i]);
+        }
     }
 
     for (const auto& pgEntry : mProgramGroups) {
@@ -1220,7 +1244,9 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
         optixDeviceContextDestroy(mContext);
     }
 
-    cudaFreeHost(mOutputOcclusionBuf);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        cudaFreeHost(mOutputOcclusionBuf[i]);
+    }
 }
 
 std::string
@@ -1580,32 +1606,35 @@ OptixGPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*
 }
 
 void
-OptixGPUAccelerator::occluded(const uint32_t /*queueIdx*/,
-                         const uint32_t numRays,
-                         const GPURay* rays,
-                         const void* /*cpuRays*/,
-                         size_t /*cpuRayStride*/) const
+OptixGPUAccelerator::occluded(const uint32_t queueIdx,
+                              const uint32_t numRays,
+                              const GPURay* rays,
+                              const void* /*cpuRays*/,
+                              size_t /*cpuRayStride*/) const
 {
-    // std::cout << "occluded(): " << numRays << std::endl;
-
+    MNRY_ASSERT_REQUIRE(queueIdx <= mIsOccludedBuf.size());
     MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);
+
+    // This function uses async GPU calls.  This means the CPU doesn't wait for the GPU
+    // to finish the operation.  Instead, we submit multiple async calls to the GPU and
+    // then wait once at the very end.  This allows for better GPU throughput.
 
     // Setup the global GPU parameters
     OptixGPUParams params;
     params.mAccel = mRootGroup->mTopLevelIAS;
     params.mNumRays = numRays;
-    params.mRaysBuf = mRaysBuf.ptr();
-    params.mIsOccludedBuf = mIsOccludedBuf.ptr();
+    params.mRaysBuf = mRaysBuf[queueIdx].ptr();
+    params.mIsOccludedBuf = mIsOccludedBuf[queueIdx].ptr();
     params.mIsectBuf = nullptr;
-    mParamsBuf.upload(&params);
+    mParamsBuf[queueIdx].uploadAsync(mCudaStreams[queueIdx], &params, 1);
 
     // Upload the rays to the GPU
-    mRaysBuf.upload(rays, numRays);
+    mRaysBuf[queueIdx].uploadAsync(mCudaStreams[queueIdx], rays, numRays);
 
-    if (optixLaunch(mPipeline,
-                    mCudaStream,
-                    mParamsBuf.deviceptr(),
-                    mParamsBuf.sizeInBytes(),
+    if (optixLaunch(mPipeline[queueIdx],
+                    mCudaStreams[queueIdx],
+                    mParamsBuf[queueIdx].deviceptr(),
+                    mParamsBuf[queueIdx].sizeInBytes(),
                     &mSBT,
                     numRays, 1, 1) != OPTIX_SUCCESS) {
         // There isn't any feasible way to recover from this, but it shouldn't
@@ -1613,18 +1642,19 @@ OptixGPUAccelerator::occluded(const uint32_t /*queueIdx*/,
         scene_rdl2::logging::Logger::error("GPU: optixLaunch() failure");
     }
 
-    // Wait for the GPU to finish processing the rays
-    cudaDeviceSynchronize();
+    // Download the intersection results from the GPU
+    mIsOccludedBuf[queueIdx].downloadAsync(mCudaStreams[queueIdx], mOutputOcclusionBuf[queueIdx], numRays);
+
+    // Wait here for all the async calls above to finish and the results are ready.
+    cudaStreamSynchronize(mCudaStreams[queueIdx]);
+
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
         // There isn't any feasible way to recover from this, but it shouldn't
         // happen unless the code is broken.  Log the error and try to keep going.
-        scene_rdl2::logging::Logger::error("GPU: optixLaunch() cudaDeviceSynchronize() error: ",
+        scene_rdl2::logging::Logger::error("GPU: cudaStreamSynchronize() error: ",
                             cudaGetErrorString(error));
     }
-
-    // Download the intersection results from the GPU
-    mIsOccludedBuf.download(mOutputOcclusionBuf, numRays);
 }
 
 } // namespace rt

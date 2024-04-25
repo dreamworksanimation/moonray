@@ -69,7 +69,7 @@ public:
                                unsigned numEntries,
                                BundledOcclRay *entryData,
                                const rt::GPURay *gpuRays,
-                               tbb::spin_mutex& mutex);
+                               std::atomic<int>& threadsUsingGPU);
 
     XPUOcclusionRayQueue(unsigned numCPUThreads,
                          unsigned cpuThreadQueueSize,
@@ -105,7 +105,7 @@ public:
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
-        mThreadsWaitingForGPU = 0;
+        mThreadsUsingGPU = 0;
     }
 
     virtual ~XPUOcclusionRayQueue()
@@ -207,40 +207,35 @@ protected:
         MNRY_ASSERT(numRays);
 
 #ifdef __APPLE__
-        const int maxWaitingCPUThreads = 64;
+        int maxThreads = 64;
 #else
-        const int maxWaitingCPUThreads = 3;
+        // This is an imperfect heuristic, but the idea is that occlusion ray
+        // processing should be no more than 25% of the total work, so thus
+        // if more than 25% of the threads are idle waiting on the GPU, then the
+        // GPU is overloaded and we shouldn't give the GPU any more work.
+        int maxThreads = std::max(mNumCPUThreads / 4, (unsigned int)1);
 #endif
-        if (mThreadsWaitingForGPU.load() < maxWaitingCPUThreads && numRays > 1024) {
-            // There are an acceptable number of threads waiting to access the GPU, so we
-            // just wait our turn.  But, before we try to acquire the GPU lock, we get the
-            // buffer of rays ready for the GPU.
-            // The value 2 was determined empirically.  Higher values do not provide benefit.
 
-            // Another thread can sneak in here before we increment, but it doesn't matter
-            // because 2 is just a heuristic anyway and it doesn't matter if there's a small
-            // chance we end up with 3.
-            mThreadsWaitingForGPU++;
+        if ((mThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
+            // There are an acceptable number of threads using the GPU, so we
+            // can go ahead.
 
             pbr::TLState *pbrTls = tls->mPbrTls.get();
             scene_rdl2::alloc::Arena *arena = &tls->mArena;
-            rt::GPURay* gpuRays;
 
             const FrameState &fs = *pbrTls->mFs;
             rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
-            
+
+            rt::GPURay* gpuRays;
             if (mUsingUMA) {
                 gpuRays = accel->getGPURaysBuf(pbrTls->mThreadIdx);
             } else {
                 gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
             }
-            
-            // Now that the thread knows it's running on the GPU, it still needs to wait its
-            // turn for the GPU.  Before waiting, it needs to prepare the GPURays.
+
             for (size_t i = 0; i < numRays; ++i) {
                 const BundledOcclRay &occlRay = rays[i];
                 MNRY_ASSERT(occlRay.isValid());
-
 #ifndef __APPLE__
                 // Optix doesn't access these values from the cpu ray directly, so we copy the
                 // values here into a GPU-accessible buffer
@@ -260,27 +255,17 @@ protected:
                 gpuRays[i].mLightId = reinterpret_cast<intptr_t>(light);
             }
 
-#ifndef __APPLE__
-            // Acquire the GPU.
-            mGPUDeviceMutex.lock();
-#endif
-
-            // This thread is no longer waiting to access the GPU, because it has the GPU.
-            mThreadsWaitingForGPU--;
-
-            // The handler unlocks the GPU device mutex internally once the GPU
-            // is finished but there is still some CPU code left for this thread to run.
             ++tls->mHandlerStackDepth;
             (*mGPUQueueHandler)(tls,
                                 numRays,
                                 rays,
                                 gpuRays,
-                                mGPUDeviceMutex);
+                                mThreadsUsingGPU);
             MNRY_ASSERT(tls->mHandlerStackDepth > 0);
             --tls->mHandlerStackDepth;
 
         } else {
-            // There's too many threads already waiting for the GPU, and we would need to wait
+            // There's too many threads using the GPU, and we would need to wait
             // too long.  Process these rays on the CPU instead.
 
             // We need an array of pointers to entries, not of the entries themselves.
@@ -303,9 +288,8 @@ protected:
     std::vector<BundledOcclRay*> mCPUThreadQueueEntries;
     std::vector<unsigned>        mCPUThreadQueueNumQueued;
     CPUHandler                   mCPUThreadQueueHandler;
-    std::atomic<int>             mThreadsWaitingForGPU;
+    std::atomic<int>             mThreadsUsingGPU;
     GPUHandler                   mGPUQueueHandler;
-    tbb::spin_mutex              mGPUDeviceMutex;
     void *                       mHandlerData;
     bool                         mUsingUMA;
 };

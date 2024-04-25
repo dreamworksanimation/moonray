@@ -47,7 +47,7 @@ public:
     unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const {
         return mIsOccludedBuf[queueIdx].cpu_ptr();
     }
-    GPURay* getGPURaysBuf(uint32_t queueIdx) const {
+    GPURay* getGPURaysBuf(const uint32_t queueIdx) const {
         return mRaysBuf[queueIdx].cpu_ptr();
     }
     void* getCPURayBuf(const uint32_t queueIdx,

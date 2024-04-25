@@ -26,6 +26,7 @@
 #include <moonray/rendering/geom/prim/PrimitivePrivateAccess.h>
 #include <moonray/rendering/geom/prim/Sphere.h>
 #include <moonray/rendering/geom/prim/VolumeAssignmentTable.h>
+#include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/camera/PerspectiveCamera.h>
 
 #include <scene_rdl2/scene/rdl2/rdl2.h>
@@ -1569,7 +1570,7 @@ void GeometryManager::updateAccelerator(const scene_rdl2::rdl2::Layer* layer,
 }
 
 void GeometryManager::updateGPUAccelerator(bool allowUnsupportedFeatures,
-                                            const uint32_t numCPUThreads,
+                                           const uint32_t numCPUThreads,
                                            const scene_rdl2::rdl2::Layer* layer)
 {
     mGPUAccelerator.reset();
@@ -1587,7 +1588,14 @@ void GeometryManager::updateGPUAccelerator(bool allowUnsupportedFeatures,
 
     std::vector<std::string> warningMsgs;
     std::string errorMsg;
-    mGPUAccelerator.reset(new GPUAccelerator(allowUnsupportedFeatures, numCPUThreads, layer, geometrySets, &g2s, warningMsgs, &errorMsg));
+    mGPUAccelerator.reset(
+        new GPUAccelerator(allowUnsupportedFeatures,
+                           numCPUThreads,
+                           layer,
+                           geometrySets,
+                           &g2s,
+                           warningMsgs,
+                           &errorMsg));
 
     buildGPUBVHTimer.stop();
 

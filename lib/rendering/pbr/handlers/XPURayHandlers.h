@@ -22,7 +22,7 @@ void xpuOcclusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,
                                     unsigned numRays,
                                     BundledOcclRay *rays,
                                     const rt::GPURay *gpuRays,
-                                    tbb::spin_mutex& mutex);
+                                    std::atomic<int>& threadsUsingGPU);
 
 } // namespace pbr
 } // namespace moonray

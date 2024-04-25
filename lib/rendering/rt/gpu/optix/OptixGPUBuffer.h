@@ -119,6 +119,18 @@ public:
         upload(v.data());
     }
 
+    void uploadAsync(CUstream stream, const T* src, const size_t count)
+    {
+        // count is <= the buffer count
+        MNRY_ASSERT(mPtr != nullptr);
+        MNRY_ASSERT(src != nullptr);
+        MNRY_ASSERT(count <= mCount);
+        // *should* always succeed unless there is a bug
+        cudaError_t err = cudaMemcpyAsync(mPtr, (void*)const_cast<T*>(src), count * sizeof(T),
+                                          cudaMemcpyHostToDevice, stream);
+        MNRY_ASSERT(err == cudaSuccess);
+    }
+
     // you MUST check for cudaSuccess for sufficient GPU VRAM
     cudaError_t allocAndUpload(const T* src)
     {
@@ -177,6 +189,18 @@ public:
         cudaError_t err = cudaMemcpy((void*)dst, mPtr, count * sizeof(T), cudaMemcpyDeviceToHost);
         MNRY_ASSERT(err == cudaSuccess);
     }
+
+    void downloadAsync(CUstream stream, T* dst, const size_t count) const
+    {
+        // count is <= the buffer count
+        MNRY_ASSERT(mPtr != nullptr);
+        MNRY_ASSERT(dst != nullptr);
+        MNRY_ASSERT(count <= mCount);
+        // *should* always succeed unless there is a bug
+        cudaError_t err = cudaMemcpyAsync((void*)dst, mPtr, count * sizeof(T), cudaMemcpyDeviceToHost, stream);
+        MNRY_ASSERT(err == cudaSuccess);
+    }
+
 
     size_t sizeInBytes() const
     {

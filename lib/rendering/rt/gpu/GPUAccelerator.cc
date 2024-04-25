@@ -68,7 +68,7 @@ GPUAccelerator::getOutputIsectBuf() const
 }
 
 GPURay*
-GPUAccelerator::getGPURaysBuf(uint32_t queueIdx) const
+GPUAccelerator::getGPURaysBuf(const uint32_t queueIdx) const
 {
     return mImpl->getGPURaysBuf(queueIdx);
 }
@@ -90,9 +90,9 @@ GPUAccelerator::occluded(const uint32_t queueIdx,
 }
 
 unsigned char*
-GPUAccelerator::getOutputOcclusionBuf(uint32_t queueIndex) const
+GPUAccelerator::getOutputOcclusionBuf(const uint32_t queueIdx) const
 {
-    return mImpl->getOutputOcclusionBuf(queueIndex);
+    return mImpl->getOutputOcclusionBuf(queueIdx);
 }
 
 unsigned int
@@ -157,7 +157,7 @@ GPUAccelerator::getOutputIsectBuf() const
 }
 
 GPURay*
-GPUAccelerator::getGPURaysBuf(uint32_t /* queueIdx */) const
+GPUAccelerator::getGPURaysBuf(const uint32_t /* queueIdx */) const
 {
     return nullptr;
 }
@@ -180,7 +180,7 @@ GPUAccelerator::occluded(const uint32_t /* queueIdx */,
 }
 
 unsigned char*
-GPUAccelerator::getOutputOcclusionBuf(uint32_t /* queueIdx */) const
+GPUAccelerator::getOutputOcclusionBuf(const uint32_t /*queueIdx*/) const
 {
     return nullptr;
 }

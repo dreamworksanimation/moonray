@@ -46,21 +46,23 @@ public:
 
     void occluded(const uint32_t queueIdx, const unsigned numRays, const GPURay* rays, const void* cpuRays, size_t cpuRayStride) const;
 
-    GPURay* getGPURaysBuf(uint32_t queueIdx) const {
+    GPURay* getGPURaysBuf(const uint32_t queueIdx) const {
         return nullptr;
     }
+
     void* getCPURayBuf(const uint32_t queueIdx,
                        size_t numRays,
                        size_t stride) const {
         return nullptr;
     }
 
-    unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const { return mOutputOcclusionBuf; }
+    unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const {
+        return mOutputOcclusionBuf[queueIdx];
+    }
 
     static unsigned int getRaysBufSize() { return mRaysBufSize; }
     static bool getUMAAvailable() { return false; }
     static bool supportsMultipleQueues() { return false; }
-
 
 private:
     bool build(CUstream cudaStream,
@@ -75,9 +77,13 @@ private:
 
     bool createShaderBindingTable(std::string* errorMsg);
 
+    unsigned int mNumCPUThreads; // number of CPU threads that can call the GPU
+
     bool mAllowUnsupportedFeatures;
 
     CUstream mCudaStream;
+    std::vector<CUstream> mCudaStreams; // per-thread (queue) streams
+
     std::string mGPUDeviceName;
 
     OptixDeviceContext mContext;
@@ -98,8 +104,8 @@ private:
     std::map<std::string, OptixProgramGroup> mProgramGroups;
 
     // All of the program groups are bound together into a pipeline.  Multiple pipelines
-    // are possible, but we only have one set of program groups.
-    OptixPipeline mPipeline;
+    // share one set of program groups.
+    std::vector<OptixPipeline> mPipeline; // per-thread (queue) pipelines
 
     // Geometry is contained in primitive groups.  The root group is the root (non-shared/instanced)
     // geometry.  The shared groups are the same as the shared "scenes" in the CPU-side
@@ -124,18 +130,19 @@ private:
     // Buffers needed to pass rays to the GPU and read back intersection results.
     // The rays buffer size is the same as the ray queue size in RenderDriver::createXPUQueue()
     // and was determined empirically through performance testing.
-    static const unsigned int mRaysBufSize = 262144;
-    mutable OptixGPUBuffer<GPURay> mRaysBuf;
+    static const unsigned int mRaysBufSize = 65536;
+     
+    mutable std::vector<OptixGPUBuffer<GPURay>> mRaysBuf; // per-thread (queue) input ray buffers
 
     // pinned host memory to avoid an extra copy in the GPU driver
     // when copying occlusion results from the GPU
-    mutable unsigned char* mOutputOcclusionBuf;
+    mutable std::vector<unsigned char*> mOutputOcclusionBuf; // per-thread (queue) output result buffers
 
     // occluded() results
-    mutable OptixGPUBuffer<unsigned char> mIsOccludedBuf;
+    mutable std::vector<OptixGPUBuffer<unsigned char>> mIsOccludedBuf;
 
     // A parameters object that is globally available on the GPU side.
-    mutable OptixGPUBuffer<OptixGPUParams> mParamsBuf;
+    mutable std::vector<OptixGPUBuffer<OptixGPUParams>> mParamsBuf; // per-thread (queue) param buffers
 };
 
 } // namespace rt
