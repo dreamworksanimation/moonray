@@ -13,6 +13,7 @@
 #include "PathIntegrator.h"
 #include "PathIntegratorUtil.h"
 
+#include <moonray/common/time/Timer.h>
 #include <moonray/rendering/pbr/core/Aov.h>
 #include <moonray/rendering/pbr/core/Constants.h>
 #include <moonray/rendering/pbr/core/DebugRay.h>
@@ -20,6 +21,7 @@
 #include "VolumeTransmittance.h"
 
 // using namespace scene_rdl2::math; // can't use this as it breaks openvdb in clang.
+using RenderTimer = moonray::time::RAIITimerAverageDouble;
 
 namespace moonray {
 namespace pbr {
@@ -156,8 +158,11 @@ void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrT
         const shading::Intersection& isect, const Light* light) const
 {
     const int lightSampleCount = lSampler.getLightSampleCount();
+    uint32_t sceneLightIdx = light->getSceneIndex();
 
     for (int i = 0; i < lightSampleCount; ++i) {
+        // Increment stats for the number of light samples taken for this light
+        pbrTls->mStatistics.incLightSamples(sceneLightIdx);
 
         if (lsmp[i].isInvalid()) {
             continue;
@@ -185,6 +190,8 @@ void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrT
             // only do extra calculations if clear radius falloff enabled
             if (light->getClearRadiusFalloffDistance() != 0.f && 
                 tfar < light->getClearRadius() + light->getClearRadiusFalloffDistance()) {
+                // Increment stats for the # of useful (non-black / valid) samples taken
+                pbrTls->mStatistics.incUsefulLightSamples(sceneLightIdx);
 
                 // compute unoccluded pixel value
                 lightT *= (1.0f - presence);
@@ -238,6 +245,9 @@ void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrT
                 }
             }
         } else {
+            // Increment stats for the # of useful (non-black / valid) samples taken
+            pbrTls->mStatistics.incUsefulLightSamples(sceneLightIdx);
+
             // Take into account presence and transmittance
             lightT *= (1.0f - presence);
             mcrt_common::Ray trRay(P, lsmp[i].wi, scene_rdl2::math::max(rayEpsilon, shadowRayEpsilon), tfar, time, rayDepth);
@@ -346,6 +356,11 @@ PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
             lightSelectionPdf = lightSelectionPdfs[lightIndex];
             if (lightSelectionPdf < 0.f) continue;
         }
+
+        // ------------------------------ Set up light stats -----------------------------------------------------------
+        RenderTimer timer(pbrTls->mStatistics.mLightSamplingTime[light->getSceneIndex()]);
+        pbrTls->mStatistics.incCounter(STATS_NUM_LIGHTS_CHOSEN);
+        // -------------------------------------------------------------------------------------------------------------
 
         // Ray termination lights are used in an attempt to cheaply fill in the zeros which result from
         // terminating ray paths too early. We exclude them from light samples because these samples represent
@@ -664,6 +679,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // light acceleration structure. Otherwise, sample all lights.  
     float* lightSelectionPdfs = nullptr;
     if (static_cast<LightSamplingMode>(pbrTls->mFs->mLightSamplingMode) == LightSamplingMode::ADAPTIVE) {
+        RenderTimer timer(pbrTls->mStatistics.mAdaptiveLightSamplingOverhead);
         int lightCount = lSampler.getLightCount();
         lightSelectionPdfs = arena->allocArray<float>(lightCount);
         chooseLightsToSample(lightSelectionPdfs, lSampler, lightCount, pv, sp, sequenceID, isect, cullingNormal);

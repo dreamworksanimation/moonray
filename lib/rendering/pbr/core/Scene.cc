@@ -9,6 +9,7 @@
 #include "PbrTLState.h"
 #include "Scene.h"
 #include "Util.h"
+#include <moonray/common/time/Timer.h>
 #include <moonray/rendering/pbr/camera/BakeCamera.h>
 #include <moonray/rendering/pbr/camera/Camera.h>
 #include <moonray/rendering/pbr/camera/DomeMaster3DCamera.h>
@@ -55,6 +56,8 @@
 
 using scene_rdl2::logging::Logger;
 using namespace scene_rdl2;
+
+using RenderTimer = moonray::time::RAIITimerAverageDouble;
 
 namespace moonray {
 namespace pbr {
@@ -220,7 +223,7 @@ Scene::generateMeshLightGeometry(Light* light)
 
 void
 Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode executionMode,
-        rt::GeometryManager& geometryManager, bool forceMeshLightGeneration)
+        rt::GeometryManager& geometryManager, bool forceMeshLightGeneration, rndr::RenderStats& stats)
 {
     const rdl2::SceneVariables &vars = mRdlSceneContext->getSceneVariables();
 
@@ -323,7 +326,9 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     for (unsigned int i=0; i<mLightSets.size(); i++, acc++, lightPtrList++) {
         acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice, sceneDiameter, lightSamplingQuality);
         if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
+            RenderTimer buildLightBVHTimer(stats.mBuildLightBVHTime);
             acc->buildSamplingTree();
+            stats.mLightBVHMemoryFootprint += acc->getLightTree()->getMemoryFootprint();
         }
     }
 
@@ -331,7 +336,9 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     size_t visibleLightCount = mVisibleLightSet.getLightCount();
     acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice, sceneDiameter, lightSamplingQuality);
     if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
+        RenderTimer buildLightBVHTimer(stats.mBuildLightBVHTime);
         acc->buildSamplingTree();
+        stats.mLightBVHMemoryFootprint += acc->getLightTree()->getMemoryFootprint();
     }
     int * visibleLightAcceleratorIndexMap = new int[visibleLightCount];
     for (size_t i = 0; i < visibleLightCount; ++i) {
@@ -679,6 +686,9 @@ Scene::updateLightList()
 
                 // Generate the mesh for the mesh light
                 const std::string &className = rdlLight->getSceneClass().getName();
+                // Ensure the light knows its own index for stats
+                light->setSceneIndex(mLightList.size());
+
                 if (className == "MeshLight") {
                     generateMeshLightGeometry(light.get());
                 }

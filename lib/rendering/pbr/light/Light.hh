@@ -105,7 +105,9 @@ enum LightSidednessType
     HUD_MEMBER(float, mClearRadius);                                        \
     HUD_MEMBER(float, mClearRadiusFalloffDistance);                         \
     HUD_MEMBER(float, mClearRadiusInterpolation);                           \
-    HUD_MEMBER(float, mMaxShadowDistance)
+    HUD_MEMBER(float, mMaxShadowDistance);                                  \
+    /* Index in the scene's light list -- used for updating stats */        \
+    HUD_MEMBER(uint32_t, mSceneIndex)
 
 
 #define LIGHT_VALIDATION                                \
@@ -137,6 +139,7 @@ enum LightSidednessType
     HUD_VALIDATE(Light, mClearRadiusFalloffDistance);   \
     HUD_VALIDATE(Light, mClearRadiusInterpolation);     \
     HUD_VALIDATE(Light, mMaxShadowDistance);            \
+    HUD_VALIDATE(Light, mSceneIndex);                   \
     HUD_END_VALIDATION
 
 

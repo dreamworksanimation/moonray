@@ -62,6 +62,9 @@ public:
     /// Sets the sampling threshold (which determines the amount of adaptive tree splitting)
     void setSamplingThreshold(float threshold) { mSamplingThreshold = threshold; }
 
+    /// Returns the memory footprint of the tree (in bytes)
+    size_t getMemoryFootprint() const;
+
     /// Print the tree
     void print() const;
 
@@ -246,6 +249,9 @@ private:
                        const scene_rdl2::math::Vec3f& p, const scene_rdl2::math::Vec3f& n, bool cullLights, 
                        const IntegratorSample1D& lightSelectionSample,
                        const int* lightIdMap, int nonMirrorDepth) const;
+
+    /// Recursive helper to size()
+    size_t getMemoryFootprintRecurse(int nodeIndex) const;
 
     /// Recursively print the tree
     void printRecurse(uint32_t nodeIndex, int depth) const;

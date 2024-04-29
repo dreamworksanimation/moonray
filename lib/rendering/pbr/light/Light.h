@@ -256,6 +256,10 @@ public:
                            : mSidedness == LIGHT_SIDEDNESS_REVERSE;
     }
 
+    /// Get/set the light's index in the scene's light list
+    uint32_t getSceneIndex() const { return mSceneIndex; }
+    void setSceneIndex(uint32_t sceneIndex) { mSceneIndex = sceneIndex; }
+
 protected:
 
     /// Derived classes should call this method in their update() function.

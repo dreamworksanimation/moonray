@@ -167,23 +167,31 @@ public:
 
     /// Get the node's starting index in lightIndices
     inline uint getStartIndex() const { return mStartIndex; }
+
     /// Get the index of the node's right child
     inline uint getRightNodeIndex() const { return mRightNodeIndex; }
+
     /// Get the number of lights in this node
     inline uint getLightCount() const { return mLightCount; }
+
     /// Gets the light index, if it's a leaf. Otherwise, returns -1.
     inline int getLightIndex() const { return mLightIndex; }
+
     /// Gets the bounding box of the node
     inline const scene_rdl2::math::BBox3f& getBBox() const { return mBBox; }
+
     /// Gets the emission-bounding cone
     inline const LightTreeCone& getCone() const { return mCone; }
+
     /// Gets the energy variance
     inline float getEnergyVariance() const { return mEnergyVariance; }
+
     /// Gets the energy mean
     inline float getEnergyMean() const { return mEnergyMean; }
 
     /// Sets the index of the right child
     inline void setRightNodeIndex(uint i) { mRightNodeIndex = i; }
+    
     /// Sets the node's light index to the light index found at the start of this node
     /// This function assumes you are running this on a leaf
     inline void setLeafLightIndex(const std::vector<uint>& lightIndices) { mLightIndex = lightIndices[mStartIndex]; }

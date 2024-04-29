@@ -1056,6 +1056,8 @@ RenderContext::stopFrame()
     // Accumulate pbr stats data.
     mPbrStatistics->mMcrtTime = mDriver->getLastFrameMcrtDuration();
     mPbrStatistics->mMcrtUtilization = mDriver->getLastFrameMcrtUtilization();
+    mPbrStatistics->initLightStats(mPbrScene->getLightCount());
+
     pbr::forEachTLS([this](pbr::TLState const *tls){ (*mPbrStatistics) += tls->mStatistics; });
 
     // Accumulate geom stats data.
@@ -1095,6 +1097,9 @@ RenderContext::stopFrame()
             mLogTime = true;
             mRenderStats->logInfoEmptyLine();
             mRenderStats->logSamplingStats(*mPbrStatistics, *mGeomStatistics);
+
+            mRenderStats->logInfoEmptyLine();
+            mRenderStats->logLightStats(*mPbrStatistics, mPbrScene.get(), mSceneContext->getSceneVariables());
 
             mRenderStats->logInfoEmptyLine();
             mRenderStats->logTexturingStats(*texture::getTextureSampler(), mDebugLoggingEnabled);
@@ -1922,7 +1927,8 @@ RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUF
 
     // Update PBR
     RenderTimer timer(mRenderStats->mLoadPbrTime);
-    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), executionMode, *mGeometryManager, loadAllGeometries);
+    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), executionMode, *mGeometryManager, 
+                        loadAllGeometries, *mRenderStats);
 
     mRenderPrepTimingStats->recTime(RenderPrepTimingStats::RenderPrepTag::UPDATE_PBR);
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::RenderPrepTag::WHOLE);

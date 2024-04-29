@@ -27,6 +27,7 @@ enum StatCounters
 
     STATS_SHADER_EVALS,
     STATS_TEXTURE_SAMPLES,
+    STATS_NUM_LIGHTS_CHOSEN,
 
     // Vectorized only. These count the numbers of samples we're taking assuming
     // all lanes are active. This allows us to compute our actual lane utilization
@@ -81,10 +82,12 @@ enum StatCounters
     NUM_STATS_COUNTERS,
 };
 
+// need to pad ispc by 88 to accomodate extra c++ members (light sampling stats)
 #define PBR_STATISTICS_MEMBERS                              \
     HUD_ARRAY(uint64_t, mCounters, NUM_STATS_COUNTERS);     \
     HUD_MEMBER(double, mMcrtTime);                          \
-    HUD_MEMBER(double, mMcrtUtilization)
+    HUD_MEMBER(double, mMcrtUtilization);                   \
+    HUD_ISPC_PAD(mPad, 88)
 
 #define PBR_STATISTICS_VALIDATION                           \
     HUD_BEGIN_VALIDATION(PbrStatistics);                    \

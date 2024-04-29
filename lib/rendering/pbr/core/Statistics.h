@@ -7,6 +7,7 @@
 ///
 
 #pragma once
+#include <moonray/common/mcrt_util/Average.h>
 #include <scene_rdl2/common/platform/Platform.h>
 
 namespace moonray {
@@ -42,12 +43,33 @@ public:
         }
         mMcrtTime = 0.0;
         mMcrtUtilization = 0.0;
+        mAdaptiveLightSamplingOverhead.reset();
+        mLightSamplingTime.clear();
+        mLightSamples.clear();
+        mUsefulLightSamples.clear();
+    }
+
+    void initLightStats(size_t numLights) 
+    {
+        mLightSamplingTime.resize(numLights, moonray::util::AverageDouble());
+        mLightSamples.resize(numLights, 0);
+        mUsefulLightSamples.resize(numLights, 0);
     }
 
     Statistics &operator += (Statistics const &rhs) {
         for (unsigned i = 0; i < NUM_STATS_COUNTERS; ++i) {
             mCounters[i] += rhs.mCounters[i];
         }
+
+        MNRY_ASSERT(mLightSamples.size() == rhs.mLightSamples.size());
+        for (size_t i = 0; i < mLightSamples.size(); i++) {
+            mLightSamplingTime[i] += rhs.mLightSamplingTime[i];
+            mLightSamples[i] += rhs.mLightSamples[i];
+            mUsefulLightSamples[i] += rhs.mUsefulLightSamples[i];
+        }
+
+        mAdaptiveLightSamplingOverhead += rhs.mAdaptiveLightSamplingOverhead;
+    
         return *this;
     }
 
@@ -69,11 +91,26 @@ public:
         mCounters[counter] += uint64_t(count);
     }
 
+    void incLightSamples(int lightIdx)
+    {
+        if (lightIdx == -1) return;
+        mLightSamples[lightIdx]++;
+    }
+
+    void incUsefulLightSamples(int lightIdx)
+    {
+        if (lightIdx == -1) return;
+        mUsefulLightSamples[lightIdx]++;
+    }
+
     // HUD validation.
     static uint32_t hudValidation(bool verbose) { PBR_STATISTICS_VALIDATION; }
 
-//private:
     PBR_STATISTICS_MEMBERS;
+    std::vector<moonray::util::AverageDouble> mLightSamplingTime;
+    std::vector<uint32_t> mLightSamples;
+    std::vector<uint32_t> mUsefulLightSamples;
+    moonray::util::AverageDouble mAdaptiveLightSamplingOverhead;
 };
 
 //----------------------------------------------------------------------------

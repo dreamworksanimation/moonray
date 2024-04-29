@@ -353,7 +353,31 @@ void LightTree::sampleRecurse(float* lightSelectionPdfs, int nodeIndices[2], con
     }
 }
 
-// --------------------------------- PRINT FUNCTIONS ---------------------------------------------------------------- //
+// --------------------------------- UTILITY FUNCTIONS -------------------------------------------------------------- //
+
+size_t LightTree::getMemoryFootprintRecurse(int nodeIndex) const
+{
+    const LightTreeNode& node = mNodes[nodeIndex];
+
+    // if node is a leaf, return size of node
+    if (node.isLeaf()) {
+        return sizeof(LightTreeNode);
+    }
+
+    int iL = nodeIndex + 1;
+    int iR = node.getRightNodeIndex();
+
+    return getMemoryFootprintRecurse(iL) + getMemoryFootprintRecurse(iR);
+}
+
+size_t LightTree::getMemoryFootprint() const
+{
+    if (mBoundedLightCount > 0 && mNodes.size() > 0) {
+        size_t lightIndicesSize = mBoundedLightCount * sizeof(uint32_t);
+        return lightIndicesSize + getMemoryFootprintRecurse(0);
+    }
+    return 0;
+}
 
 void LightTree::print() const
 {

@@ -910,6 +910,7 @@ RenderDriver::startFrame(const FrameState &fs)
         unsigned numTiles = mTileScheduler->getTiles().size();
         pbr::forEachTLS([&](pbr::TLState *tls) {
             tls->mTilesRenderedTo.init(numTiles);
+            tls->mStatistics.initLightStats(mFs.mScene->getLightCount());
         });
 
         updated = true;

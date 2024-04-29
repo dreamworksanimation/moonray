@@ -7,6 +7,7 @@
 
 
 #include "RenderOptions.h"
+#include <moonray/rendering/pbr/core/Scene.h>
 #include <moonray/rendering/rndr/statistics/ArrasLogStream.h>
 #include <moonray/rendering/rndr/statistics/AthenaCSVStream.h>
 #include <moonray/common/mcrt_util/Average.h>
@@ -153,6 +154,10 @@ public:
     //   render stats while application is rendering.
     void updateAndLogRenderProgress(std::size_t* current, std::size_t* total);
 
+    // log overall and top ten per-light statistics
+    void logLightStats(const pbr::Statistics& pbrStats, const pbr::Scene* scene, 
+                       const scene_rdl2::rdl2::SceneVariables& sceneVars);
+
     //  log post frame sampling stats
     void logSamplingStats(const pbr::Statistics& pbrStats,
                           const geom::internal::Statistics& geomStats);
@@ -282,6 +287,7 @@ public:
     moonray::util::AverageDouble mTessellationTime;
     moonray::util::AverageDouble mBuildAcceleratorTime;
     moonray::util::AverageDouble mBuildGPUAcceleratorTime;
+    moonray::util::AverageDouble mBuildLightBVHTime;
 
     // on going across frames times.
     moonray::util::AverageDouble mRebuildGeometryTime;
@@ -295,6 +301,8 @@ public:
 
     // shader call stats
     std::unordered_map<scene_rdl2::rdl2::SceneObject *, moonray::util::InclusiveExclusiveAverage<int64> > mShaderCallStats;
+
+    size_t mLightBVHMemoryFootprint;
 
 private:
     using ShaderStatsTable = moonray_stats::StatsTable<5>;
