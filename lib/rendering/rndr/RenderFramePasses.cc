@@ -1337,7 +1337,10 @@ RenderDriver::computeTotalNumSamples(const rndr::FrameState &fs, const unsigned 
         const scene_rdl2::fb_util::FloatBuffer *pixelSampleMap = fs.mPixelSampleMap;
         if (pixelSampleMap) {
             totalNumSamples = unsigned(scene_rdl2::math::floor(fs.mOriginalSamplesPerPixel *
-                                                   scene_rdl2::math::max(0.0f, pixelSampleMap->getPixel(px,py))));
+                                       scene_rdl2::math::max(0.0f, pixelSampleMap->getPixel(px,py))));
+            if (totalNumSamples == 0) {
+                totalNumSamples = 1;
+            }
         }
     }
     return totalNumSamples;
