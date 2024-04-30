@@ -478,7 +478,12 @@ RenderDriver::snapshotDeltaAovVisibility(unsigned aovIdx,
             //   instead of computed visibility when we need more speed up here. Toshi (Sep/07/2018)
             //
             const scene_rdl2::math::Vec2f *srcTileStartAddr = srcFloat2Buffer.getData() + pixId;
-            float visibilityTileInfo[64];
+
+            // visibilityTileInfo is used as the output of ISPC functions.
+            // This code always align memory boundary by 64byte (this considers AVX512 that is not
+            // supported at present. Hope this might happen near future.
+            alignas(64) float visibilityTileInfo[64];
+
             for (int currPixId = 0; currPixId < 64; ++currPixId) {
                 const scene_rdl2::math::Vec2f &currPix = srcTileStartAddr[currPixId];
                 visibilityTileInfo[currPixId] = (currPix.y > 0.0f)? (currPix.x / currPix.y): 0.0f;
