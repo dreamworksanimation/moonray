@@ -2542,6 +2542,7 @@ RenderContext::accumulatePbrStatistics() const
     pbr::Statistics pbrStatistics;
     pbrStatistics.mMcrtTime = mDriver->getLastFrameMcrtDuration();
     pbrStatistics.mMcrtUtilization = mDriver->getLastFrameMcrtUtilization();
+    pbrStatistics.initLightStats(mPbrScene->getLightCount());
     pbr::forEachTLS([&](pbr::TLState const *tls){ (pbrStatistics) += tls->mStatistics; });
     return pbrStatistics;
 }

@@ -7,7 +7,6 @@
 
 
 #include "RenderOptions.h"
-#include <moonray/rendering/pbr/core/Scene.h>
 #include <moonray/rendering/rndr/statistics/ArrasLogStream.h>
 #include <moonray/rendering/rndr/statistics/AthenaCSVStream.h>
 #include <moonray/common/mcrt_util/Average.h>
@@ -28,6 +27,7 @@
 
 namespace moonray {
 namespace pbr {
+class Scene;
 class Statistics;
 }
 namespace texture {

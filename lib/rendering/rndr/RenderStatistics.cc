@@ -17,6 +17,7 @@
 #include <moonray/rendering/geom/prim/Statistics.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
+#include <moonray/rendering/pbr/core/Scene.h>
 #include <moonray/rendering/pbr/core/Statistics.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
 
