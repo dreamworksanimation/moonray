@@ -1208,7 +1208,7 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
     delete mRootGroup;
 
     // delete in the opposite order of creation
-    for (int i = 0; i < mNumCPUThreads; i++) {
+    for (size_t i = 0; i < mPipeline.size(); i++) {
         if (mPipeline[i] != nullptr) {
             optixPipelineDestroy(mPipeline[i]);
         }
@@ -1244,7 +1244,7 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
         optixDeviceContextDestroy(mContext);
     }
 
-    for (int i = 0; i < mNumCPUThreads; i++) {
+    for (size_t i = 0; i < mOutputOcclusionBuf.size(); i++) {
         cudaFreeHost(mOutputOcclusionBuf[i]);
     }
 }
