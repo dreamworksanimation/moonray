@@ -142,8 +142,14 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
         ostr << " : MCRT-CPU-affinity disabled";
     }
     std::string msg = ostr.str();
-    scene_rdl2::logging::Logger::info(msg);
-    if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
+    {
+        static bool displayCpuAffinityMessage = false;
+        if (!displayCpuAffinityMessage) {
+            scene_rdl2::logging::Logger::info(msg);
+            if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
+            displayCpuAffinityMessage = true;
+        }
+    }
 #   ifdef PLATFORM_APPLE
     scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, nullptr);
 #   else
