@@ -96,6 +96,10 @@ if(IsDarwinPlatform)
     set_target_properties(${component} PROPERTIES LINK_FLAGS "-undefined dynamic_lookup")
 endif()
 
+if (NOT IsDarwinPlatform)
+    set(PlatformSpecificLibs atomic)
+endif()
+
 target_link_libraries(${component}
     PUBLIC
         SceneRdl2::common_except
@@ -119,14 +123,7 @@ target_link_libraries(${component}
         OpenVDB::OpenVDB
         TBB::tbb
         embree
-
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
-            atomic
-        >
-
-        $<$<CXX_COMPILER_ID:Clang>:
-            atomic
-        >
+        ${PlatformSpecificLibs}
 )
 
 # If at Dreamworks add a SConscript stub file so others can use this library.

@@ -10,20 +10,17 @@ target_sources(${target}
         main.cc
 )
 
+if (NOT IsDarwinPlatform)
+    set(PlatformSpecificLibs atomic)
+endif()
+
 target_link_libraries(${target}
     PRIVATE
         ${PROJECT_NAME}::rendering_rndr
         ${PROJECT_NAME}::rendering_shading
         SceneRdl2::render_logging
         SceneRdl2::render_util
-
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
-            atomic
-        >
-
-        $<$<CXX_COMPILER_ID:Clang>:
-            atomic
-        >
+        ${PlatformSpecificLibs}
 )
 
 # Set standard compile/link options

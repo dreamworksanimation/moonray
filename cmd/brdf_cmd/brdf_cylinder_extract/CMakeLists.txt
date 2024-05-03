@@ -13,6 +13,10 @@ target_sources(${target}
 
 )
 
+if (NOT IsDarwinPlatform)
+    set(PlatformSpecificLibs atomic)
+endif()
+
 target_link_libraries(${target}
     PRIVATE
         ${PROJECT_NAME}::rendering_rndr
@@ -20,14 +24,7 @@ target_link_libraries(${target}
         SceneRdl2::render_util
         SceneRdl2::render_logging
         OpenImageIO::OpenImageIO
-
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
-            atomic
-        >
-
-        $<$<CXX_COMPILER_ID:Clang>:
-            atomic
-        >
+        ${PlatformSpecificLibs}
 )
 
 # Set standard compile/link options

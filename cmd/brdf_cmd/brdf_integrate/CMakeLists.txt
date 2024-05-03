@@ -10,6 +10,10 @@ target_sources(${target}
         main.cc
 )
 
+if (NOT IsDarwinPlatform)
+    set(PlatformSpecificLibs atomic)
+endif()
+
 target_link_libraries(${target}
     PRIVATE
         ${PROJECT_NAME}::rendering_mcrt_common
@@ -17,21 +21,8 @@ target_link_libraries(${target}
         ${PROJECT_NAME}::rendering_rndr
         ${PROJECT_NAME}::rendering_shading
         SceneRdl2::render_util
-
-        $<$<AND:$<CXX_COMPILER_ID:GNU>,$<VERSION_GREATER_EQUAL:$<CXX_COMPILER_VERSION>,6>>:
-            atomic
-        >
-
-        $<$<CXX_COMPILER_ID:Clang>:
-            atomic
-        >
+        ${PlatformSpecificLibs}
 )
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9)
-        target_link_libraries(${target} PRIVATE atomic)
-    endif()
-endif()
 
 # Set standard compile/link options
 Moonray_cxx_compile_definitions(${target})
