@@ -86,6 +86,13 @@
 
 //----------------------------------------------------------------------------
 
+
+#if CACHE_LINE_SIZE == 128
+#define RAY_STATE_MEMBERS_PAD   (46+20)
+#else
+#define RAY_STATE_MEMBERS_PAD   20
+#endif
+
 #define RAY_STATE_MEMBERS                                                   \
                                                                             \
     HVD_MEMBER(HVD_NAMESPACE(mcrt_common, RayDifferential), mRay);          \
@@ -109,7 +116,7 @@
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolTm);             \
     HVD_MEMBER(uint32_t, mVolHit);                                          \
     HVD_MEMBER(float, mVolumeSurfaceT);                                     \
-    HVD_ISPC_PAD(mPad, 20)
+    HVD_ISPC_PAD(mPad, RAY_STATE_MEMBERS_PAD)
 
 
 #define RAY_STATE_VALIDATION(vlen)                                          \

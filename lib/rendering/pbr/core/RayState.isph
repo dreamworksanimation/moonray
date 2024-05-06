@@ -37,9 +37,6 @@ struct PathVertex {
 struct RayState
 {
     RAY_STATE_MEMBERS;
-#if (CACHE_LINE_SIZE == 128)
-    uint64_t Pad[6];
-#endif 
 };
 
 

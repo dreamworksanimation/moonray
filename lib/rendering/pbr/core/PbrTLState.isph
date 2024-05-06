@@ -29,9 +29,6 @@ struct PbrTLState
 {
     BASE_TL_STATE_MEMBERS;
     PBR_TL_STATE_MEMBERS;
-#if (CACHE_LINE_SIZE == 128)
-    uint64_t Pad[8];
-#endif 
 };
 
 uniform bool isCanceled(uniform PbrTLState * uniform pbrTls);
