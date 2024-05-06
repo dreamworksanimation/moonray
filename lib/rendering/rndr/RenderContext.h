@@ -605,6 +605,10 @@ private:
     // Report tessellation time for geometry primitives
     void reportGeometryTessellationTime();
 
+    void reportVectorMemory();
+
+    void reportXPUMemory();
+
     // Report memory for geometry primitives
     void reportGeometryMemory();
 

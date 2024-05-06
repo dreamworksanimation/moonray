@@ -834,9 +834,11 @@ private:
     bool mRenderStopAtPassBoundary;
 
     // Queues for XPU processing of rays (RenderDriver is owner)
+public:
     pbr::XPUOcclusionRayQueue* mXPUOcclusionRayQueue;
     pbr::XPURayQueue* mXPURayQueue;
 
+private:
     // RenderDriver owns DisplayFilterDriver
     DisplayFilterDriver mDisplayFilterDriver;
     tbb::spin_mutex mDisplayFilterMutex;

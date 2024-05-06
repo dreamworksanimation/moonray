@@ -73,9 +73,12 @@ public:
     // To reset those, call resetPools() separately.
     virtual void        reset() override;
 
+    static size_t       getCL1PoolSize();
+
     // RayState management.
     RayState **         allocRayStates(unsigned numRayStates);
     void                freeRayStates(unsigned numRayStates, RayState **rayStates);
+    static size_t       getRayStatePoolSize();
 
     uint32_t acquireDeepData(uint32_t deepDataHandle);
     void releaseDeepData(uint32_t deepDataHandle);
@@ -198,11 +201,13 @@ MNRY_STATIC_ASSERT((offsetof(TLState, mExclusiveAccumulators)) == TLS_OFFSET_TO_
 #pragma warning(pop)
 
 // Shorten the TLS queue type names for convenience.
-typedef TLState::RayStatePool      RayStatePool;
-typedef TLState::RayQueue          RayQueue;
-typedef TLState::OcclusionQueue    OcclusionQueue;
+typedef TLState::RayStatePool         RayStatePool;
+typedef TLState::RayQueue             RayQueue;
+typedef TLState::OcclusionQueue       OcclusionQueue;
 typedef TLState::PresenceShadowsQueue PresenceShadowsQueue;
-typedef TLState::RadianceQueue     RadianceQueue;
+typedef TLState::RadianceQueue        RadianceQueue;
+typedef TLState::AovQueue             AovQueue;
+typedef TLState::HeatMapQueue         HeatMapQueue;
 
 typedef TLState::CacheLine1        CacheLine1;
 typedef TLState::CL1Pool           CL1Pool;

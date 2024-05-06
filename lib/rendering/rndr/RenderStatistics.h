@@ -126,6 +126,20 @@ public:
     //  scene values and applying them to the rendeer.
     void logSceneVariables(const scene_rdl2::rdl2::SceneVariables &vars);
 
+    void logVectorMemoryUsage(size_t rayQueuesBytes,
+                              size_t occlusionQueuesBytes,
+                              size_t presenceShadowsQueuesBytes,
+                              size_t radianceQueuesBytes,
+                              size_t aovQueuesBytes,
+                              size_t heatMapQueuesBytes,
+                              size_t shadeQueuesBytes,
+                              size_t rayStatePoolBytes,
+                              size_t cacheLine1PoolBytes);
+
+    void logXPUMemoryUsage(size_t rayQueueBytes,
+                           size_t occlusionQueueBytes,
+                           size_t cpuMemoryBytes);
+
     //  report out the memory footprint in megabyte
     //  includes total memory for all geometry objects,
     //  memory for each geometry object,

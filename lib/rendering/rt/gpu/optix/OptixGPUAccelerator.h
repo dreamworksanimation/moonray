@@ -60,6 +60,8 @@ public:
         return mOutputOcclusionBuf[queueIdx];
     }
 
+    size_t getCPUMemoryUsed() const;
+
     static unsigned int getRaysBufSize() { return mRaysBufSize; }
     static bool getUMAAvailable() { return false; }
     static bool supportsMultipleQueues() { return false; }

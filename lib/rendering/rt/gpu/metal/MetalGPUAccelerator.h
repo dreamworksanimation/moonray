@@ -60,6 +60,8 @@ public:
                   const void* cpuRays,
                   size_t cpuRayStride) const;
 
+    size_t getCPUMemoryUsed() const { return 0; }
+
     static uint32_t getRaysBufSize() { return mRaysBufSize; }
     static bool getUMAAvailable() { return true; }
     static bool supportsMultipleQueues() { return true; }

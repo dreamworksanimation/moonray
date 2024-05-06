@@ -164,6 +164,8 @@ public:
                        size_t numRays,
                        size_t stride) const;
 
+    size_t getCPUMemoryUsed() const;
+
     static unsigned int getRaysBufSize();
     static bool getUMAAvailable();
     static bool supportsMultipleQueues();

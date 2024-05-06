@@ -1255,6 +1255,12 @@ OptixGPUAccelerator::getGPUDeviceName() const
     return mGPUDeviceName;
 }
 
+size_t OptixGPUAccelerator::getCPUMemoryUsed() const
+{
+    size_t outputOcclusionBufSize = mNumCPUThreads * sizeof(unsigned char) * mRaysBufSize;
+    return outputOcclusionBufSize;
+}
+
 bool
 buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                     const scene_rdl2::rdl2::Layer* layer,

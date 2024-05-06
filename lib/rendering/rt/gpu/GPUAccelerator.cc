@@ -95,6 +95,12 @@ GPUAccelerator::getOutputOcclusionBuf(const uint32_t queueIdx) const
     return mImpl->getOutputOcclusionBuf(queueIdx);
 }
 
+size_t
+GPUAccelerator::getCPUMemoryUsed() const
+{
+    return mImpl->getCPUMemoryUsed();
+}
+
 unsigned int
 GPUAccelerator::getRaysBufSize()
 {
@@ -183,6 +189,12 @@ unsigned char*
 GPUAccelerator::getOutputOcclusionBuf(const uint32_t /*queueIdx*/) const
 {
     return nullptr;
+}
+
+size_t
+GPUAccelerator::getCPUMemoryUsed() const
+{
+    return 0;
 }
 
 unsigned int

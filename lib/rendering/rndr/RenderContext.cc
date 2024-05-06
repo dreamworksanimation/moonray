@@ -928,8 +928,6 @@ RenderContext::startFrame()
 
         // Print dso usage
         mRenderStats->logDsoUsage(mSceneContext->getDsoCounts());
-
-        mRenderStats->startRenderStats();
     }
 
     // Condition scene variables and other state for this frame.
@@ -1006,6 +1004,22 @@ RenderContext::startFrame()
     if (execResult == RP_RESULT::CANCELED) {
         mRenderPrepRun = false;
         return RP_RESULT::CANCELED;
+    }
+
+    // Don't spam the logs if in real-time mode.
+    if (getRenderMode() != RenderMode::REALTIME &&
+        mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
+
+        if (frameState.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
+            frameState.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
+            reportVectorMemory();
+        }
+
+        if (frameState.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
+            reportXPUMemory();
+        }
+
+        mRenderStats->startRenderStats();
     }
 
     // Invoke the render driver.
@@ -2581,6 +2595,70 @@ RenderContext::reportGeometryTessellationTime()
     if (mRenderStats->getLogAthena()) {
         mRenderStats->logAllTessellationStats();
     }
+}
+
+void
+RenderContext::reportVectorMemory()
+{
+    // See 'struct TLSInitParams' and lib/rendering/pbr/core/PbrTLState.cc::TLState()
+    // See TLSInitParams::setVectorizedDefaults() for queue size settings
+
+    // Ray queues - see PbrTLState() constructor for details
+    size_t rayQueuesBytes = mcrt_common::getTLSInitParams().mRayQueueSize *
+                            sizeof(pbr::RayQueue::EntryType) * getNumTBBThreads();
+
+    // Occlusion queues - see PbrTLState() constructor for details
+    size_t occlusionQueuesBytes = mcrt_common::getTLSInitParams().mOcclusionQueueSize *
+                                  sizeof(pbr::OcclusionQueue::EntryType) * getNumTBBThreads();
+
+    // Presence shadows queues - see PbrTLState() constructor for details
+    size_t presenceShadowsQueuesBytes = mcrt_common::getTLSInitParams().mPresenceShadowsQueueSize *
+                                        sizeof(pbr::PresenceShadowsQueue::EntryType) * getNumTBBThreads();
+
+    // Radiance queues - see PbrTLState() constructor for details
+    size_t radianceQueuesBytes = mcrt_common::getTLSInitParams().mRadianceQueueSize *
+                                 sizeof(pbr::RadianceQueue::EntryType) * getNumTBBThreads();
+
+    // AOV queues - see PbrTLState() constructor for details
+    size_t aovQueuesBytes = mcrt_common::getTLSInitParams().mAovQueueSize *
+                            sizeof(pbr::AovQueue::EntryType) * getNumTBBThreads();
+
+    // Heat map queues - see PbrTLState() constructor for details
+    size_t heatMapQueuesBytes = mcrt_common::getTLSInitParams().mHeatMapQueueSize *
+                                sizeof(pbr::HeatMapQueue::EntryType) * getNumTBBThreads();
+
+    // Shade queues - (of SortedRayState), one per Material
+    size_t shadeQueuesBytes = mcrt_common::getTLSInitParams().mShadeQueueSize *
+                              sizeof(shading::ShadeQueue::EntryType) *
+                              shading::Material::getAllShadeQueues().size();
+
+    // TODO: these pools also seem to be created in scalar mode, but aren't used.
+
+    // RayState pool (shared between threads)
+    size_t rayStatePoolBytes = pbr::TLState::getRayStatePoolSize();
+
+    // CacheLine1 pool (shared between threads)
+    size_t cacheLine1PoolBytes = pbr::TLState::getCL1PoolSize();
+
+    mRenderStats->logVectorMemoryUsage(rayQueuesBytes,
+                                       occlusionQueuesBytes,
+                                       presenceShadowsQueuesBytes,
+                                       radianceQueuesBytes,
+                                       aovQueuesBytes,
+                                       heatMapQueuesBytes,
+                                       shadeQueuesBytes,
+                                       rayStatePoolBytes,
+                                       cacheLine1PoolBytes);
+}
+
+void
+RenderContext::reportXPUMemory()
+{
+    size_t rayQueueBytes = mDriver->mXPURayQueue->getMemoryUsed();
+    size_t occlusionRayQueueBytes = mDriver->mXPUOcclusionRayQueue->getMemoryUsed();
+    size_t cpuMemoryBytes = mGeometryManager->getGPUAccelerator()->getCPUMemoryUsed();
+
+    mRenderStats->logXPUMemoryUsage(rayQueueBytes, occlusionRayQueueBytes, cpuMemoryBytes);
 }
 
 void

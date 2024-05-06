@@ -919,6 +919,80 @@ RenderStats::logSceneVariables(const scene_rdl2::rdl2::SceneVariables &vars)
 }
 
 void
+RenderStats::logVectorMemoryUsage(size_t rayQueuesBytes,
+                                  size_t occlusionQueuesBytes,
+                                  size_t presenceShadowsQueuesBytes,
+                                  size_t radianceQueuesBytes,
+                                  size_t aovQueuesBytes,
+                                  size_t heatMapQueuesBytes,
+                                  size_t shadeQueuesBytes,
+                                  size_t rayStatePoolBytes,
+                                  size_t cacheLine1PoolBytes)
+{
+    StatsTable<2> summaryTable("Vector Memory Summary");
+
+    auto writeCSV = [&](std::ostream& outs, bool athenaFormat) {
+        outs.precision(2);
+        outs.setf(std::ios_base::fixed, std::ios_base::floatfield);
+        writeEqualityCSVTable(outs, summaryTable, athenaFormat);
+    };
+
+    summaryTable.emplace_back("Ray queues memory", bytes(rayQueuesBytes));
+    summaryTable.emplace_back("Occlusion queues memory", bytes(occlusionQueuesBytes));
+    summaryTable.emplace_back("Presence shadows queues memory", bytes(presenceShadowsQueuesBytes));
+    summaryTable.emplace_back("Radiance queues memory", bytes(radianceQueuesBytes));
+    summaryTable.emplace_back("Aov queues memory", bytes(aovQueuesBytes));
+    summaryTable.emplace_back("Heatmap queues memory", bytes(heatMapQueuesBytes));
+    summaryTable.emplace_back("Shade queues memory", bytes(shadeQueuesBytes));
+    summaryTable.emplace_back("RayState pool memory", bytes(rayStatePoolBytes));
+    summaryTable.emplace_back("CacheLine 1 pool memory", bytes(cacheLine1PoolBytes));
+
+    if (getLogAthena()) {
+        writeCSV(mAthenaStream, true);
+    }
+    if (getLogCsv()) {
+        writeCSV(mCSVStream, false);
+    }
+    if (getLogInfo()) {
+        const std::string pre = getPrependString();
+        mInfoStream.precision(2);
+        mInfoStream.setf(std::ios_base::fixed, std::ios_base::floatfield);
+        writeEqualityInfoTable(mInfoStream, pre, summaryTable);
+    }
+}
+
+void
+RenderStats::logXPUMemoryUsage(size_t rayQueueBytes,
+                               size_t occlusionQueueBytes,
+                               size_t cpuMemoryBytes)
+{
+    StatsTable<2> summaryTable("XPU Memory Summary");
+
+    auto writeCSV = [&](std::ostream& outs, bool athenaFormat) {
+        outs.precision(2);
+        outs.setf(std::ios_base::fixed, std::ios_base::floatfield);
+        writeEqualityCSVTable(outs, summaryTable, athenaFormat);
+    };
+
+    summaryTable.emplace_back("Ray (pointer) queue memory", bytes(rayQueueBytes));
+    summaryTable.emplace_back("Occlusion queue memory", bytes(occlusionQueueBytes));
+    summaryTable.emplace_back("CPU memory", bytes(cpuMemoryBytes));
+
+    if (getLogAthena()) {
+        writeCSV(mAthenaStream, true);
+    }
+    if (getLogCsv()) {
+        writeCSV(mCSVStream, false);
+    }
+    if (getLogInfo()) {
+        const std::string pre = getPrependString();
+        mInfoStream.precision(2);
+        mInfoStream.setf(std::ios_base::fixed, std::ios_base::floatfield);
+        writeEqualityInfoTable(mInfoStream, pre, summaryTable);
+    }
+}
+
+void
 RenderStats::logMemoryUsage(size_t                                       totalGeometryBytes,
                             std::vector<std::pair<std::string, size_t>> &perGeometryBytes,
                             size_t                                       bvhBytes   )

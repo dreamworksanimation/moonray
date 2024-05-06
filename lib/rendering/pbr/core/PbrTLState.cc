@@ -134,7 +134,7 @@ initPool(const unsigned poolSize, const unsigned numTBBThreads,
     const size_t entryMemorySize = scene_rdl2::alloc::MemBlockManager::queryEntryMemoryRequired(numBlocks, entryStride);
 
     // Uncomment to see how much memory is being allocated for each pool.
-    //Logger::info("Attempting to allocate ", entryMemorySize, " bytes for ", poolName, " pool.\n");
+    // scene_rdl2::logging::Logger::info("Attempting to allocate ", entryMemorySize, " bytes for ", poolName, " pool.\n");
 
     p.mEntryMemory = scene_rdl2::alignedMallocArray<uint8_t>(entryMemorySize, CACHE_LINE_SIZE);
     p.mBlockMemory = scene_rdl2::alignedMallocArrayCtor<scene_rdl2::alloc::MemBlock>(numBlocks, CACHE_LINE_SIZE);
@@ -806,6 +806,18 @@ TLState::allocTls(mcrt_common::ThreadLocalState *tls,
     }
 
     return std::make_shared<pbr::TLState>(tls, initParams, okToAllocBundledResources);
+}
+
+size_t
+TLState::getCL1PoolSize()
+{
+    return gPrivate.mCL1.mMemBlockManager->getMemoryUsage();
+}
+
+size_t
+TLState::getRayStatePoolSize()
+{
+    return gPrivate.mRayState.mMemBlockManager->getMemoryUsage();
 }
 
 void
