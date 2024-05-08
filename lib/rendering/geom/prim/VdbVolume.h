@@ -238,7 +238,7 @@ public:
         return false;
     }
 
-    virtual void tessellate(const TessellationParams& tessellationParams) override;
+    virtual void tessellate(const TessellationParams& tessellationParams, TessellationStats& stats) override;
 
     virtual void transformPrimitive(const scene_rdl2::math::Mat4f& primToRender);
 

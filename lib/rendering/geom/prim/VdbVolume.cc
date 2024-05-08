@@ -427,7 +427,7 @@ VdbVolume::transformPrimitive(const scene_rdl2::math::Mat4f& primToRender)
 }
 
 void
-VdbVolume::tessellate(const TessellationParams& tessellationParams)
+VdbVolume::tessellate(const TessellationParams& tessellationParams, TessellationStats& stats)
 {
     // If we are a shared primitive, our primToRender is currently identity
     // We'll need to store off the worldToRender matrix

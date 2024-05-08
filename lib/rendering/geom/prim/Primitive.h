@@ -81,6 +81,18 @@ struct TessellationParams {
     const VolumeAssignmentTable* mVolumeAssignmentTable;
 };
 
+/// Tessellation stats
+struct TessellationStats {
+    TessellationStats()
+    {
+        mMemoryUsed = 0;
+    }
+    // Approximate temporary memory used for tessellation.  Doesn't need to be exact,
+    // it's only meant to identify the worst offenders when parallel tessellation
+    // runs out of system memory.
+    size_t mMemoryUsed;
+};
+
 /// @brief A Primitive is the actual geometry to be rendered.
 class Primitive
 {
@@ -131,7 +143,7 @@ public:
 
     /// This method tessellates the primitive into sub primitives that
     /// can be ray-traced. (triangles, bezier spans...etc)
-    virtual void tessellate(const TessellationParams& tessellationParams)
+    virtual void tessellate(const TessellationParams& tessellationParams, TessellationStats& stats)
     {
         MNRY_ASSERT(0, "not implemented");
     }

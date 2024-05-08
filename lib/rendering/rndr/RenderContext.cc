@@ -2475,6 +2475,8 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
         mGeometryManager->getStatistics().mTessellationTime;
     mRenderStats->mPerPrimitiveTessellationTime =
         mGeometryManager->getStatistics().mPerPrimitiveTessellationTime;
+    mRenderStats->mPerPrimitiveTessellationMemoryUsed =
+        mGeometryManager->getStatistics().mPerPrimitiveTessellationMemoryUsed;
     mRenderStats->mBuildAcceleratorTime =
         mGeometryManager->getStatistics().mBuildAcceleratorTime;
     mRenderStats->mBuildProceduralTime =

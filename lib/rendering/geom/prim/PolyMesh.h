@@ -82,7 +82,7 @@ public:
         return false;
     }
 
-    virtual void tessellate(const TessellationParams& tessellationParams) override;
+    virtual void tessellate(const TessellationParams& tessellationParams, TessellationStats& stats) override;
 
     virtual size_t getTessellatedMeshFaceCount() const override;
 

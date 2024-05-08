@@ -897,6 +897,7 @@ OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRd
             }
         }
     }
+    tessellationFactors.shrink_to_fit();
     return tessellationFactors;
 }
 
@@ -1004,6 +1005,7 @@ OpenSubdivMesh::generateSubdQuadTopology(
         }
         indexOffset += nFv;
     }
+    quadTopologies.shrink_to_fit();
     return quadTopologies;
 }
 
@@ -2008,7 +2010,7 @@ evalLimitAttributes(const OpenSubdiv::Far::PatchTable* patchTable,
 }
 
 void
-OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
+OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams, TessellationStats& stats)
 {
     if (mIsMeshFinalized) {
         return;
@@ -2025,6 +2027,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
         primitiveAttributeTable.erase(StandardAttributes::sSurfaceST);
     }
     int controlVertexCount = mControlMeshData->mVertices.size();
+
     // extract out face varying attributes. At this moment the Attributes API
     // can't handle different indexing for different face varying attributes,
     // and that's what happened in OpenSubdiv tessellation logic.
@@ -2055,7 +2058,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
                                          {{StandardAttributes::sNormal, Vec3Type::NORMAL},
                                          {StandardAttributes::sdPds, Vec3Type::VECTOR},
                                          {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
- 
+
     // reverse normals reverses orientation and negates normals
     if (mIsNormalReversed ^ mIsOrientationReversed) {
         reverseOrientation(mControlMeshData->mFaceVertexCount,
@@ -2077,11 +2080,13 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
 
     // the case that we only render control cage
     bool noTessellation = mMeshResolution <= 1;
+
     // calculate edge tessellation factor based on either user specified
     // resolution (uniform) or camera frustum info (adaptive)
     std::vector<SubdTessellationFactor> tessellationFactors =
         computeSubdTessellationFactor(pRdlLayer, tessellationParams.mFrustums,
             tessellationParams.mEnableDisplacement, noTessellation);
+    stats.mMemoryUsed += tessellationFactors.size() * sizeof(SubdTessellationFactor);
 
     // analyze control faces and generate quadTopologies, which are used
     // for generating tessellated vertices and indices later
@@ -2103,6 +2108,8 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
     std::vector<SubdQuadTopology> quadTopologies = generateSubdQuadTopology(
         pRdlLayer, topologyIdLookup, mControlMeshData->mFaceVertexCount,
         faceVaryingIndices, noTessellation);
+    stats.mMemoryUsed += quadTopologies.size() * sizeof(SubdQuadTopology);
+
     MNRY_ASSERT_REQUIRE(tessellationFactors.size() == quadTopologies.size());
     SubdTessellatedVertexLookup tessellatedVertexLookup(quadTopologies,
         topologyIdLookup, tessellationFactors, noTessellation);
@@ -2126,6 +2133,8 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
             generateSubdQuadTopology(pRdlLayer,
             fvarTopologyIdLookup, mControlMeshData->mFaceVertexCount,
             attributeBuffer.mIndices, noTessellation);
+        stats.mMemoryUsed += fvarQuadTopologies.size() * sizeof(SubdQuadTopology);
+
         MNRY_ASSERT_REQUIRE(
             tessellationFactors.size() == fvarQuadTopologies.size());
         SubdTessellatedVertexLookup fvarTessellatedVertexLookup(
@@ -2136,11 +2145,15 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
         generateIndexBufferAndSurfaceSamples(fvarQuadTopologies,
             fvarTessellatedVertexLookup, noTessellation, tessellatedIndices,
             limitSamples);
+        stats.mMemoryUsed += limitSamples.size() * sizeof(LimitSurfaceSample);
+
         fvarLimitSamples.insert(
             {attributeBuffer.mChannel, std::move(limitSamples)});
         fvarIndices.insert(
             {attributeBuffer.mChannel, tessellatedIndices});
     }
+
+    stats.mMemoryUsed += limitSurfaceSamples.size() * sizeof(LimitSurfaceSample);
 
     // generate a TopologyRefiner
     OpenSubdiv::Far::TopologyRefiner* refiner = createTopologyRefiner(
@@ -2216,6 +2229,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
         // adaptively refine the topology with an isolation level
         refiner->RefineAdaptive(options);
     }
+
     // generate PatchTable that we will use to evaluate the surface limit
     OpenSubdiv::Far::PatchTableFactory::Options patchOptions;
     patchOptions.SetEndCapType(
@@ -2225,46 +2239,66 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams)
     patchOptions.useInfSharpPatch = hasCreaseOrCorner;
     const OpenSubdiv::Far::PatchTable* patchTable =
         OpenSubdiv::Far::PatchTableFactory::Create(*refiner, patchOptions);
-    // evaluate limit surface samples to form the final tessellated mesh
+
     std::vector<DisplacementFootprint> displacementFootprints;
-    size_t motionSampleCount = getMotionSamplesCount();
-    std::vector<TextureCV> textureCvs;
-    bool hasBadDerivatives = false;
-    AttributeRate textureRate = mControlMeshData->mTextureRate;
-    // generate patch cvs for sample point limit surface evaluation
-    std::vector<PatchCV> patchCvs;
-    generatePatchCvs(refiner, patchTable, mControlMeshData->mVertices,
-        mControlMeshData->mTextureVertices, textureRate,
-        patchCvs, textureCvs, requireUniformFix, motionSampleCount);
-    evalLimitSurface(patchTable, limitSurfaceSamples, patchCvs,
-        textureCvs, textureRate, mTessellatedVertices, mSurfaceNormal,
-        mSurfaceSt, mSurfaceDpds, mSurfaceDpdt, displacementFootprints,
-        hasBadDerivatives, requireUniformFix, motionSampleCount);
-    if (hasBadDerivatives) {
-        const scene_rdl2::rdl2::Geometry* pRdlGeometry = getRdlGeometry();
-        MNRY_ASSERT(pRdlGeometry != nullptr);
-        pRdlGeometry->debug("mesh ", getName(),
-            " contains bad derivatives that may cause incorrect"
-            " rendering result");
+
+    {
+        // evaluate limit surface samples to form the final tessellated mesh
+        size_t motionSampleCount = getMotionSamplesCount();
+        std::vector<TextureCV> textureCvs;
+        bool hasBadDerivatives = false;
+        AttributeRate textureRate = mControlMeshData->mTextureRate;
+        // generate patch cvs for sample point limit surface evaluation
+        std::vector<PatchCV> patchCvs;
+        generatePatchCvs(refiner, patchTable, mControlMeshData->mVertices,
+            mControlMeshData->mTextureVertices, textureRate,
+            patchCvs, textureCvs, requireUniformFix, motionSampleCount);
+        stats.mMemoryUsed += textureCvs.size() * sizeof(TextureCV);
+        stats.mMemoryUsed += patchCvs.size() * sizeof(PatchCV);
+
+        evalLimitSurface(patchTable, limitSurfaceSamples, patchCvs,
+            textureCvs, textureRate, mTessellatedVertices, mSurfaceNormal,
+            mSurfaceSt, mSurfaceDpds, mSurfaceDpdt, displacementFootprints,
+            hasBadDerivatives, requireUniformFix, motionSampleCount);
+        if (hasBadDerivatives) {
+            const scene_rdl2::rdl2::Geometry* pRdlGeometry = getRdlGeometry();
+            MNRY_ASSERT(pRdlGeometry != nullptr);
+            pRdlGeometry->debug("mesh ", getName(),
+                " contains bad derivatives that may cause incorrect"
+                " rendering result");
+        }
     }
-    // tessellate primitive attributes
-    Attributes* primitiveAttributes = getAttributes();
-    // varyingData, vertexData hold the actual content PrimVarCV refer to
-    std::vector<PrimVarCV> varyingPrimVarCvs;
-    std::vector<float> varyingData;
-    std::vector<PrimVarCV> vertexPrimVarCvs;
-    std::vector<float> vertexData;
-    std::unordered_map<int, std::vector<PrimVarCV>> faceVaryingPrimVarCvs;
-    generatePrimVarCvs(refiner, patchTable,
-        primitiveAttributes, *mFaceVaryingAttributes, controlVertexCount,
-        varyingData, varyingPrimVarCvs,
-        vertexData, vertexPrimVarCvs, faceVaryingPrimVarCvs,
-        requireUniformFix);
-    evalLimitAttributes(patchTable, limitSurfaceSamples,
-        varyingPrimVarCvs, vertexPrimVarCvs,
-        fvarLimitSamples, faceVaryingPrimVarCvs, std::move(fvarIndices),
-        primitiveAttributes, *mFaceVaryingAttributes,
-        requireUniformFix);
+
+    stats.mMemoryUsed += displacementFootprints.size() * sizeof(DisplacementFootprint);
+
+    {
+        // tessellate primitive attributes
+        Attributes* primitiveAttributes = getAttributes();
+        // varyingData, vertexData hold the actual content PrimVarCV refer to
+        std::vector<PrimVarCV> varyingPrimVarCvs;
+        std::vector<float> varyingData;
+        std::vector<PrimVarCV> vertexPrimVarCvs;
+        std::vector<float> vertexData;
+        std::unordered_map<int, std::vector<PrimVarCV>> faceVaryingPrimVarCvs;
+        generatePrimVarCvs(refiner, patchTable,
+            primitiveAttributes, *mFaceVaryingAttributes, controlVertexCount,
+            varyingData, varyingPrimVarCvs,
+            vertexData, vertexPrimVarCvs, faceVaryingPrimVarCvs,
+            requireUniformFix);
+        stats.mMemoryUsed += varyingPrimVarCvs.size() * sizeof(PrimVarCV);
+        stats.mMemoryUsed += varyingData.size() * sizeof(float);
+        stats.mMemoryUsed += vertexPrimVarCvs.size() * sizeof(PrimVarCV);
+        stats.mMemoryUsed += vertexData.size() * sizeof(float);
+        for (auto &v : faceVaryingPrimVarCvs) {
+            stats.mMemoryUsed += v.second.size() * sizeof(PrimVarCV);
+        }
+
+        evalLimitAttributes(patchTable, limitSurfaceSamples,
+            varyingPrimVarCvs, vertexPrimVarCvs,
+            fvarLimitSamples, faceVaryingPrimVarCvs, std::move(fvarIndices),
+            primitiveAttributes, *mFaceVaryingAttributes,
+            requireUniformFix);
+    }
 
     // apply displacement
     if (tessellationParams.mEnableDisplacement && hasDisplacementAssignment(pRdlLayer)) {

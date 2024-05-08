@@ -965,7 +965,9 @@ GeometryManager::bakeGeometry(scene_rdl2::rdl2::Layer* layer,
                                                                 fastGeomUpdate,
                                                                 /* isBaking = */ true,
                                                                 mVolumeAssignmentTable.get());
-                prim->tessellate(params);
+
+                geom::internal::TessellationStats tessStats;
+                prim->tessellate(params, tessStats);
 
                 // Bake the density map of a volume shader bound to this primitive. This is more
                 // optimal than directly sampling the density map during mcrt. This creates a vdb grid.
@@ -1398,6 +1400,8 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
     size_t statsSize = mOptions.stats.mPerPrimitiveTessellationTime.size();
     mOptions.stats.mPerPrimitiveTessellationTime.resize(statsSize +
         primitivesToTessellate.size());
+    mOptions.stats.mPerPrimitiveTessellationMemoryUsed.resize(statsSize +
+        primitivesToTessellate.size());
     // tessellation timer for all primitives
     util::AverageDouble previousTessellationTime(
         mOptions.stats.mTessellationTime.getCount(),
@@ -1457,6 +1461,9 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
             startMsg << "Thread " << localThreadID.mId << "\t: START tessellating "
                     << prim->getRdlGeometry()->getName() << " " << prim->getName();
             mOptions.stats.logDebugString(startMsg.str());
+            
+            geom::internal::TessellationStats tessStats;
+
             primTessTimer.start();
             try {
                 std::vector<mcrt_common::Frustum> dicingFrustums;
@@ -1474,7 +1481,7 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
                                                                     fastGeomUpdate,
                                                                     /* isBaking = */ false,
                                                                     mVolumeAssignmentTable.get());
-                prim->tessellate(tessParams);
+                prim->tessellate(tessParams, tessStats);
 
                 // Bake the density map of a volume shader bound to this primitive. This is more
                 // optimal than directly sampling the density map during mcrt. This creates a vdb grid.
@@ -1487,6 +1494,8 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
             // append tessellation time
             mOptions.stats.mPerPrimitiveTessellationTime[statsSize + i] =
                 std::make_pair(prim, primTessTime.getSum());
+            mOptions.stats.mPerPrimitiveTessellationMemoryUsed[statsSize + i] =
+                std::make_pair(prim, tessStats.mMemoryUsed);
 
             std::stringstream finishedMsg;
             finishedMsg << "Thread " << localThreadID.mId << "\t: FINISHED tessellating "

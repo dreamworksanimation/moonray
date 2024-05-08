@@ -45,7 +45,7 @@ PolyMesh::getMemory() const
 }
 
 void
-PolyMesh::tessellate(const TessellationParams& tessellationParams)
+PolyMesh::tessellate(const TessellationParams& tessellationParams, TessellationStats& stats)
 {
     if (mIsMeshFinalized) {
         return;
@@ -98,12 +98,17 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams)
         // resolution (uniform) or camera frustum info (adaptive)
         std::vector<PolyTessellationFactor> tessellationFactors =
             computeTessellationFactor(pRdlLayer, tessellationParams.mFrustums, topologyIdLookup);
+        stats.mMemoryUsed += tessellationFactors.size() * sizeof(PolyTessellationFactor);
+
         std::vector<PolyFaceTopology> faceTopologies =
             generatePolyFaceTopology(topologyIdLookup);
+        stats.mMemoryUsed += faceTopologies.size() * sizeof(PolyFaceTopology);
+
         MNRY_ASSERT_REQUIRE(
             tessellationFactors.size() == faceTopologies.size());
         PolyTessellatedVertexLookup tessellatedVertexLookup(faceTopologies,
             topologyIdLookup, tessellationFactors, baseFaceVertexCount);
+
         // generate the tessellated index buffer and
         // sample points for generating tessellated vertex buffer
         std::vector<PolyMesh::SurfaceSample> surfaceSamples;
@@ -120,11 +125,18 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams)
             surfaceSamples, tessellatedToBaseFace, &faceVaryingUv);
         MNRY_ASSERT_REQUIRE(
             tessellatedIndices.size() == faceVaryingUv.size());
+        stats.mMemoryUsed += surfaceSamples.size() * sizeof(PolyMesh::SurfaceSample);
+        stats.mMemoryUsed += tessellatedIndices.size() * sizeof(MeshIndexType);
+        stats.mMemoryUsed += tessellatedToBaseFace.size() * sizeof(int);
+        stats.mMemoryUsed += faceVaryingUv.size() * sizeof(Vec2f);
+
         mTessellatedToBaseFace = std::move(tessellatedToBaseFace);
         mFaceVaryingUv = std::move(faceVaryingUv);
+
         // generate tessellated vertex buffer
         PolygonMesh::VertexBuffer tessellatedVertices =
             generateVertexBuffer(mVertices, mIndices, surfaceSamples);
+        stats.mMemoryUsed += tessellatedVertices.size() * sizeof(Vec3fa);
 
         mBaseIndices = std::move(mIndices);
         mIndices = std::move(tessellatedIndices);

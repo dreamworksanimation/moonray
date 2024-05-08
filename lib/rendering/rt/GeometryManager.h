@@ -51,6 +51,7 @@ struct GeometryManagerStats
     double mBuildProceduralTime;
     double mRtcCommitTime;
     std::vector<std::pair<geom::internal::NamedPrimitive*, double> > mPerPrimitiveTessellationTime;
+    std::vector<std::pair<geom::internal::NamedPrimitive*, size_t> > mPerPrimitiveTessellationMemoryUsed;
 
     GeometryManagerExecTracker mGeometryManagerExecTracker;
 
@@ -62,6 +63,7 @@ struct GeometryManagerStats
         mBuildProceduralTime = 0.0;
         mRtcCommitTime = 0.0;
         mPerPrimitiveTessellationTime.clear();
+        mPerPrimitiveTessellationMemoryUsed.clear();
 
         mGeometryManagerExecTracker.initLoadGeometries(0);
         mGeometryManagerExecTracker.initFinalizeChange(0);

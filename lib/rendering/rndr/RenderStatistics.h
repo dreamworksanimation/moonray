@@ -190,6 +190,9 @@ public:
     // log the count of each dso used
     void logDsoUsage(const std::unordered_map<std::string, size_t>& dsoCounts) const;
 
+    //  log the current date and time
+    void logCurrentDateTime(std::stringstream &initMessages);
+
     //  log the loading scene header
     void logStartLoadingScene(std::stringstream &initMessages);
 
@@ -313,6 +316,9 @@ public:
     // tessellation time stats
     std::vector<std::pair<geom::internal::NamedPrimitive*, double> > mPerPrimitiveTessellationTime;
 
+    // tessellation memory usage stats
+    std::vector<std::pair<geom::internal::NamedPrimitive*, size_t> > mPerPrimitiveTessellationMemoryUsed;
+
     // shader call stats
     std::unordered_map<scene_rdl2::rdl2::SceneObject *, moonray::util::InclusiveExclusiveAverage<int64> > mShaderCallStats;
 
@@ -337,7 +343,8 @@ private:
                            OutputFormat format);
     void logCpuAffinityStats(std::ostream& outs, OutputFormat format);
 
-    moonray_stats::StatsTable<3> buildTessellationStatistics(std::size_t maxEntry, std::size_t callDivisor);
+    moonray_stats::StatsTable<3> buildTessellationTimeStatistics(std::size_t maxEntry);
+    moonray_stats::StatsTable<3> buildTessellationMemoryUsedStatistics(std::size_t maxEntry);
 
     // This function WILL modify the ShaderStat vector.
     ShaderStatsTable buildShaderStatistics(std::vector<ShaderStat>::iterator first,

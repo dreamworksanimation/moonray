@@ -27,6 +27,7 @@
 #include <scene_rdl2/scene/rdl2/RenderOutput.h>
 #include <scene_rdl2/scene/rdl2/rdl2.h>
 
+#include <ctime>
 #include <iomanip>
 #include <fstream>
 #include <sys/param.h>
@@ -417,6 +418,8 @@ RenderStats::logInfoPrependStringHeader() const
 void
 RenderStats::logInitializationConfiguration(std::stringstream &initMessages)
 {
+    logCurrentDateTime(initMessages);
+
     initMessages.flush();
     std::string messages = initMessages.str();
     if (messages.empty()) {
@@ -1100,42 +1103,76 @@ void
 RenderStats::logTopTessellationStats()
 {
     const std::size_t maxEntry = 10;
-    const std::size_t callDivisor = 1000;
-    const auto tsTableInfo = buildTessellationStatistics(maxEntry, callDivisor);
+    const auto tsTimeTableInfo = buildTessellationTimeStatistics(maxEntry);
 
     if (getLogInfo()) {
-        auto tsFormat = getHumanColumnFlags(mInfoStream, tsTableInfo);
+        auto tsFormat = getHumanColumnFlags(mInfoStream, tsTimeTableInfo);
         tsFormat.set(0).left();
         tsFormat.set(1).left();
         tsFormat.set(2).precision(3);
         tsFormat.set(2).right();
-        writeInfoTable(mInfoStream, getPrependString(), tsTableInfo, tsFormat);
+        writeInfoTable(mInfoStream, getPrependString(), tsTimeTableInfo, tsFormat);
     }
     if (getLogCsv()) {
-        auto tsFormat = getCSVFlags(mCSVStream, tsTableInfo);
+        auto tsFormat = getCSVFlags(mCSVStream, tsTimeTableInfo);
         tsFormat.set().setf(std::ios::fixed, std:: ios::floatfield);
         tsFormat.set().precision(5);
-        writeCSVTable(mCSVStream, tsTableInfo, false /* not athena */, tsFormat);
+        writeCSVTable(mCSVStream, tsTimeTableInfo, false /* not athena */, tsFormat);
+    }
+
+   const auto tsMemoryUsedTableInfo = buildTessellationMemoryUsedStatistics(maxEntry);
+
+    if (getLogInfo()) {
+        auto tsFormat = getHumanColumnFlags(mInfoStream, tsMemoryUsedTableInfo);
+        tsFormat.set(0).left();
+        tsFormat.set(1).left();
+        tsFormat.set(2).precision(3);
+        tsFormat.set(2).right();
+        writeInfoTable(mInfoStream, getPrependString(), tsMemoryUsedTableInfo, tsFormat);
+    }
+    if (getLogCsv()) {
+        auto tsFormat = getCSVFlags(mCSVStream, tsMemoryUsedTableInfo);
+        tsFormat.set().setf(std::ios::fixed, std:: ios::floatfield);
+        tsFormat.set().precision(5);
+        writeCSVTable(mCSVStream, tsMemoryUsedTableInfo, false /* not athena */, tsFormat);
     }
 }
 
 void
 RenderStats::logAllTessellationStats()
 {
-    auto first = mPerPrimitiveTessellationTime.begin();
-    auto last = mPerPrimitiveTessellationTime.end();
+    {
+        auto first = mPerPrimitiveTessellationTime.begin();
+        auto last = mPerPrimitiveTessellationTime.end();
 
-    moonray_stats::StatsTable<3> table("Tessellation time", "Rdl Geometry", "part name", "time (s)");
+        moonray_stats::StatsTable<3> table("Tessellation time", "Rdl Geometry", "part name", "time (s)");
 
-    for (auto it = first; it != last; ++it) {
-        const auto& obj = *it;
-        table.emplace_back(obj.first->getRdlGeometry()->getName(), obj.first->getName(), moonray_stats::time(obj.second));
+        for (auto it = first; it != last; ++it) {
+            const auto& obj = *it;
+            table.emplace_back(obj.first->getRdlGeometry()->getName(), obj.first->getName(), moonray_stats::time(obj.second));
+        }
+
+        auto tsFormat = getCSVFlags(mAthenaStream, table);
+        tsFormat.set().setf(std::ios::fixed, std:: ios::floatfield);
+        tsFormat.set().precision(5);
+        writeCSVTable(mAthenaStream, table, true, tsFormat);
     }
+    {
+        auto first = mPerPrimitiveTessellationMemoryUsed.begin();
+        auto last = mPerPrimitiveTessellationMemoryUsed.end();
 
-    auto tsFormat = getCSVFlags(mAthenaStream, table);
-    tsFormat.set().setf(std::ios::fixed, std:: ios::floatfield);
-    tsFormat.set().precision(5);
-    writeCSVTable(mAthenaStream, table, true, tsFormat);
+        moonray_stats::StatsTable<3> table("Tessellation temporary memory used", "Rdl Geometry", "part name", "memory");
+
+        for (auto it = first; it != last; ++it) {
+            const auto& obj = *it;
+            table.emplace_back(obj.first->getRdlGeometry()->getName(), obj.first->getName(), bytes(obj.second));
+        }
+
+        auto tsFormat = getCSVFlags(mAthenaStream, table);
+        tsFormat.set().setf(std::ios::fixed, std:: ios::floatfield);
+        tsFormat.set().precision(5);
+        writeCSVTable(mAthenaStream, table, true, tsFormat);
+    }
 }
 
 void
@@ -1580,7 +1617,7 @@ getRelevantStats(Iterator first,
 } // end anonymous namespace
 
 moonray_stats::StatsTable<3>
-RenderStats::buildTessellationStatistics(std::size_t maxEntry, std::size_t callDivisor)
+RenderStats::buildTessellationTimeStatistics(std::size_t maxEntry)
 {
     auto first = mPerPrimitiveTessellationTime.begin();
     auto last = mPerPrimitiveTessellationTime.end();
@@ -1597,6 +1634,29 @@ RenderStats::buildTessellationStatistics(std::size_t maxEntry, std::size_t callD
     for (auto it = first; it != last; ++it) {
         const auto& obj = *it;
         table.emplace_back(obj.first->getRdlGeometry()->getName(), obj.first->getName(), moonray_stats::time(obj.second));
+    }
+
+    return table;
+}
+
+moonray_stats::StatsTable<3>
+RenderStats::buildTessellationMemoryUsedStatistics(std::size_t maxEntry)
+{
+    auto first = mPerPrimitiveTessellationMemoryUsed.begin();
+    auto last = mPerPrimitiveTessellationMemoryUsed.end();
+    std::tie(first, last) = getRelevantStats(first, last,
+            [](const TessStat& ts) { return ts.second > 0; },
+            [=](const TessStat& s1, const TessStat& s2)
+            {
+                return s1.second > s2.second;
+            },
+            maxEntry);
+
+    moonray_stats::StatsTable<3> table("Tessellation temporary memory used", "Rdl Geometry", "part name", "memory");
+
+    for (auto it = first; it != last; ++it) {
+        const auto& obj = *it;
+        table.emplace_back(obj.first->getRdlGeometry()->getName(), obj.first->getName(), bytes(obj.second));
     }
 
     return table;
@@ -1939,6 +1999,15 @@ RenderStats::logInfoShaderStats(std::ostream& outs,
 
     writeInfoTablePermutation<2, 4, 3, 1, 0>(outs, prepend, ssInclTableInfo, ssInclFormat, maxEntry);
     writeInfoTablePermutation<2, 4, 3, 1, 0>(outs, prepend, ssExclTableInfo, ssExclFormat, maxEntry);
+}
+
+
+void
+RenderStats::logCurrentDateTime(std::stringstream &initMessages)
+{
+    time_t timer = ::time(nullptr);
+    char* result = ctime(&timer);
+    initMessages << "Current date and time: " << result << '\n';
 }
 
 void
