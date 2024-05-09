@@ -556,8 +556,7 @@ public:
 private:
     // Does any pre-render work, like building the spatial accelerator or
     // initializing any necessary libraries. Called in startFrame()
-    RP_RESULT renderPrep(mcrt_common::ExecutionMode executionMode,
-                         bool allowUnsupportedXPUFeatures);
+    RP_RESULT renderPrep(bool allowUnsupportedXPUFeatures);
 
     // Helper function which loads the scene into the SceneContext.
     void loadScene(std::stringstream &initMessages);
@@ -585,7 +584,7 @@ private:
 
     // Helper function for conditioning scene variables and other state into a
     // constant, fast to access structure for use within renderer inner loops.
-    void buildFrameState(FrameState *fs, double frameStartTime, mcrt_common::ExecutionMode executionMode) const;
+    void buildFrameState(FrameState *fs, double frameStartTime) const;
 
     // Called each frame in startFrame to update the internal state of the integrator.
     void updatePbrState(const FrameState &fs);

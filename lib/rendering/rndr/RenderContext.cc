@@ -755,7 +755,7 @@ RenderContext::startFrame()
     }
 
     // Determine if to render this frame in scalar, vectorized, or xpu mode.
-    ExecutionMode executionMode = ExecutionMode::XPU;
+    mExecutionMode = ExecutionMode::XPU;
     ExecutionMode desiredExecutionMode = mOptions.getDesiredExecutionMode();
     std::string executionModeString;
     std::string missingVecFeatures;
@@ -766,7 +766,7 @@ RenderContext::startFrame()
 
     case ExecutionMode::SCALAR:
         executionModeString = "Executing a scalar render since execution mode was set to scalar.";
-        executionMode = ExecutionMode::SCALAR;
+        mExecutionMode = ExecutionMode::SCALAR;
     break;
 
     case ExecutionMode::VECTORIZED:
@@ -776,7 +776,7 @@ RenderContext::startFrame()
             executionModeString += missingVecFeatures;
             executionModeString += ".";
         }
-        executionMode = ExecutionMode::VECTORIZED;
+        mExecutionMode = ExecutionMode::VECTORIZED;
     break;
 
     case ExecutionMode::XPU:
@@ -787,7 +787,7 @@ RenderContext::startFrame()
             executionModeString += missingVecFeatures;
             executionModeString += ".";
         }
-        executionMode = ExecutionMode::XPU;
+        mExecutionMode = ExecutionMode::XPU;
         // If there is an error setting up the GPU, we will fall back to vector mode
         // in GeometryManager::updateGPUAccelerator().
     break;
@@ -799,11 +799,11 @@ RenderContext::startFrame()
             executionModeString += "  The following features are missing vector mode support: ";
             executionModeString += missingVecFeatures;
             executionModeString += ".";
-            executionMode = ExecutionMode::SCALAR;
+            mExecutionMode = ExecutionMode::SCALAR;
         } else {
             executionModeString = "Executing an XPU render since execution mode was set to auto.";
             allowUnsupportedXPUFeatures = false; // want to fall back if unsupported
-            executionMode = ExecutionMode::XPU;
+            mExecutionMode = ExecutionMode::XPU;
             // If there is an error setting up the GPU, we will fall back to vector mode
             // in GeometryManager::updateGPUAccelerator().
         }    
@@ -811,15 +811,14 @@ RenderContext::startFrame()
 
     // Log information as to whether we're executing in scalar, vectorized, or xpu mode
     // and the reason why.
-    mExecutionMode = executionMode; // for debugConsole command and McrtNodeInfo update
     mExecutionModeString = executionModeString; // for debugConsole command
-    mRenderStats->logExecModeConfiguration(executionMode);
+    mRenderStats->logExecModeConfiguration(mExecutionMode);
     Logger::info(executionModeString);
 
     // Make sure everything is ready to render.
     scene_rdl2::rec_time::RecTime recTime;
     recTime.start();
-    RP_RESULT execResult = renderPrep(executionMode, allowUnsupportedXPUFeatures); // may throw
+    RP_RESULT execResult = renderPrep(allowUnsupportedXPUFeatures); // may throw
     mDriver->pushRenderPrepTime(recTime.end()); // statistical info update for debug
 
 #if defined(USE_PARTITIONED_PIXEL) || defined(USE_PARTITIONED_LENS) || defined(USE_PARTITIONED_TIME)
@@ -932,7 +931,7 @@ RenderContext::startFrame()
 
     // Condition scene variables and other state for this frame.
     FrameState frameState;
-    buildFrameState(&frameState, frameStartTime, executionMode);
+    buildFrameState(&frameState, frameStartTime);
 
     // Record some info for resume history from frameState
     mResumeHistoryMetaData->setNumOfThreads(frameState.mNumRenderThreads);
@@ -992,13 +991,8 @@ RenderContext::startFrame()
     frameState.mRenderContext = this;
 
     // Setup the XPU queues in the RenderDriver if we are XPU accelerated.
-    // isGPUEnabled() may return false even in XPU mode if we failed to create it,
-    // e.g. unsupported geometry, out of VRAM, etc.  In this case we don't have
-    // any XPU queues.
-    if (mGeometryManager->isGPUEnabled()) {
+    if (frameState.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         mDriver->createXPUQueues(frameState.mGPUAccel);
-    } else {
-        mDriver->freeXPUQueues();
     }
 
     if (execResult == RP_RESULT::CANCELED) {
@@ -1776,7 +1770,7 @@ RenderContext::getNumConsistentSamples() const
 }
 
 RenderContext::RP_RESULT
-RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUFeatures)
+RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
 {
     if (mRenderPrepExecTracker.startRenderPrep() == RenderPrepExecTracker::RESULT::CANCELED) {
         return RP_RESULT::CANCELED;
@@ -1941,19 +1935,23 @@ RenderContext::renderPrep(ExecutionMode executionMode, bool allowUnsupportedXPUF
 
     // Update PBR
     RenderTimer timer(mRenderStats->mLoadPbrTime);
-    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), executionMode, *mGeometryManager, 
+    mPbrScene->preFrame(mRenderOutputDriver->getLightAovs(), mExecutionMode, *mGeometryManager, 
                         loadAllGeometries, *mRenderStats);
 
     mRenderPrepTimingStats->recTime(RenderPrepTimingStats::RenderPrepTag::UPDATE_PBR);
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::RenderPrepTag::WHOLE);
 
     // Update XPU
-    if (executionMode == mcrt_common::ExecutionMode::XPU) {
+    if (mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         if (geomChangeFlag == rt::ChangeFlag::ALL) {
             // XPU doesn't support BVH updates.  Also, moving the camera in moonray_gui
             // is a rt::ChangeFlag::UPDATE and we don't want to rebuild the GPU
             // data for that case.
             mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
+            if (mGeometryManager->getGPUAccelerator() == nullptr) {
+                // fall back to vector mode
+                mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
+            }
         }
     }
     mRenderStats->mBuildGPUAcceleratorTime =
@@ -2770,7 +2768,7 @@ namespace {
 } // anonymous namespace
 
 void
-RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionMode executionMode) const
+RenderContext::buildFrameState(FrameState *fs, double frameStartTime) const
 {
     // cppcheck-suppress memsetClassFloat // floating point memset to 0 is fine
     memset(fs, 0, sizeof(FrameState));
@@ -2827,7 +2825,11 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime, ExecutionM
     // From pbr::FrameState (all the data which the pbr library requires should
     // be set here).
     //
-    fs->mExecutionMode = executionMode;
+
+    // this is set *after* the GPUAccelerator is created in GeometryManager::updateGPUAccelerator()
+    // and possible fallback to vector mode
+    fs->mExecutionMode = mExecutionMode;
+
     fs->mEmbreeAccel = MNRY_VERIFY(mGeometryManager->getEmbreeAccelerator());
     fs->mGPUAccel = mGeometryManager->getGPUAccelerator(); // may be nullptr if not in xpu mode
     fs->mLayer = MNRY_VERIFY(mLayer);

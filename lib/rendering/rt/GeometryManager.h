@@ -139,11 +139,6 @@ public:
 
     void updateShadowLinkings(const scene_rdl2::rdl2::Layer* layer);
 
-    finline bool isGPUEnabled() const
-    {
-        return mGPUAccelerator != nullptr;
-    }
-
     void getEmissiveRegions(const scene_rdl2::rdl2::Layer* layer,
             std::vector<geom::internal::EmissiveRegion>& emissiveRegions) const;
 
