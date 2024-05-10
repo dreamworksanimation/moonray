@@ -132,6 +132,7 @@ fillBundledRadiance(       uniform PbrTLState *     uniform pbrTls,
         dst->mDeepDataHandle = rayState.mDeepDataHandle;
         dst->mCryptomatteDataHandle = rayState.mCryptomatteDataHandle;
         dst->mCryptoRefP = rayState.mCryptoRefP;
+        dst->mCryptoP0 = rayState.mCryptoP0;
         dst->mCryptoRefN = rayState.mCryptoRefN;
         dst->mCryptoUV = rayState.mCryptoUV;
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);

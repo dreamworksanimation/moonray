@@ -118,6 +118,7 @@ fillBundledRadiance(pbr::TLState* pbrTls, BundledRadiance* dst, const BundledOcc
     // pixel coverage information as seen from the camera.
     dst->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(occlRay.mCryptomatteDataHandle);
     dst->mCryptoRefP = occlRay.mCryptoRefP;
+    dst->mCryptoP0 = occlRay.mCryptoP0;
     dst->mCryptoRefN = occlRay.mCryptoRefN;
     dst->mCryptoUV = occlRay.mCryptoUV;
     dst->mTilePass = occlRay.mTilePass;

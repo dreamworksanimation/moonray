@@ -61,6 +61,7 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
                             rayState.mDeepDataHandle,
                             rayState.mCryptomatteDataHandle,
                             rayState.mCryptoRefP,
+                            rayState.mCryptoP0,
                             rayState.mCryptoRefN,
                             rayState.mCryptoUV,
                             occlTestType,
@@ -760,6 +761,7 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             // Since cryptomatte records radiance information, its handle actually also needs to be acquired
             rayState->mCryptomatteDataHandle = parentRayState.mCryptomatteDataHandle;
             rayState->mCryptoRefP = parentRayState.mCryptoRefP;
+            rayState->mCryptoP0 = parentRayState.mCryptoP0;
             rayState->mCryptoRefN = parentRayState.mCryptoRefN;
             rayState->mCryptoUV = parentRayState.mCryptoUV;
             PbrTLState_acquireDeepData(pbrTls, rayState->mDeepDataHandle);

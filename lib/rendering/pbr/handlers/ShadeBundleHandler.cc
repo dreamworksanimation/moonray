@@ -26,6 +26,7 @@
 #include <moonray/rendering/shading/Types.h>
 
 #include <scene_rdl2/common/math/Color.h>
+#include <scene_rdl2/common/math/Mat4.h>
 
 namespace moonray {
 
@@ -250,6 +251,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptoRefP = rs->mCryptoRefP;
+                currRadiance->mCryptoP0 = rs->mCryptoP0;
                 currRadiance->mCryptoRefN = rs->mCryptoRefN;
                 currRadiance->mCryptoUV = rs->mCryptoUV;
                 currRadiance->mTilePass = rs->mTilePass;
@@ -322,6 +324,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 currRadiance->mCryptoRefP = rs->mCryptoRefP;
+                currRadiance->mCryptoP0 = rs->mCryptoP0;
                 currRadiance->mCryptoRefN = rs->mCryptoRefN;
                 currRadiance->mCryptoUV = rs->mCryptoUV;
                 currRadiance->mTilePass = rs->mTilePass;
@@ -370,6 +373,12 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     shading::State sstate(isect);
                     sstate.getRefP(rs->mCryptoRefP);
                     sstate.getRefN(rs->mCryptoRefN);
+
+                    if (isect->isProvided(shading::StandardAttributes::sP0)) {
+                        rs->mCryptoP0 = scene_rdl2::math::transformPoint(
+                            sstate.getGeometryObject()->getSceneClass().getSceneContext()->getRender2World()->inverse(),
+                            isect->getAttribute(shading::StandardAttributes::sP0));
+                    }
 
                     // Retrieve the first deep id (if present) for this intersection from the primitive attrs.
                     // At the request of production, cryptomatte currently only supports one deep id associated
@@ -672,6 +681,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         cryptomatteDataNext->init(nullptr);
 
                         presenceRay->mCryptoRefP = scene_rdl2::math::Vec3f(0.f);
+                        presenceRay->mCryptoP0 = scene_rdl2::math::Vec3f(0.f);
                         presenceRay->mCryptoRefN = scene_rdl2::math::Vec3f(0.f);
                         presenceRay->mCryptoUV = scene_rdl2::math::Vec2f(0.f);
 
@@ -690,6 +700,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                                                     cryptomatteData->mNormal, 
                                                                                     beauty,
                                                                                     rs->mCryptoRefP,
+                                                                                    rs->mCryptoP0,
                                                                                     rs->mCryptoRefN,
                                                                                     rs->mCryptoUV,
                                                                                     rs->mPathVertex.presenceDepth);
@@ -735,6 +746,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                                                                 cryptomatteData->mNormal, 
                                                                                 beauty, 
                                                                                 rs->mCryptoRefP,
+                                                                                rs->mCryptoP0,
                                                                                 rs->mCryptoRefN,
                                                                                 rs->mCryptoUV,
                                                                                 rs->mPathVertex.presenceDepth);

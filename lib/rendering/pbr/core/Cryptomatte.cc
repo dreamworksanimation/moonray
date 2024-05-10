@@ -50,8 +50,9 @@ void CryptomatteBuffer::clear()
     mFinalized = false;
 }
 
-void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, float weight, 
-                                        const scene_rdl2::math::Vec3f& position, 
+void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, float weight,
+                                        const scene_rdl2::math::Vec3f& position,
+                                        const scene_rdl2::math::Vec3f& p0,
                                         const scene_rdl2::math::Vec3f& normal,
                                         const scene_rdl2::math::Color4& beauty,
                                         const scene_rdl2::math::Vec3f refP,
@@ -70,6 +71,7 @@ void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, 
         if (fragMatches) {
             fragment.mCoverage += weight;
             fragment.mPosition += position;
+            fragment.mP0 += p0;
             fragment.mNormal += normal;
             fragment.mBeauty += beauty;
             fragment.mRefP += refP;
@@ -81,7 +83,7 @@ void CryptomatteBuffer::addSampleScalar(unsigned x, unsigned y, float sampleId, 
     }
 
     // No match, so add a new fragment.
-    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, 
+    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, p0, normal, beauty,
                                              refP, refN, uv, presenceDepth));
 }
 
@@ -90,6 +92,7 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
                                         const scene_rdl2::math::Vec3f& normal,
                                         const scene_rdl2::math::Color4& beauty,
                                         const scene_rdl2::math::Vec3f refP,
+                                        const scene_rdl2::math::Vec3f& p0,
                                         const scene_rdl2::math::Vec3f refN,
                                         const scene_rdl2::math::Vec2f uv,
                                         unsigned presenceDepth,
@@ -108,6 +111,7 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
         if (fragMatches) {
             fragment.mCoverage += weight;
             fragment.mPosition += position;
+            fragment.mP0 += p0;
             fragment.mNormal += normal;
             fragment.mBeauty += beauty;
             fragment.mRefP += refP;
@@ -119,12 +123,12 @@ void CryptomatteBuffer::addSampleVector(unsigned x, unsigned y, float sampleId, 
     }
 
     // No match, so add a new fragment.
-    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, normal, beauty, 
+    pixelEntry.mFragments.push_back(Fragment(sampleId, weight, position, p0, normal, beauty,
                                              refP, refN, uv, presenceDepth));
 }
 
 void CryptomatteBuffer::addBeautySampleVector(unsigned x, unsigned y, 
-                                              float id, const scene_rdl2::math::Color4& beauty, 
+                                              float id, const scene_rdl2::math::Color4& beauty,
                                               unsigned depth) 
 {
     // Only adds beauty, with all other data zeroed out
@@ -135,8 +139,8 @@ void CryptomatteBuffer::addBeautySampleVector(unsigned x, unsigned y,
     // shadeBundleHandler, and this is basically an addendum, where we add no new position/normal data. We pass in false
     // to the incrementSamples parameter in order to suppress this incrementation 
     addSampleVector(x, y, id, 0.f, scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), beauty,
-                    scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec2f(0.f),
-                    depth, false);
+                    scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f), scene_rdl2::math::Vec3f(0.f),
+                    scene_rdl2::math::Vec2f(0.f), depth, false);
 }
 
 void CryptomatteBuffer::finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned>& samplesCount) 
@@ -256,6 +260,12 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
                 *dest++ = fragment.mPosition.z;
                 *dest++ = 0.0f;
             }
+            if (ro.getCryptomatteOutputP0()) {
+                *dest++ = fragment.mP0.x;
+                *dest++ = fragment.mP0.y;
+                *dest++ = fragment.mP0.z;
+                *dest++ = 0.0f;
+            }
             if (ro.getCryptomatteOutputNormals()) {
                 *dest++ = fragment.mNormal.x;
                 *dest++ = fragment.mNormal.y;
@@ -322,6 +332,7 @@ void CryptomatteBuffer::unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsign
                         fragment.mCoverage = fragment.mCoverage * numSamplesFloat;
                         // multiply by the number of fragment samples to get the accumulated (not averaged) data
                         fragment.mPosition = fragment.mPosition * fragment.mNumSamples;
+                        fragment.mP0       = fragment.mP0       * fragment.mNumSamples;
                         fragment.mNormal   = fragment.mNormal   * fragment.mNumSamples;
                         fragment.mBeauty   = fragment.mBeauty   * fragment.mNumSamples;
                         fragment.mRefP     = fragment.mRefP     * fragment.mNumSamples;
@@ -340,6 +351,7 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
                                      const scene_rdl2::rdl2::RenderOutput& ro,
                                      const float *idAndCoverageData,
                                      const float *positionData,
+                                     const float *p0Data,
                                      const float *normalData,
                                      const float *beautyData,
                                      const float *refPData,
@@ -368,6 +380,7 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
 
             // -------------- Reconstruct extra data (positions, normals, beauty) ------------------ //
             scene_rdl2::math::Vec3f position(0.f);
+            scene_rdl2::math::Vec3f p0(0.f);
             scene_rdl2::math::Vec3f normal(0.f);
             scene_rdl2::math::Color4 beauty(0.f);
             scene_rdl2::math::Vec3f refP(0.f);
@@ -379,6 +392,10 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
             if (ro.getCryptomatteOutputPositions()) {
                 position = scene_rdl2::math::Vec3f(positionData);
                 positionData += 4;
+            }
+            if (ro.getCryptomatteOutputP0()) {
+                p0 = scene_rdl2::math::Vec3f(p0Data);
+                p0Data += 4;
             }
             if (ro.getCryptomatteOutputNormals()) {
                 normal = scene_rdl2::math::Vec3f(normalData);
@@ -407,7 +424,7 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
             }
 
             if (coverage > 0.f) {
-                pixelEntry.mFragments.push_back(Fragment(id, coverage, position, normal, beauty, 
+                pixelEntry.mFragments.push_back(Fragment(id, coverage, position, p0, normal, beauty,
                                                          refP, refN, uv,
                                                          presenceDepth, numFragSamples));
             }
@@ -438,6 +455,7 @@ void CryptomatteBuffer::printFragments(unsigned x, unsigned y, int cryptoType) c
         printf("Coverage = %g, ", fragment.mCoverage);
         printf("Id = %g, ", fragment.mId);
         printf("Position = (%g, %g, %g), ", fragment.mPosition.x, fragment.mPosition.y, fragment.mPosition.z);
+        printf("P0 = (%g, %g, %g), ", fragment.mP0.x, fragment.mP0.y, fragment.mP0.z);
         printf("Normal = (%g, %g, %g), ", fragment.mNormal.x, fragment.mNormal.y, fragment.mNormal.z);
         printf("Beauty = (%g, %g, %g, %g), ", fragment.mBeauty.r, fragment.mBeauty.g, fragment.mBeauty.b, fragment.mBeauty.a);
         printf("RefP = (%g, %g, %g), ", fragment.mRefP.x, fragment.mRefP.y, fragment.mRefP.z);

@@ -460,6 +460,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     rad.mDeepDataHandle = pbrTls->acquireDeepData(rs.mDeepDataHandle);
                     rad.mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs.mCryptomatteDataHandle);
                     rad.mCryptoRefP = rs.mCryptoRefP;
+                    rad.mCryptoP0 = rs.mCryptoP0;
                     rad.mCryptoRefN = rs.mCryptoRefN;
                     rad.mCryptoUV = rs.mCryptoUV;
                     rad.mTilePass = rs.mTilePass;
@@ -589,6 +590,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                 rad->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
                 rad->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
                 rad->mCryptoRefP = rs->mCryptoRefP;
+                rad->mCryptoP0 = rs->mCryptoP0;
                 rad->mCryptoRefN = rs->mCryptoRefN;
                 rad->mCryptoUV = rs->mCryptoUV;
                 rad->mTilePass = rs->mTilePass;

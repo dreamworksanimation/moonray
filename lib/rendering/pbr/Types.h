@@ -128,7 +128,7 @@ struct CACHE_ALIGN BundledOcclRayv
     uint8_t mPlaceholder[sizeof(BundledOcclRay) * VLEN];
 };
 
-MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) == 128);
+MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) == 192);
 MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) * VLEN == sizeof(BundledOcclRayv));
 
 #ifdef __AVX512F__
@@ -149,9 +149,9 @@ struct CACHE_ALIGN BundledRadiancev
 };
 
 #ifdef __AVX512F__
-MNRY_STATIC_ASSERT(sizeof(BundledRadiance) == 96);
+MNRY_STATIC_ASSERT(sizeof(BundledRadiance) == 128);
 #else
-MNRY_STATIC_ASSERT(sizeof(BundledRadiance) == 96);
+MNRY_STATIC_ASSERT(sizeof(BundledRadiance) == 128);
 #endif
 
 MNRY_STATIC_ASSERT(sizeof(BundledRadiance) * VLEN == sizeof(BundledRadiancev));

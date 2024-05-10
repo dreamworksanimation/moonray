@@ -90,7 +90,7 @@
 #if CACHE_LINE_SIZE == 128
 #define RAY_STATE_MEMBERS_PAD   (46+20)
 #else
-#define RAY_STATE_MEMBERS_PAD   20
+#define RAY_STATE_MEMBERS_PAD   8
 #endif
 
 #define RAY_STATE_MEMBERS                                                   \
@@ -107,6 +107,7 @@
     HVD_MEMBER(uint32_t, mDeepDataHandle);                                  \
     HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                           \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP);        \
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoP0);          \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN);        \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);          \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mVolRad);            \
@@ -132,6 +133,7 @@
     HVD_VALIDATE(RayState, mDeepDataHandle);                                \
     HVD_VALIDATE(RayState, mCryptomatteDataHandle);                         \
     HVD_VALIDATE(RayState, mCryptoRefP);                                    \
+    HVD_VALIDATE(RayState, mCryptoP0);                                      \
     HVD_VALIDATE(RayState, mCryptoRefN);                                    \
     HVD_VALIDATE(RayState, mCryptoUV);                                      \
     HVD_VALIDATE(RayState, mVolRad);                                        \

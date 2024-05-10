@@ -1430,6 +1430,16 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
                 sprintf(channelName, "CryptoP%02d.A", fragment);
                 chanNames.push_back(channelName);
             }
+            if (ro->getCryptomatteOutputP0()) {
+                sprintf(channelName, "CryptoP0%02d.R", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP0%02d.G", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP0%02d.B", fragment);
+                chanNames.push_back(channelName);
+                sprintf(channelName, "CryptoP0%02d.A", fragment);
+                chanNames.push_back(channelName);
+            }
             if (ro->getCryptomatteOutputNormals()) {
                 sprintf(channelName, "CryptoN%02d.R", fragment);
                 chanNames.push_back(channelName);
@@ -1505,6 +1515,16 @@ RenderOutputDriver::Impl::getChannelNames(const scene_rdl2::rdl2::RenderOutput *
                     sprintf(channelName, "CryptoRefractP%02d.B", fragment);
                     chanNames.push_back(channelName);
                     sprintf(channelName, "CryptoRefractP%02d.A", fragment);
+                    chanNames.push_back(channelName);
+                }
+                if (ro->getCryptomatteOutputP0()) {
+                    sprintf(channelName, "CryptoRefractP0%02d.R", fragment);
+                    chanNames.push_back(channelName);
+                    sprintf(channelName, "CryptoRefractP0%02d.G", fragment);
+                    chanNames.push_back(channelName);
+                    sprintf(channelName, "CryptoRefractP0%02d.B", fragment);
+                    chanNames.push_back(channelName);
+                    sprintf(channelName, "CryptoRefractP0%02d.A", fragment);
                     chanNames.push_back(channelName);
                 }
                 if (ro->getCryptomatteOutputNormals()) {

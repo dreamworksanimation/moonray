@@ -53,6 +53,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
                     varying uint32_t deepDataHandle,
                     varying uint32_t cryptomatteDataHandle,
                     const varying Vec3f &cryptoRefP,
+                    const varying Vec3f &cryptoP0,
                     const varying Vec3f &cryptoRefN,
                     const varying Vec2f &cryptoUV,
                     varying uint32_t occlTestType,
@@ -73,6 +74,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
     this->mDeepDataHandle = deepDataHandle;
     this->mCryptomatteDataHandle = cryptomatteDataHandle;
     this->mCryptoRefP = cryptoRefP;
+    this->mCryptoP0 = cryptoP0;
     this->mCryptoRefN = cryptoRefN;
     this->mCryptoUV = cryptoUV;
     this->mOcclTestType = occlTestType;

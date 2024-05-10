@@ -73,6 +73,7 @@ private:
         float mId;
         float mCoverage;                        
         scene_rdl2::math::Vec3f mPosition;
+        scene_rdl2::math::Vec3f mP0;
         scene_rdl2::math::Vec3f mNormal;
         scene_rdl2::math::Color4 mBeauty;
         scene_rdl2::math::Vec3f mRefP;
@@ -83,6 +84,7 @@ private:
 
         Fragment(float id, float coverage, 
                  const scene_rdl2::math::Vec3f& position, 
+                 const scene_rdl2::math::Vec3f& p0,
                  const scene_rdl2::math::Vec3f& normal, 
                  const scene_rdl2::math::Color4& beauty, 
                  const scene_rdl2::math::Vec3f refP,
@@ -92,6 +94,7 @@ private:
         : mId(id), 
           mCoverage(coverage),
           mPosition(position), 
+          mP0(p0),
           mNormal(normal), 
           mBeauty(beauty),
           mRefP(refP),
@@ -128,7 +131,8 @@ public:
     // -----------------------------------------------------------------------------------------------------------------
 
     void addSampleScalar(unsigned x, unsigned y, float id, float weight, 
-                         const scene_rdl2::math::Vec3f& position, 
+                         const scene_rdl2::math::Vec3f& position,
+                         const scene_rdl2::math::Vec3f& p0,
                          const scene_rdl2::math::Vec3f& normal,
                          const scene_rdl2::math::Color4& beauty,
                          const scene_rdl2::math::Vec3f refP,
@@ -143,6 +147,7 @@ public:
                          const scene_rdl2::math::Vec3f& normal,
                          const scene_rdl2::math::Color4& beauty,
                          const scene_rdl2::math::Vec3f refP,
+                         const scene_rdl2::math::Vec3f& p0,
                          const scene_rdl2::math::Vec3f refN,
                          const scene_rdl2::math::Vec2f uv,
                          unsigned presenceDepth,
@@ -159,6 +164,7 @@ public:
                       const scene_rdl2::rdl2::RenderOutput& ro,
                       const float *idAndCoverageData,
                       const float *positionData,
+                      const float *p0Data,
                       const float *normalData,
                       const float *beautyData,
                       const float *refPData,

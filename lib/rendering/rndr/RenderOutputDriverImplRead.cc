@@ -529,6 +529,7 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                         // get the offsets to the cryptomatte data (the data isn't necessarily contiguous!)
                         const float* idAndCoverageData       = pix + reader.getPixChanOffset("Cryptomatte00.R");
                         const float* positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
+                        const float* p0Data                  = pix + reader.getPixChanOffset("CryptoP000.R");
                         const float* normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
                         const float* beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
                         const float* refPData                = pix + reader.getPixChanOffset("CryptoRefP00.R");
@@ -536,7 +537,7 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                         const float* uvData                  = pix + reader.getPixChanOffset("CryptoUV00.R");
                         const float* resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
 
-                        cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, normalData, 
+                        cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, p0Data, normalData,
                                                      beautyData, refPData, refNData, uvData, resumeRenderSupportData);
                         pix += nChan;
                     }

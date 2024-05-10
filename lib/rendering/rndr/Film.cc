@@ -1006,6 +1006,7 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                                                     br->mRadiance[2], 
                                                     br->mRadiance[3]);
                     scene_rdl2::math::Vec3f refP = br->mCryptoRefP;
+                    scene_rdl2::math::Vec3f p0 = br->mCryptoP0;
                     scene_rdl2::math::Vec3f refN = br->mCryptoRefN;
                     scene_rdl2::math::Vec2f uv = br->mCryptoUV;
 
@@ -1020,7 +1021,7 @@ Film::addSampleBundleHandlerHelper(mcrt_common::ThreadLocalState *tls,
                             // numFragSamples if we're dealing with the first sample for this path. We don't want 
                             // any data from the subsequent bounces except for the beauty (for GI)
                             film.mCryptomatteBuf->addSampleVector(px, py, id, 1.f, position, normal, beauty,
-                                                                  refP, refN, uv, depth);                    
+                                                                  refP, p0, refN, uv, depth);
                             cryptomatteData->mIsFirstSample = 0;
                         } else {
                             film.mCryptomatteBuf->addBeautySampleVector(px, py, id, beauty, depth);

@@ -445,6 +445,11 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     }
     if (hitGeom && cryptomatteParamsPtr) {
         cryptomatteParamsPtr->mHit = true;
+        if (isect.isProvided(shading::StandardAttributes::sP0)) {
+            cryptomatteParamsPtr->mP0 = scene_rdl2::math::transformPoint(
+                isect.getGeometryObject()->getSceneClass().getSceneContext()->getRender2World()->inverse(),
+                isect.getAttribute(shading::StandardAttributes::sP0));
+        }
         cryptomatteParamsPtr->mPosition = isect.getP();
         cryptomatteParamsPtr->mNormal = isect.getN();
         shading::State sstate(&isect);
@@ -728,6 +733,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             newCryptomatteParamsPtr->mCryptomatteBuffer->addSampleScalar(px, py, newCryptomatteParamsPtr->mId, 
                                                                                  newPv.pathPixelWeight,
                                                                                  newCryptomatteParamsPtr->mPosition,
+                                                                                 newCryptomatteParamsPtr->mP0,
                                                                                  newCryptomatteParamsPtr->mNormal,
                                                                                  newCryptomatteParamsPtr->mBeauty,
                                                                                  newCryptomatteParamsPtr->mRefP,
@@ -750,6 +756,11 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             //   we end the refractive cryptomatte path by setting the intersection data.
             refractCryptomatteParamsPtr->mHit = true;
             refractCryptomatteParamsPtr->mPosition = isect.getP();
+            if (isect.isProvided(shading::StandardAttributes::sP0)) {
+                refractCryptomatteParamsPtr->mP0 = scene_rdl2::math::transformPoint(
+                    isect.getGeometryObject()->getSceneClass().getSceneContext()->getRender2World()->inverse(),
+                    isect.getAttribute(shading::StandardAttributes::sP0));
+            }
             refractCryptomatteParamsPtr->mNormal = isect.getN();
             shading::State sstate(&isect);
             sstate.getRefP(refractCryptomatteParamsPtr->mRefP);
@@ -996,9 +1007,10 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         scene_rdl2::math::Color cryptoBeauty = radiance - presenceRadiance;
         cryptoBeauty *= presenceInv;
 
-        cryptomatteParamsPtr->mCryptomatteBuffer->addSampleScalar(px, py, cryptomatteParamsPtr->mId, 
-                                                                          pv.pathPixelWeight, 
-                                                                          cryptomatteParamsPtr->mPosition, 
+        cryptomatteParamsPtr->mCryptomatteBuffer->addSampleScalar(px, py, cryptomatteParamsPtr->mId,
+                                                                          pv.pathPixelWeight,
+                                                                          cryptomatteParamsPtr->mPosition,
+                                                                          cryptomatteParamsPtr->mP0,
                                                                           cryptomatteParamsPtr->mNormal,
                                                                           scene_rdl2::math::Color4(cryptoBeauty),
                                                                           cryptomatteParamsPtr->mRefP,
@@ -1351,7 +1363,8 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
     if (cryptomatteBuffer && cryptomatteParams.mHit) {
         cryptomatteBuffer->addSampleScalar(pixelX, pixelY, cryptomatteParams.mId, 
                                                            1.0f, 
-                                                           cryptomatteParams.mPosition, 
+                                                           cryptomatteParams.mPosition,
+                                                           cryptomatteParams.mP0,
                                                            cryptomatteParams.mNormal,
                                                            scene_rdl2::math::Color4(radiance),
                                                            cryptomatteParams.mRefP,
@@ -1364,7 +1377,8 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
     if (cryptomatteBuffer && refractCryptomatteParams.mHit) {
         cryptomatteBuffer->addSampleScalar(pixelX, pixelY, refractCryptomatteParams.mId, 
                                                            1.0f, 
-                                                           refractCryptomatteParams.mPosition, 
+                                                           refractCryptomatteParams.mPosition,
+                                                           refractCryptomatteParams.mP0,
                                                            refractCryptomatteParams.mNormal,
                                                            scene_rdl2::math::Color4(radiance),
                                                            refractCryptomatteParams.mRefP,

@@ -1287,6 +1287,7 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
             cryptomatteData->init(cryptomatteBuffer);
 
             rs->mCryptoRefP = scene_rdl2::math::Vec3f(0.f);
+            rs->mCryptoP0 = scene_rdl2::math::Vec3f(0.f);
             rs->mCryptoRefN = scene_rdl2::math::Vec3f(0.f);
             rs->mCryptoUV = scene_rdl2::math::Vec2f(0.f);
         }

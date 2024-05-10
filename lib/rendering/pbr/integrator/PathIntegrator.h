@@ -283,6 +283,7 @@ private:
         bool mHit;
         float mId;
         scene_rdl2::math::Vec3f mPosition;
+        scene_rdl2::math::Vec3f mP0;
         scene_rdl2::math::Vec3f mNormal;
         scene_rdl2::math::Color4 mBeauty;
         scene_rdl2::math::Vec3f mRefP;
@@ -293,6 +294,7 @@ private:
         void init(CryptomatteBuffer* buffer) {
             mHit = false;
             mId = 0.f;
+            mP0 = scene_rdl2::math::Vec3f(0.f);
             mPosition = scene_rdl2::math::Vec3f(0.f);
             mNormal = scene_rdl2::math::Vec3f(0.f);
             mBeauty = scene_rdl2::math::Color4(0.f);
