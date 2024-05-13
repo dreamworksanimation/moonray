@@ -56,7 +56,7 @@ GPUAccelerator::getGPUDeviceName() const
 }
 
 void
-GPUAccelerator::intersect(const unsigned numRays, const GPURay* rays) const
+GPUAccelerator::intersect(const uint32_t numRays, const GPURay* rays) const
 {
     mImpl->intersect(numRays, rays);
 }
@@ -68,25 +68,25 @@ GPUAccelerator::getOutputIsectBuf() const
 }
 
 GPURay*
-GPUAccelerator::getGPURaysBuf(const uint32_t queueIdx) const
+GPUAccelerator::getGPURaysBufUMA(const uint32_t queueIdx) const
 {
-    return mImpl->getGPURaysBuf(queueIdx);
+    return mImpl->getGPURaysBufUMA(queueIdx);
 }
 
 void*
-GPUAccelerator::getCPURayBuf(const uint32_t queueIdx, size_t numRays, size_t stride) const
+GPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t queueIdx, uint32_t numRays, size_t stride) const
 {
-    return mImpl->getCPURayBuf(queueIdx, numRays, stride);
+    return mImpl->getBundledOcclRaysBufUMA(queueIdx, numRays, stride);
 }
 
 void
 GPUAccelerator::occluded(const uint32_t queueIdx,
-                         const unsigned numRays,
+                         const uint32_t numRays,
                          const GPURay* rays,
-                         const void* cpuRays,
-                         size_t cpuRayStride) const
+                         const void* bundledOcclRaysUMA,
+                         size_t bundledOcclRayStride) const
 {
-    mImpl->occluded(queueIdx, numRays, rays, cpuRays, cpuRayStride);
+    mImpl->occluded(queueIdx, numRays, rays, bundledOcclRaysUMA, bundledOcclRayStride);
 }
 
 unsigned char*
@@ -101,22 +101,10 @@ GPUAccelerator::getCPUMemoryUsed() const
     return mImpl->getCPUMemoryUsed();
 }
 
-unsigned int
+uint32_t
 GPUAccelerator::getRaysBufSize()
 {
     return GPUAcceleratorType::getRaysBufSize();
-}
-
-bool
-GPUAccelerator::getUMAAvailable()
-{
-    return GPUAcceleratorType::getUMAAvailable();
-}
-
-bool
-GPUAccelerator::supportsMultipleQueues()
-{
-    return GPUAcceleratorType::supportsMultipleQueues();
 }
 
 } // namespace rt
@@ -152,7 +140,7 @@ GPUAccelerator::getGPUDeviceName() const
 }
 
 void
-GPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*/) const
+GPUAccelerator::intersect(const uint32_t /*numRays*/, const GPURay* /*rays*/) const
 {
 }
 
@@ -163,25 +151,25 @@ GPUAccelerator::getOutputIsectBuf() const
 }
 
 GPURay*
-GPUAccelerator::getGPURaysBuf(const uint32_t /* queueIdx */) const
+GPUAccelerator::getGPURaysBufUMA(const uint32_t /* queueIdx */) const
 {
     return nullptr;
 }
 
 void*
-GPUAccelerator::getCPURayBuf(const uint32_t /* queueIdx */,
-                             size_t /* numRays */,
-                             size_t /* stride */) const
+GPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t /* queueIdx */,
+                                         const uint32_t /* numRays */,
+                                         const size_t /* stride */) const
 {
     return nullptr;
 }
 
 void
 GPUAccelerator::occluded(const uint32_t /* queueIdx */,
-                         const unsigned /* numRays */,
+                         const uint32_t /* numRays */,
                          const GPURay* /* rays */,
-                         const void* /* cpuRays */,
-                         size_t /* cpuRayStride */) const
+                         const void* /* bundledOcclRaysUMA */,
+                         const size_t /* bundledOcclRayStride */) const
 {
 }
 
@@ -197,22 +185,10 @@ GPUAccelerator::getCPUMemoryUsed() const
     return 0;
 }
 
-unsigned int
+uint32_t
 GPUAccelerator::getRaysBufSize()
 {
     return 0;
-}
-
-bool
-GPUAccelerator::getUMAAvailable()
-{
-    return false;
-}
-
-bool
-GPUAccelerator::supportsMultipleQueues()
-{
-    return false;
 }
 
 } // namespace rt

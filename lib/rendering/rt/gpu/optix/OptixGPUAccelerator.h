@@ -40,19 +40,23 @@ public:
 
     std::string getGPUDeviceName() const;
 
-    void intersect(const unsigned numRays, const GPURay* rays) const;
+    void intersect(const uint32_t numRays, const GPURay* rays) const;
 
     GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
 
-    void occluded(const uint32_t queueIdx, const unsigned numRays, const GPURay* rays, const void* cpuRays, size_t cpuRayStride) const;
+    void occluded(const uint32_t queueIdx,
+                  const uint32_t numRays,
+                  const GPURay* rays,
+                  const void* /* bundledOcclRaysUMA - unused for Optix*/,
+                  const size_t /* bundledOcclRayStride - unused for Optix*/) const;
 
-    GPURay* getGPURaysBuf(const uint32_t queueIdx) const {
+    GPURay* getGPURaysBufUMA(const uint32_t queueIdx) const {
         return nullptr;
     }
 
-    void* getCPURayBuf(const uint32_t queueIdx,
-                       size_t numRays,
-                       size_t stride) const {
+    void* getBundledOcclRaysBufUMA(const uint32_t queueIdx,
+                                   const uint32_t numRays,
+                                   const size_t stride) const {
         return nullptr;
     }
 
@@ -62,9 +66,7 @@ public:
 
     size_t getCPUMemoryUsed() const;
 
-    static unsigned int getRaysBufSize() { return mRaysBufSize; }
-    static bool getUMAAvailable() { return false; }
-    static bool supportsMultipleQueues() { return false; }
+    static uint32_t getRaysBufSize() { return mRaysBufSize; }
 
 private:
     bool build(CUstream cudaStream,
@@ -79,7 +81,7 @@ private:
 
     bool createShaderBindingTable(std::string* errorMsg);
 
-    unsigned int mNumCPUThreads; // number of CPU threads that can call the GPU
+    uint32_t mNumCPUThreads; // number of CPU threads that can call the GPU
 
     bool mAllowUnsupportedFeatures;
 
@@ -132,7 +134,7 @@ private:
     // Buffers needed to pass rays to the GPU and read back intersection results.
     // The rays buffer size is the same as the ray queue size in RenderDriver::createXPUQueue()
     // and was determined empirically through performance testing.
-    static const unsigned int mRaysBufSize = 65536;
+    static const uint32_t mRaysBufSize = 65536;
      
     mutable std::vector<OptixGPUBuffer<GPURay>> mRaysBuf; // per-thread (queue) input ray buffers
 

@@ -20,6 +20,9 @@ namespace rt {
 struct GPURay
 {
 #ifndef __APPLE__
+    // Apple uses UMA so it gets most of the data for the GPURay directly from
+    // the queued BundledOcclRays that are in UMA memory.  Thus, the GPURay only
+    // has a few members that aren't present on the BundledOcclRay.
     float mOriginX, mOriginY, mOriginZ;
     float mDirX, mDirY, mDirZ;
     float mMinT;

@@ -88,20 +88,19 @@ public:
         MNRY_ASSERT(mCPUThreadQueueHandler);
         MNRY_ASSERT(mGPUQueueHandler);
 
-        mUsingUMA = gpuAccel->getUMAAvailable();
-
         // Create a queue for each CPU thread
         mCPUThreadQueueEntries.resize(mNumCPUThreads);
         mCPUThreadQueueNumQueued.resize(mNumCPUThreads);
 
         for (size_t i = 0; i < numCPUThreads; i++) {
-            if (mUsingUMA) {
-                mCPUThreadQueueEntries[i] = (BundledOcclRay*)gpuAccel->getCPURayBuf(
-                                                            i, mCPUThreadQueueSize, sizeof(BundledOcclRay));
-            }
-            else {
-                mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<BundledOcclRay>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
-            }
+#ifdef __APPLE__
+            // The GPU accelerator supports UMA: we ask for a UMA buffer from the accelerator instead
+            //  of allocating one ourselves.
+            mCPUThreadQueueEntries[i] = (BundledOcclRay*)gpuAccel->getBundledOcclRaysBufUMA(
+                                            i, mCPUThreadQueueSize, sizeof(BundledOcclRay));
+#else
+            mCPUThreadQueueEntries[i] = scene_rdl2::util::alignedMallocArray<BundledOcclRay>(mCPUThreadQueueSize, CACHE_LINE_SIZE);
+#endif
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
@@ -112,12 +111,11 @@ public:
     {
         for (size_t i = 0; i < mNumCPUThreads; i++) {
             MNRY_ASSERT(mCPUThreadQueueNumQueued[i] == 0);
-            if (mUsingUMA) {
-                // Nothing to do - the GPUAccelerator will destroy the buffer
-            }
-            else {
-                scene_rdl2::util::alignedFree(mCPUThreadQueueEntries[i]);
-            }
+#ifdef __APPLE__
+            // Nothing to do - the GPUAccelerator will destroy the UMA buffer
+#else
+            scene_rdl2::util::alignedFree(mCPUThreadQueueEntries[i]);
+#endif
         }
     }
 
@@ -226,17 +224,26 @@ protected:
             const FrameState &fs = *pbrTls->mFs;
             rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
 
-            rt::GPURay* gpuRays;
-            if (mUsingUMA) {
-                gpuRays = accel->getGPURaysBuf(pbrTls->mThreadIdx);
-            } else {
-                gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
-            }
+#ifdef __APPLE__
+            rt::GPURay* gpuRays = accel->getGPURaysBufUMA(pbrTls->mThreadIdx);
 
             for (size_t i = 0; i < numRays; ++i) {
                 const BundledOcclRay &occlRay = rays[i];
                 MNRY_ASSERT(occlRay.isValid());
-#ifndef __APPLE__
+                // Apple uses UMA so it gets most of the data for the GPURay directly from
+                // the queued BundledOcclRays that are in UMA memory.  Thus, the GPURay only
+                // has a few members that aren't present on the BundledOcclRay.
+                gpuRays[i].mShadowReceiverId = occlRay.mShadowReceiverId;
+                const scene_rdl2::rdl2::Light* light = static_cast<BundledOcclRayData *>(
+                    pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight->getRdlLight();
+                gpuRays[i].mLightId = reinterpret_cast<intptr_t>(light);
+            }
+#else
+            rt::GPURay* gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
+
+            for (size_t i = 0; i < numRays; ++i) {
+                const BundledOcclRay &occlRay = rays[i];
+                MNRY_ASSERT(occlRay.isValid());
                 // Optix doesn't access these values from the cpu ray directly, so we copy the
                 // values here into a GPU-accessible buffer
                 gpuRays[i].mOriginX = occlRay.mOrigin.x;
@@ -249,11 +256,11 @@ protected:
                 gpuRays[i].mMaxT = occlRay.mMaxT;
                 gpuRays[i].mTime = occlRay.mTime;
                 gpuRays[i].mShadowReceiverId = occlRay.mShadowReceiverId;
-#endif
                 const scene_rdl2::rdl2::Light* light = static_cast<BundledOcclRayData *>(
                     pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight->getRdlLight();
                 gpuRays[i].mLightId = reinterpret_cast<intptr_t>(light);
             }
+#endif
 
             ++tls->mHandlerStackDepth;
             (*mGPUQueueHandler)(tls,
@@ -291,7 +298,6 @@ protected:
     std::atomic<int>             mThreadsUsingGPU;
     GPUHandler                   mGPUQueueHandler;
     void *                       mHandlerData;
-    bool                         mUsingUMA;
 };
 
 } // namespace pbr

@@ -1615,8 +1615,8 @@ void
 OptixGPUAccelerator::occluded(const uint32_t queueIdx,
                               const uint32_t numRays,
                               const GPURay* rays,
-                              const void* /*cpuRays*/,
-                              size_t /*cpuRayStride*/) const
+                              const void* /* bundledOcclRaysUMA */,
+                              const size_t /* bundledOcclRayStride */) const
 {
     MNRY_ASSERT_REQUIRE(queueIdx <= mIsOccludedBuf.size());
     MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);

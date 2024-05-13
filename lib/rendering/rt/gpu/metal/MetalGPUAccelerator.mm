@@ -1447,9 +1447,9 @@ MetalGPUAccelerator::prepareEncoder(const uint32_t queueIdx) const
 }
 
 void*
-MetalGPUAccelerator::getCPURayBuf(const uint32_t queueIdx,
-                                        size_t numRays,
-                                        size_t stride) const
+MetalGPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t queueIdx,
+                                              const uint32_t numRays,
+                                              const size_t stride) const
 {
     MNRY_ASSERT_REQUIRE(queueIdx < mEncoderStates.size());
 
@@ -1463,16 +1463,16 @@ MetalGPUAccelerator::getCPURayBuf(const uint32_t queueIdx,
 
 void
 MetalGPUAccelerator::occluded(const uint32_t queueIdx,
-                             const uint32_t numRays,
-                             const GPURay* rays,
-                             const void* cpuRays,
-                             size_t cpuRayStride) const
+                              const uint32_t numRays,
+                              const GPURay* rays,
+                              const void* cpuRays,
+                              const size_t cpuRayStride) const
 {
     // std::cout << "occluded(): " << numRays << std::endl;
 
     MNRY_ASSERT_REQUIRE(queueIdx < mEncoderStates.size());
     MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);
-    // Ensure getCPURayBuf was called to allocate the cpuRays pointer for this queue
+    // Ensure getBundledOcclRaysBufUMA was called to allocate the cpuRays pointer for this queue
     MNRY_ASSERT_REQUIRE(cpuRays == [mEncoderStates[queueIdx].cpuBuffer contents]);
     
     // Setup the global GPU parameters

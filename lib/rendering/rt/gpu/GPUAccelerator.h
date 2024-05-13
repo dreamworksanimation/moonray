@@ -145,7 +145,7 @@ public:
     // each CPU-side thread that is submitting rays to the GPU has a separate
     // queue on the GPU.  This allows multiple CPU threads to use the GPU independently.
 
-    void intersect(const unsigned numRays, const GPURay* rays) const;
+    void intersect(const uint32_t numRays, const GPURay* rays) const;
 
     // output intersect results are placed in here
     GPURayIsect* getOutputIsectBuf() const;
@@ -153,22 +153,21 @@ public:
     void occluded(const uint32_t queueIdx,
                   const uint32_t numRays,
                   const GPURay* rays,
-                  const void* cpuRays,
-                  size_t cpuRayStride) const;
+                  const void* bundledOcclRaysUMA,
+                  const size_t bundledOcclRayStride) const;
 
     // output occlusion results are placed in here
     unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const;
-    ::moonray::rt::GPURay* getGPURaysBuf(const uint32_t queueIdx) const;
 
-    void* getCPURayBuf(const uint32_t queueIdx,
-                       size_t numRays,
-                       size_t stride) const;
+    ::moonray::rt::GPURay* getGPURaysBufUMA(const uint32_t queueIdx) const;
+
+    void* getBundledOcclRaysBufUMA(const uint32_t queueIdx,
+                                   const uint32_t numRays,
+                                   const size_t stride) const;
 
     size_t getCPUMemoryUsed() const;
 
-    static unsigned int getRaysBufSize();
-    static bool getUMAAvailable();
-    static bool supportsMultipleQueues();
+    static uint32_t getRaysBufSize();
 
 private:
 

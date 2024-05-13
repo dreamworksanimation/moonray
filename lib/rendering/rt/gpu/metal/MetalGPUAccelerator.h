@@ -40,31 +40,29 @@ public:
 
     std::string getGPUDeviceName() const;
 
-    void intersect(const unsigned numRays, const GPURay* rays) const;
+    void intersect(const uint32_t numRays, const GPURay* rays) const;
 
     GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
 
     unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const {
         return mIsOccludedBuf[queueIdx].cpu_ptr();
     }
-    GPURay* getGPURaysBuf(const uint32_t queueIdx) const {
+    GPURay* getGPURaysBufUMA(const uint32_t queueIdx) const {
         return mRaysBuf[queueIdx].cpu_ptr();
     }
-    void* getCPURayBuf(const uint32_t queueIdx,
-                       size_t numRays,
-                       size_t stride) const;
+    void* getBundledOcclRaysBufUMA(const uint32_t queueIdx,
+                                   const uint32_t numRays,
+                                   const size_t stride) const;
 
     void occluded(const uint32_t queueIdx,
                   const uint32_t numRays,
                   const GPURay* rays,
-                  const void* cpuRays,
-                  size_t cpuRayStride) const;
+                  const void* bundledOcclRaysUMA,
+                  const size_t bundledOcclRayStride) const;
 
     size_t getCPUMemoryUsed() const { return 0; }
 
     static uint32_t getRaysBufSize() { return mRaysBufSize; }
-    static bool getUMAAvailable() { return true; }
-    static bool supportsMultipleQueues() { return true; }
 
 private:
     bool build(const scene_rdl2::rdl2::Layer *layer,
