@@ -176,6 +176,7 @@ void CryptomatteBuffer::finalize(const scene_rdl2::fb_util::PixelBuffer<unsigned
                             float recipFragNumSamples = 1.f / static_cast<float>(fragment.mNumSamples);
                             // take average of position/normal/beauty data over the number of samples taken for the fragment
                             fragment.mPosition *= recipFragNumSamples;
+                            fragment.mP0       *= recipFragNumSamples;
                             fragment.mNormal   *= recipFragNumSamples;
                             fragment.mBeauty   *= recipFragNumSamples;
                             fragment.mRefP     *= recipFragNumSamples;
