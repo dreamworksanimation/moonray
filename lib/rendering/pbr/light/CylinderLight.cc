@@ -361,7 +361,7 @@ CylinderLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r
     if (isect.distance < sEpsilon) {
         return false;
     }
-    wi *= rcp(isect.distance);
+    wi *= 1.0f / isect.distance;
     if (n  &&  dot(*n, wi) < sEpsilon) {
         return false;
     }

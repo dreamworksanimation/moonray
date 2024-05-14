@@ -98,7 +98,7 @@ DipoleBssrdf::DipoleBssrdf(const Vec3f &N,
 
     // Convert from artist controls to physical controls as described in [3]
     Color r = max(radius, Color(0.001f, 0.001f, 0.001f));
-    mSigmaTr = rcp(r);
+    mSigmaTr = 1.0f / r;
     for (int c = 0; c < 3; ++c) {
         float reflectance = max(translucentColor[c], 0.0f);
         reflectance = min(reflectance, 1.0f);
@@ -136,7 +136,7 @@ DipoleBssrdf::DipoleBssrdf(scene_rdl2::alloc::Arena *arena, const DipoleBssrdfv 
 void
 DipoleBssrdf::finishInit()
 {
-    mZr = rcp(mSigmaTP);
+    mZr = 1.0f / mSigmaTP;
     mZv = mZr * (1.0f + (4.0f / 3.0f) * mA);
 
     // Evaluate Rd at the mean free path radius

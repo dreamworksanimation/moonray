@@ -32,7 +32,7 @@ RetroreflectionBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     if (cosOmegaO_OmegaI <= sEpsilon) return black;
 
     //convert roughness to phong exponent (see Walter'07 [2])
-    const float alphaP = 2.0f * rcp(retroLobe->mRoughness * retroLobe->mRoughness) - 2.0f;
+    const float alphaP = 2.0f / (retroLobe->mRoughness * retroLobe->mRoughness) - 2.0f;
 
     // section 3.1 in [1]
     const float power = pow(cosOmegaO_OmegaI, alphaP) * sOneOverTwoPi;
@@ -73,8 +73,8 @@ RetroreflectionBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
     // sample the retro-reflective phong lobe
     // section 3.3.1 in [1]
     // convert roughness to phong exponent (see Walter'07)
-    const float alphaP = 2.0f * rcp(retroLobe->mRoughness * retroLobe->mRoughness) - 2.0f;
-    const float cosThetaM = pow(r1, rcp(alphaP + 1.0f));
+    const float alphaP = 2.0f / (retroLobe->mRoughness * retroLobe->mRoughness) - 2.0f;
+    const float cosThetaM = pow(r1, 1.0f / (alphaP + 1.0f));
     const float sinThetaM = sqrt(1.0f - cosThetaM*cosThetaM);
     const float phiM = 2.0f * sPi * r2;
 

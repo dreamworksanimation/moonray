@@ -101,7 +101,7 @@ BsdfSampler_init(varying BsdfSampler * uniform bSampler,
             bSampler->mSampleCountVarying += sampleCount;
             bSampler->mLobeIndex[lKeep] = l;
             bSampler->mLobeSampleCount[lKeep] = sampleCount;
-            bSampler->mInvLobeSampleCount[lKeep] = rcp((float)sampleCount);
+            bSampler->mInvLobeSampleCount[lKeep] = 1.0f / (float)sampleCount;
             ++lKeep;
         }
     }

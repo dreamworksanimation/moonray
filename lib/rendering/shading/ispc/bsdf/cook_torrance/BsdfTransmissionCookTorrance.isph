@@ -132,11 +132,11 @@ TransmissionCookTorranceBsdfLobe_init(
     // TODO: Smaller thresholds trigger nans
     lobe->mRoughness = max(0.001f, lobe->mRoughness);
 
-    lobe->mInvRoughness = rcp(lobe->mRoughness);
+    lobe->mInvRoughness = 1.0f / lobe->mRoughness;
 
     lobe->mEtaI = etaI;
     lobe->mEtaT = etaT;
-    lobe->mNeta = lobe->mEtaI * rcp(lobe->mEtaT);
+    lobe->mNeta = lobe->mEtaI / lobe->mEtaT;
 
     if (isZero(abbeNumber)) {
         lobe->mAllowDispersion = false;

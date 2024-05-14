@@ -85,11 +85,11 @@ DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
     bssrdf->mSigmaSP = mmInvToWorldInv(sigmaSP, sceneScale);
 
     float fdr = diffuseFresnelReflectance(eta);
-    bssrdf->mA = (1.0f + fdr) * rcp(1.0f - fdr);
+    bssrdf->mA = (1.0f + fdr) / (1.0f - fdr);
 
     bssrdf->mSigmaTP = bssrdf->mSigmaA + bssrdf->mSigmaSP;
     bssrdf->mSigmaTr = sqrt(3.0f * bssrdf->mSigmaA * bssrdf->mSigmaTP);
-    bssrdf->mAlphaP = bssrdf->mSigmaSP * rcp(bssrdf->mSigmaTP);
+    bssrdf->mAlphaP = bssrdf->mSigmaSP / bssrdf->mSigmaTP;
 
     // Keep a note of the total diffuse reflectance
     bssrdf->mDiffuseReflectance = Color_ctor(totalDiffuseReflectance(bssrdf->mAlphaP.r, bssrdf->mA),
@@ -123,7 +123,7 @@ DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
     // Convert from artist controls to physical controls as described in [3]
     const varying Color nearBlack = Color_ctor(0.001f, 0.001f, 0.001f);
     Color r = max(radius, nearBlack);
-    bssrdf->mSigmaTr = rcp(r);
+    bssrdf->mSigmaTr = 1.0f / r;
     for (uniform int c = 0; c < 3; ++c) {
         float reflectance = max((asArray(translucentColor))[c], 0.0f);
         reflectance = min(reflectance, 1.0f);
@@ -134,7 +134,7 @@ DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
                                              totalDiffuseReflectance(bssrdf->mAlphaP.g, bssrdf->mA),
                                              totalDiffuseReflectance(bssrdf->mAlphaP.b, bssrdf->mA));
 
-    bssrdf->mSigmaTP = bssrdf->mSigmaTr * rcp(sqrt(3.0f * (Color_ctor(1.f) - bssrdf->mAlphaP)));
+    bssrdf->mSigmaTP = bssrdf->mSigmaTr / sqrt(3.0f * (Color_ctor(1.f) - bssrdf->mAlphaP));
     bssrdf->mSigmaSP = bssrdf->mAlphaP * bssrdf->mSigmaTP;
     bssrdf->mSigmaA = bssrdf->mSigmaTP - bssrdf->mSigmaSP;
 
@@ -147,14 +147,12 @@ DipoleBssrdf_init(varying DipoleBssrdf * uniform bssrdf,
 static void
 finishInit(varying DipoleBssrdf * uniform bssrdf)
 {
-    bssrdf->mZr = rcp(bssrdf->mSigmaTP);
+    bssrdf->mZr = 1.0f / bssrdf->mSigmaTP;
     bssrdf->mZv = bssrdf->mZr * (1.0f + (4.0f / 3.0f) * bssrdf->mA);
 
     // Evaluate Rd at the mean free path radius. This corresponds to the radius
     // passed in the second constructor, which is also 1 / sigmaTr
-    Color mfp = Color_ctor(rcp(bssrdf->mSigmaTr.r),
-                           rcp(bssrdf->mSigmaTr.g),
-                           rcp(bssrdf->mSigmaTr.b));
+    Color mfp = 1.0f / bssrdf->mSigmaTr;
     float maxMfp = max(mfp.r, mfp.g);
     maxMfp = max(maxMfp, mfp.b);
 
@@ -170,8 +168,8 @@ finishInit(varying DipoleBssrdf * uniform bssrdf)
         float expTermV = exp(-sigmaTr * (asArray(bssrdf->mZv))[c]);
         float sumExpTerms = expTermR + expTermV;
         float reflectance = (asArray(bssrdf->mAlphaP))[c] * 0.5f * sumExpTerms;
-        (asArray(bssrdf->mRatio))[c] = expTermR * rcp(sumExpTerms);
-        (asArray(bssrdf->mPdfNormFactor))[c] = rcp(reflectance);
+        (asArray(bssrdf->mRatio))[c] = expTermR / sumExpTerms;
+        (asArray(bssrdf->mPdfNormFactor))[c] = 1.0f / reflectance;
         (asArray(bssrdf->mChannelCdf))[c] = max(reflectance, sEpsilon);
         normalize += (asArray(bssrdf->mChannelCdf))[c];
     }
@@ -196,7 +194,7 @@ finishInit(varying DipoleBssrdf * uniform bssrdf)
 #endif
 
     // Normalize and integrate the cdf, all in one pass
-    normalize = rcp(normalize);
+    normalize = 1.0f / normalize;
     float cdf = 0.0f;
     for (uniform int c = 0; c < 3; ++c) {
         (asArray(bssrdf->mChannelCdf))[c] *= normalize;
@@ -297,7 +295,7 @@ solveU(varying float r1, varying float sigmaZ)
         step = (abs(f) < 0.001f  ?  maxSteps  :  step + 1);
         // TODO: Why do we hit this assert ?
         MNRY_ASSERT(u > sEpsilon);
-        u -= f * rcp(sigmaZ + 1.0f * rcp(u));
+        u -= f / (sigmaZ + 1.0f / u);
     }
 
     return u;
@@ -315,19 +313,19 @@ DipoleBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
     // Importance sample the channel and remap r2
     int c = (r2 < (asArray(bssrdf->mChannelCdf))[0]  ?  0  :
              (r2 < (asArray(bssrdf->mChannelCdf))[1]  ?  1  :  2));
-    r2 = (c == 0  ?  r2 * rcp((asArray(bssrdf->mChannelCdf))[0])  :
-          (r2 - (asArray(bssrdf->mChannelCdf))[c-1]) *
-          rcp(((asArray(bssrdf->mChannelCdf))[c] - (asArray(bssrdf->mChannelCdf))[c-1])));
+    r2 = (c == 0  ?  r2 / (asArray(bssrdf->mChannelCdf))[0]  :
+          (r2 - (asArray(bssrdf->mChannelCdf))[c-1]) /
+          ((asArray(bssrdf->mChannelCdf))[c] - (asArray(bssrdf->mChannelCdf))[c-1]));
 
 
     // Pick real or virtual source and remap r1
     float z;
     if (r1 < (asArray(bssrdf->mRatio))[c]) {
         z = (asArray(bssrdf->mZr))[c];
-        r1 *= rcp((asArray(bssrdf->mRatio))[c]);
+        r1 /= (asArray(bssrdf->mRatio))[c];
     } else {
         z = (asArray(bssrdf->mZv))[c];
-        r1 = (r1 - (asArray(bssrdf->mRatio))[c]) * rcp((1.0f - (asArray(bssrdf->mRatio))[c]));
+        r1 = (r1 - (asArray(bssrdf->mRatio))[c]) / (1.0f - (asArray(bssrdf->mRatio))[c]);
     }
 
     // Solve for u using r1
@@ -404,7 +402,7 @@ DipoleBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
                    varying float r1, varying float r2, varying Vec3f &dPi,
                    varying float &r)
 {
-    const varying DipoleBssrdf * uniform bssrdf = (const varying DipoleBssrdf * uniform)bs;
+    const varying DipoleBssrdf * uniform bssrdf = (const varying DipoleBssrdf * uniform)bss;
 
     Vec2f p;
     p.x = (r1 - 0.5f) * 2.0f * bssrdf->mMaxRadius;
@@ -414,7 +412,7 @@ DipoleBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
     // Compute position
     dPi = p.x * bssrdf->mFrame.mX + p.y * bssrdf->mFrame.mY;
 
-    float pdf = rcp(4.0f * bssrdf->mMaxRadius * bssrdf->mMaxRadius);
+    float pdf = 0.25f / (bssrdf->mMaxRadius * bssrdf->mMaxRadius);
     return pdf;
 }
 
@@ -422,9 +420,9 @@ DipoleBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
 varying float
 DipoleBssrdf_pdfLocal(const varying Bssrdf * uniform bss, varying float r)
 {
-    const varying DipoleBssrdf * uniform bssrdf = (const varying DipoleBssrdf * uniform)bs;
+    const varying DipoleBssrdf * uniform bssrdf = (const varying DipoleBssrdf * uniform)bss;
 
-    float pdf = rcp(4.0f * mMaxRadius * mMaxRadius);
+    float pdf = 0.25f / (bssrdf->mMaxRadius * bssrdf->mMaxRadius);
     return pdf;
 }
 
@@ -448,9 +446,9 @@ DipoleBssrdf_getProperty(const varying Bssrdf * uniform bss,
         *(dest + 2) = totalDiffuseReflectance(bssrdf->mAlphaP.b, bssrdf->mA);
         break;
     case SUBSURFACE_PROPERTY_RADIUS:
-        *dest       = rcp(bssrdf->mSigmaTr.r);
-        *(dest + 1) = rcp(bssrdf->mSigmaTr.g);
-        *(dest + 2) = rcp(bssrdf->mSigmaTr.b);
+        *dest       = 1.0f / bssrdf->mSigmaTr.r;
+        *(dest + 1) = 1.0f / bssrdf->mSigmaTr.g;
+        *(dest + 2) = 1.0f / bssrdf->mSigmaTr.b;
         break;
     case SUBSURFACE_PROPERTY_PBR_VALIDITY:
         {

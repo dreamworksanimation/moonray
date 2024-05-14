@@ -263,7 +263,7 @@ HairBsdfLobe::sampleTheta(float  r,
 
      // Eugene's Derivation - [3] Section 3.2
      // float cosTheta = mLongitudinalVariance *
-     //     log( exp(rcp(mLongitudinalVariance)) - 2 * eps[0] * sinh(rcp(mLongitudinalVariance)) );
+     //     log( exp(1.0f / mLongitudinalVariance) - 2 * eps[0] * sinh(1.0f / mLongitudinalVariance) );
 
      // PBRT Derivation (More Stable at low variance values)
      float cosTheta =

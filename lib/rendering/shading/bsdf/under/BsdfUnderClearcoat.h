@@ -37,7 +37,7 @@ public:
                            const bool  passThroughTIRWhenSampling = true)
         : UnderBsdfLobe(under, N, thickness, attenuationColor, attenuationWeight)
         , mExitingFresnel(arena->allocWithArgs<DielectricFresnel>(etaT, etaI))
-        , mNeta(etaI * scene_rdl2::math::rcp(etaT))
+        , mNeta(etaI / etaT)
         , mPassThroughTIRWhenSampling(passThroughTIRWhenSampling)
         {}
 

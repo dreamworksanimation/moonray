@@ -36,9 +36,8 @@ DielectricFresnel_evalPerp(float etaI,
                            float cosThetaT)
 {
     const float etaIcosThetaI = etaI * cosThetaI;
-    const float etaTcosThetaT = etaT  * cosThetaT;
-    const float perp = ((etaIcosThetaI) - (etaTcosThetaT)) *
-        rcp((etaIcosThetaI) + (etaTcosThetaT));
+    const float etaTcosThetaT = etaT * cosThetaT;
+    const float perp = (etaIcosThetaI - etaTcosThetaT) / (etaIcosThetaI + etaTcosThetaT);
     return (perp*perp);
 }
 
@@ -50,8 +49,7 @@ DielectricFresnel_evalParallel(float etaI,
 {
     const float etaTcosThetaI = etaT * cosThetaI;
     const float etaIcosThetaT = etaI * cosThetaT;
-    const float parallel = ((etaTcosThetaI) - (etaIcosThetaT)) *
-            rcp((etaTcosThetaI) + (etaIcosThetaT));
+    const float parallel = (etaTcosThetaI - etaIcosThetaT) / (etaTcosThetaI + etaIcosThetaT);
     return (parallel*parallel);
 }
 
@@ -89,7 +87,7 @@ LayeredDielectricFresnel_evalFresnel(const varying float etaI,
     cosThetaI = min(cosThetaI, 1.0f);
 
     // Compute Snell law
-    const float eta = 1.0f * rcp(etaT);
+    const float eta = 1.0f / etaT;
     const float sinThetaTSqr = eta * eta * (1.0f - cosThetaI*cosThetaI);
 
     if (sinThetaTSqr >= 1.0f) {

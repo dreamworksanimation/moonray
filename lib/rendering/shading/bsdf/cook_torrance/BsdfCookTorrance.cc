@@ -76,7 +76,7 @@ CookTorranceBsdfLobe::CookTorranceBsdfLobe(const Vec3f &N,
         mRoughness = 0.001f;
     }
 
-    mInvRoughness = rcp(mRoughness);
+    mInvRoughness = 1.0f / mRoughness;
 
     // Use a directional differential scale that varies with roughness
     mdDFactor = sdDFactorMin + mRoughness * sdDFactorSlope;
@@ -140,23 +140,19 @@ CookTorranceBsdfLobe::eval(const BsdfSlice &slice, const Vec3f &wi,
     const float alpha2          = mRoughness * mRoughness;
     const float cosThetaM2      = cosThetaM * cosThetaM;
     const float cosThetaM4      = cosThetaM2 * cosThetaM2;
-    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) * rcp(cosThetaM2);
-    const float D4              = 0.25f * scene_rdl2::math::exp(minusTanThetaM2 * rcp(alpha2)) *
-                                  rcp(sPi * alpha2 * cosThetaM4);
+    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) / cosThetaM2;
+    const float D4              = scene_rdl2::math::exp(minusTanThetaM2 / alpha2) / (sFourPi * alpha2 * cosThetaM4);
     
     // eq. 26, 27: now calculate G1(i,m) and G1(o,m)
     const float ao = cosNO * mInvRoughness * rsqrt(1.0f - cosNO * cosNO);
     const float ai = cosNI * mInvRoughness * rsqrt(1.0f - cosNI * cosNI);
-    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) *
-            rcp(1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
-    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) *
-            rcp(1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
+    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) / (1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
+    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) / (1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
     const float G  = G1o * G1i;
     
 
     // Compute the Cook-Torrance bsdf
-    Color f = computeScaleAndFresnel(cosMI) * G * D4 * rcp(cosNO) *
-            (slice.getIncludeCosineTerm()  ?  1.0f  :  rcp(cosNI));
+    Color f = G * D4 / cosNO * (slice.getIncludeCosineTerm() ? 1.0f : 1.0f/cosNI) * computeScaleAndFresnel(cosMI);
 
     const float w2 = energyCompensationWeight();
     if (w2 > 0.0f) {
@@ -174,13 +170,12 @@ CookTorranceBsdfLobe::eval(const BsdfSlice &slice, const Vec3f &wi,
         // roughness we use in sample(), otherwise our pdf is biased
         const float alpha = widenRoughness(mRoughness, cosNO);
         const float alpha2 = alpha * alpha;
-        const float D4 = 0.25f * scene_rdl2::math::exp(minusTanThetaM2 * rcp(alpha2)) *
-                         rcp(sPi * alpha2 * cosThetaM4);
+        const float D4 = scene_rdl2::math::exp(minusTanThetaM2 / alpha2) / (sFourPi * alpha2 * cosThetaM4);
 #endif
         const float p2 = energyCompensationPDF(ispc::MICROFACET_DISTRIBUTION_BECKMANN,
                                                cosNI);
         const float w1 = (1.0f - w2);
-        const float p1 = D4 * cosThetaM * rcp(cosMI);
+        const float p1 = D4 * cosThetaM / cosMI;
         // One Sample PDF Weight
         *pdf = (w1 * p1 + w2 * p2);
     }
@@ -482,7 +477,7 @@ GGXCookTorranceBsdfLobe::eval(const BsdfSlice &slice, const Vec3f &wi,
         const float p2 = energyCompensationPDF(ispc::MICROFACET_DISTRIBUTION_GGX,
                                                cosNI);
         const float w1 = (1.0f - w2);
-        const float p1 = D4 * cosThetaM * rcp(cosMI);
+        const float p1 = D4 * cosThetaM / cosMI;
         // One Sample PDF Weight
         *pdf = (w1 * p1 + w2 * p2);
     }

@@ -30,7 +30,7 @@ uv2local(const uniform CylinderLight * uniform light, const varying Vec2f &uv)
     sincos(phi, &sinPhi, &cosPhi);
 
     return Vec3f_ctor(light->mLocalRadius * cosPhi,
-                     (uv.x - light->mUvOffset.x) * rcp(light->mUvScale.x),
+                     (uv.x - light->mUvOffset.x) / light->mUvScale.x,
                      light-> mLocalRadius * sinPhi);
 }
 
@@ -41,8 +41,7 @@ local2uv(const uniform CylinderLight * uniform light, const varying Vec3f &pos)
 {
     float u = pos.y * light->mUvScale.x + light->mUvOffset.x;
 
-    float invRadius = rcp(light->mLocalRadius);
-    float phi = atan2(pos.z * invRadius, pos.x * invRadius);
+    float phi = atan2(pos.z, pos.x);
     float v = (phi < 0.0f  ?  phi + sTwoPi  :  phi) * sOneOverTwoPi;
 
     MNRY_ASSERT(isfinite(u));
@@ -172,7 +171,7 @@ CylinderLight_sample(const uniform Light * uniform li,
     if (isect.distance < sEpsilon) {
         return false;
     }
-    wi = wi * rcp(isect.distance);
+    wi = wi * (1.0f / isect.distance);
     if (isValidCullingNormal(cullingNormal) && dot(cullingNormal, wi) < sEpsilon) {
         return false;
     }

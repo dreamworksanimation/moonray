@@ -72,7 +72,7 @@ UnderClearcoatTransmissionBsdfLobe_init(varying UnderClearcoatTransmissionBsdfLo
                   /* showFn = */ UnderClearcoatTransmissionBsdfLobe_show);
 
     lobe->mN = normal;
-    lobe->mNeta = etaI * rcp(etaT);
+    lobe->mNeta = etaI / etaT;
     lobe->mThickness = thickness;
     lobe->mAttenuationColor = attenuationColor;
     lobe->mAttenuationWeight = attenuationWeight;

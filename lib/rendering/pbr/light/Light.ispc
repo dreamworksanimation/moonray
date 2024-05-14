@@ -102,7 +102,7 @@ LocalParamLight_slerpPointRender2Local(const uniform LocalParamLight * uniform l
         transpose(Mat3f_ctor(slerp(light->mOrientation[0], light->mOrientation[1], time))) : // inverse is transpose
         light->mRender2LocalRot[0].l;
     const float s = (light->mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time)) :
+        1.0f / lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time) :
         light->mRender2LocalScale[0];
 
     return ((p + t) * r) * s;
@@ -134,7 +134,7 @@ LocalParamLight_slerpVectorRender2Local(const uniform LocalParamLight * uniform 
         transpose(Mat3f_ctor(slerp(light->mOrientation[0], light->mOrientation[1], time))) : // inverse is transpose
         light->mRender2LocalRot[0].l;
     const float s = (light->mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time)) :
+        1.0f / lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time) :
         light->mRender2LocalScale[0];
 
     return (v * r) * s;
@@ -180,7 +180,7 @@ LocalParamLight_slerpNormalLocal2Render(const uniform LocalParamLight * uniform 
         transpose(Mat3f_ctor(slerp(light->mOrientation[0], light->mOrientation[1], time))) : // inverse is transpose
         light->mRender2LocalRot[0].l;
     const float s = (light->mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time)) :
+        1.0f / lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time) :
         light->mRender2LocalScale[0];
 
     return r * (s * n);
@@ -237,7 +237,7 @@ LocalParamLight_lerpRender2LocalScale(const uniform LocalParamLight * uniform li
 {
     if (!(light->mMb & LIGHT_MB_SCALE)) return light->mRender2LocalScale[0] * s;
 
-    return rcp(lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time)) * s;
+    return s / lerp(light->mLocal2RenderScale[0], light->mLocal2RenderScale[1], time);
 }
 
 //----------------------------------------------------------------------------

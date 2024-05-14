@@ -180,7 +180,7 @@ computeAlbedo(const uniform int flags,
                     const varying BsdfLobe * uniform lobe = BsdfSampler_getLobe(bSampler, lobeIdx);
 
                     const varying int lobeSampleCount = BsdfSampler_getLobeSampleCount(bSampler, lobeIdx);
-                    const varying float invLobeSampleCount = BsdfSampler_getInvLobeSampleCount(bSampler, lobeIdx);
+                    const varying float floatLobeSampleCount = (const varying float)lobeSampleCount;
 
                     const uniform int lobeLabel = BsdfLobe_getLabel(lobe);
                     if (isActive(lobe) &&
@@ -192,7 +192,7 @@ computeAlbedo(const uniform int flags,
                             const varying BsdfSample &bsmp = bsmps[s];
                             if (BsdfSample_isValid(&bsmp)) {
                                 MNRY_ASSERT(!isSampleInvalid(bsmp.f, bsmp.pdf));
-                                result = result + invLobeSampleCount * bsmp.f * rcp(bsmp.pdf);
+                                result = result + bsmp.f * (1.0f / (floatLobeSampleCount * bsmp.pdf));
                             }
                         }
 
@@ -925,7 +925,7 @@ computeRoughness(const uniform int flags,
             }
         }
 
-        if (matchingLobes) result = result * rcp((varying float) matchingLobes);
+        if (matchingLobes) result = result * (1.0f / (varying float)matchingLobes);
 
         // apply pixel weight
         result = applyPixelWeight(result, pixelWeight);
@@ -993,7 +993,7 @@ computeNormal(const uniform int flags,
         }
 
         // average
-        if (matchingLobes) result = result * rcp((varying float) matchingLobes);
+        if (matchingLobes) result = result * (1.0f / (varying float)matchingLobes);
 
         // apply pixel weight
         result = applyPixelWeight(result, pixelWeight);
@@ -1186,7 +1186,7 @@ computeFresnelFactor(const varying Bsdf * uniform bsdf,
         }
 
         // average
-        if (s > 0) result = result * rcp((varying float) s);
+        if (s > 0) result = result / s;
 
         // pixel weight
         result = applyPixelWeight(result, pixelWeight);
@@ -1267,7 +1267,7 @@ computeFresnelRoughness(const varying Bsdf * uniform bsdf,
             }
         }
 
-        if (matchingLobes) result = result * rcp((varying float) matchingLobes);
+        if (matchingLobes) result = result * (1.0f / (varying float)matchingLobes);
 
         // apply pixel weight
         result = applyPixelWeight(result, pixelWeight);

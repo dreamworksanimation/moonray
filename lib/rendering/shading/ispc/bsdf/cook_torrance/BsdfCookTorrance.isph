@@ -158,7 +158,7 @@ CookTorranceBsdfLobe_init(varying CookTorranceBsdfLobe * uniform lobe,
     // TODO: Smaller thresholds trigger nans
     lobe->mRoughness = max(0.001f, lobe->mRoughness);
 
-    lobe->mInvRoughness = rcp(lobe->mRoughness);
+    lobe->mInvRoughness = 1.0f / lobe->mRoughness;
 
     // Use a directional differential scale that varies with roughness
     lobe->mdDFactor = CookTorrance_sdDFactorMin + lobe->mRoughness * CookTorrance_sdDFactorSlope;

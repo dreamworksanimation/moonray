@@ -113,17 +113,14 @@ TransmissionCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     float alpha2                = ct->mRoughness * ct->mRoughness;
     const float cosThetaM2      = cosThetaM * cosThetaM;
     const float cosThetaM4      = cosThetaM2 * cosThetaM2;
-    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) * rcp(cosThetaM2);
-    float D                     = exp(minusTanThetaM2 * rcp(alpha2)) *
-                                  rcp(sPi * alpha2 * cosThetaM4);
+    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) / cosThetaM2;
+    float D                     = exp(minusTanThetaM2 / alpha2) / (sPi * alpha2 * cosThetaM4);
 
     // eq. 26, 27: now calculate G1(i,m) and G1(o,m)
     const float ao = absCosNO * ct->mInvRoughness * rsqrt(1.0f - cosNO * cosNO);
     const float ai = absCosNI * ct->mInvRoughness * rsqrt(1.0f - cosNI * cosNI);
-    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) *
-            rcp(1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
-    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) *
-            rcp(1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
+    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) / (1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
+    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) / (1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
     const float G  = G1o * G1i;
 
     // Compute the Cook-Torrance bsdf, using equation (21)
@@ -132,11 +129,11 @@ TransmissionCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     // cosThetaWo to evaluate the fresnel term, as an approximation of what
     // hDotWi would be for the specular lobe.
     float denom = ct->mEtaI * cosMO + etaT * cosMI;
-    denom = rcp(denom * denom);
+    denom = 1.0f / (denom * denom);
     const float mIorTransmittedSqr = etaT * etaT;
-    Color f = absCosMO * absCosMI * mIorTransmittedSqr * denom *
-            BsdfLobe_computeScaleAndFresnel(lobe, absCosMO) * G * D * rcp(absCosNO) *
-            (slice.mIncludeCosineTerm  ?  1.0f  :  rcp(absCosNI));
+    Color f = absCosMO * absCosMI * mIorTransmittedSqr * denom * G * D / absCosNO *
+            (slice.mIncludeCosineTerm  ?  1.0f  :  1.0f/absCosNI) *
+            BsdfLobe_computeScaleAndFresnel(lobe, absCosMO);
 
     f = f + TransmissionCookTorranceEnergyCompensation_evalT(
             absCosNO, absCosNI,
@@ -156,8 +153,7 @@ TransmissionCookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         // roughness we use in sample(), otherwise our pdf is biased
         const float alpha = widenRoughness(ct->mRoughness, absCosNO);
         alpha2 = alpha * alpha;
-        D = exp(minusTanThetaM2 * rcp(alpha2)) *
-                        rcp(sPi * alpha2 * cosThetaM4);
+        D = exp(minusTanThetaM2 / alpha2) / (sPi * alpha2 * cosThetaM4);
 #endif
         *pdf = mIorTransmittedSqr * D * cosThetaM * absCosMI * denom;
     }

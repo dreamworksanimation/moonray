@@ -58,7 +58,7 @@ public:
             // Using a minimum roughness of 0.01, gives us the maximum exponent allowed for this lobe.
             const float maxExponent = 20000.0f;
             mExponent = scene_rdl2::math::clamp(exponent, 0.1f, maxExponent);
-            const float normalizedExponent = mExponent * scene_rdl2::math::rcp(maxExponent);
+            const float normalizedExponent = mExponent / maxExponent;
             // Use a directional differential scale that varies with roughness
             // Taken from CookTorrance roughness-based differential computation
             mdDFactor = sdDFactorMin + normalizedExponent * sdDFactorSlope;
@@ -117,7 +117,7 @@ public:
         }
 
         // see [1] for PDF inversion
-        const float cosThetaM = scene_rdl2::math::pow(r1, scene_rdl2::math::rcp(mExponent+1));
+        const float cosThetaM = scene_rdl2::math::pow(r1, 1.0f/(mExponent+1));
         const float sinThetaM = scene_rdl2::math::sqrt(1 - cosThetaM*cosThetaM);
         const float phiM = scene_rdl2::math::sTwoPi * r2;
 

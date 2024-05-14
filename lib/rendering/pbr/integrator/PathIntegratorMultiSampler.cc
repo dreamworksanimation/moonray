@@ -376,8 +376,7 @@ PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
 
         if (pv.nonMirrorDepth > 0 && mRussianRouletteThreshold > 0.0f) {
             applyRussianRoulette(lSampler, lsmp, sp, pv, sequenceID, 
-                                 mRussianRouletteThreshold, 
-                                 mInvRussianRouletteThreshold, rrSamples);
+                                 mRussianRouletteThreshold, rrSamples);
         }
 
         // ---------------- Trace shadow rays and add any light sample contributions -----------------------------------
@@ -711,8 +710,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // need an estimate of the final pixel color so our threshold can be
     // computed accordingly.
     if (pv.nonMirrorDepth > 0  &&  mRussianRouletteThreshold > 0.0f) {
-        applyRussianRoulette(bSampler, bsmp, sp, pv, sequenceID,
-                mRussianRouletteThreshold, mInvRussianRouletteThreshold);
+        applyRussianRoulette(bSampler, bsmp, sp, pv, sequenceID, mRussianRouletteThreshold);
     }
 
     CHECK_CANCELLATION(pbrTls, return scene_rdl2::math::sBlack );

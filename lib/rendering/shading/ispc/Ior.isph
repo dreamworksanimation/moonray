@@ -20,7 +20,7 @@ struct ShaderIor
 // compute reflectance at normal incidence to feed Schlick Fresnel model
 inline float
 ShaderIor_computeReflectance(const varying ShaderIor* const uniform ior) {
-    const float tmp = (ior->mIncident - ior->mTransmitted) * rcp(ior->mIncident + ior->mTransmitted);
+    const float tmp = (ior->mIncident - ior->mTransmitted) / (ior->mIncident + ior->mTransmitted);
     return (tmp * tmp);
 }
 
@@ -36,7 +36,7 @@ ShaderIor_init(const varying State &state,
 {
     shaderIor->mIncident = incidentIOR;
     shaderIor->mTransmitted = transmittedIOR;
-    shaderIor->mRatio = shaderIor->mIncident * rcp(shaderIor->mTransmitted);
+    shaderIor->mRatio = shaderIor->mIncident / shaderIor->mTransmitted;
 }
 
 /**
@@ -54,7 +54,7 @@ ShaderIor_init(const varying State &state,
     // ior that is not the material (a.k.a. handling overlapping dielectrics).
     shaderIor->mIncident =      (isEntering(state) || isThinGeometry) ? 1.0f : materialIor;
     shaderIor->mTransmitted =   (isEntering(state) || isThinGeometry) ? materialIor : 1.0f;
-    shaderIor->mRatio = shaderIor->mIncident * rcp(shaderIor->mTransmitted);
+    shaderIor->mRatio = shaderIor->mIncident / shaderIor->mTransmitted;
 }
 
 // -----------------------------------------------------------------------------------------------

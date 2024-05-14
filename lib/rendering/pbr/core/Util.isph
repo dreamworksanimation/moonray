@@ -172,7 +172,7 @@ smartClamp(const varying Color &radiance, varying float maxValue)
     if (maxValue > 0.0f) {
         float maxComponent = max(radiance.r, max(radiance.g, radiance.b));
         if (maxComponent > maxValue) {
-            float factor = maxValue * rcp(maxComponent);
+            float factor = maxValue / maxComponent;
             return radiance * factor;
         } else {
             return radiance;

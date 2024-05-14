@@ -253,7 +253,7 @@ EyeCausticBsdfFactory(uniform Arena * uniform arena,
 
     const varying Vec3f N = getN(*frame);
     //convert roughness to phong exponent
-    const float exponent = 2.0f * rcp(roughness * roughness);
+    const float exponent = 2.0f / (roughness * roughness);
 
     varying BsdfLobe * uniform lobe = allocLobe(arena, sizeof(EyeCausticBsdfLobe));
     EyeCausticBsdfLobe_init((varying EyeCausticBsdfLobe * uniform) lobe,

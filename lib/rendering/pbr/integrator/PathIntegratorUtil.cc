@@ -149,20 +149,23 @@ integrateBsdfSample(const BsdfSampler &bSampler, int lobeIndex,
         return;
     }
 
-    const int ni = bSampler.getLobeSampleCount(lobeIndex);
-    const float invNi = bSampler.getInvLobeSampleCount(lobeIndex);
-    const scene_rdl2::math::Color pt = pathThroughput * invNi * bsmp.f * scene_rdl2::math::rcp(bsmp.pdf);
+    const float ni = static_cast<const float>(bSampler.getLobeSampleCount(lobeIndex));
+    const scene_rdl2::math::Color pt = pathThroughput * bsmp.f * (1.0f / (ni * bsmp.pdf));
 
     // Compute direct tentative contribution (omit shadowing)
-    const bool lobeIsMirror = bSampler.getLobe(lobeIndex)->matchesFlags(shading::BsdfLobe::ALL_MIRROR);
-    const int nl = (lCo.isInvalid  ?  0  :
-            lSampler.getLightSampleCount());
-    bsmp.tDirect = (lCo.isInvalid  ?  scene_rdl2::math::sBlack  :  (lobeIsMirror  ?
+    if (lCo.isInvalid) {
+        bsmp.tDirect = scene_rdl2::math::sBlack;
+    } else {
+        const bool lobeIsMirror = bSampler.getLobe(lobeIndex)->matchesFlags(shading::BsdfLobe::ALL_MIRROR);
+        if (lobeIsMirror) {
             // Bsdf importance sampling
-            lCo.Li * pt  :
+            bsmp.tDirect = lCo.Li * pt;
+        } else {
             // Multiple importance sampling
-            lCo.Li * pt * powerHeuristic(ni * bsmp.pdf, nl * lCo.pdf)
-        ));
+            const float nl = static_cast<float>(lSampler.getLightSampleCount());
+            bsmp.tDirect = lCo.Li * pt * powerHeuristic(ni * bsmp.pdf, nl * lCo.pdf);
+        }
+    }
 
     // Compute indirect tentative contribution (omit Lindirect)
     bsmp.tIndirect = (bSampler.getDoIndirect()  ?  pt  :  scene_rdl2::math::sBlack);
@@ -350,10 +353,9 @@ integrateLightSetSample(const LightSetSampler &lSampler,
     bool isInvalid = true;
     lsmp.t = scene_rdl2::math::sBlack;
 
-    const int ni = lSampler.getLightSampleCount();
-    const float invNi = lSampler.getInvLightSampleCount();
+    const float ni = static_cast<const float>(lSampler.getLightSampleCount());
 
-    const scene_rdl2::math::Color factor = pv.pathThroughput * invNi * lsmp.Li * scene_rdl2::math::rcp(lsmp.pdf);
+    const scene_rdl2::math::Color factor = pv.pathThroughput * lsmp.Li * (1.0f / (ni * lsmp.pdf));
 
     // Integrate with all the matching lobes
     const shading::BsdfSlice &slice = bSampler.getBsdfSlice();
@@ -404,7 +406,7 @@ integrateLightSetSample(const LightSetSampler &lSampler,
 
         // Direct lighting tentative contribution (omits shadowing)
         // using multiple importance sampling:
-        const int nk = bSampler.getLobeSampleCount(k);
+        const float nk = static_cast<const float>(bSampler.getLobeSampleCount(k));
         scene_rdl2::math::Color t = factor * f * powerHeuristic(ni * lsmp.misPdf, nk * pdf);
 
         // Selective clamp of t with clampingValue
@@ -564,7 +566,7 @@ drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const Bs
 void
 applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold)
+        float threshold)
 {
     const int sampleCount = bSampler.getSampleCount();
 
@@ -584,21 +586,13 @@ applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const float lumIndirect = luminance(bsmp[s].tIndirect);
         const float lum = scene_rdl2::math::max(lumDirect, lumIndirect);
         if (lum < threshold) {
-            // This should always be < 1
-            //
-            // The rcp function (SSE version) produces a NaN when the value is
-            // less than 0x1p-64f (the version I tested, anyway). FLT_EPSILON
-            // is much greater than this, but still probably a good threshold
-            // for our minimum probability.
-            const float continueProbability = std::max(scene_rdl2::math::sEpsilon,
-                                                       lum * invThreshold);
             float sample[1];
             rrSamples.getSample(sample, pv.nonMirrorDepth);
-            if (sample[0] > continueProbability) {
+            if (lum < sample[0] * threshold) {
                 bsmp[s].setInvalid();
             } else {
-                const float invContinueProbability = scene_rdl2::math::rcp(continueProbability);
-                bsmp[s].tDirect *= invContinueProbability;
+                const float invContinueProbability = threshold / lum;
+                bsmp[s].tDirect   *= invContinueProbability;
                 bsmp[s].tIndirect *= invContinueProbability;
             }
         }
@@ -608,7 +602,7 @@ applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
 void
 applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold, IntegratorSample1D& rrSamples)
+        float threshold, IntegratorSample1D& rrSamples)
 {
     const int lightSampleCount = lSampler.getLightSampleCount();
 
@@ -620,30 +614,23 @@ applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
 
         const float lum = luminance(lsmp[s].t);
         if (lum < threshold) {
-            // This should always be < 1
-            //
-            // The rcp function (SSE version) produces a NaN when the value is
-            // less than 0x1p-64f (the version I tested, anyway). FLT_EPSILON
-            // is much greater than this, but still probably a good threshold
-            // for our minimum probability.
-            const float continueProbability = std::max(scene_rdl2::math::sEpsilon,
-                                                       lum * invThreshold);
             float sample[1];
             rrSamples.getSample(sample, pv.nonMirrorDepth);
-            if (sample[0] > continueProbability) {
+            if (lum < sample[0] * threshold) {
                 lsmp[s].setInvalid();
             } else {
-                const float continueProbabilityInv = scene_rdl2::math::rcp(continueProbability);
-                lsmp[s].t *= continueProbabilityInv;
+                const float invContinueProbability = threshold / lum;
+                lsmp[s].t *= invContinueProbability;
 
                 // adjust per lobe values, if needed (see integrateLightSetSample())
                 for (unsigned int k = 0; k < shading::Bsdf::maxLobes; ++k) {
                     if (lsmp[s].lp.lobe[k]) {
-                        lsmp[s].lp.t[k] *= continueProbabilityInv;
+                        lsmp[s].lp.t[k] *= invContinueProbability;
                     }
                 }
             }
         }
+
     }
 }
 

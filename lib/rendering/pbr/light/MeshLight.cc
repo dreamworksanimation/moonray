@@ -1740,7 +1740,7 @@ MeshLight::sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3
     wi = xformVectorLocal2Render(hit - transformedP, time);
     isect.distance = length(wi);
     if (isect.distance > scene_rdl2::math::sEpsilon) {
-        wi /= isect.distance;
+        wi *= 1.0f / isect.distance;
     }
 
     // light is on other side of shading point

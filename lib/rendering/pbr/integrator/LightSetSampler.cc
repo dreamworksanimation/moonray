@@ -50,10 +50,10 @@ LightSetSampler::LightSetSampler(scene_rdl2::alloc::Arena *arena, const LightSet
     const int lightCount = mLightSet.getLightCount();
 
     mLightSampleCount = computeLightSampleCount(mMaxSamplesPerLight);
-    mInvLightSampleCount = rcp(float(mLightSampleCount));
+    mInvLightSampleCount = 1.0f / float(mLightSampleCount);
 
     mSampleCount = lightCount * mLightSampleCount;
-    mInvSampleCount = (mSampleCount > 0  ?  rcp(float(mSampleCount))  :  0);
+    mInvSampleCount = (mSampleCount > 0  ?  1.0f/static_cast<float>(mSampleCount)  :  0);
 }
 
 

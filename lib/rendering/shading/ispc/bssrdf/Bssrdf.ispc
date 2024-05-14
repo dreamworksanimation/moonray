@@ -18,7 +18,7 @@ Bssrdf_sampleGlobal(const varying Bssrdf * uniform bssrdf,
     // Sample direction within a spherical cap below the surface
     ws = sampleLocalSphericalCapUniform(r1, r2, cosThetaMax);
 
-    float pdf = rcp(sTwoPi * (1.0f - cosThetaMax));
+    float pdf = sOneOverTwoPi / (1.0f - cosThetaMax);
 
     return pdf;
 }

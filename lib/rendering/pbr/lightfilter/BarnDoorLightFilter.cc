@@ -261,10 +261,10 @@ BarnDoorLightFilter::update(const LightFilterMap& /*lightFilters*/,
     float edgeScaleRight  = mRdlLightFilter->get<rdl2::Float>(sEdgeScaleRightKey);
     float edgeScaleTop    = mRdlLightFilter->get<rdl2::Float>(sEdgeScaleTopKey);
 
-    mReciprocalEdgeScales[BARNDOOR_EDGE_LEFT]   = rcp(max(1e-9f, mRadius + mEdge * edgeScaleLeft));
-    mReciprocalEdgeScales[BARNDOOR_EDGE_BOTTOM] = rcp(max(1e-9f, mRadius + mEdge * edgeScaleBottom));
-    mReciprocalEdgeScales[BARNDOOR_EDGE_RIGHT]  = rcp(max(1e-9f, mRadius + mEdge * edgeScaleRight));
-    mReciprocalEdgeScales[BARNDOOR_EDGE_TOP]    = rcp(max(1e-9f, mRadius + mEdge * edgeScaleTop));
+    mReciprocalEdgeScales[BARNDOOR_EDGE_LEFT]   = 1.0f / max(1e-9f, mRadius + mEdge * edgeScaleLeft);
+    mReciprocalEdgeScales[BARNDOOR_EDGE_BOTTOM] = 1.0f / max(1e-9f, mRadius + mEdge * edgeScaleBottom);
+    mReciprocalEdgeScales[BARNDOOR_EDGE_RIGHT]  = 1.0f / max(1e-9f, mRadius + mEdge * edgeScaleRight);
+    mReciprocalEdgeScales[BARNDOOR_EDGE_TOP]    = 1.0f / max(1e-9f, mRadius + mEdge * edgeScaleTop);
 
     // Get focal length (mm). Will use as distance to projector plane
     mFocalDist = mRdlLightFilter->get(sProjectorFocalDistKey, 0.f);

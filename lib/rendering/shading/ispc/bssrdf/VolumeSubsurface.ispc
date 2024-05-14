@@ -94,10 +94,10 @@ VolumeSubsurface_init(varying VolumeSubsurface * uniform bssrdf,
     const Color kappa0 = sqrt(3.0f*omA) *
             (sWhite -
              omA*(2.0f/5.0f + omA*(12.0f/175.0f + omA*(2.f/125.f + omA*(166.f/67375.f)))));
-    bssrdf->mDwivediV0 = rcp(kappa0);
+    bssrdf->mDwivediV0 = 1.0f / kappa0;
     bssrdf->mDwivediNormPDF = log((bssrdf->mDwivediV0 + sWhite)/
                                 (bssrdf->mDwivediV0 - sWhite));
-    bssrdf->mDwivediNormPDF = rcp(bssrdf->mDwivediNormPDF);
+    bssrdf->mDwivediNormPDF = 1.0f / bssrdf->mDwivediNormPDF;
 
     // Zero Scatter - when a path exits the surface without scattering inside
     // Pure Beer's Law Absorption Case:

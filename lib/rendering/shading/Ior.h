@@ -30,7 +30,7 @@ public:
         mIncident = (state.isEntering() || isThinGeometry) ? state.getMediumIor() : materialIor;
         mTransmitted = (state.isEntering() || isThinGeometry) ? materialIor : state.getMediumIor();
 
-        mRatio = mIncident * scene_rdl2::math::rcp(mTransmitted);
+        mRatio = mIncident / mTransmitted;
     }
 
     /// @brief This special constructor is only for cases where we need to explicitly specify
@@ -41,7 +41,7 @@ public:
     {
         mIncident = state.isEntering() ? mediumIor : isThinGeometry ? mediumIor : materialIor;
         mTransmitted = state.isEntering() ? materialIor : isThinGeometry ? materialIor : mediumIor;
-        mRatio = mIncident * scene_rdl2::math::rcp(mTransmitted);
+        mRatio = mIncident / mTransmitted;
     }
 
     /// Accessors

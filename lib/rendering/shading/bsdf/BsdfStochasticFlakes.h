@@ -36,9 +36,9 @@ selectIndexFromCdf(const float* cdfs, unsigned int count, const float r, float &
     float cdfRange = cdfs[index];
     if (index >= 1) {
         cdfRange = cdfs[index] - cdfs[index-1];
-        remapped_r = (r-cdfs[index-1]) * scene_rdl2::math::rcp(cdfRange);
+        remapped_r = (r-cdfs[index-1]) / cdfRange;
     } else {
-        remapped_r = r * scene_rdl2::math::rcp(cdfRange);
+        remapped_r = r / cdfRange;
     }
     return index;
 }
@@ -270,7 +270,7 @@ private:
             *reflectionWeight = reflectWt; // k for the pdf in [2016]
         }
         if (!scene_rdl2::math::isZero(reflectWt)) {
-            weightedColor /= reflectWt; // normalize the weighted color
+            weightedColor *= (1.0f / reflectWt); // normalize the weighted color
         }
         return reflectWt / static_cast<float>(caches.size); // Return discrete D
     }
@@ -287,7 +287,7 @@ private:
         // sum(scale[i]*weight[i], such that dot(wi,reflection[i]) < cos(gamma)) / sum(all weights)
 
         // prepare for possible early return
-        if(pdf != NULL) {
+        if (pdf != NULL) {
             *pdf = 0.0f;
         }
 
@@ -352,21 +352,21 @@ private:
 
         const float solidAngleArea = scene_rdl2::math::sTwoPi * (1.0 - mCosGamma); // must be 2*pi, the Chaos paper has only pi and is incorrect.
 
-        const float D = discreteD * scene_rdl2::math::rcp(solidAngleArea);
+        const float D = discreteD / solidAngleArea;
 
         scene_rdl2::math::Color F = computeScaleAndFresnel(cosMI);
 
         // compute G for CookTorrance
         const float G = computeGeometryTerm(cosNO, cosNI);
 
-        const float invBrdfDenom = scene_rdl2::math::rcp( cosNO * (slice.getIncludeCosineTerm()  ?  1.0f  :  cosNI) );
+        const float invBrdfDenom = 1.0f / ( cosNO * (slice.getIncludeCosineTerm()  ?  1.0f  :  cosNI) );
         scene_rdl2::math::Color flakesBrdf = F*D*G*invBrdfDenom;
 
         if(pdf != NULL) {
 #if UNIFORM_SAMPLING
             *pdf = scene_rdl2::math::sOneOverTwoPi;
 #else 
-            *pdf = kIntersect * scene_rdl2::math::rcp(solidAngleArea * kTotalSum);
+            *pdf = kIntersect / (solidAngleArea * kTotalSum);
 #endif
         }
         // Create a conductor fresnel object using the weighted (reflection cache weights)
@@ -401,7 +401,7 @@ private:
         }
 
         if (totalWeight > 0) {
-            totalWeight = scene_rdl2::math::rcp(totalWeight);
+            totalWeight = 1.0f / totalWeight;
         } else {
             return false;
         }

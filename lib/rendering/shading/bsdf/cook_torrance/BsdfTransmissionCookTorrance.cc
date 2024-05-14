@@ -41,7 +41,7 @@ TransmissionCookTorranceBsdfLobe::TransmissionCookTorranceBsdfLobe(const Vec3f &
             mInputRoughness(roughness),
             mEtaI(etaI),
             mEtaT(etaT),
-            mNeta(mEtaI * rcp(mEtaT))
+            mNeta(mEtaI / mEtaT)
 
 {
     mFavg = favg;
@@ -54,7 +54,7 @@ TransmissionCookTorranceBsdfLobe::TransmissionCookTorranceBsdfLobe(const Vec3f &
         mRoughness = 0.001f;
     }
 
-    mInvRoughness = rcp(mRoughness);
+    mInvRoughness = 1.0f / mRoughness;
 
     if (scene_rdl2::math::isZero(abbeNumber)) {
         mAllowDispersion = false;
@@ -158,17 +158,14 @@ TransmissionCookTorranceBsdfLobe::eval(const BsdfSlice &slice,
     const float alpha2          = mRoughness * mRoughness;
     const float cosThetaM2      = cosThetaM * cosThetaM;
     const float cosThetaM4      = cosThetaM2 * cosThetaM2;
-    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) * rcp(cosThetaM2);
-    const float D               = scene_rdl2::math::exp(minusTanThetaM2 * rcp(alpha2)) *
-                                  rcp(sPi * alpha2 * cosThetaM4);
+    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) / cosThetaM2;
+    const float D               = scene_rdl2::math::exp(minusTanThetaM2 / alpha2) / (sPi * alpha2 * cosThetaM4);
 
     // eq. 26, 27: now calculate G1(i,m) and G1(o,m)
     const float ao = absCosNO * mInvRoughness * rsqrt(1.0f - cosNO * cosNO);
     const float ai = absCosNI * mInvRoughness * rsqrt(1.0f - cosNI * cosNI);
-    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) *
-            rcp(1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
-    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) *
-            rcp(1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
+    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) / (1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
+    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) / (1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
     const float G  = G1o * G1i;
 
     // Compute the Cook-Torrance bsdf, using equation (21)
@@ -178,12 +175,11 @@ TransmissionCookTorranceBsdfLobe::eval(const BsdfSlice &slice,
     // hDotWi would be for the specular lobe.
 //    float denom = mEtaI * cosMO + etaT * cosMI;
     float denom = mEtaI * cosMO + etaT * cosMI;
-    denom = rcp(denom * denom);
+    denom = 1.0f / (denom * denom);
     const float etaTSqr = etaT * etaT;
     Color fresnel = computeScaleAndFresnel(absCosMO);
-    Color f = absCosMO * absCosMI * etaTSqr * denom *
-             fresnel * G * D * rcp(absCosNO) *
-            (slice.getIncludeCosineTerm()  ?  1.0f  :  rcp(absCosNI));
+    Color f = absCosMO * absCosMI * etaTSqr * denom * G * D / absCosNO *
+            (slice.getIncludeCosineTerm() ? 1.0f : 1.0f/absCosNI) * fresnel;
 
     f += TransmissionCookTorranceEnergyCompensation::evalT(
             absCosNO, absCosNI,
@@ -204,8 +200,7 @@ TransmissionCookTorranceBsdfLobe::eval(const BsdfSlice &slice,
         const float alpha = CookTorranceBsdfLobe::widenRoughness(mRoughness,
                                                                  absCosNO);
         const float alpha2 = alpha * alpha;
-        const float D = scene_rdl2::math::exp(minusTanThetaM2 * rcp(alpha2)) *
-                        rcp(sPi * alpha2 * cosThetaM4);
+        const float D = scene_rdl2::math::exp(minusTanThetaM2 / alpha2) / (sPi * alpha2 * cosThetaM4);
 #endif
         *pdf = D * cosThetaM * etaTSqr * absCosMI * denom;
     }

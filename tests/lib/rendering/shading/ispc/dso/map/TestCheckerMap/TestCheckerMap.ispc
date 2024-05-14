@@ -38,8 +38,8 @@ sample(const uniform Map *            uniform map,
 {
     const Color colorA = evalAttrColorA(map, tls, state);
     const Color colorB = evalAttrColorB(map, tls, state);
-    const varying float s = state.mSt.x * rcp(getAttrUStep(map));
-    const varying float t = state.mSt.y * rcp(getAttrVStep(map));
+    const varying float s = state.mSt.x / getAttrUStep(map);
+    const varying float t = state.mSt.y / getAttrVStep(map);
     Color result = checker(s, t)? colorA : colorB;
     return result;
 }

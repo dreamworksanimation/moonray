@@ -19,7 +19,7 @@
 inline float diffusionCDF(float r,
                           float d)
 {
-    float x = -1 * r * rcp(d*3.f);
+    float x = r / (-3.0f * d);
     float e1 = exp(x);
     float e2 = e1 * e1 * e1;
 
@@ -31,7 +31,7 @@ inline float diffusionCDF(float r,
 
 inline float cubeRoot(float y)
 {
-    return pow(y, rcp(3.0f));
+    return pow(y, 1.0f/3.0f);
 }
 
 float inverseDiffusionCDF(float y,
@@ -60,11 +60,11 @@ float inverseDiffusionCDF(float y,
     // r = -ln(x) * 3 * d,  is the root of eq 1
 
     // the code below implement the last 5 lines of the derivation comments
-    float z = (1.f -y ) * 2.0f;
+    float z = (1.f - y) * 2.0f;
     float sqrtTerm = sqrt(1.0f + z*z);
     float eCubeA = z + sqrtTerm;
     float eA = cubeRoot(eCubeA);
-    float x = (eA*eA-1.0f) * rcp(eA);
+    float x = eA - 1.0f/eA;
     float r = -log(x) * 3.f * d;
     float valueCheck = diffusionCDF(r, d);
     assert(abs(valueCheck - y) < .0001f);
@@ -97,12 +97,12 @@ inline float Diffusion(float r,
 {
     static const float sPiTimes8 = sPi * 8.0f;
     if (r < .001) r = .001f;
-    float e1 = exp(-r * rcp(d*3.f));
+    float e1 = exp(r / (-3.0f * d));
 
     //diffusion kernal:
 //     (expf(-r/d) + expf(-r/(3.0f*d))) / (sPiTimes8*d*r);
     // simplified for evaluation
-    return  (e1*e1*e1 + e1) * rcp(sPiTimes8*d*r);
+    return  (e1*e1*e1 + e1) / (sPiTimes8*d*r);
     return d;
 }
 
@@ -186,7 +186,7 @@ NormalizedDiffusionBssrdf_init(varying NormalizedDiffusionBssrdf * uniform bssrd
     const Color tmp = bssrdf->mAlbedo - Color_ctor(0.33f);
     const Color tmp2 = tmp*tmp;
     const Color s = Color_ctor(3.5f) + 100.f * tmp2*tmp2;
-    bssrdf->mD = bssrdf->mDmfp * rcp(s);
+    bssrdf->mD = bssrdf->mDmfp / s;
 
     // compute sampling ratio and pdf normalization terms
     bssrdf->mChannelCdf = max(bssrdf->mAlbedo, Color_ctor(sEpsilon));
@@ -198,7 +198,7 @@ NormalizedDiffusionBssrdf_init(varying NormalizedDiffusionBssrdf * uniform bssrd
 
     // Normalize
     if (!isZero(sumCDF))
-        bssrdf->mChannelCdf = bssrdf->mChannelCdf * rcp(sumCDF);
+        bssrdf->mChannelCdf = bssrdf->mChannelCdf / sumCDF;
 
     // Integrate the cdf
     bssrdf->mChannelCdf.g += bssrdf->mChannelCdf.r;
@@ -310,17 +310,17 @@ NormalizedDiffusionBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
                                       varying Vec3f &dPi,
                                       varying float &r)
 {
-    const varying NormalizedDiffusionBssrdf * uniform bssrdf = (const varying NormalizedDiffusionBssrdf * uniform)bs;
+    const varying NormalizedDiffusionBssrdf * uniform bssrdf = (const varying NormalizedDiffusionBssrdf * uniform)bss;
 
     Vec2f p;
-    p[0] = (r1 - 0.5f) * 2.0f * mMaxRadius;
-    p[1] = (r2 - 0.5f) * 2.0f * mMaxRadius;
+    p[0] = (r1 - 0.5f) * 2.0f * bssrdf->mMaxRadius;
+    p[1] = (r2 - 0.5f) * 2.0f * bssrdf->mMaxRadius;
     r = p.length();
 
     // Compute position
     dPi = p[0] * mFrame.getX() + p[1] * mFrame.getY();
 
-    float pdf = 1.0f / (4.0f * mMaxRadius * mMaxRadius);
+    float pdf = 1.0f / (4.0f * bssrdf->mMaxRadius * bssrdf->mMaxRadius);
     return pdf;
 }
 
@@ -328,9 +328,9 @@ NormalizedDiffusionBssrdf_sampleLocal(const varying Bssrdf * uniform bss,
 varying float
 NormalizedDiffusionBssrdf_pdfLocal(const varying Bssrdf * uniform bss, varying float r)
 {
-    const varying NormalizedDiffusionBssrdf * uniform bssrdf = (const varying NormalizedDiffusionBssrdf * uniform)bs;
+    const varying NormalizedDiffusionBssrdf * uniform bssrdf = (const varying NormalizedDiffusionBssrdf * uniform)bss;
 
-    float pdf = rcp(4.0f * mMaxRadius * mMaxRadius);
+    float pdf = 0.25f / (bssrdf->mMaxRadius * bssrdf->mMaxRadius);
     return pdf;
 }
 

@@ -97,7 +97,7 @@ BsdfSampler::BsdfSampler(scene_rdl2::alloc::Arena *arena, shading::Bsdf &bsdf, c
 
         mLobeIndex[lKeep] = l;
         mLobeSampleCount[lKeep] = sampleCount;
-        mInvLobeSampleCount[lKeep] = rcp(float(sampleCount));
+        mInvLobeSampleCount[lKeep] = 1.0f / static_cast<float>(sampleCount);
         mSampleCount += sampleCount;
 
         lKeep++;

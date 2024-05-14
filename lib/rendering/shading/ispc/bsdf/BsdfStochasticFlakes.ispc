@@ -53,7 +53,7 @@ StochasticFlakesBsdfLobe_computeD(varying StochasticFlakesBsdfLobe * uniform lob
         *reflectionWeight = reflectWt; // k for the pdf in [2016]
     }
     if (!isZero(reflectWt)) {
-        weightedColor = weightedColor * rcp(reflectWt); // normalize the weighted color
+        weightedColor = weightedColor * (1.0f / reflectWt);  // normalize the weighted color
     }
     return reflectWt / (float)caches.size; // Return discrete D
 }
@@ -170,7 +170,7 @@ StochasticFlakesBsdfLobe_computeBrdf(varying StochasticFlakesBsdfLobe * uniform 
 
     const float solidAngleArea = sTwoPi * (1.0f - lobe->mCosGamma); // must be 2*pi, the Chaos paper has only pi and is incorrect.
 
-    const float D = discreteD * rcp(solidAngleArea);
+    const float D = discreteD / solidAngleArea;
 
     Color F = BsdfLobe_computeScaleAndFresnel((const varying BsdfLobe * uniform)lobe,
                                               cosMI);
@@ -178,14 +178,14 @@ StochasticFlakesBsdfLobe_computeBrdf(varying StochasticFlakesBsdfLobe * uniform 
     // compute G for CookTorrance
     const float G = StochasticFlakeBsdfLobe_computeGeometryTerm(cosNO, cosNI, lobe->mFlakeRandomness);
 
-    const float invBrdfDenom = rcp( cosNO * (slice.mIncludeCosineTerm  ?  1.0f  :  cosNI) );
+    const float invBrdfDenom = 1.0f / ( cosNO * (slice.mIncludeCosineTerm  ?  1.0f  :  cosNI) );
     Color flakesBrdf = F*D*G*invBrdfDenom;
 
     if(pdf != NULL) {
 #if UNIFORM_SAMPLING
         *pdf = sOneOverTwoPi;
 #else
-        *pdf = kIntersect * rcp(solidAngleArea * kTotalSum);
+        *pdf = kIntersect / (solidAngleArea * kTotalSum);
 #endif
     }
     // Create a conductor fresnel object using the weighted (reflection cache weights)
@@ -227,7 +227,7 @@ StochasticFlakesBsdfLobe_computeReflectionCache(varying StochasticFlakesBsdfLobe
     }
 
     if (totalWeight > 0) {
-        totalWeight = rcp(totalWeight);
+        totalWeight = 1.0f / totalWeight;
     } else {
         return false;
     }
@@ -274,9 +274,9 @@ StochasticFlakesBsdfLobe_selectIndexFromCdf(const varying float * uniform cdfs,
     float cdfRange = cdfs[index];
     if (index >= 1) {
         cdfRange = cdfs[index] - cdfs[index-1];
-        remapped_r = (r-cdfs[index-1]) * rcp(cdfRange);
+        remapped_r = (r-cdfs[index-1]) / cdfRange;
     } else {
-        remapped_r = r * rcp(cdfRange);
+        remapped_r = r / cdfRange;
     }
     return index;
 }

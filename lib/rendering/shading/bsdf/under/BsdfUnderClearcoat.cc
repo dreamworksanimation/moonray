@@ -88,7 +88,7 @@ UnderClearcoatBsdfLobe::eval(const BsdfSlice &slice,
     const Color Fr = mExitingFresnel->eval(cosThetaWoPrime);
     const Color Ft = scene_rdl2::math::sWhite - Fr;
     const Color albedo = mUnder->albedo(underSlice);
-    result = (result * ct * Ft) * rcp(maxColor(scene_rdl2::math::sWhite - (ct * Fr * albedo), 0.01f));
+    result = (result * ct * Ft) / (maxColor(scene_rdl2::math::sWhite - (ct * Fr * albedo), 0.01f));
 
     // Now we account for the change in variables because of bending rays.
     // For the derivation, please look in:
@@ -146,7 +146,7 @@ UnderClearcoatBsdfLobe::sample(const BsdfSlice &slice,
     float cosThetaWi, cosThetaWiPrime;
     if (!computeRefractionDirection(mN,
                                     wiPrime,
-                                    scene_rdl2::math::rcp(mNeta),
+                                    1.0f / mNeta,
                                     wi,
                                     cosThetaWiPrime,
                                     cosThetaWi))
@@ -188,7 +188,7 @@ UnderClearcoatBsdfLobe::sample(const BsdfSlice &slice,
     const Color Fr = mExitingFresnel->eval(cosThetaWoPrime);
     const Color Ft = scene_rdl2::math::sWhite - Fr;
     const Color albedo = mUnder->albedo(underSlice);
-    result = (result * ct * Ft) * rcp(maxColor(scene_rdl2::math::sWhite - (ct * Fr * albedo), 0.01f));
+    result = (result * ct * Ft) / (maxColor(scene_rdl2::math::sWhite - (ct * Fr * albedo), 0.01f));
 
     // Now we account for the change in variables because of bending rays.
     // For the derivation, please look in:

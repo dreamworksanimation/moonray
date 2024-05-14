@@ -208,7 +208,7 @@ SchlickFresnel_eval(const varying Fresnel * uniform fresnel,
     // Deal with total internal reflection if neta is > 1.0f
     float tmp;
     if (schlick->mNeta > 1.0f) {
-        const float rcpNeta = rcp(schlick->mNeta);
+        const float rcpNeta = 1.0f / schlick->mNeta;
         const float cosSqrCriticalAngle = 1.0f - rcpNeta * rcpNeta;
         const float cosSqrTheta =  hDotWi * hDotWi;
         if (cosSqrTheta < cosSqrCriticalAngle) {
@@ -216,7 +216,7 @@ SchlickFresnel_eval(const varying Fresnel * uniform fresnel,
             return Color_ctor(1.0f, 1.0f, 1.0f);
         }
         // Remap the curve to peak at the critical angle
-        tmp = (1.0f - hDotWi) * rcp(1.0f - sqrt(cosSqrCriticalAngle));
+        tmp = (1.0f - hDotWi) / (1.0f - sqrt(cosSqrCriticalAngle));
     } else {
         tmp = 1.0f - hDotWi;
     }
@@ -400,7 +400,7 @@ DielectricFresnel_eval(const varying Fresnel * uniform fresnel,
     hDotWi = min(hDotWi, 1.0f);
 
     // Compute Snell law
-    const float eta = die->mEtaI * rcp(die->mEtaT);
+    const float eta = die->mEtaI / die->mEtaT;
     const float sinThetaSqr = eta * eta * (1.0f - hDotWi * hDotWi);
     if (sinThetaSqr >= 1.0f) {
 
@@ -414,13 +414,11 @@ DielectricFresnel_eval(const varying Fresnel * uniform fresnel,
 
         const float etaTHDotWi = die->mEtaT * hDotWi;
         const float etaIcosTheta = die->mEtaI * cosTheta;
-        const float parallel = ((etaTHDotWi) - (etaIcosTheta)) *
-                      rcp((etaTHDotWi) + (etaIcosTheta));
+        const float parallel = (etaTHDotWi - etaIcosTheta) / (etaTHDotWi + etaIcosTheta);
 
         const float etaIHDotWi = die->mEtaI * hDotWi;
         const float etaTcosTheta = die->mEtaT * cosTheta;
-        const float perp = ((etaIHDotWi) - (etaTcosTheta)) *
-                  rcp((etaIHDotWi) + (etaTcosTheta));
+        const float perp = (etaIHDotWi - etaTcosTheta) / (etaIHDotWi + etaTcosTheta);
 
         const float fr = 0.5f * (parallel * parallel + perp * perp) * die->mWeight;
         return Color_ctor(fr, fr, fr);
@@ -918,7 +916,7 @@ MultipleTransmissionFresnel_computeColorProperty(const varying Fresnel * uniform
                 avg = avg + tmp;
             }
         }
-        avg = avg * rcp((varying float) multFresnel->mNumFresnels);
+        avg = avg * (1.0f / (varying float)multFresnel->mNumFresnels);
         *dest       = avg.r;
         *(dest + 1) = avg.g;
         *(dest + 2) = avg.b;
@@ -941,8 +939,8 @@ MultipleTransmissionFresnel_computeFactorProperty(const varying Fresnel * unifor
                 avg = avg + tmp;
             }
         }
-        avg = avg * rcp((varying float)multFresnel->mNumFresnels);
-        *dest       = avg;
+        avg /= (varying float)multFresnel->mNumFresnels;
+        *dest = avg;
     }
 }
 
@@ -962,7 +960,7 @@ MultipleTransmissionFresnel_computeRoughnessProperty(const varying Fresnel * uni
                 avg = avg + tmp;
             }
         }
-        avg = avg * rcp((varying float)multFresnel->mNumFresnels);
+        avg = avg * (1.0f / (varying float)multFresnel->mNumFresnels);
         *dest       = avg.x;
         *(dest + 1) = avg.y;
     }

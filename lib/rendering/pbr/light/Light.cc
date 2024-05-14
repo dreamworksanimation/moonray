@@ -343,7 +343,7 @@ LocalParamLight::slerpPointRender2Local(const Vec3f &p, float time) const
         Mat3f(slerp(mOrientation[0], mOrientation[1], time)).transposed() : // inverse is transpose
         mRender2LocalRot[0].l;
     const float s = (mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time)) :
+        1.0f / lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time) :
         mRender2LocalScale[0];
 
     return ((p + t) * r) * s;
@@ -374,7 +374,7 @@ LocalParamLight::slerpVectorRender2Local(const Vec3f &v, float time) const
         Mat3f(slerp(mOrientation[0], mOrientation[1], time)).transposed() : // inverse is transpose
         mRender2LocalRot[0].l;
     const float s = (mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time)) :
+        1.0f / lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time) :
         mRender2LocalScale[0];
 
     return (v * r) * s;
@@ -418,7 +418,7 @@ LocalParamLight::slerpNormalLocal2Render(const Vec3f &n, float time) const
         Mat3f(slerp(mOrientation[0], mOrientation[1], time)).transposed() : // inverse is transpose
         mRender2LocalRot[0].l;
     const float s = (mMb & LIGHT_MB_SCALE) ?
-        rcp(lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time)) :
+        1.0f / lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time) :
         mRender2LocalScale[0];
 
     return r * (s * n);
@@ -472,7 +472,7 @@ LocalParamLight::lerpRender2LocalScale(float s, float time) const
 {
     if (!(mMb & LIGHT_MB_SCALE)) return mRender2LocalScale[0] * s;
 
-    return rcp(lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time)) * s;
+    return s / lerp(mLocal2RenderScale[0], mLocal2RenderScale[1], time);
 }
 
 //----------------------------------------------------------------------------

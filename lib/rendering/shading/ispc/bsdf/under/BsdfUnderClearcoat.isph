@@ -137,7 +137,7 @@ UnderClearcoatBsdfLobe_init(varying UnderClearcoatBsdfLobe * uniform lobe,
 
 
     lobe->mN = normal;
-    lobe->mNeta = etaI * rcp(etaT);
+    lobe->mNeta = etaI / etaT;
     lobe->mThickness = thickness;
     lobe->mAttenuationColor = attenuationColor;
     lobe->mAttenuationWeight = attenuationWeight;

@@ -90,7 +90,7 @@ private:
         scene_rdl2::math::sincos(phi, &sinPhi, &cosPhi);
 
         return scene_rdl2::math::Vec3f(mLocalRadius * cosPhi,
-                     (uv.x - mUvOffset.x) * scene_rdl2::math::rcp(mUvScale.x),
+                     (uv.x - mUvOffset.x) / mUvScale.x,
                      mLocalRadius * sinPhi);
     }
 

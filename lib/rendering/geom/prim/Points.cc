@@ -314,7 +314,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
     // }
     //
     // const float Q = scene_rdl2::math::sqrt(D);
-    // const float rcpA = scene_rdl2::math::rcp(A);
+    // const float rcpA = 1.0f / A;
     // const float t0 = 0.5f * rcpA * (-B - Q);
     // const float t1 = 0.5f * rcpA * (-B + Q);
     //
@@ -452,7 +452,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
         }
         float s = scene_rdl2::math::sqrt(D);
         const Vec3fa w = cross(d, v);
-        const Vec3fa rn = scene_rdl2::math::rcp(d2) * (w - s * d);
+        const Vec3fa rn = (1.0f / d2) * (w - s * d);
         float t = length(u + rn) * scene_rdl2::math::rsqrt(d2);
         if (ray.tnear < t && t < ray.tfar) {
             ray.tfar = t;
@@ -461,7 +461,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
             hit.primID = primID;
             hit.u = 0.0f;
             hit.v = 0.0f;
-            Vec3fa Ng = scene_rdl2::math::rcp(r) * rn;
+            Vec3fa Ng = (1.0f / r) * rn;
             hit.Ng_x = Ng.x;
             hit.Ng_y = Ng.y;
             hit.Ng_z = Ng.z;
@@ -507,7 +507,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
             }
             float s = scene_rdl2::math::sqrt(D);
             const Vec3fa w = cross(d, v);
-            const Vec3fa rn = scene_rdl2::math::rcp(d2) * (w - s * d);
+            const Vec3fa rn = (1.0f / d2) * (w - s * d);
             float t = length(u + rn) * scene_rdl2::math::rsqrt(d2);
             if (rayTnear < t && t < rayTfar) {
                 rayTfar = t;
@@ -516,7 +516,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
                 RTCHitN_primID(hits, N, index) = primID;
                 RTCHitN_u(hits, N, index) = 0.0f;
                 RTCHitN_v(hits, N, index) = 0.0f;
-                Vec3fa Ng = scene_rdl2::math::rcp(r) * rn;
+                Vec3fa Ng = (1.0f / r) * rn;
                 RTCHitN_Ng_x(hits, N, index) = Ng.x;
                 RTCHitN_Ng_y(hits, N, index) = Ng.y;
                 RTCHitN_Ng_z(hits, N, index) = Ng.z;
@@ -567,7 +567,7 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
         }
         float s = scene_rdl2::math::sqrt(D);
         const Vec3fa w = cross(d, v);
-        const Vec3fa rn = scene_rdl2::math::rcp(d2) * (w - s * d);
+        const Vec3fa rn = (1.0f / d2) * (w - s * d);
         float t = length(u + rn) * scene_rdl2::math::rsqrt(d2);
         // TODO call occlude filter functions
         // mark the tfar negative is the official signal
@@ -614,7 +614,7 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
             }
             float s = scene_rdl2::math::sqrt(D);
             const Vec3fa w = cross(d, v);
-            const Vec3fa rn = scene_rdl2::math::rcp(d2) * (w - s * d);
+            const Vec3fa rn = (1.0f / d2) * (w - s * d);
             float t = length(u + rn) * scene_rdl2::math::rsqrt(d2);
             // TODO call occlude filter functions
             // mark the tfar negative is the official signal

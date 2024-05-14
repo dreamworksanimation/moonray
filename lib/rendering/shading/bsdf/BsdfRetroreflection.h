@@ -70,7 +70,7 @@ public:
         if (cosOmegaO_OmegaI <= 0.0f)      return scene_rdl2::math::sBlack;
 
         //convert roughness to phong exponent (see [2])
-        const float alphaP = 2.0f * scene_rdl2::math::rcp(mRoughness * mRoughness) - 2.0f;
+        const float alphaP = 2.0f / (mRoughness * mRoughness) - 2.0f;
 
         // section 3.1 in [1]
         const float power = scene_rdl2::math::pow(cosOmegaO_OmegaI, alphaP) *
@@ -106,8 +106,8 @@ public:
 
         // sample the retro-reflective phong lobe
         // section 3.3.1 in [1]
-        const float alphaP = 2.0f * scene_rdl2::math::rcp(mRoughness * mRoughness) - 2.0f;
-        const float cosThetaM = pow(r1, scene_rdl2::math::rcp(alphaP + 1.0f));
+        const float alphaP = 2.0f / (mRoughness * mRoughness) - 2.0f;
+        const float cosThetaM = pow(r1, 1.0f/(alphaP + 1.0f));
         const float sinThetaM = sqrt(1.0f - cosThetaM*cosThetaM);
         const float phiM = 2.0f * scene_rdl2::math::sPi * r2;
 

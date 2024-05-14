@@ -44,8 +44,8 @@ computeTransmission(const varying float thickness,
     if (isZero(thickness)) return sWhite;
 
     float rcp1 = 0.0f, rcp2 = 0.0f;
-    if (!isZero(cosThetaR1)) rcp1 = rcp(abs(cosThetaR1));
-    if (!isZero(cosThetaR2)) rcp2 = rcp(abs(cosThetaR2));
+    if (!isZero(cosThetaR1)) rcp1 = 1.0f / abs(cosThetaR1);
+    if (!isZero(cosThetaR2)) rcp2 = 1.0f / abs(cosThetaR2);
 
     // length of light path within clearcoat
     const float distanceTraveled = thickness * (rcp1 + rcp2);

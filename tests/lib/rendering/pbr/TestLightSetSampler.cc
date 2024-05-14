@@ -98,8 +98,8 @@ TestLightSetSampler::testLightSetRadiance(const LightSet &lightSet,
 
                         // Compute reflected radiance from white lambertian brdf,
                         // accounting for the cosine term in the rendering eqn
-                        scene_rdl2::math::Color radiance = lsmp.Li * rcp(lsmp.pdf) * sOneOverPi
-                            * saturate(dot(lsmp.wi, n));
+                        scene_rdl2::math::Color radiance = lsmp.Li * (sOneOverPi / lsmp.pdf
+                            * saturate(dot(lsmp.wi, n)));
 
                         // Accumulate
                         red += double(radiance.r);

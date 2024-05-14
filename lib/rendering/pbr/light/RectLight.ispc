@@ -287,7 +287,7 @@ RectLight_sample(const uniform Light * uniform li,
     if (isect.distance < sEpsilon) {
         return false;
     }
-    wi = wi * rcp(isect.distance);
+    wi = wi * (1.0f / isect.distance);
     if (isValidCullingNormal(cullingNormal)  &&  dot(cullingNormal, wi) < sEpsilon) {
         return false;
     }

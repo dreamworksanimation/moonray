@@ -27,13 +27,13 @@ inline varying float rangeAngle(varying float angle)
 inline varying float
 roughness2Exponent(const varying float roughness)
 {
-    return 2.0f * rcp(roughness * roughness);
+    return 2.0f / (roughness * roughness);
 }
 
 inline varying Vec2f
 roughness2Exponent(const varying Vec2f &roughness)
 {
-    return 2.0f * rcp(roughness * roughness);
+    return 2.0f / (roughness * roughness);
 }
 
 
@@ -167,8 +167,8 @@ squarifyRectangle(varying Vec3f &edge1, varying Vec3f &edge2)
     float length2 = length(edge2);
     float newLength = sqrt(length1 * length2);
 
-    edge1 = edge1 * (newLength * rcp(length1));
-    edge2 = edge2 * (newLength * rcp(length2));
+    edge1 = edge1 * (newLength / length1);
+    edge2 = edge2 * (newLength / length2);
 }
 
 
@@ -352,7 +352,7 @@ computeNormalizedHalfVector(const varying Vec3f &wo, const varying Vec3f &wi, va
 
     float lengthH = length(H);
     if (lengthH > halfVectorLengthMin) {
-        H = H * rcp(lengthH);
+        H = H * (1.0f / lengthH);
         return true;
     } else {
         return false;
@@ -362,7 +362,7 @@ computeNormalizedHalfVector(const varying Vec3f &wo, const varying Vec3f &wi, va
 
 /// H is always pointing towards medium with lowest IOR, but only if wo and wi
 /// are pointing on opposite side of the surface (wrt. N).
-inline bool
+inline varying bool
 computeNormalizedRefractionHalfVector(const varying float iorWo, const varying Vec3f &wo,
         const varying float iorWi, const varying Vec3f &wi, varying Vec3f &H)
 {

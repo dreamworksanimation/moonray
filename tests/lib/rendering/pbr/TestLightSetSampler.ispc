@@ -65,8 +65,7 @@ testLightSetRadiance(
                     // Compute reflected radiance from white lambertian brdf,
                     // accounting for the cosine term in the rendering eqn
                     float cosTheta = dot(lsmp.wi, nv);
-                    Color radiance = lsmp.Li * rcp(lsmp.pdf) * sOneOverPi
-                            * clamp(cosTheta, 0.0f, 1.0f);
+                    Color radiance = lsmp.Li * (sOneOverPi * clamp(cosTheta, 0.0f, 1.0f) / lsmp.pdf);
 
                     // Accumulate
                     red += (double)radiance.r;

@@ -1070,8 +1070,7 @@ float
 sampleDistanceZeroScatter(const scene_rdl2::math::Color& channelWeights, const scene_rdl2::math::Color& sigmaT,
         float uChannel, float uDistance, scene_rdl2::math::Color& tr, float& pdfDistance)
 {
-    float normalization =
-        scene_rdl2::math::rcp(channelWeights[0] + channelWeights[1] + channelWeights[2]);
+    float normalization = 1.0f / (channelWeights[0] + channelWeights[1] + channelWeights[2]);
     scene_rdl2::math::Color pdfChannel = normalization * channelWeights;
 
     float distance;
@@ -1119,8 +1118,7 @@ int
 sampleChannel(const scene_rdl2::math::Color& channelWeights,
         float uChannel, scene_rdl2::math::Color& channelSamplingWeights)
 {
-    float normalization =
-        scene_rdl2::math::rcp(channelWeights[0] + channelWeights[1] + channelWeights[2]);
+    float normalization = 1.0f / (channelWeights[0] + channelWeights[1] + channelWeights[2]);
 
     channelSamplingWeights = normalization * channelWeights;
     int chIndex;

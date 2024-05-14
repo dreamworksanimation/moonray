@@ -135,7 +135,7 @@ public:
         // Deal with total internal reflection if neta is > 1.0f
         float tmp;
         if (mNeta > 1.0f) {
-            const float rcpNeta = scene_rdl2::math::rcp(mNeta);
+            const float rcpNeta = 1.0f / mNeta;
             const float cosSqrCriticalAngle = 1.0f - rcpNeta * rcpNeta;
             const float cosSqrTheta =  hDotWi * hDotWi;
             if (cosSqrTheta < cosSqrCriticalAngle) {
@@ -143,7 +143,7 @@ public:
                 return scene_rdl2::math::sWhite;
             }
             // Remap the curve to peak at the critical angle
-            tmp = (1.0f - hDotWi) * scene_rdl2::math::rcp(1.0f - scene_rdl2::math::sqrt(cosSqrCriticalAngle));
+            tmp = (1.0f - hDotWi) / (1.0f - scene_rdl2::math::sqrt(cosSqrCriticalAngle));
         } else {
             tmp = 1.0f - hDotWi;
         }
@@ -483,7 +483,7 @@ public:
         hDotWi = scene_rdl2::math::min(hDotWi, 1.0f);
 
         // Compute Snell law
-        const float eta = etaI * scene_rdl2::math::rcp(etaT);
+        const float eta = etaI / etaT;
         const float sinThetaTSqr = eta * eta * (1.0f - hDotWi * hDotWi);
         if (sinThetaTSqr >= 1.0f) {
             // Total internal reflection
@@ -552,8 +552,7 @@ protected:
     {
         const float etaIcosThetaI = etaI * cosThetaI;
         const float etaTcosThetaT = etaT  * cosThetaT;
-        const float perp = ((etaIcosThetaI) - (etaTcosThetaT)) *
-            scene_rdl2::math::rcp((etaIcosThetaI) + (etaTcosThetaT));
+        const float perp = (etaIcosThetaI - etaTcosThetaT) / (etaIcosThetaI + etaTcosThetaT);
         return perp*perp;
     }
 
@@ -565,8 +564,7 @@ protected:
     {
         const float etaTcosThetaI = etaT * cosThetaI;
         const float etaIcosThetaT = etaI * cosThetaT;
-        const float parallel = ((etaTcosThetaI) - (etaIcosThetaT)) *
-                scene_rdl2::math::rcp((etaTcosThetaI) + (etaIcosThetaT));
+        const float parallel = (etaTcosThetaI - etaIcosThetaT) / (etaTcosThetaI + etaIcosThetaT);
         return parallel*parallel;
     }
 
@@ -622,7 +620,7 @@ public:
         cosThetaI = scene_rdl2::math::min(cosThetaI, 1.0f);
 
         // Compute Snell law
-        const float eta = 1.0f * scene_rdl2::math::rcp(etaT);
+        const float eta = 1.0f / etaT;
         const float sinThetaTSqr = eta * eta * (1.0f - cosThetaI*cosThetaI);
 
         if (sinThetaTSqr >= 1.0f) {
@@ -856,7 +854,7 @@ private:
                 avg += tmp;
             }
         }
-        avg *= scene_rdl2::math::rcp(static_cast<float>(mNumFresnels));
+        avg *= 1.0f / static_cast<float>(mNumFresnels);
         *dest       = avg[0];
         *(dest + 1) = avg[1];
         *(dest + 2) = avg[2];
@@ -873,7 +871,7 @@ private:
                 avg += tmp;
             }
         }
-        avg *= scene_rdl2::math::rcp(static_cast<float>(mNumFresnels));
+        avg /= static_cast<float>(mNumFresnels);
         *dest = avg;
     }
 
@@ -888,7 +886,7 @@ private:
                 avg += tmp;
             }
         }
-        avg *= scene_rdl2::math::rcp(static_cast<float>(mNumFresnels));
+        avg *= 1.0f / static_cast<float>(mNumFresnels);
         *dest       = avg[0];
         *(dest + 1) = avg[1];
     }

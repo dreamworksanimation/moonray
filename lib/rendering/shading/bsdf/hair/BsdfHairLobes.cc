@@ -99,7 +99,7 @@ HairTRTLobe::evalNTermGlint(const HairState& hairState,
         // Eccentricity is approximated by adjusting the index of refraction (Marschner 5.2.3)
         const float eta = hairState.eta();
         const float etaStar1 = 2.f * (eta - 1.f) * mGlintEccentricity * mGlintEccentricity - eta + 2.f;
-        const float etaStar2 = 2.f * (eta - 1.f) * scene_rdl2::math::rcp(mGlintEccentricity * mGlintEccentricity) - eta + 2.f;
+        const float etaStar2 = 2.f * (eta - 1.f) / (mGlintEccentricity * mGlintEccentricity) - eta + 2.f;
         etaStar = 0.5f * ((etaStar1 + etaStar2) + scene_rdl2::math::cos(2.f * hairState.phiH()) * (etaStar1 - etaStar2));
         etaP = HairUtil::safeSqrt(etaStar*etaStar - hairState.sinThetaD()*hairState.sinThetaD()) / hairState.cosThetaD();
 

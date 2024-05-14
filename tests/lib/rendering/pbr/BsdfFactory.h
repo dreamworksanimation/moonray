@@ -260,7 +260,7 @@ public:
     EyeCausticBsdfFactory(float roughness)
     {
         //convert roughness to phong exponent
-        mExponent = 2.0f * scene_rdl2::math::rcp(roughness * roughness);
+        mExponent = 2.0f / (roughness * roughness);
     }
     shading::Bsdf *operator()(scene_rdl2::alloc::Arena& arena, const scene_rdl2::math::ReferenceFrame &frame) const
     {

@@ -407,8 +407,8 @@ TestBsdf_testEvalIntegral(uniform TestBsdfEvalIntegral * uniform test)
                 if (!isValidColor(f)) {
                     foreach_active (lane) ++test->mInvalidEvalColor;
                 } else {
-                    integralUniform = integralUniform + f * rcp(pdfUniform) *
-                            BsdfSampler_getInvLobeSampleCount(&bSampler, lobeIndex);
+                    integralUniform = integralUniform + f * 
+                            (BsdfSampler_getInvLobeSampleCount(&bSampler, lobeIndex) / pdfUniform);
                 }
 
                 // compute the integrated bsdf using importance sampling
@@ -424,8 +424,8 @@ TestBsdf_testEvalIntegral(uniform TestBsdfEvalIntegral * uniform test)
                         foreach_active (lane) ++test->mInvalidDirection;
                     }
 
-                    integralImportance = integralImportance + bsmp.f * rcp(bsmp.pdf) *
-                            BsdfSampler_getInvLobeSampleCount(&bSampler, lobeIndex);
+                    integralImportance = integralImportance + bsmp.f *
+                            (BsdfSampler_getInvLobeSampleCount(&bSampler, lobeIndex) / bsmp.pdf);
                 }
             }
         }

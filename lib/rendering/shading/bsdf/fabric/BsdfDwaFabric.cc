@@ -97,7 +97,7 @@ DwaFabricBsdfLobe::eval(const BsdfSlice &slice,
         *pdf = (mSpecularExponent+1.0f)*sOneOverPi*oneMinusAbsSinThetaHPow;
         // Convert the PDF from sampling thetaH to sampling thetaI
         // Divide by Jacobian (dOmegaI/dOmegaH)
-        *pdf *= 0.25 * rcp(cosHWo);
+        *pdf *= 0.25 / cosHWo;
     }
 
     const Color f =  computeScaleAndFresnel(cosThetaWo) *

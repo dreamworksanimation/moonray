@@ -100,7 +100,7 @@ UnderClearcoatBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     const Color Ft = sWhite - Fr;
     const Color albedo = BsdfLobe_albedo(under->mUnder,
                                          underSlice);
-    result = (result * ct * Ft) * rcp(max(sWhite - (ct * Fr * albedo), Color_ctor(0.01f)));
+    result = (result * ct * Ft) / max(sWhite - (ct * Fr * albedo), Color_ctor(0.01f));
 
     // Now we account for the change in variables because of bending rays.
     // For the derivation, please look in:
@@ -180,7 +180,7 @@ UnderClearcoatBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
     float cosThetaWi, cosThetaWiPrime;
     if (!computeRefractionDirection(under->mN,
                                     wiPrime,
-                                    rcp(under->mNeta),
+                                    1.0f / under->mNeta,
                                     wi,
                                     cosThetaWiPrime,
                                     cosThetaWi))
@@ -226,7 +226,7 @@ UnderClearcoatBsdfLobe_sample(const varying BsdfLobe * uniform lobe,
     const Color Ft = sWhite - Fr;
     const Color albedo = BsdfLobe_albedo(under->mUnder,
                                          underSlice);
-    result = (result * ct * Ft) * rcp(max(sWhite - (ct * Fr * albedo), Color_ctor(0.01f)));
+    result = (result * ct * Ft) / max(sWhite - (ct * Fr * albedo), Color_ctor(0.01f));
 
     // Now we account for the change in variables because of bending rays.
     // For the derivation, please look in:

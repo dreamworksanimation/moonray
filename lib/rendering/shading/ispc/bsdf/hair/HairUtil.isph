@@ -146,10 +146,8 @@ inline varying float
 HairUtil_logBesselIO(const varying float x)
 {
     if (x > 12.0f) {
-        const float oneOverX = rcp(x);
-        return x + 0.5f * (-log(sTwoPi) + log(oneOverX + 0.125f*oneOverX));
-    }
-    else {
+        return x + 0.5f * (log(1.125/sTwoPi) - log(x));
+    } else {
         return log(HairUtil_besselIO(x));
     }
 }
@@ -167,7 +165,7 @@ HairUtil_deonLongitudinalM(const varying float variance,
     if (variance < sEpsilon)
         return 0.0f;
 
-    const float oneOverV = rcp(variance);
+    const float oneOverV = 1.0f / variance;
     const float b = sinThetaI*sinThetaO*oneOverV;
     const float x = cosThetaI*cosThetaO*oneOverV;
 

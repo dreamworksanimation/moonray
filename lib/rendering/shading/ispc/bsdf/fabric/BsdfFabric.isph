@@ -75,7 +75,7 @@ dwaFabricSpecular(const varying Vec3f& wo,
         *pdf = (specularExponent+1.0f)*sOneOverPi*oneMinusAbsSinThetaHPow;
         // Converting the PDF from sampling the thetaH to sampling thetaI
         // divide by jacobian (dOmegaI/dOmegaH)
-        *pdf *= 0.25f * rcp(cosHWo);
+        *pdf *= 0.25f / cosHWo;
     }
 
     return brdf;

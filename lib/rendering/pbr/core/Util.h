@@ -314,7 +314,7 @@ smartClamp(const scene_rdl2::math::Color &radiance, float clamp)
     if (clamp > 0.0f) {
         float maxComponent = scene_rdl2::math::reduce_max(radiance);
         if (maxComponent > clamp) {
-            float factor = clamp * scene_rdl2::math::rcp(maxComponent);
+            float factor = clamp / maxComponent;
             return radiance * factor;
         } else {
             return radiance;

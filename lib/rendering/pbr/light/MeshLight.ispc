@@ -503,7 +503,7 @@ MeshLight_sample(const uniform Light * uniform li,
     wi = LocalParamLight_xformVectorLocal2Render(lpl, hit - transformedP, time);
     isect.distance = length(wi);
     if (isect.distance > sEpsilon) {
-        wi = wi * rcp(isect.distance);
+        wi = wi * (1.0f / isect.distance);
     }
 
     // light is on other side of shading point

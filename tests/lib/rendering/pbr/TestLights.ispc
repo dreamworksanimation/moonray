@@ -54,7 +54,7 @@ testLightRadiance(const uniform Vec3f &p, const uniform Vec3f &n,
                     // account for the cosine term in the rendering eqn
                     float cosTheta = dot(wi, nv);
                     radiance = radiance *
-                            (sOneOverPi * clamp(cosTheta, 0.0f, 1.0f) * rcp(pdf));
+                            (sOneOverPi * clamp(cosTheta, 0.0f, 1.0f) / pdf);
 
                     // accumulate
                     red += (double)radiance.r;
@@ -176,7 +176,7 @@ testLightCanIlluminate(const uniform Light * uniform light,
                 Color radiance = Light_eval(light, nullptr, wi, p, filterR, 0.f, isect, false, nullptr, 0.0f, &pdf);
 
                 if (pdf != 0.0f  &&  !isBlack(radiance)) {
-                    radiance = radiance * clamp(dot(wi, n), 0.0f, 1.0f) * rcp(pdf);
+                    radiance = radiance * (clamp(dot(wi, n), 0.0f, 1.0f) / pdf);
                     if (!isBlack(radiance)) {
                         gotContribution = true;
                     }

@@ -112,10 +112,10 @@ VolumeSubsurface::VolumeSubsurface(const scene_rdl2::math::Color& trlColor,
     const scene_rdl2::math::Color kappa0 = scene_rdl2::math::sqrt(3.0f*omA) *
             (scene_rdl2::math::sWhite -
              omA*(2.0f/5.0f + omA*(12.0f/175.0f + omA*(2.f/125.f + omA*166.f/67375.f))));
-    mDwivediV0 = scene_rdl2::math::rcp(kappa0);
+    mDwivediV0 = 1.0f / kappa0;
     mDwivediNormPDF = scene_rdl2::math::log((mDwivediV0 + scene_rdl2::math::sWhite)/
                                 (mDwivediV0 - scene_rdl2::math::sWhite));
-    mDwivediNormPDF = scene_rdl2::math::rcp(mDwivediNormPDF);
+    mDwivediNormPDF = 1.0f / mDwivediNormPDF;
 
     // Zero Scatter - when a path exits the surface without scattering inside
     // Pure Beer's Law Absorption Case:

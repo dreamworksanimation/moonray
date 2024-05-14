@@ -183,22 +183,19 @@ CookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
     float alpha2                = ct->mRoughness * ct->mRoughness;
     const float cosThetaM2      = cosThetaM * cosThetaM;
     const float cosThetaM4      = cosThetaM2 * cosThetaM2;
-    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) * rcp(cosThetaM2);
-    float D4                    = 0.25f * exp(minusTanThetaM2 * rcp(alpha2)) *
-                                  rcp(sPi * alpha2 * cosThetaM4);
+    const float minusTanThetaM2 = (cosThetaM2 - 1.0f) / cosThetaM2;
+    float D4                    = exp(minusTanThetaM2 / alpha2) / (sFourPi * alpha2 * cosThetaM4);
 
     // eq. 26, 27: now calculate G1(i,m) and G1(o,m)
     const float ao = cosNO * ct->mInvRoughness * rsqrt(1.0f - cosNO * cosNO);
     const float ai = cosNI * ct->mInvRoughness * rsqrt(1.0f - cosNI * cosNI);
-    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) *
-            rcp(1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
-    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) *
-            rcp(1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
+    const float G1o = (ao < 1.6f) ? (3.535f * ao + 2.181f * ao * ao) / (1.0f + 2.276f * ao + 2.577f * ao * ao) : 1.0f;
+    const float G1i = (ai < 1.6f) ? (3.535f * ai + 2.181f * ai * ai) / (1.0f + 2.276f * ai + 2.577f * ai * ai) : 1.0f;
     const float G  = G1o * G1i;
 
     // Compute the Cook-Torrance bsdf
-    Color f = BsdfLobe_computeScaleAndFresnel(lobe, cosMI) * G * D4 * rcp(cosNO) *
-              (slice.mIncludeCosineTerm  ?  1.0f  :  rcp(cosNI));
+    Color f = G * D4 / cosNO * (slice.mIncludeCosineTerm  ?  1.0f  :  1.0f/cosNI) *
+              BsdfLobe_computeScaleAndFresnel(lobe, cosMI);
 
     const float w2 = CookTorranceBsdfLobe_energyCompensationWeight(ct);
     if (w2 > 0.0f) {
@@ -218,15 +215,14 @@ CookTorranceBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         // roughness we use in sample(), otherwise our pdf is biased
         const float alpha = widenRoughness(ct->mRoughness, cosNO);
         alpha2 = alpha * alpha;
-        D4 = 0.25f * exp(minusTanThetaM2 * rcp(alpha2)) *
-                rcp(sPi * alpha2 * cosThetaM4);
+        D4 = exp(minusTanThetaM2 / alpha2) / (sFourPi * alpha2 * cosThetaM4);
 #endif
         const float p2 = CookTorranceBsdfLobe_energyCompensationPDF(
                              ct,
                              MICROFACET_DISTRIBUTION_BECKMANN,
                              cosNI);
         const float w1 = (1.0f - w2);
-        const float p1 = D4 * cosThetaM * rcp(cosMI);
+        const float p1 = D4 * cosThetaM / cosMI;
         // One Sample PDF Weight
         *pdf = (w1 * p1 + w2 * p2);
     }

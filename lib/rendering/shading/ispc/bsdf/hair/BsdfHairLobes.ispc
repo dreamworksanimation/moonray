@@ -126,7 +126,7 @@ HairTRTBsdfLobe_evalNTermGlint(const varying HairBsdfLobe * uniform lobe,
         // Eccentricity is approximated by adjusting the index of refraction (Marschner 5.2.3)
         const float eta = hairState.mEta;
         const float etaStar1 = 2.f * (eta - 1.f) * glintAttrs->mGlintEccentricity * glintAttrs->mGlintEccentricity - eta + 2.f;
-        const float etaStar2 = 2.f * (eta - 1.f) * rcp(glintAttrs->mGlintEccentricity * glintAttrs->mGlintEccentricity) - eta + 2.f;
+        const float etaStar2 = 2.f * (eta - 1.f) / (glintAttrs->mGlintEccentricity * glintAttrs->mGlintEccentricity) - eta + 2.f;
         etaStar = 0.5f * ((etaStar1 + etaStar2) + cos(2.f * hairState.mPhiH) * (etaStar1 - etaStar2));
         etaP = HairUtil_safeSqrt(etaStar*etaStar - hairState.mSinThetaD*hairState.mSinThetaD) / hairState.mCosThetaD;
 
@@ -425,7 +425,7 @@ HairTRRTBsdfLobe_evalCompensationTerm(const varying Color& f,
 {
     const Color result = oneMinusF*oneMinusF*f*f;
     const Color oneMinusFT = sWhite - f * T;
-    return (result*T*T*T*rcp(oneMinusFT));
+    return (result*T*T*T/oneMinusFT);
 }
 
 varying Color

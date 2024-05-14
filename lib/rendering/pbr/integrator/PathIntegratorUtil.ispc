@@ -27,21 +27,24 @@ integrateBsdfSample(const varying BsdfSampler &bSampler, uniform int lobeIndex,
         return;
     }
 
-    const int ni = BsdfSampler_getLobeSampleCount(&bSampler, lobeIndex);
-    const float invNi = BsdfSampler_getInvLobeSampleCount(&bSampler, lobeIndex);
-    const Color pt = pathThroughput * invNi * bsmp.f * rcp(bsmp.pdf);
+    const float ni = (const float)BsdfSampler_getLobeSampleCount(&bSampler, lobeIndex);
+    const Color pt = pathThroughput * bsmp.f * (1.0f / (ni * bsmp.pdf));
 
     // Compute direct tentative contribution (omit shadowing)
-    const bool lobeIsMirror = BsdfLobe_matchesFlags(
-            BsdfSampler_getLobe(&bSampler, lobeIndex), BSDF_LOBE_TYPE_ALL_MIRROR);
-    const int nl = (lCo.isInvalid  ?  0  :
-            LightSetSampler_getLightSampleCount(&lSampler));
-    bsmp.tDirect = (lCo.isInvalid  ?  sBlack  :  (lobeIsMirror  ?
+    if (lCo.isInvalid) {
+        bsmp.tDirect = sBlack;
+    } else {
+        const bool lobeIsMirror = BsdfLobe_matchesFlags(
+                BsdfSampler_getLobe(&bSampler, lobeIndex), BSDF_LOBE_TYPE_ALL_MIRROR);
+        if (lobeIsMirror) {
             // Bsdf importance sampling
-            lCo.Li * pt  :
+            bsmp.tDirect = lCo.Li * pt;
+        } else {
             // Multiple importance sampling
-            lCo.Li * pt * powerHeuristic(ni * bsmp.pdf, nl * lCo.pdf)
-        ));
+            const float nl = (const float)LightSetSampler_getLightSampleCount(&lSampler);
+            bsmp.tDirect = lCo.Li * pt * powerHeuristic(ni * bsmp.pdf, nl * lCo.pdf);
+        }
+    }
 
     // Compute indirect tentative contribution (omit Lindirect)
     bsmp.tIndirect = (BsdfSampler_getDoIndirect(&bSampler)  ?  pt  :  sBlack);
@@ -232,10 +235,9 @@ integrateLightSetSample(const varying LightSetSampler &lSampler,
     bool isInvalid = true;
     lsmp.t = sBlack;
 
-    const int ni = LightSetSampler_getLightSampleCount(&lSampler);
-    const float invNi = LightSetSampler_getInvLightSampleCount(&lSampler);
+    const float ni = (const float)LightSetSampler_getLightSampleCount(&lSampler);
 
-    const Color factor = pv.pathThroughput * invNi * lsmp.Li * rcp(lsmp.pdf);
+    const Color factor = pv.pathThroughput * lsmp.Li * (1.0f / (ni * lsmp.pdf));
 
     // Integrate with all the matching lobes
     const varying BsdfSlice * uniform slice = BsdfSampler_getBsdfSlice(&bSampler);
@@ -487,20 +489,13 @@ applyRussianRoulette(
         const float lumIndirect = luminance(bsmp[s].tIndirect);
         const float lum = max(lumDirect, lumIndirect);
         if (lum < threshold) {
-            // This should always be < 1
-            //
-            // The rcp function (SSE version) produces a NaN when the value is
-            // less than 0x1p-64f (the version I tested, anyway). FLT_EPSILON
-            // is much greater than this, but still probably a good threshold
-            // for our minimum probability.
-            const float continueProbability = max(sEpsilon, lum * invThreshold);
             float sample;
             getSample(rrSamples, sample, pv.nonMirrorDepth, *pbrTls->mFs);
-            if (sample > continueProbability) {
+            if (lum < sample * threshold) {
                 BsdfSample_setInvalid(&(bsmp[s]));
             } else {
-                const float invContinueProbability = rcp(continueProbability);
-                bsmp[s].tDirect = bsmp[s].tDirect * invContinueProbability;
+                const float invContinueProbability = threshold / lum;
+                bsmp[s].tDirect   = bsmp[s].tDirect   * invContinueProbability;
                 bsmp[s].tIndirect = bsmp[s].tIndirect * invContinueProbability;
             }
         }
@@ -528,25 +523,18 @@ applyRussianRoulette(
 
         const float lum = luminance(lsmp[s].t);
         if (lum < threshold) {
-            // This should always be < 1
-            //
-            // The rcp function (SSE version) produces a NaN when the value is
-            // less than 0x1p-64f (the version I tested, anyway). FLT_EPSILON
-            // is much greater than this, but still probably a good threshold
-            // for our minimum probability.
-            const float continueProbability = max(sEpsilon, lum * invThreshold);
             float sample;
             getSample(rrSamples, sample, pv.nonMirrorDepth, *pbrTls->mFs);
-            if (sample > continueProbability) {
+            if (lum < sample * threshold) {
                 LightSample_setInvalid(&(lsmp[s]));
             } else {
-                const float continueProbabilityInv = rcp(continueProbability);
-                lsmp[s].t = lsmp[s].t * continueProbabilityInv;
+                const float invContinueProbability = threshold / lum;
+                lsmp[s].t = lsmp[s].t * invContinueProbability;
 
                 // adjust per lobe values, if needed (see integrateLightSetSample())
                 for (uniform unsigned int k = 0; k < BSDF_MAX_LOBE; ++k) {
                     if (lsmp[s].lp.lobe[k]) {
-                        lsmp[s].lp.t[k] = lsmp[s].lp.t[k] * continueProbabilityInv;
+                        lsmp[s].lp.t[k] = lsmp[s].lp.t[k] * invContinueProbability;
                     }
                 }
             }

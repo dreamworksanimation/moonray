@@ -33,13 +33,13 @@ static finline float rangeAngle(float angle)
 finline float
 roughness2Exponent(float roughness)
 {
-    return 2.0f * scene_rdl2::math::rcp(roughness * roughness);
+    return 2.0f / (roughness * roughness);
 }
 
 finline scene_rdl2::math::Vec2f
 roughness2Exponent(const scene_rdl2::math::Vec2f &roughness)
 {
-    return 2.0f * scene_rdl2::math::rcp(roughness * roughness);
+    return 2.0f / (roughness * roughness);
 }
 
 

@@ -80,7 +80,7 @@ TestBssrdf_pdfIntegral(const varying Bssrdf * uniform bssrdf,
 {
     float maxRadius = Bssrdf_getMaxRadius(bssrdf);
     Color integralUniform = Color_ctor(0.f);
-    float pdf = rcp(4.f * maxRadius * maxRadius);
+    float pdf = 0.25f / (maxRadius * maxRadius);
     foreach (i = 0 ... sampleCount) {
         Vec3f xi;
         xi.x = (u[i] - 0.5f) * 2.0f * maxRadius;
@@ -102,7 +102,7 @@ TestBssrdf_pdfIntegral(const varying Bssrdf * uniform bssrdf,
     result->b = reduce_add(integralUniform.b);
     // given these same assumptions, pdf should be equal on all lanes
     MNRY_ASSERT(reduce_equal(pdf));
-    *result = *result * rcp(sampleCount * extract(pdf, 0));
+    *result = *result * (1.0f / (sampleCount * extract(pdf, 0)));
 }
 
 export void
@@ -131,7 +131,7 @@ TestBssrdf_integral(const varying Bssrdf * uniform bssrdf,
         float pdf = Bssrdf_sampleLocal(bssrdf, impU[i], impV[i], xi, r);
 
         avgSampledRadius += r;
-        integralImp = integralImp + Bssrdf_eval(bssrdf, r) * rcp(pdf);
+        integralImp = integralImp + Bssrdf_eval(bssrdf, r) / pdf;
         maxSampledRadius = max(r, maxSampledRadius);
     }
     outImpIntegral->r = reduce_add(integralImp.r) / impSampleCount;
@@ -143,7 +143,7 @@ TestBssrdf_integral(const varying Bssrdf * uniform bssrdf,
     // Compute diffuse reflectance using uniform sampling
     float maxRadius = Bssrdf_getMaxRadius(bssrdf);
     Color integralUniform = Color_ctor(0.f);
-    float pdf =  rcp(4.0f * maxRadius * maxRadius);
+    float pdf =  0.25f / (maxRadius * maxRadius);
     foreach (i = 0 ... uniSampleCount) {
         Vec3f xi;
         xi.x = (uniU[i] - 0.5f) * 2.0f * maxRadius;
@@ -158,7 +158,7 @@ TestBssrdf_integral(const varying Bssrdf * uniform bssrdf,
     outUniIntegral->g = reduce_add(integralUniform.g);
     outUniIntegral->b = reduce_add(integralUniform.b);
     MNRY_ASSERT(reduce_equal(pdf));
-    *outUniIntegral = *outUniIntegral * rcp(uniSampleCount * extract(pdf, 0));
+    *outUniIntegral = *outUniIntegral * (1.0f / (uniSampleCount * extract(pdf, 0)));
     MNRY_ASSERT(reduce_equal(maxRadius));
     *outMaxRadius = extract(maxRadius, 0);
 

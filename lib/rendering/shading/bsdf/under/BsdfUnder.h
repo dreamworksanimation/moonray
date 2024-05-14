@@ -134,8 +134,8 @@ protected:
         }
 
         float rcp1 = 0.0f, rcp2 = 0.0f;
-        if (!scene_rdl2::math::isZero(cosThetaR1)) rcp1 = scene_rdl2::math::rcp(scene_rdl2::math::abs(cosThetaR1));
-        if (!scene_rdl2::math::isZero(cosThetaR2)) rcp2 = scene_rdl2::math::rcp(scene_rdl2::math::abs(cosThetaR2));
+        if (!scene_rdl2::math::isZero(cosThetaR1)) rcp1 = 1.0f / scene_rdl2::math::abs(cosThetaR1);
+        if (!scene_rdl2::math::isZero(cosThetaR2)) rcp2 = 1.0f / scene_rdl2::math::abs(cosThetaR2);
 
         // length of light path within clearcoat
         const float distanceTraveled = mThickness * (rcp1 + rcp2);

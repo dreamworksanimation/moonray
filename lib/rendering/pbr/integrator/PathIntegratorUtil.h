@@ -271,11 +271,11 @@ void drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, con
 
 void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold);
+        float threshold);
 
 void applyRussianRoulette(const LightSetSampler &lSampler, LightSample *lsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,
-        float threshold, float invThreshold, IntegratorSample1D& rrSamples);
+        float threshold, IntegratorSample1D& rrSamples);
 
 void accumulateRayPresence(pbr::TLState *pbrTls,
                            const Light* light,
