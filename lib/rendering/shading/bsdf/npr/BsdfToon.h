@@ -96,6 +96,7 @@ class ToonSpecularBsdfLobe : public BsdfLobe
 public:
     ToonSpecularBsdfLobe(const scene_rdl2::math::Vec3f &N,
                          const float intensity,
+                         const float fresnelBlend,
                          const scene_rdl2::math::Color& tint,
                          float rampInputScale,
                          int numRampPoints,
@@ -149,6 +150,8 @@ private:
     scene_rdl2::math::ReferenceFrame mFrame;
     FloatRampControl mRampControl;
     float mIntensity;
+    float mFresnelBlend;
+    float mNormalization;
     scene_rdl2::math::Color mTint;
     float mRampInputScale;
     float mStretchU;

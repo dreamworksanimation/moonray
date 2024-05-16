@@ -955,7 +955,12 @@ public:
                     component.getRoughnessV());
         }
 
-        const float avgRoughness = (component.getRoughnessU() + component.getRoughnessV()) * 0.5f;
+        const float avgTransmissionRoughness =
+            (component.getTransmissionRoughnessU() + component.getTransmissionRoughnessV()) * 0.5f;
+
+        const float avgReflectionRoughness =
+            (component.getRoughnessU() + component.getRoughnessV()) * 0.5f;
+
         if (transWeight > 0.f) {
             // only isotropic microfacet transmission supported currently
             float favg, favgInv;
@@ -966,7 +971,7 @@ public:
             // Relative IOR == 1 is not handled and neither is thinGeometry
             trans = mTls->mArena->allocWithArgs<TransmissionCookTorranceBsdfLobe>(
                     component.getN(),
-                    avgRoughness,
+                    avgTransmissionRoughness,
                     ior.getIncident(),
                     ior.getTransmitted(),
                     component.getTint(),
@@ -985,8 +990,17 @@ public:
             refl = handleIridescence(refl, component.getIridescence());
 
             if (trans) {
-                Fresnel * oneMinusFresnel =
-                    mTls->mArena->allocWithArgs<OneMinusFresnel>(fresnel);
+                Fresnel* oneMinusFresnel;
+                if (component.getUseTransmissionRoughness()) {
+                    // To maintain the look previous to MOONSHINE-1813, we
+                    // create a OneMinusRoughFresnel if the
+                    // use_independent_transmission_roughness parameter is true
+                    oneMinusFresnel = mTls->mArena->allocWithArgs<OneMinusRoughFresnel>(
+                                      fresnel,
+                                      avgReflectionRoughness);
+                } else {
+                    oneMinusFresnel = mTls->mArena->allocWithArgs<OneMinusFresnel>(fresnel);
+                }
                 trans->setFresnel(oneMinusFresnel);
             }
         }
@@ -1011,7 +1025,7 @@ public:
                 SimpleAttenuator * atten = mTls->mArena->allocWithArgs<SimpleAttenuator>(
                         mTls->mArena,
                         adaptedNormal,
-                        avgRoughness,
+                        avgTransmissionRoughness,
                         fresnel);
 
                 stageAttenuator(atten);
@@ -1206,7 +1220,7 @@ public:
                 // only isotropic microfacet transmission supported currently
                 trans = mTls->mArena->allocWithArgs<TransmissionCookTorranceBsdfLobe>(
                         component.getN(),
-                        component.getRoughness(),
+                        component.getTransmissionRoughness(),
                         ior.getIncident(),
                         ior.getTransmitted(),
                         component.getTint(),
@@ -1226,8 +1240,17 @@ public:
             refl = handleIridescence(refl, component.getIridescence());
 
             if (trans) {
-                Fresnel* oneMinusFresnel =
-                    mTls->mArena->allocWithArgs<OneMinusFresnel>(fresnel);
+                Fresnel* oneMinusFresnel;
+                if (component.getUseTransmissionRoughness()) {
+                    // To maintain the look previous to MOONSHINE-1813, we
+                    // create a OneMinusRoughFresnel if the
+                    // use_independent_transmission_roughness parameter is true
+                    oneMinusFresnel = mTls->mArena->allocWithArgs<OneMinusRoughFresnel>(
+                                      fresnel,
+                                      component.getRoughness());
+                } else {
+                    oneMinusFresnel = mTls->mArena->allocWithArgs<OneMinusFresnel>(fresnel);
+                }
                 trans->setFresnel(oneMinusFresnel);
             }
         }
@@ -1261,7 +1284,7 @@ public:
                 SimpleAttenuator * atten = mTls->mArena->allocWithArgs<SimpleAttenuator>(
                         mTls->mArena,
                         adaptedNormal,
-                        component.getRoughness(),
+                        component.getTransmissionRoughness(),
                         fresnel);
 
                 stageAttenuator(atten);
@@ -1887,6 +1910,7 @@ public:
         BsdfLobe * lobe = mTls->mArena->allocWithArgs<ToonSpecularBsdfLobe>(
                 adaptedNormal,
                 component.getIntensity() * fadeWeight * weight,
+                component.getFresnelBlend(),
                 component.getTint(),
                 component.getRampInputScale(),
                 component.getRampNumPoints(),
@@ -1901,6 +1925,7 @@ public:
                 component.getIndirectReflectionsRoughness(),
                 component.getIndirectReflectionsIntensity(),
                 fresnel);
+        lobe->setFresnel(fresnel);
 
         if (isUnder(combineBehavior)) {
             // account for the non-dielectric lobes above

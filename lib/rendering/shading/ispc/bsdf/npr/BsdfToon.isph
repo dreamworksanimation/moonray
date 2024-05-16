@@ -227,12 +227,14 @@ struct ToonSpecularBsdfLobe
 
     ReferenceFrame mFrame;
     float mIntensity;
+    float mFresnelBlend;
     Color mTint;
     float mRampInputScale;
     FloatRampControl mRampControl;
 
     float mStretchU;
     float mStretchV;
+    float mNormalization;
     Vec3f mdPds;
     Vec3f mdPdt;
 
@@ -283,6 +285,7 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
                           uniform Arena * uniform arena,
                           const varying Vec3f &normal,
                           const varying float intensity,
+                          const varying float fresnelBlend,
                           const Color& tint,
                           const float rampInputScale,
                           const varying int numRampPoints,

@@ -197,6 +197,7 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
                           uniform Arena * uniform arena,
                           const varying Vec3f &normal,
                           const varying float intensity,
+                          const varying float fresnelBlend,
                           const Color& tint,
                           const float rampInputScale,
                           const varying int numRampPoints,
@@ -228,12 +229,16 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
     ReferenceFrame_init(lobe->mFrame, normal);
 
     lobe->mIntensity = intensity;
+    lobe->mFresnelBlend = fresnelBlend;
     lobe->mTint = tint;
     lobe->mRampInputScale = rampInputScale;
     lobe->mStretchU = stretchU;
     lobe->mStretchV = stretchV;
+    lobe->mNormalization = 1.0f;
     lobe->mdPds = dPds;
     lobe->mdPdt = dPdt;
+
+
     FloatRampControl_init(&lobe->mRampControl,
                           numRampPoints,
                           rampPositions,
@@ -247,18 +252,53 @@ ToonSpecularBsdfLobe_init(varying ToonSpecularBsdfLobe * uniform lobe,
     lobe->mIndirectReflectionsIntensity = indirectReflectionsIntensity;
     BsdfLobe_setFresnel((varying BsdfLobe * uniform)&lobe->mIndirectLobe, fresnel);
 
-    if (fresnel) {
-        // pre-sample ramp to determine average value and scale the
-        // fresnel's weight to try to conserve energy.
-        varying float rampAvg = 0.0f;
-        uniform const int numSamples = 16;
-        uniform const float stepSize = 1.0f / numSamples;
-        for (int i = 0; i < numSamples; ++i) {
-            rampAvg += FloatRampControl_eval1D(i * stepSize, &lobe->mRampControl);
-        }
-        rampAvg /= numSamples;
+    // Approximate a normalization term that attempt to preserve energy
+    // under different ramp settings.  Narrow/tight ramps should produce
+    // small/bright highlights, and wider/broad ramps should produce dimmer
+    // highlights.
 
-        fresnel->mWeight = fresnel->mWeight * rampAvg;
+    // We'll divide the ramp into a number of slices and for each slice
+    // compute the area of the spherical segment representing that slice,
+    // multipled by the ramp value representing that segment.
+
+    // The toon ramp's input in [0,1) in eval() represents theta in [0,pi/2).
+    // (There is an optimization/approximation that attempts to avoid acos.)
+    const int numSegments = 64; // this approximation is coarse, maybe too coarse.
+    const float dx = 1.0f / numSegments;
+    const float dx_half = 0.5f * dx;
+    float rampAvg = 0.0f;
+    float totalArea = 0.0f;
+
+    for (int i = 0; i < numSegments; ++i) {
+        // Scale segment area by ramp eval.
+        const float ramp = FloatRampControl_eval1D((i * dx + dx_half) / lobe->mRampInputScale, &lobe->mRampControl);
+        rampAvg += ramp;
+
+        if (isZero(ramp)) {
+            continue;
+        }
+
+        const float theta0 = i * dx * sHalfPi;
+        const float theta1 = (i+1) * dx * sHalfPi;
+
+        // Area of spherical caps using r and theta:
+        // A = 2 * pi * r*r (1 - cosTheta), where r = 1
+        // The segment area is the difference of the spherical caps
+        // defined at the bottom and top edge of the segment
+        const float a0 = sTwoPi * (1.0f - cos(theta0));
+        const float a1 = sTwoPi * (1.0f - cos(theta1));
+
+        const float segmentArea = (a1 - a0) * ramp;
+        totalArea += segmentArea;
+    }
+
+    // Use the pre-sampled ramp to determine average value and scale the
+    // fresnel's weight to try to conserve energy.
+    rampAvg /= numSegments;
+    fresnel->mWeight = fresnel->mWeight * rampAvg;
+
+    if (!isZero(totalArea)) {
+        lobe->mNormalization = sTwoPi / totalArea; // reciprocal
     }
 }
 
@@ -325,23 +365,35 @@ ToonSpecularBsdfLobe_eval(const varying BsdfLobe * uniform lobe,
         return sBlack;
     }
 
-
     // Reflection vector using modified N
     R = wi - 2.0f * dot(wi, N) * N;
 
     // acos optimization to linearize dot product
-    const float specAngle = pow(1.0f - clamp(dot(wo * -1.0f,  R), 0.0f, 1.0f), 0.56f);
+    const float thetaRO = pow(1.0f - clamp(dot(wo * -1.0f,  R), 0.0f, 1.0f), 0.56f);
 
-    if (specAngle <= 0.0f) {
+    if (thetaRO <= 0.0f) {
         return sBlack;
     }
 
-    const float ramp = FloatRampControl_eval1D(specAngle / toonSpecLobe->mRampInputScale, &toonSpecLobe->mRampControl);
+    const float ramp = FloatRampControl_eval1D(thetaRO / toonSpecLobe->mRampInputScale, &toonSpecLobe->mRampControl);
     if (pdf != NULL) {
         *pdf = 0.5f * sOneOverPi * ramp;
     }
 
-    return toonSpecLobe->mScale * toonSpecLobe->mTint * ramp * toonSpecLobe->mIntensity * sOneOverPi;
+    // Note: we assume this lobe has been setup with a OneMinus*Fresnel
+    // as we want to use 1 - specular_fresnel. Also notice we use
+    // cosThetaWo to evaluate the fresnel term, as an approximation of what
+    // hDotWi would be for the specular lobe.
+    float cosThetaWo = 1.0f;
+
+    if (isActive(BsdfLobe_getFresnel(lobe))) {
+        cosThetaWo = max(dot(N, slice.mWo), 0.0f);
+    }
+
+    const varying Color f = lerp(toonSpecLobe->mScale,
+                                 toonSpecLobe->mNormalization * BsdfLobe_computeScaleAndFresnel(lobe, cosThetaWo),
+                                 toonSpecLobe->mFresnelBlend);
+    return ramp * toonSpecLobe->mIntensity * toonSpecLobe->mTint * sOneOverPi * f;
 }
 
 varying Color

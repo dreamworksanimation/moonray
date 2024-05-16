@@ -1022,7 +1022,14 @@ BsdfBuilder_addMicrofacetAnisotropicBSDF(
                 bsdf.mRoughnessV);
     }
 
-    const varying float avgRoughness = (bsdf.mRoughnessU + bsdf.mRoughnessV) * 0.5f;
+    const varying float avgRoughness = (bsdf.mTransmissionRoughnessU + bsdf.mTransmissionRoughnessV) * 0.5f;
+
+        const float avgTransmissionRoughness =
+            (bsdf.mTransmissionRoughnessU + bsdf.mTransmissionRoughnessV) * 0.5f;
+
+        const float avgReflectionRoughness =
+            (bsdf.mRoughnessU + bsdf.mRoughnessV) * 0.5f;
+
     if (transWeight > 0.0f) {
         trans = (varying BsdfLobe * uniform)
             Arena_alloc(me.mTls->mArena, sizeof(varying TransmissionCookTorranceBsdfLobe));
@@ -1035,7 +1042,7 @@ BsdfBuilder_addMicrofacetAnisotropicBSDF(
         TransmissionCookTorranceBsdfLobe_init(
                 (varying TransmissionCookTorranceBsdfLobe * uniform) trans,
                 bsdf.mN,
-                avgRoughness,
+                avgTransmissionRoughness,
                 ior.mIncident,
                 ior.mTransmitted,
                 bsdf.mTint,
@@ -1056,10 +1063,23 @@ BsdfBuilder_addMicrofacetAnisotropicBSDF(
         refl = handleIridescence(me, refl, bsdf.mIridescence);
 
         if (trans) {
-            varying Fresnel * uniform oneMinusFresnel = (varying Fresnel * uniform)
-                Arena_alloc(me.mTls->mArena, sizeof(varying OneMinusFresnel));
-            OneMinusFresnel_init((varying OneMinusFresnel * uniform) oneMinusFresnel,
-                                 fresnel);
+
+            varying Fresnel * uniform oneMinusFresnel;
+            if (bsdf.mUseTransmissionRoughness) {
+                // To maintain the look previous to MOONSHINE-1813, we
+                // create a OneMinusRoughFresnel if the
+                // use_independent_transmission_roughness parameter is true
+                oneMinusFresnel = (varying Fresnel * uniform)Arena_alloc(me.mTls->mArena,
+                                                                         sizeof(varying OneMinusRoughFresnel));
+                OneMinusRoughFresnel_init((varying OneMinusRoughFresnel * uniform)oneMinusFresnel,
+                                          fresnel,
+                                          avgReflectionRoughness);
+            } else {
+                oneMinusFresnel = (varying Fresnel * uniform)Arena_alloc(me.mTls->mArena,
+                                                                         sizeof(varying OneMinusFresnel));
+                OneMinusFresnel_init((varying OneMinusFresnel * uniform)oneMinusFresnel,
+                                     fresnel);
+            }
 
             BsdfLobe_setFresnel(trans, oneMinusFresnel);
         }
@@ -1091,7 +1111,7 @@ BsdfBuilder_addMicrofacetAnisotropicBSDF(
             SimpleAttenuator_init(atten,
                                   me.mTls->mArena,
                                   adaptedNormal,
-                                  avgRoughness,
+                                  avgTransmissionRoughness,
                                   fresnel);
 
             stageAttenuator(me, (varying LobeAttenuator * uniform) atten);
@@ -1199,7 +1219,7 @@ BsdfBuilder_addMicrofacetIsotropicBSDF(
             TransmissionCookTorranceBsdfLobe_init(
                     (varying TransmissionCookTorranceBsdfLobe * uniform) trans,
                     bsdf.mN,
-                    bsdf.mRoughness,
+                    bsdf.mTransmissionRoughness,
                     ior.mIncident,
                     ior.mTransmitted,
                     bsdf.mTint,
@@ -1221,10 +1241,22 @@ BsdfBuilder_addMicrofacetIsotropicBSDF(
         refl = handleIridescence(me, refl, bsdf.mIridescence);
 
         if (trans) {
-            varying Fresnel * uniform oneMinusFresnel = (varying Fresnel * uniform)
-                Arena_alloc(me.mTls->mArena, sizeof(varying OneMinusFresnel));
-            OneMinusFresnel_init((varying OneMinusFresnel * uniform) oneMinusFresnel,
-                                 fresnel);
+            varying Fresnel * uniform oneMinusFresnel;
+            if (bsdf.mUseTransmissionRoughness) {
+                // To maintain the look previous to MOONSHINE-1813, we
+                // create a OneMinusRoughFresnel if the
+                // use_independent_transmission_roughness parameter is true
+                oneMinusFresnel = (varying Fresnel * uniform)Arena_alloc(me.mTls->mArena,
+                                                                         sizeof(varying OneMinusRoughFresnel));
+                OneMinusRoughFresnel_init((varying OneMinusRoughFresnel * uniform)oneMinusFresnel,
+                                          fresnel,
+                                          bsdf.mRoughness);
+            } else {
+                oneMinusFresnel = (varying Fresnel * uniform)Arena_alloc(me.mTls->mArena,
+                                                                         sizeof(varying OneMinusFresnel));
+                OneMinusFresnel_init((varying OneMinusFresnel * uniform)oneMinusFresnel,
+                                     fresnel);
+            }
 
             BsdfLobe_setFresnel(trans, oneMinusFresnel);
         }
@@ -1256,7 +1288,7 @@ BsdfBuilder_addMicrofacetIsotropicBSDF(
             SimpleAttenuator_init(atten,
                                   me.mTls->mArena,
                                   adaptedNormal,
-                                  bsdf.mRoughness,
+                                  bsdf.mTransmissionRoughness,
                                   fresnel);
 
             stageAttenuator(me, (varying LobeAttenuator * uniform) atten);
@@ -1465,6 +1497,7 @@ BsdfBuilder_addToonSpecularBRDF(
                               me.mTls->mArena,
                               adaptedNormal,
                               brdf.mIntensity * fadeWeight * weight,
+                              brdf.mFresnelBlend,
                               brdf.mTint,
                               brdf.mRampInputScale,
                               brdf.mRampNumPoints,
@@ -1479,6 +1512,7 @@ BsdfBuilder_addToonSpecularBRDF(
                               brdf.mIndirectReflectionsRoughness,
                               brdf.mIndirectReflectionsIntensity,
                               fresnel);
+    BsdfLobe_setFresnel(lobe, fresnel);
 
     cif (isUnder(combineBehavior)) {
         // account for the non-dielectric lobes above

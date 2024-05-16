@@ -399,19 +399,97 @@ MicrofacetAnisotropicBSDF_init(
         const varying float transmissionWeight,
         const varying Iridescence * uniform iridescence)
 {
-    me.mN                       = N;
-    me.mEta                     = eta;
-    me.mRoughnessU              = roughnessU;
-    me.mRoughnessV              = roughnessV;
-    me.mShadingTangent          = shadingTangent;
-    me.mTint                    = tint;
-    me.mAbbeNumber              = abbeNumber;
-    me.mRefractionEta           = refractionEta;
-    me.mReflectionWeight        = reflectionWeight;
-    me.mTransmissionWeight      = transmissionWeight;
-    me.mMicrofacetDistribution  = microfacetDistribution;
-    me.mMicrofacetGeometric     = microfacetGeometric;
-    me.mIridescence             = iridescence;
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughnessU               = roughnessU;
+    me.mRoughnessV               = roughnessV;
+    me.mTransmissionRoughnessU   = roughnessU;
+    me.mTransmissionRoughnessV   = roughnessV;
+    me.mUseTransmissionRoughness = false;
+    me.mShadingTangent           = shadingTangent;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
+}
+
+void
+MicrofacetAnisotropicBSDF_init(
+        varying MicrofacetAnisotropicBSDF& me,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying float transmissionRoughnessU,
+        const varying float transmissionRoughnessV,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * uniform iridescence)
+{
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughnessU               = roughnessU;
+    me.mRoughnessV               = roughnessV;
+    me.mTransmissionRoughnessU   = transmissionRoughnessU;
+    me.mTransmissionRoughnessV   = transmissionRoughnessV;
+    me.mUseTransmissionRoughness = false;
+    me.mShadingTangent           = shadingTangent;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
+}
+
+void
+MicrofacetAnisotropicBSDF_init(
+        varying MicrofacetAnisotropicBSDF& me,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughnessU,
+        const varying float roughnessV,
+        const varying float transmissionRoughnessU,
+        const varying float transmissionRoughnessV,
+        const varying bool useTransmissionRoughness,
+        const varying Vec3f& shadingTangent,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * uniform iridescence)
+{
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughnessU               = roughnessU;
+    me.mRoughnessV               = roughnessV;
+    me.mTransmissionRoughnessU   = roughnessU;
+    me.mTransmissionRoughnessV   = roughnessV;
+    me.mUseTransmissionRoughness = useTransmissionRoughness;
+    me.mShadingTangent           = shadingTangent;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
 }
 
 void
@@ -429,17 +507,82 @@ MicrofacetIsotropicBSDF_init(
         const varying float transmissionWeight,
         const varying Iridescence * const uniform iridescence)
 {
-    me.mN                       = N;
-    me.mEta                     = eta;
-    me.mRoughness               = roughness;
-    me.mTint                    = tint;
-    me.mAbbeNumber              = abbeNumber;
-    me.mRefractionEta           = refractionEta;
-    me.mReflectionWeight        = reflectionWeight;
-    me.mTransmissionWeight      = transmissionWeight;
-    me.mMicrofacetDistribution  = microfacetDistribution;
-    me.mMicrofacetGeometric     = microfacetGeometric;
-    me.mIridescence             = iridescence;
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughness                = roughness;
+    me.mTransmissionRoughness    = roughness;
+    me.mUseTransmissionRoughness = false;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
+}
+
+void
+MicrofacetIsotropicBSDF_init(
+        varying MicrofacetIsotropicBSDF& me,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const varying float transmissionRoughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * const uniform iridescence)
+{
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughness                = roughness;
+    me.mTransmissionRoughness    = transmissionRoughness;
+    me.mUseTransmissionRoughness = false;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
+}
+
+void
+MicrofacetIsotropicBSDF_init(
+        varying MicrofacetIsotropicBSDF& me,
+        const varying Vec3f& N,
+        const varying float eta,
+        const varying float roughness,
+        const varying float transmissionRoughness,
+        const varying bool useTransmissionRoughness,
+        const uniform MicrofacetDistribution microfacetDistribution,
+        const uniform MicrofacetGeometric microfacetGeometric,
+        const varying Color& tint,
+        const varying float abbeNumber,
+        const varying float refractionEta,
+        const varying float reflectionWeight,
+        const varying float transmissionWeight,
+        const varying Iridescence * const uniform iridescence)
+{
+    me.mN                        = N;
+    me.mEta                      = eta;
+    me.mRoughness                = roughness;
+    me.mTransmissionRoughness    = transmissionRoughness;
+    me.mUseTransmissionRoughness = useTransmissionRoughness;
+    me.mTint                     = tint;
+    me.mAbbeNumber               = abbeNumber;
+    me.mRefractionEta            = refractionEta;
+    me.mReflectionWeight         = reflectionWeight;
+    me.mTransmissionWeight       = transmissionWeight;
+    me.mMicrofacetDistribution   = microfacetDistribution;
+    me.mMicrofacetGeometric      = microfacetGeometric;
+    me.mIridescence              = iridescence;
 }
 
 void
@@ -510,6 +653,7 @@ ToonSpecularBRDF_init(
         varying ToonSpecularBRDF& me,
         const varying Vec3f& N,
         const varying float intensity,
+        const varying float fresnelBlend,
         const varying Color& tint,
         const float rampInputScale,
         const varying int numRampPoints,
@@ -526,6 +670,7 @@ ToonSpecularBRDF_init(
 {
     me.mN = N;
     me.mIntensity = intensity;
+    me.mFresnelBlend = fresnelBlend;
     me.mTint = tint;
     me.mRampInputScale = rampInputScale,
     me.mRampNumPoints = numRampPoints;

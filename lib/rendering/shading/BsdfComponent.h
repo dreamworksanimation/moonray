@@ -685,6 +685,76 @@ public:
         mEta(eta),
         mRoughnessU(roughnessU),
         mRoughnessV(roughnessV),
+        mTransmissionRoughnessU(roughnessU),
+        mTransmissionRoughnessV(roughnessV),
+        mShadingTangent(shadingTangent),
+        mMicrofacetDistribution(microfacetDistribution),
+        mMicrofacetGeometric(microfacetGeometric),
+        mTint(tint),
+        mAbbeNumber(abbeNumber),
+        mRefractionEta(refractionEta),
+        mReflectionWeight(reflectionWeight),
+        mTransmissionWeight(transmissionWeight)
+    {}
+
+    MicrofacetAnisotropicBSDF(
+            const scene_rdl2::math::Vec3f& N,
+            float eta,
+            float roughnessU,
+            float roughnessV,
+            float transmissionRoughnessU,
+            float transmissionRoughnessV,
+            const scene_rdl2::math::Vec3f& shadingTangent,
+            ispc::MicrofacetDistribution microfacetDistribution,
+            ispc::MicrofacetGeometric microfacetGeometric,
+            const scene_rdl2::math::Color& tint,
+            float abbeNumber,
+            float refractionEta,
+            float reflectionWeight,
+            float transmissionWeight,
+            const Iridescence* const iridescence = nullptr) :
+        BsdfComponent(iridescence),
+        mN(N),
+        mEta(eta),
+        mRoughnessU(roughnessU),
+        mRoughnessV(roughnessV),
+        mTransmissionRoughnessU(transmissionRoughnessU),
+        mTransmissionRoughnessV(transmissionRoughnessV),
+        mShadingTangent(shadingTangent),
+        mMicrofacetDistribution(microfacetDistribution),
+        mMicrofacetGeometric(microfacetGeometric),
+        mTint(tint),
+        mAbbeNumber(abbeNumber),
+        mRefractionEta(refractionEta),
+        mReflectionWeight(reflectionWeight),
+        mTransmissionWeight(transmissionWeight)
+    {}
+
+    MicrofacetAnisotropicBSDF(
+            const scene_rdl2::math::Vec3f& N,
+            float eta,
+            float roughnessU,
+            float roughnessV,
+            float transmissionRoughnessU,
+            float transmissionRoughnessV,
+            bool useTransmissionRoughness,
+            const scene_rdl2::math::Vec3f& shadingTangent,
+            ispc::MicrofacetDistribution microfacetDistribution,
+            ispc::MicrofacetGeometric microfacetGeometric,
+            const scene_rdl2::math::Color& tint,
+            float abbeNumber,
+            float refractionEta,
+            float reflectionWeight,
+            float transmissionWeight,
+            const Iridescence* const iridescence = nullptr) :
+        BsdfComponent(iridescence),
+        mN(N),
+        mEta(eta),
+        mRoughnessU(roughnessU),
+        mRoughnessV(roughnessV),
+        mTransmissionRoughnessU(transmissionRoughnessU),
+        mTransmissionRoughnessV(transmissionRoughnessV),
+        mUseTransmissionRoughness(useTransmissionRoughness),
         mShadingTangent(shadingTangent),
         mMicrofacetDistribution(microfacetDistribution),
         mMicrofacetGeometric(microfacetGeometric),
@@ -697,24 +767,30 @@ public:
 
     ~MicrofacetAnisotropicBSDF() override {}
 
-    finline const scene_rdl2::math::Vec3f&      getN()                      const { return mN; }
-    finline float                               getEta()                    const { return mEta; }
-    finline float                               getRoughnessU()             const { return mRoughnessU; }
-    finline float                               getRoughnessV()             const { return mRoughnessV; }
-    finline const scene_rdl2::math::Vec3f&      getShadingTangent()         const { return mShadingTangent; }
-    finline ispc::MicrofacetDistribution        getMicrofacetDistribution() const { return mMicrofacetDistribution; }
-    finline ispc::MicrofacetGeometric           getMicrofacetGeometric()    const { return mMicrofacetGeometric; }
-    finline const scene_rdl2::math::Color&      getTint()                   const { return mTint; }
-    finline float                               getAbbeNumber()             const { return mAbbeNumber; }
-    finline float                               getRefractionEta()          const { return mRefractionEta; }
-    finline float                               getReflectionWeight()       const { return mReflectionWeight; }
-    finline float                               getTransmissionWeight()     const { return mTransmissionWeight; }
+    finline const scene_rdl2::math::Vec3f& getN()                        const { return mN; }
+    finline float                          getEta()                      const { return mEta; }
+    finline float                          getRoughnessU()               const { return mRoughnessU; }
+    finline float                          getRoughnessV()               const { return mRoughnessV; }
+    finline float                          getTransmissionRoughnessU()   const { return mTransmissionRoughnessU; }
+    finline float                          getTransmissionRoughnessV()   const { return mTransmissionRoughnessV; }
+    finline bool                           getUseTransmissionRoughness() const { return mUseTransmissionRoughness; }
+    finline const scene_rdl2::math::Vec3f& getShadingTangent()           const { return mShadingTangent; }
+    finline ispc::MicrofacetDistribution   getMicrofacetDistribution()   const { return mMicrofacetDistribution; }
+    finline ispc::MicrofacetGeometric      getMicrofacetGeometric()      const { return mMicrofacetGeometric; }
+    finline const scene_rdl2::math::Color& getTint()                     const { return mTint; }
+    finline float                          getAbbeNumber()               const { return mAbbeNumber; }
+    finline float                          getRefractionEta()            const { return mRefractionEta; }
+    finline float                          getReflectionWeight()         const { return mReflectionWeight; }
+    finline float                          getTransmissionWeight()       const { return mTransmissionWeight; }
 
 private:
     scene_rdl2::math::Vec3f             mN;
     float                               mEta;
     float                               mRoughnessU;
     float                               mRoughnessV;
+    float                               mTransmissionRoughnessU;
+    float                               mTransmissionRoughnessV;
+    bool                                mUseTransmissionRoughness;
     scene_rdl2::math::Vec3f             mShadingTangent;
     ispc::MicrofacetDistribution        mMicrofacetDistribution;
     ispc::MicrofacetGeometric           mMicrofacetGeometric;
@@ -743,23 +819,54 @@ public:
                             float transmissionWeight,
                             const Iridescence* const iridescence = nullptr);
 
+    MicrofacetIsotropicBSDF(const scene_rdl2::math::Vec3f& N,
+                            float eta,
+                            float roughness,
+                            float transmissionRoughness,
+                            ispc::MicrofacetDistribution microfacetDistribution,
+                            ispc::MicrofacetGeometric microfacetGeometric,
+                            const scene_rdl2::math::Color& tint,
+                            float abbeNumber,
+                            float refractionEta,
+                            float reflectionWeight,
+                            float transmissionWeight,
+                            const Iridescence* const iridescence = nullptr);
+
+    MicrofacetIsotropicBSDF(const scene_rdl2::math::Vec3f& N,
+                            float eta,
+                            float roughness,
+                            float transmissionRoughness,
+                            bool useTransmissionRoughness,
+                            ispc::MicrofacetDistribution microfacetDistribution,
+                            ispc::MicrofacetGeometric microfacetGeometric,
+                            const scene_rdl2::math::Color& tint,
+                            float abbeNumber,
+                            float refractionEta,
+                            float reflectionWeight,
+                            float transmissionWeight,
+                            const Iridescence* const iridescence = nullptr);
+
     ~MicrofacetIsotropicBSDF() override {}
 
-    finline const scene_rdl2::math::Vec3f&      getN()                      const { return mN; }
-    finline float                               getEta()                    const { return mEta; }
-    finline float                               getRoughness()              const { return mRoughness; }
-    finline ispc::MicrofacetDistribution        getMicrofacetDistribution() const { return mMicrofacetDistribution; }
-    finline ispc::MicrofacetGeometric           getMicrofacetGeometric()    const { return mMicrofacetGeometric; }
-    finline const scene_rdl2::math::Color&      getTint()                   const { return mTint; }
-    finline float                               getAbbeNumber()             const { return mAbbeNumber; }
-    finline float                               getRefractionEta()          const { return mRefractionEta; }
-    finline float                               getReflectionWeight()       const { return mReflectionWeight; }
-    finline float                               getTransmissionWeight()     const { return mTransmissionWeight; }
+    finline const scene_rdl2::math::Vec3f& getN()                        const { return mN; }
+    finline float                          getEta()                      const { return mEta; }
+    finline float                          getRoughness()                const { return mRoughness; }
+    finline float                          getTransmissionRoughness()    const { return mTransmissionRoughness; }
+    finline bool                           getUseTransmissionRoughness() const { return mUseTransmissionRoughness; }
+    finline ispc::MicrofacetDistribution   getMicrofacetDistribution()   const { return mMicrofacetDistribution; }
+    finline ispc::MicrofacetGeometric      getMicrofacetGeometric()      const { return mMicrofacetGeometric; }
+    finline const scene_rdl2::math::Color& getTint()                     const { return mTint; }
+    finline float                          getAbbeNumber()               const { return mAbbeNumber; }
+    finline float                          getRefractionEta()            const { return mRefractionEta; }
+    finline float                          getReflectionWeight()         const { return mReflectionWeight; }
+    finline float                          getTransmissionWeight()       const { return mTransmissionWeight; }
 
 private:
     scene_rdl2::math::Vec3f             mN;
     float                               mEta;
     float                               mRoughness;
+    float                               mTransmissionRoughness;
+    bool                                mUseTransmissionRoughness;
     ispc::MicrofacetDistribution        mMicrofacetDistribution;
     ispc::MicrofacetGeometric           mMicrofacetGeometric;
     scene_rdl2::math::Color             mTint;
@@ -1532,6 +1639,7 @@ public:
     ToonSpecularBRDF(
             const scene_rdl2::math::Vec3f& N,
             float intensity,
+            float fresnelBlend,
             const scene_rdl2::math::Color& tint,
             const float rampInputScale,
             int numRampPoints,
@@ -1547,6 +1655,7 @@ public:
             float indirectReflectionsRoughness) :
         mN(N),
         mIntensity(intensity),
+        mFresnelBlend(fresnelBlend),
         mTint(tint),
         mRampInputScale(rampInputScale),
         mRampNumPoints(numRampPoints),
@@ -1566,6 +1675,7 @@ public:
 
     finline const scene_rdl2::math::Vec3f& getN() const { return mN; }
     finline float getIntensity() const { return mIntensity; }
+    finline float getFresnelBlend() const { return mFresnelBlend; }
     finline scene_rdl2::math::Color getTint() const { return mTint; }
     finline float getRampInputScale() const { return mRampInputScale; }
     finline int getRampNumPoints() const { return mRampNumPoints; }
@@ -1583,6 +1693,7 @@ public:
 private:
     scene_rdl2::math::Vec3f mN;
     float mIntensity;
+    float mFresnelBlend;
     scene_rdl2::math::Color mTint;
 
     const float mRampInputScale;

@@ -138,6 +138,7 @@ HairToonSpecularBsdfLobe::show(std::ostream& os,
 
 ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
                                            const float intensity,
+                                           const float fresnelBlend,
                                            const Color& tint,
                                            float rampInputScale,
                                            int numRampPoints,
@@ -156,6 +157,8 @@ ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
              PROPERTY_NORMAL | PROPERTY_ROUGHNESS),
     mFrame(N),
     mIntensity(intensity),
+    mFresnelBlend(fresnelBlend),
+    mNormalization(1.0f),
     mTint(tint),
     mRampInputScale(rampInputScale),
     mStretchU(stretchU),
@@ -166,24 +169,60 @@ ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
     mIndirectReflectionsIntensity(indirectReflectionsIntensity),
     mIndirectLobe(N, indirectReflectionsRoughness)
 {
-    mIndirectLobe.setFresnel(fresnel);
     mRampControl.init(numRampPoints,
                       rampPositions,
                       rampValues,
                       rampInterpolators);
 
-    if (fresnel) {
-        // pre-sample ramp to determine average value and scale the
-        // fresnel's weight to try to conserve energy.
-        float rampAvg = 0.0f;
-        const int numSamples = 16;
-        const float stepSize = 1.0f / numSamples;
-        for (int i = 0; i < numSamples; ++i) {
-            rampAvg += mRampControl.eval1D(i * stepSize);
-        }
-        rampAvg /= numSamples;
+    mIndirectLobe.setFresnel(fresnel);
 
-        fresnel->setWeight(fresnel->getWeight() * rampAvg);
+    // Approximate a normalization term that attempt to preserve energy
+    // under different ramp settings.  Narrow/tight ramps should produce
+    // small/bright highlights, and wider/broad ramps should produce dimmer
+    // highlights.
+
+    // We'll divide the ramp into a number of slices and for each slice
+    // compute the area of the spherical segment representing that slice,
+    // multipled by the ramp value representing that segment.
+
+    // The toon ramp's input in [0,1) in eval() represents theta in [0,pi/2).
+    // (There is an optimization/approximation that attempts to avoid acos.)
+    constexpr int numSegments = 64; // this approximation is coarse, maybe too coarse.
+    constexpr float dx = 1.0f / numSegments;
+    constexpr float dx_half = 0.5f * dx;
+    float totalArea = 0.0f;
+    float rampAvg = 0.0f;
+
+    for (int i = 0; i < numSegments; ++i) {
+        // Scale segment area by ramp eval.
+        const float ramp = mRampControl.eval1D((i * dx + dx_half) / mRampInputScale);
+        rampAvg += ramp;
+
+        if (isZero(ramp)) {
+            continue;
+        }
+
+        const float theta0 = i * dx * sHalfPi;
+        const float theta1 = (i+1) * dx * sHalfPi;
+
+        // Area of spherical caps using r and theta:
+        // A = 2 * pi * r*r (1 - cosTheta), where r = 1
+        // The segment area is the difference of the spherical caps
+        // defined at the bottom and top edge of the segment
+        const float a0 = sTwoPi * (1.0f - cos(theta0));
+        const float a1 = sTwoPi * (1.0f - cos(theta1));
+
+        const float segmentArea = (a1 - a0) * ramp;
+        totalArea += segmentArea;
+    }
+
+    // Use the pre-sampled ramp to determine average value and scale the
+    // fresnel's weight to try to conserve energy.
+    rampAvg /= numSegments;
+    fresnel->setWeight(fresnel->getWeight() * rampAvg);
+
+    if (!isZero(totalArea)) {
+        mNormalization = sTwoPi / totalArea; // reciprocal
     }
 }
 
@@ -210,19 +249,19 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
 
     Vec3f N = mFrame.getN();
     const Vec3f& wo = slice.getWo();
-    Vec3f R = wi - 2.0f * scene_rdl2::math::dot(wi, N) * N;
+    Vec3f R = wi - 2.0f * dot(wi, N) * N;
 
     // Rotate N to "stretch" the specular highlight
-    const float dot_u_l = scene_rdl2::math::dot(R, mdPds);
-    const float dot_u_c = scene_rdl2::math::dot(wo, mdPds);
+    const float dot_u_l = dot(R, mdPds);
+    const float dot_u_c = dot(wo, mdPds);
     const float dot_u = dot_u_l + dot_u_c;
-    const float rot_u = scene_rdl2::math::clamp(mStretchU * dot_u, -0.5f, 0.5f);
+    const float rot_u = clamp(mStretchU * dot_u, -0.5f, 0.5f);
     N = rotateVector(N, mdPdt, rot_u);
 
-    const float dot_v_l = scene_rdl2::math::dot(R, mdPdt);
-    const float dot_v_c = scene_rdl2::math::dot(wo, mdPdt);
+    const float dot_v_l = dot(R, mdPdt);
+    const float dot_v_c = dot(wo, mdPdt);
     const float dot_v = dot_v_l + dot_v_c;
-    const float rot_v = scene_rdl2::math::clamp(-mStretchV * dot_v, -0.5f, 0.5f);
+    const float rot_v = clamp(-mStretchV * dot_v, -0.5f, 0.5f);
     N = rotateVector(N, mdPds, rot_v);
 
     const float cosNO = dot(N, wo);
@@ -237,22 +276,36 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
         return sBlack;
     }
 
+    // Note: we assume this lobe has been setup with a OneMinus*Fresnel
+    // as we want to use 1 - specular_fresnel. Also notice we use
+    // cosThetaWo to evaluate the fresnel term, as an approximation of what
+    // hDotWi would be for the specular lobe.
+    float cosThetaWo = 1.0f;
+
+    if (getFresnel()) {
+        cosThetaWo = max(dot(N, slice.getWo()), 0.0f);
+    }
+
     // Reflection vector using modified N
     R = wi - 2.0f * dot(wi, N) * N;
 
-    // acos optimization to linearize dot product
-    const float specAngle = scene_rdl2::math::pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
+    // acos approximation
+    const float thetaRO = pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
 
-    if (specAngle <= 0.0f) {
+    if (thetaRO <= 0.0f) {
         return sBlack;
     }
 
-    const float ramp = mRampControl.eval1D(specAngle / mRampInputScale);
+    const float ramp = mRampControl.eval1D(thetaRO / mRampInputScale);
     if (pdf != NULL) {
-        *pdf = 0.5f * scene_rdl2::math::sOneOverPi * ramp;
+        *pdf = sOneOverTwoPi * ramp;
     }
 
-    return getScale() * mTint * ramp * mIntensity * scene_rdl2::math::sOneOverPi;
+    // ad-hoc "shadow/masking" terms
+    const Color f = lerp(getScale(),
+                         mNormalization * computeScaleAndFresnel(cosThetaWo),
+                         mFresnelBlend);
+    return ramp * mIntensity * mTint * sOneOverPi * f;
 }
 
 void
