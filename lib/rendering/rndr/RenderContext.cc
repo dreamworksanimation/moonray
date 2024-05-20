@@ -1943,15 +1943,14 @@ RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
 
     // Update XPU
     if (mExecutionMode == mcrt_common::ExecutionMode::XPU) {
-        if (geomChangeFlag == rt::ChangeFlag::ALL) {
-            // XPU doesn't support BVH updates.  Also, moving the camera in moonray_gui
-            // is a rt::ChangeFlag::UPDATE and we don't want to rebuild the GPU
-            // data for that case.
-            mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
-            if (mGeometryManager->getGPUAccelerator() == nullptr) {
-                // fall back to vector mode
-                mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
-            }
+        // Any update to the scene causes render prep to re-run which resets mExecutionMode.
+        // Thus we must recreate the GPU accelerator to sync up with any scene changes and to
+        // fall back properly if there is a problem.  E.g. what if we were running in XPU mode and
+        // then a delta was applied that contained something incompatible with XPU?
+        mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
+        if (mGeometryManager->getGPUAccelerator() == nullptr) {
+            // fall back to vector mode
+            mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
         }
     }
     mRenderStats->mBuildGPUAcceleratorTime =
