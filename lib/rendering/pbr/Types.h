@@ -128,7 +128,11 @@ struct CACHE_ALIGN BundledOcclRayv
     uint8_t mPlaceholder[sizeof(BundledOcclRay) * VLEN];
 };
 
+#if CACHE_LINE_SIZE == 128
+MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) == 256);
+#else
 MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) == 192);
+#endif
 MNRY_STATIC_ASSERT(sizeof(BundledOcclRay) * VLEN == sizeof(BundledOcclRayv));
 
 #ifdef __AVX512F__

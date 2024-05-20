@@ -19,6 +19,12 @@ enum OcclTestType
 // BundledOcclRay:
 //
 
+#if __APPLE__
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD (60+64)
+#else
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD  60
+#endif
+
 #define BUNDLED_OCCL_RAY_MEMBERS                                    \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOrigin);    \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDir);       \
@@ -40,7 +46,7 @@ enum OcclTestType
     HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  \
     HVD_MEMBER(uint32_t, mOcclTestType);                            \
     HVD_MEMBER(int32_t,  mShadowReceiverId);                        \
-    HVD_ISPC_PAD(mIspcPad, 60)
+    HVD_ISPC_PAD(mIspcPad, BUNDLED_OCCL_RAY_MEMBERS_PAD)
 
 #define BUNDLED_OCCL_RAY_VALIDATION(vlen)                   \
     HVD_BEGIN_VALIDATION(BundledOcclRay, vlen);             \

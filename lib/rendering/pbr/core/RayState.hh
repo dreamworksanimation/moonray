@@ -88,7 +88,7 @@
 
 
 #if CACHE_LINE_SIZE == 128
-#define RAY_STATE_MEMBERS_PAD   (46+20)
+#define RAY_STATE_MEMBERS_PAD   (46+8)
 #else
 #define RAY_STATE_MEMBERS_PAD   8
 #endif
