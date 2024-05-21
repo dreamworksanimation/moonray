@@ -209,8 +209,8 @@ ToonSpecularBsdfLobe::ToonSpecularBsdfLobe(const Vec3f &N,
         // A = 2 * pi * r*r (1 - cosTheta), where r = 1
         // The segment area is the difference of the spherical caps
         // defined at the bottom and top edge of the segment
-        const float a0 = sTwoPi * (1.0f - cos(theta0));
-        const float a1 = sTwoPi * (1.0f - cos(theta1));
+        const float a0 = sTwoPi * (1.0f - scene_rdl2::math::cos(theta0));
+        const float a1 = sTwoPi * (1.0f - scene_rdl2::math::cos(theta1));
 
         const float segmentArea = (a1 - a0) * ramp;
         totalArea += segmentArea;
@@ -290,7 +290,7 @@ ToonSpecularBsdfLobe::eval(const BsdfSlice &slice,
     R = wi - 2.0f * dot(wi, N) * N;
 
     // acos approximation
-    const float thetaRO = pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
+    const float thetaRO = scene_rdl2::math::pow(1.0f - clamp(dot(-wo,  R), 0.0f, 1.0f), 0.56f);
 
     if (thetaRO <= 0.0f) {
         return sBlack;
