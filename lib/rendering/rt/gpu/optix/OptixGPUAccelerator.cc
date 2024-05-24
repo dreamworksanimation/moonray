@@ -666,7 +666,7 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     gpuMesh->mIsNormalReversed = geomMesh.getIsNormalReversed();
     gpuMesh->mVisibleShadow = resolveVisibilityMask(geomMesh) & scene_rdl2::rdl2::SHADOW;
     gpuMesh->mEnableMotionBlur = enableMotionBlur;
-    gpuMesh->mEmbreeUserData = geomMesh.mEmbreeUserData;
+    gpuMesh->mEmbreeUserData = reinterpret_cast<intptr_t>(geomMesh.mEmbreeUserData);
     gpuMesh->mEmbreeGeomID = geomMesh.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomMesh,
