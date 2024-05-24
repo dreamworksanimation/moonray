@@ -666,6 +666,8 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     gpuMesh->mIsNormalReversed = geomMesh.getIsNormalReversed();
     gpuMesh->mVisibleShadow = resolveVisibilityMask(geomMesh) & scene_rdl2::rdl2::SHADOW;
     gpuMesh->mEnableMotionBlur = enableMotionBlur;
+    gpuMesh->mEmbreeUserData = geomMesh.mEmbreeUserData;
+    gpuMesh->mEmbreeGeomID = geomMesh.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomMesh,
                                 gpuMesh->mShadowLinkLights)) {
@@ -699,6 +701,7 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     }
 
     if (vertsPerFace == 3) {
+        gpuMesh->mWasQuads = false;
         gpuMesh->mNumVertices = mesh.mVertexCount;
         gpuMesh->mNumFaces = mesh.mFaceCount; 
 
@@ -760,7 +763,7 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 
     } else if (vertsPerFace == 4) {
         // convert quads to tris
-
+        gpuMesh->mWasQuads = true;
         gpuMesh->mNumVertices = mesh.mVertexCount;
         gpuMesh->mNumFaces = mesh.mFaceCount * 2;
 
@@ -786,10 +789,10 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             gpuIndices[i * 6 + 0] = idx0;
             gpuIndices[i * 6 + 1] = idx1;
             gpuIndices[i * 6 + 2] = idx3;
-            // second tri 1-2-3
-            gpuIndices[i * 6 + 3] = idx1;
-            gpuIndices[i * 6 + 4] = idx2;
-            gpuIndices[i * 6 + 5] = idx3;
+            // second tri 2-3-1
+            gpuIndices[i * 6 + 3] = idx2;
+            gpuIndices[i * 6 + 4] = idx3;
+            gpuIndices[i * 6 + 5] = idx1;
         }
 
         for (size_t ms = 0; ms < mbSamples; ms++) {
@@ -1171,10 +1174,26 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
         }
     }
 
+    mOutputIsectBuf.resize(mNumCPUThreads, nullptr);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (cudaMallocHost(&(mOutputIsectBuf[i]), sizeof(GPURayIsect) * mRaysBufSize) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating output isect buffer";
+            return;
+        }
+    }
+
     mIsOccludedBuf.resize(mNumCPUThreads);
     for (int i = 0; i < mNumCPUThreads; i++) {
         if (mIsOccludedBuf[i].alloc(mRaysBufSize) != cudaSuccess) {
             *errorMsg = "GPU: Error allocating occlusion buffer";
+            return;
+        }
+    }
+
+    mIsectBuf.resize(mNumCPUThreads);
+    for (int i = 0; i < mNumCPUThreads; i++) {
+        if (mIsectBuf[i].alloc(mRaysBufSize) != cudaSuccess) {
+            *errorMsg = "GPU: Error allocating isect buffer";
             return;
         }
     }
@@ -1247,6 +1266,10 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
     for (size_t i = 0; i < mOutputOcclusionBuf.size(); i++) {
         cudaFreeHost(mOutputOcclusionBuf[i]);
     }
+
+    for (size_t i = 0; i < mOutputIsectBuf.size(); i++) {
+        cudaFreeHost(mOutputIsectBuf[i]);
+    }
 }
 
 std::string
@@ -1258,7 +1281,8 @@ OptixGPUAccelerator::getGPUDeviceName() const
 size_t OptixGPUAccelerator::getCPUMemoryUsed() const
 {
     size_t outputOcclusionBufSize = mNumCPUThreads * sizeof(unsigned char) * mRaysBufSize;
-    return outputOcclusionBufSize;
+    size_t outputIsectBufSize = mNumCPUThreads * sizeof(GPURayIsect) * mRaysBufSize;
+    return outputOcclusionBufSize + outputIsectBufSize;
 }
 
 bool
@@ -1606,9 +1630,53 @@ OptixGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
 }
 
 void
-OptixGPUAccelerator::intersect(const unsigned /*numRays*/, const GPURay* /*rays*/) const
+OptixGPUAccelerator::intersect(const uint32_t queueIdx,
+                               const uint32_t numRays,
+                               const GPURay* rays) const
 {
-    // TODO
+    MNRY_ASSERT_REQUIRE(queueIdx <= mIsectBuf.size());
+    MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);
+
+    // This function uses async GPU calls.  This means the CPU doesn't wait for the GPU
+    // to finish the operation.  Instead, we submit multiple async calls to the GPU and
+    // then wait once at the very end.  This allows for better GPU throughput.
+
+    // Setup the global GPU parameters
+    OptixGPUParams params;
+    params.mAccel = mRootGroup->mTopLevelIAS;
+    params.mNumRays = numRays;
+    params.mRaysBuf = mRaysBuf[queueIdx].ptr();
+    params.mIsOccludedBuf = nullptr;
+    params.mIsectBuf = mIsectBuf[queueIdx].ptr();;
+    mParamsBuf[queueIdx].uploadAsync(mCudaStreams[queueIdx], &params, 1);
+
+    // Upload the rays to the GPU
+    mRaysBuf[queueIdx].uploadAsync(mCudaStreams[queueIdx], rays, numRays);
+
+    if (optixLaunch(mPipeline[queueIdx],
+                    mCudaStreams[queueIdx],
+                    mParamsBuf[queueIdx].deviceptr(),
+                    mParamsBuf[queueIdx].sizeInBytes(),
+                    &mSBT,
+                    numRays, 1, 1) != OPTIX_SUCCESS) {
+        // There isn't any feasible way to recover from this, but it shouldn't
+        // happen unless the code is broken.  Log the error and try to keep going.
+        scene_rdl2::logging::Logger::error("GPU: optixLaunch() failure");
+    }
+
+    // Download the intersection results from the GPU
+    mIsectBuf[queueIdx].downloadAsync(mCudaStreams[queueIdx], mOutputIsectBuf[queueIdx], numRays);
+
+    // Wait here for all the async calls above to finish and the results to be ready.
+    cudaStreamSynchronize(mCudaStreams[queueIdx]);
+
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        // There isn't any feasible way to recover from this, but it shouldn't
+        // happen unless the code is broken.  Log the error and try to keep going.
+        scene_rdl2::logging::Logger::error("GPU: cudaStreamSynchronize() error: ",
+                            cudaGetErrorString(error));
+    }
 }
 
 void
@@ -1651,7 +1719,7 @@ OptixGPUAccelerator::occluded(const uint32_t queueIdx,
     // Download the intersection results from the GPU
     mIsOccludedBuf[queueIdx].downloadAsync(mCudaStreams[queueIdx], mOutputOcclusionBuf[queueIdx], numRays);
 
-    // Wait here for all the async calls above to finish and the results are ready.
+    // Wait here for all the async calls above to finish and the results to be ready.
     cudaStreamSynchronize(mCudaStreams[queueIdx]);
 
     cudaError_t error = cudaGetLastError();

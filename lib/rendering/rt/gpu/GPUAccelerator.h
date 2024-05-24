@@ -145,10 +145,12 @@ public:
     // each CPU-side thread that is submitting rays to the GPU has a separate
     // queue on the GPU.  This allows multiple CPU threads to use the GPU independently.
 
-    void intersect(const uint32_t numRays, const GPURay* rays) const;
+    void intersect(const uint32_t queueIdx,
+                   const uint32_t numRays,
+                   const GPURay* rays) const;
 
     // output intersect results are placed in here
-    GPURayIsect* getOutputIsectBuf() const;
+    GPURayIsect* getOutputIsectBuf(const uint32_t queueIdx) const;
 
     void occluded(const uint32_t queueIdx,
                   const uint32_t numRays,

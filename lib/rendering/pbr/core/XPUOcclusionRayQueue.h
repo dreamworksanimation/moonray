@@ -104,7 +104,7 @@ public:
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
-        mThreadsUsingGPU = 0;
+        mNumThreadsUsingGPU = 0;
     }
 
     virtual ~XPUOcclusionRayQueue()
@@ -214,7 +214,7 @@ protected:
         int maxThreads = std::max(mNumCPUThreads / 4, (unsigned int)1);
 #endif
 
-        if ((mThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
+        if ((mNumThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
             // There are an acceptable number of threads using the GPU, so we
             // can go ahead.
 
@@ -267,7 +267,7 @@ protected:
                                 numRays,
                                 rays,
                                 gpuRays,
-                                mThreadsUsingGPU);
+                                mNumThreadsUsingGPU);
             MNRY_ASSERT(tls->mHandlerStackDepth > 0);
             --tls->mHandlerStackDepth;
 
@@ -295,7 +295,7 @@ protected:
     std::vector<BundledOcclRay*> mCPUThreadQueueEntries;
     std::vector<unsigned>        mCPUThreadQueueNumQueued;
     CPUHandler                   mCPUThreadQueueHandler;
-    std::atomic<int>             mThreadsUsingGPU;
+    std::atomic<int>             mNumThreadsUsingGPU;
     GPUHandler                   mGPUQueueHandler;
     void *                       mHandlerData;
 };

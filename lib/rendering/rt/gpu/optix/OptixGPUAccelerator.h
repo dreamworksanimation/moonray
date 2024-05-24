@@ -40,9 +40,13 @@ public:
 
     std::string getGPUDeviceName() const;
 
-    void intersect(const uint32_t numRays, const GPURay* rays) const;
+    void intersect(const uint32_t queueIdx,
+                   const uint32_t numRays,
+                   const GPURay* rays) const;
 
-    GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
+    GPURayIsect* getOutputIsectBuf(const uint32_t queueIdx) const {
+        return mOutputIsectBuf[queueIdx];
+    };
 
     void occluded(const uint32_t queueIdx,
                   const uint32_t numRays,
@@ -139,11 +143,13 @@ private:
     mutable std::vector<OptixGPUBuffer<GPURay>> mRaysBuf; // per-thread (queue) input ray buffers
 
     // pinned host memory to avoid an extra copy in the GPU driver
-    // when copying occlusion results from the GPU
-    mutable std::vector<unsigned char*> mOutputOcclusionBuf; // per-thread (queue) output result buffers
+    // when copying results from the GPU
+    mutable std::vector<unsigned char*> mOutputOcclusionBuf; // per-thread (or queue) output result buffers
+    mutable std::vector<GPURayIsect*> mOutputIsectBuf; // per-thread (or queue) output result buffers
 
-    // occluded() results
+    // Results
     mutable std::vector<OptixGPUBuffer<unsigned char>> mIsOccludedBuf;
+    mutable std::vector<OptixGPUBuffer<GPURayIsect>> mIsectBuf;
 
     // A parameters object that is globally available on the GPU side.
     mutable std::vector<OptixGPUBuffer<OptixGPUParams>> mParamsBuf; // per-thread (queue) param buffers

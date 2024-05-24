@@ -5,7 +5,7 @@
 
 #include "RayHandlers.h"
 #include <moonray/rendering/rt/gpu/GPURay.h>
-#include <tbb/spin_mutex.h>
+#include <atomic>
 
 namespace moonray {
 namespace pbr {
@@ -15,7 +15,7 @@ void xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                          unsigned numRayStates,
                          RayState **rayStates,
                          const rt::GPURay *gpuRays,
-                         tbb::spin_mutex& mutex);
+                         std::atomic<int>& threadsUsingGPU);
 
 // Unlocks the mutex when we're done with the GPU
 void xpuOcclusionQueryBundleHandler(mcrt_common::ThreadLocalState *tls,

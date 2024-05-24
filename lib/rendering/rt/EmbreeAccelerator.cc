@@ -253,7 +253,7 @@ public:
 private:
 
     std::unique_ptr<geom::internal::BVHHandle> createPolyMeshInBVH(
-        const geom::internal::Mesh& geomMesh, const RTCBuildQuality flag) {
+        geom::internal::Mesh& geomMesh, const RTCBuildQuality flag) {
 
         geom::internal::Mesh::TessellatedMesh mesh;
         geomMesh.getTessellatedMesh(mesh);
@@ -321,7 +321,11 @@ private:
             new geom::internal::BVHUserData(mLayer, &geomMesh, filterManager);
         mBVHUserData.emplace_back(userData);
         rtcSetGeometryUserData(rtcGeom, (void*)userData);
+        geomMesh.mEmbreeUserData = (void*)userData;
+
         uint32_t geomID = rtcAttachGeometry(mParentScene, rtcGeom);
+        geomMesh.mEmbreeGeomID = geomID;
+
         rtcCommitGeometry(rtcGeom);
         return fauxstd::make_unique<geom::internal::BVHHandle>(
             mParentScene, geomID);

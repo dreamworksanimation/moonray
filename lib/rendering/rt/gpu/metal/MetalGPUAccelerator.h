@@ -40,9 +40,11 @@ public:
 
     std::string getGPUDeviceName() const;
 
-    void intersect(const uint32_t numRays, const GPURay* rays) const;
+    void intersect(const uint32_t queueIdx,
+                   const uint32_t numRays,
+                   const GPURay* rays) const;
 
-    GPURayIsect* getOutputIsectBuf() const { return nullptr; /* TODO */};
+    GPURayIsect* getOutputIsectBuf(const uint32_t queueIdx) const { return nullptr; /* TODO */};
 
     unsigned char* getOutputOcclusionBuf(const uint32_t queueIdx) const {
         return mIsOccludedBuf[queueIdx].cpu_ptr();

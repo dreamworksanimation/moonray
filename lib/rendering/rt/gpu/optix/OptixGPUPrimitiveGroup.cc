@@ -212,7 +212,9 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
     inputs.push_back(input);
 
     OptixAccelBuildOptions accelOptions = {};
-    accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION | OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+    accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
+                                          OPTIX_BUILD_FLAG_PREFER_FAST_TRACE | 
+                                          OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
     accelOptions.motionOptions.numKeys  = 0;
     accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
 
@@ -258,6 +260,9 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
         rec.mData.mNumShadowLinkReceivers = triMesh->mShadowLinkReceivers.count();
         rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
+        rec.mData.mEmbreeGeomID = triMesh->mEmbreeGeomID;
+        rec.mData.mEmbreeUserData = triMesh->mEmbreeUserData;
+        rec.mData.mWasQuads = triMesh->mWasQuads;
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);
@@ -276,6 +281,9 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
         rec.mData.mNumShadowLinkReceivers = triMesh->mShadowLinkReceivers.count();
         rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
+        rec.mData.mEmbreeGeomID = triMesh->mEmbreeGeomID;
+        rec.mData.mEmbreeUserData = triMesh->mEmbreeUserData;
+        rec.mData.mWasQuads = triMesh->mWasQuads;
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);

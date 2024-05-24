@@ -17,10 +17,18 @@ extern "C" __constant__ static OptixGPUParams params;
 
 struct PerRayData
 {
+    bool mIsOcclusionRay;
     int mShadowReceiverId;        // used for shadow linking (input)
     unsigned long long mLightId;  // used for shadow linking (input)
     bool mDidHitGeom;             // did ray hit geometry? (output)
-    // todo: intersect() results
+
+    float mTFar; // intersection distance
+    float mNgX, mNgY, mNgZ; // geometry normal
+    float mU, mV; // barycentric coords
+
+    unsigned int mPrimID;
+    unsigned int mEmbreeGeomID;
+    intptr_t mEmbreeUserData;
 };
 
 
@@ -30,7 +38,7 @@ struct PerRayData
 // the 32-bit "payload" parameters.
 
 inline __device__
-void packPointer(const void* ptr, unsigned int& i0, unsigned int& i1)
+void splitPointer(const void* ptr, unsigned int& i0, unsigned int& i1)
 {
     const unsigned long long uptr = reinterpret_cast<unsigned long long>(ptr);
     i0 = uptr >> 32;
@@ -38,7 +46,7 @@ void packPointer(const void* ptr, unsigned int& i0, unsigned int& i1)
 }
 
 inline __device__
-void *unpackPointer(const unsigned int i0, const unsigned int i1)
+void *reconstructPointer(const unsigned int i0, const unsigned int i1)
 {
     const unsigned long long uptr = static_cast<unsigned long long>(i0) << 32 | i1;
     void* ptr = reinterpret_cast<void*>(uptr);
@@ -51,7 +59,7 @@ T *getPRD()
 {
     const unsigned int u0 = optixGetPayload_0();
     const unsigned int u1 = optixGetPayload_1();
-    return reinterpret_cast<T*>(unpackPointer(u0, u1));
+    return reinterpret_cast<T*>(reconstructPointer(u0, u1));
 }
 
 
@@ -67,30 +75,69 @@ void __raygen__()
 
     const moonray::rt::GPURay *ray = params.mRaysBuf + idx.x;
 
-    // todo: differentiate between intersect() and occluded() rays by checking
-    // which params.mIsectBuf or params.mIsOccludedBuf is nullptr.
+    if (params.mIsectBuf) {
+        // intersection ray
+        PerRayData prd;
+        prd.mIsOcclusionRay = false;
+        prd.mShadowReceiverId = -1;
+        prd.mLightId = -1;
+        prd.mDidHitGeom = false;
+        unsigned int u0, u1;
+        splitPointer(&prd, u0, u1);
 
-    PerRayData prd;
-    prd.mShadowReceiverId = ray->mShadowReceiverId;
-    prd.mLightId = ray->mLightId;
-    prd.mDidHitGeom = false;
-    unsigned int u0, u1;
-    packPointer(&prd, u0, u1);
+        optixTrace(params.mAccel,
+                {ray->mOriginX, ray->mOriginY, ray->mOriginZ},
+                {ray->mDirX, ray->mDirY, ray->mDirZ},
+                ray->mMinT,
+                ray->mMaxT,
+                ray->mTime,
+                OptixVisibilityMask( 255 ),
+                OPTIX_RAY_FLAG_NONE,
+                0,             // SBT offset
+                1,             // SBT stride
+                0,             // missSBTIndex
+                u0, u1);
 
-    optixTrace(params.mAccel,
-               {ray->mOriginX, ray->mOriginY, ray->mOriginZ},
-               {ray->mDirX, ray->mDirY, ray->mDirZ},
-               ray->mMinT,
-               ray->mMaxT,
-               ray->mTime,
-               OptixVisibilityMask( 255 ),
-               OPTIX_RAY_FLAG_NONE, // OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT for occlusion rays?
-               0,             // SBT offset
-               1,             // SBT stride
-               0,             // missSBTIndex 
-               u0, u1);
+        if (prd.mDidHitGeom) {
+            params.mIsectBuf[idx.x].mTFar = prd.mTFar;
+            params.mIsectBuf[idx.x].mNgX = prd.mNgX;
+            params.mIsectBuf[idx.x].mNgY = prd.mNgY;
+            params.mIsectBuf[idx.x].mNgZ = prd.mNgZ;
+            params.mIsectBuf[idx.x].mU = prd.mU;
+            params.mIsectBuf[idx.x].mV = prd.mV;
+            params.mIsectBuf[idx.x].mEmbreeGeomID = prd.mEmbreeGeomID;
+            params.mIsectBuf[idx.x].mPrimID = prd.mPrimID;
+            params.mIsectBuf[idx.x].mEmbreeUserData = prd.mEmbreeUserData;
+        } else {
+            params.mIsectBuf[idx.x].mEmbreeGeomID = -1;
+            params.mIsectBuf[idx.x].mPrimID = -1;
+            params.mIsectBuf[idx.x].mEmbreeUserData = 0;
+        }
+    } else {
+        // occlusion ray
+        PerRayData prd;
+        prd.mIsOcclusionRay = true;
+        prd.mShadowReceiverId = ray->mShadowReceiverId;
+        prd.mLightId = ray->mLightId;
+        prd.mDidHitGeom = false;
+        unsigned int u0, u1;
+        splitPointer(&prd, u0, u1);
 
-    params.mIsOccludedBuf[idx.x] = prd.mDidHitGeom ? 1 : 0;
+        optixTrace(params.mAccel,
+                {ray->mOriginX, ray->mOriginY, ray->mOriginZ},
+                {ray->mDirX, ray->mDirY, ray->mDirZ},
+                ray->mMinT,
+                ray->mMaxT,
+                ray->mTime,
+                OptixVisibilityMask( 255 ),
+                OPTIX_RAY_FLAG_NONE, // OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT for occlusion rays?
+                0,             // SBT offset
+                1,             // SBT stride
+                0,             // missSBTIndex
+                u0, u1);
+
+        params.mIsOccludedBuf[idx.x] = prd.mDidHitGeom ? 1 : 0;
+    }
 }
 
 
@@ -103,6 +150,56 @@ void __closesthit__()
 {
     PerRayData* prd = getPRD<PerRayData>();
     prd->mDidHitGeom = true;
+
+    if (!prd->mIsOcclusionRay) {
+        // TODO
+        const moonray::rt::HitGroupData* data = (moonray::rt::HitGroupData*)optixGetSbtDataPointer();
+
+        prd->mTFar = optixGetRayTmax();
+
+        float3 verts[3]; 
+        optixGetTriangleVertexData(optixGetGASTraversableHandle(),
+                                   optixGetPrimitiveIndex(),
+                                   optixGetSbtGASIndex(),
+                                   optixGetRayTime(),
+                                   verts);
+        // Compute the geometric normal.  We do not need to normalize this (Embree does
+        //  not normalize and we want to exactly match its behavior.)
+        float3 ng = cross(verts[1] - verts[0], verts[2] - verts[0]);
+        prd->mNgX = ng.x;
+        prd->mNgY = ng.y; 
+        prd->mNgZ = ng.z;
+
+        float2 uv = optixGetTriangleBarycentrics();
+        if (data->mWasQuads) {
+            unsigned int triIdx = optixGetPrimitiveIndex();
+            if ((triIdx & 1) == 0) {
+                prd->mU = uv.x;
+                prd->mV = uv.y;
+            } else {
+                prd->mU = 1.f - uv.x;
+                prd->mV = 1.f - uv.y;
+            }
+            prd->mPrimID = triIdx / 2;
+        } else {
+            prd->mU = uv.x;
+            prd->mV = uv.y;
+            prd->mPrimID = optixGetPrimitiveIndex();
+        }
+        prd->mEmbreeGeomID = data->mEmbreeGeomID;
+        prd->mEmbreeUserData = data->mEmbreeUserData;
+    } else {
+        // not used for occlusion tests, but clear them anyway
+        prd->mTFar = 0.f;
+        prd->mNgX = 0.f;
+        prd->mNgY = 0.f;
+        prd->mNgZ = 0.f;
+        prd->mU = 0.f;
+        prd->mV = 0.f;
+        prd->mPrimID = -1;
+        prd->mEmbreeGeomID = -1; 
+        prd->mEmbreeUserData = 0;
+    }
 }
 
 
@@ -115,54 +212,56 @@ void __anyhit__()
     PerRayData* prd = getPRD<PerRayData>();
     const moonray::rt::HitGroupData* data = (moonray::rt::HitGroupData*)optixGetSbtDataPointer();
 
-    if (data->mIsSingleSided && optixIsTriangleBackFaceHit()) {
-        optixIgnoreIntersection();
-        return;
-    }
-    if (!data->mVisibleShadow) {
-        optixIgnoreIntersection();
-        return;
-    }
-
-    unsigned int primIdx = optixGetPrimitiveIndex();
-    unsigned int casterId = data->mAssignmentIds[primIdx];
-
-    for (unsigned i = 0; i < data->mNumShadowLinkLights; i++) {
-        if (casterId != data->mShadowLinkLights[i].mCasterId) {
-            // entry doesn't apply to this caster id
-            continue;
-        }
-        if (prd->mLightId == data->mShadowLinkLights[i].mLightId) {
-            // if there is a match, the current object can't cast a shadow
-            // from this specific light
+    if (prd->mIsOcclusionRay) {
+        if (data->mIsSingleSided && optixIsTriangleBackFaceHit()) {
             optixIgnoreIntersection();
             return;
         }
-    }
-
-    bool receiverMatches = false;
-    bool isComplemented = false;
-    for (unsigned i = 0; i < data->mNumShadowLinkReceivers; i++) {
-        if (casterId != data->mShadowLinkReceivers[i].mCasterId) {
-            // entry doesn't apply to this caster id
-            continue;
+        if (!data->mVisibleShadow) {
+            optixIgnoreIntersection();
+            return;
         }
 
-        // this is the same for all [i] for this matching casterId,
-        // we just need one of them
-        isComplemented = data->mShadowLinkReceivers[i].mIsComplemented;
+        unsigned int primIdx = optixGetPrimitiveIndex();
+        unsigned int casterId = data->mAssignmentIds[primIdx];
 
-        if (prd->mShadowReceiverId == data->mShadowLinkReceivers[i].mReceiverId) {
-            // if there is a match, the current object can't cast a shadow
-            // onto this receiver
-            receiverMatches = true;
-            break;
+        for (unsigned i = 0; i < data->mNumShadowLinkLights; i++) {
+            if (casterId != data->mShadowLinkLights[i].mCasterId) {
+                // entry doesn't apply to this caster id
+                continue;
+            }
+            if (prd->mLightId == data->mShadowLinkLights[i].mLightId) {
+                // if there is a match, the current object can't cast a shadow
+                // from this specific light
+                optixIgnoreIntersection();
+                return;
+            }
         }
-    }
 
-    if (receiverMatches ^ isComplemented) {
-        optixIgnoreIntersection();
-        return;
+        bool receiverMatches = false;
+        bool isComplemented = false;
+        for (unsigned i = 0; i < data->mNumShadowLinkReceivers; i++) {
+            if (casterId != data->mShadowLinkReceivers[i].mCasterId) {
+                // entry doesn't apply to this caster id
+                continue;
+            }
+
+            // this is the same for all [i] for this matching casterId,
+            // we just need one of them
+            isComplemented = data->mShadowLinkReceivers[i].mIsComplemented;
+
+            if (prd->mShadowReceiverId == data->mShadowLinkReceivers[i].mReceiverId) {
+                // if there is a match, the current object can't cast a shadow
+                // onto this receiver
+                receiverMatches = true;
+                break;
+            }
+        }
+
+        if (receiverMatches ^ isComplemented) {
+            optixIgnoreIntersection();
+            return;
+        }
     }
 }
 

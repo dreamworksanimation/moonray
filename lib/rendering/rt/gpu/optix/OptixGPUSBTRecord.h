@@ -43,6 +43,9 @@ struct HitGroupData
     bool mIsNormalReversed;
     bool mVisibleShadow;
     int *mAssignmentIds;
+    intptr_t mEmbreeUserData;
+    unsigned int mEmbreeGeomID;
+    bool mWasQuads;
 
     // Whether this primitive will cast a shadow from specific lights
     unsigned mNumShadowLinkLights;

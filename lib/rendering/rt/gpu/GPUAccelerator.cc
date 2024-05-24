@@ -56,15 +56,17 @@ GPUAccelerator::getGPUDeviceName() const
 }
 
 void
-GPUAccelerator::intersect(const uint32_t numRays, const GPURay* rays) const
+GPUAccelerator::intersect(const uint32_t queueIdx,
+                          const uint32_t numRays,
+                          const GPURay* rays) const
 {
-    mImpl->intersect(numRays, rays);
+    mImpl->intersect(queueIdx, numRays, rays);
 }
 
 GPURayIsect*
-GPUAccelerator::getOutputIsectBuf() const
+GPUAccelerator::getOutputIsectBuf(const uint32_t queueIdx) const
 {
-    return mImpl->getOutputIsectBuf();
+    return mImpl->getOutputIsectBuf(queueIdx);
 }
 
 GPURay*
@@ -140,12 +142,14 @@ GPUAccelerator::getGPUDeviceName() const
 }
 
 void
-GPUAccelerator::intersect(const uint32_t /*numRays*/, const GPURay* /*rays*/) const
+GPUAccelerator::intersect(const uint32_t /*queueIdx*/,
+                          const uint32_t /*numRays*/,
+                          const GPURay* /*rays*/) const
 {
 }
 
 GPURayIsect*
-GPUAccelerator::getOutputIsectBuf() const
+GPUAccelerator::getOutputIsectBuf(const uint32_t /*queueIdx*/) const
 {
     return nullptr;
 }

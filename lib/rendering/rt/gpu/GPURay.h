@@ -36,15 +36,13 @@ struct GPURay
 // Used for intersect() queries but not occluded()
 struct GPURayIsect
 {
-    // geometry normal
-    float mNgX, mNgY, mNgZ;
+    float mTFar; // intersection distance
+    float mNgX, mNgY, mNgZ; // geometry normal
+    float mU, mV; // barycentric coords
 
-    // barycentric coords
-    float mU, mV;
-
+    unsigned int mEmbreeGeomID;
     unsigned int mPrimID;
-    unsigned int mGeomID;
-    unsigned int mInstID;
+    intptr_t mEmbreeUserData;
 };
 
 } // namespace rt

@@ -27,6 +27,8 @@ public:
     bool mIsSingleSided;
     bool mIsNormalReversed;
     bool mVisibleShadow;
+    intptr_t mEmbreeUserData;
+    unsigned int mEmbreeGeomID;
 
     // per sub-primitive (or just one item if no sub-primitives)
     OptixGPUBuffer<int> mAssignmentIds;
@@ -48,6 +50,7 @@ public:
     std::array<CUdeviceptr, 2>   mVerticesPtrs;
     size_t                       mNumVertices;
 
+    bool                         mWasQuads; // If this mesh was actually quads that have been converted to tris
     OptixGPUBuffer<unsigned int> mIndices;
     size_t                       mNumFaces;
 

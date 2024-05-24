@@ -455,7 +455,8 @@ createTrianglesGAS(CUstream cudaStream,
 
     OptixAccelBuildOptions accelOptions = {};
     accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
-                                          OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
+                                          OPTIX_BUILD_FLAG_PREFER_FAST_TRACE |
+                                          OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
     accelOptions.motionOptions.numKeys  = 0;
     accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
 

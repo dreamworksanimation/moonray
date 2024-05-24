@@ -21,16 +21,16 @@ class XPURayQueue
 public:
     // The CPU handler that is called when the GPU is busy
     typedef void (*CPUHandler)(mcrt_common::ThreadLocalState *tls,
-                               unsigned numEntries,
+                               unsigned numRays,
                                RayState **entryData,
                                void *userData);
 
     // The GPU handler that calls the GPU
     typedef void (*GPUHandler)(mcrt_common::ThreadLocalState *tls,
-                               unsigned numEntries,
+                               unsigned numRays,
                                RayState **entryData,
                                const rt::GPURay *gpuRays,
-                               tbb::spin_mutex& mutex);
+                               std::atomic<int>& threadsUsingGPU);
 
     XPURayQueue(unsigned numCPUThreads,
                 unsigned cpuThreadQueueSize,
@@ -56,7 +56,7 @@ public:
             mCPUThreadQueueNumQueued[i] = 0;
         }
 
-        mThreadsWaitingForGPU = 0;
+        mNumThreadsUsingGPU = 0;
     }
 
     ~XPURayQueue()
@@ -146,7 +146,7 @@ protected:
             memcpy(entries + mCPUThreadQueueNumQueued[threadIdx], newEntries, sizeof(RayState*) * numNewEntries);
         }
 
-        unsigned entriesToFlush = totalEntries;
+        unsigned numRays = totalEntries;
 
         // Only flush a multiple of the number of lanes we have unless we're doing an
         // explicit flush (totalEntries < mQueueSize) or queue is exactly full.
@@ -159,75 +159,75 @@ protected:
             // now since we always copy the entries before calling the handler.
             if (potentiallyQueued && potentiallyQueued < mCPUThreadQueueSize) {
                 mCPUThreadQueueNumQueued[threadIdx] = potentiallyQueued;
-                entriesToFlush -= potentiallyQueued;
-                memcpy(mCPUThreadQueueEntries[threadIdx], entries + entriesToFlush, sizeof(RayState*) * potentiallyQueued);
+                numRays -= potentiallyQueued;
+                memcpy(mCPUThreadQueueEntries[threadIdx], entries + numRays, sizeof(RayState*) * potentiallyQueued);
             }
         }
 
         MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] < VLEN);
         MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] < mCPUThreadQueueSize);
-        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] + entriesToFlush == totalEntries);
+        MNRY_ASSERT(mCPUThreadQueueNumQueued[threadIdx] + numRays == totalEntries);
 
         // Call handler. The entries are only valid for the duration of this call.
         // Other threads may also call this handler simultaneously with different entries.
 
-/*
-        // TODO: this is just the code from the occlusion ray processing copied in here
-        // as a rough template for setting up the GPU.  For now we just call the CPU handler.
+        // This is an imperfect heuristic, but the idea is that ray
+        // processing should be no more than 25% of the total work, so thus
+        // if more than 25% of the threads are idle waiting on the GPU, then the
+        // GPU is overloaded and we shouldn't give the GPU any more work.
+        //int maxThreads = std::max(mNumCPUThreads / 4, (unsigned int)1);
 
-        if (mThreadsWaitingForGPU.load() < 3 && numRays > 1024) {
-            // There are an acceptable number of threads waiting to access the GPU, so we
-            // just wait our turn.  But, before we try to acquire the GPU lock, we get the
-            // buffer of rays ready for the GPU.
-            // The value 2 was determined empirically.  Higher values do not provide benefit.
-
-            // Another thread can sneak in here before we increment, but it doesn't matter
-            // because 2 is just a heuristic anyway and it doesn't matter if there's a small
-            // chance we end up with 3.
-            mThreadsWaitingForGPU++;
+        //if ((mNumThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
+        if (false) { // temp disable while this is still in development
+            // There are an acceptable number of threads using the GPU, so we
+            // can go ahead.
 
             pbr::TLState *pbrTls = tls->mPbrTls.get();
             scene_rdl2::alloc::Arena *arena = &tls->mArena;
+
+            const FrameState &fs = *pbrTls->mFs;
+            rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
+
             rt::GPURay* gpuRays = arena->allocArray<rt::GPURay>(numRays, CACHE_LINE_SIZE);
 
-            // Now that the thread knows it's running on the GPU, it still needs to wait its
-            // turn for the GPU.  Before waiting, it needs to prepare the GPURays.
+            for (size_t i = 0; i < numRays; ++i) {
+                RayState* rs = entries[i];
+                // Optix doesn't access these values from the cpu ray directly, so we copy the
+                // values here into a GPU-accessible buffer
+#ifndef __APPLE__
+                gpuRays[i].mOriginX = rs->mRay.org.x;
+                gpuRays[i].mOriginY = rs->mRay.org.y;
+                gpuRays[i].mOriginZ = rs->mRay.org.z;
+                gpuRays[i].mDirX = rs->mRay.dir.x;
+                gpuRays[i].mDirY = rs->mRay.dir.y;
+                gpuRays[i].mDirZ = rs->mRay.dir.z;
+                gpuRays[i].mMinT = rs->mRay.tnear;
+                gpuRays[i].mMaxT = rs->mRay.tfar;
+                gpuRays[i].mTime = rs->mRay.time;
+#endif
+                gpuRays[i].mShadowReceiverId = 0; // unused for regular rays
+                gpuRays[i].mLightId = 0; // unused for regular rays
+            }
 
-            // TODO: copy RayStates to gpuRays
-
-            // Acquire the GPU.
-            mGPUDeviceMutex.lock();
-
-            // This thread is no longer waiting to access the GPU, because it has the GPU.
-            mThreadsWaitingForGPU--;
-
-            // The handler unlocks the GPU device mutex internally once the GPU
-            // is finished but there is still some CPU code left for this thread to run.
             ++tls->mHandlerStackDepth;
             (*mGPUQueueHandler)(tls,
                                 numRays,
-                                rays,
+                                entries,
                                 gpuRays,
-                                mGPUDeviceMutex);
+                                mNumThreadsUsingGPU);
             MNRY_ASSERT(tls->mHandlerStackDepth > 0);
             --tls->mHandlerStackDepth;
 
         } else {
-            // There's too many threads already waiting for the GPU, and we would need to wait
+            // There's too many threads using the GPU, and we would need to wait
             // too long.  Process these rays on the CPU instead.
             ++tls->mHandlerStackDepth;
-            (*mCPUThreadQueueHandler)(tls, numRays, rays, mHandlerData);       
+            (*mCPUThreadQueueHandler)(tls, numRays, entries, mHandlerData);
             MNRY_ASSERT(tls->mHandlerStackDepth > 0);
-            --tls->mHandlerStackDepth;     
+            --tls->mHandlerStackDepth;
         }
-*/
 
-        ++tls->mHandlerStackDepth;
-        (*mCPUThreadQueueHandler)(tls, entriesToFlush, entries, mHandlerData);
-        MNRY_ASSERT(tls->mHandlerStackDepth > 0);
-        --tls->mHandlerStackDepth;
-
-        return unsigned(entriesToFlush);
+        return unsigned(numRays);
     }
 
     unsigned                     mNumCPUThreads;
@@ -235,9 +235,8 @@ protected:
     std::vector<RayState**>      mCPUThreadQueueEntries;
     std::vector<unsigned>        mCPUThreadQueueNumQueued;
     CPUHandler                   mCPUThreadQueueHandler;
-    std::atomic<int>             mThreadsWaitingForGPU;
+    std::atomic<int>             mNumThreadsUsingGPU;
     GPUHandler                   mGPUQueueHandler;
-    tbb::spin_mutex              mGPUDeviceMutex;
     void *                       mHandlerData;
 };
 
