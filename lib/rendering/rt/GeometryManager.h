@@ -38,7 +38,7 @@ namespace rt {
 
 enum class ChangeFlag;
 
-typedef tbb::concurrent_unordered_map<geom::internal::Primitive *, tbb::atomic<unsigned int>> PrimitiveReferenceCountMap;
+typedef tbb::concurrent_unordered_map<geom::internal::Primitive *, std::atomic<unsigned int>> PrimitiveReferenceCountMap;
 
 struct GeometryManagerStats
 {
@@ -182,9 +182,9 @@ public:
         mChangeStatus = flag;
     }
 
-    finline void compareAndSwapFlag(ChangeFlag swapFlag, ChangeFlag compareFlag)
+    finline void compareAndSwapFlag(ChangeFlag compareFlag, ChangeFlag swapFlag)
     {
-        mChangeStatus.compare_and_swap(swapFlag, compareFlag);
+        mChangeStatus.compare_exchange_strong(compareFlag, swapFlag);
     }
 
     void updateGPUAccelerator(bool allowUnsupportedFeatures, const uint32_t numCPUThreads, const scene_rdl2::rdl2::Layer* layer);
@@ -252,7 +252,7 @@ private:
 
     GeometryManagerOptions mOptions;
 
-    typedef tbb::atomic<ChangeFlag> ChangeFlagAtomic;
+    typedef std::atomic<ChangeFlag> ChangeFlagAtomic;
 
     /// Tracks current change status
     ChangeFlagAtomic mChangeStatus;

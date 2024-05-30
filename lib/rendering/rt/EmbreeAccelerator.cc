@@ -41,7 +41,7 @@ namespace rt {
 
 
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<bool>, geom::SharedPtrHash> SharedSceneMap;
+        std::shared_ptr<std::atomic<bool>>, geom::SharedPtrHash> SharedSceneMap;
 
 
 class BVHBuilder : public geom::PrimitiveVisitor
@@ -181,7 +181,7 @@ public:
     virtual void visitInstance(geom::Instance& i) override {
         const auto& ref = i.getReference();
         // visit the referenced Primitive if it's not visited yet
-        if (mSharedSceneMap.insert(std::make_pair(ref, false)).second) {
+        if (mSharedSceneMap.insert(std::make_pair(ref, std::make_shared<std::atomic<bool>>(false))).second) {
             RTCScene sharedScene = rtcNewScene(mDevice);
             rtcSetSceneBuildQuality(sharedScene, mGeometry->isStatic() ?
                 RTC_BUILD_QUALITY_HIGH : RTC_BUILD_QUALITY_LOW);
@@ -199,7 +199,7 @@ public:
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
             // reference it can start accessing it
-            mSharedSceneMap[ref] = true;
+            *mSharedSceneMap[ref] = true;
         }
         // wait for the first visited instance to construct the shared scene
         SharedSceneMap::const_iterator it = mSharedSceneMap.find(ref);
@@ -693,7 +693,7 @@ buildBVHBottomUp(const scene_rdl2::rdl2::Layer* layer, scene_rdl2::rdl2::Geometr
     if (procedural->isReference()) {
         const std::shared_ptr<geom::SharedPrimitive>& ref =
             procedural->getReference();
-        if (visitedBVHScene.insert(std::make_pair(ref, false)).second) {
+        if (visitedBVHScene.insert(std::make_pair(ref, std::make_shared<std::atomic<bool>>(false))).second) {
             RTCScene sharedScene = rtcNewScene(rtcDevice);
             rtcSetSceneBuildQuality(sharedScene, geometry->isStatic()?
                 RTC_BUILD_QUALITY_HIGH : RTC_BUILD_QUALITY_LOW);
@@ -706,7 +706,7 @@ buildBVHBottomUp(const scene_rdl2::rdl2::Layer* layer, scene_rdl2::rdl2::Geometr
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
             // reference it can start accessing it
-            visitedBVHScene[ref] = true;
+            *visitedBVHScene[ref] = true;
         }
     } else {
         BVHBuilder bvhBuilder(layer, geometry, rtcDevice, rootScene,

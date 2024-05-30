@@ -169,7 +169,7 @@ enum OcclTestType
 
 
 #define DEEP_DATA_MEMBERS                                               \
-    HUD_CPP_MEMBER(tbb::atomic<int>, mRefCount, 4);                     \
+    HUD_CPP_MEMBER(std::atomic<int>, mRefCount, 4);                     \
     HUD_MEMBER(uint32_t, mHitDeep);                                     \
     HUD_MEMBER(float, mSubpixelX);                                      \
     HUD_MEMBER(float, mSubpixelY);                                      \
@@ -196,7 +196,7 @@ enum OcclTestType
 
 
 #define CRYPTOMATTE_DATA_MEMBERS                                    \
-    HUD_CPP_MEMBER(tbb::atomic<int>, mRefCount, 4);                 \
+    HUD_CPP_MEMBER(std::atomic<int>, mRefCount, 4);                 \
     HUD_CPP_PTR(pbr::CryptomatteBuffer*, mCryptomatteBuffer);       \
     HUD_MEMBER(uint32_t, mHit);                                     \
     HUD_MEMBER(uint32_t, mPrevPresence);                            \

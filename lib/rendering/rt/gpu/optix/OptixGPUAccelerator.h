@@ -23,7 +23,7 @@ namespace rt {
 
 // Also in EmbreeAccelerator.cc
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<OptixGPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
+        std::shared_ptr<std::atomic<OptixGPUPrimitiveGroup*>>, geom::SharedPtrHash> SharedGroupMap;
 
 
 class OptixGPUAccelerator
