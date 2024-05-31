@@ -14,28 +14,32 @@
 // light is used in occlusion test (shadow linking)
 // l2r: concatenated local to render space transform used by multilevel instance,
 // be sure this is initialized to the identity.
-#define MCRT_COMMON_RAY_EXTENSION_MEMBERS                  \
-    HVD_MEMBER(int32_t, materialID);                       \
-    HVD_MEMBER(int32_t, depth);                            \
-    HVD_PTR(void*, userData);                              \
-    HVD_PTR(void*, geomTls);                               \
-    HVD_PTR(const void*, priorityMaterial0);               \
-    HVD_PTR(const void*, priorityMaterial1);               \
-    HVD_PTR(const void*, priorityMaterial2);               \
-    HVD_PTR(const void*, priorityMaterial3);               \
-    HVD_MEMBER(int32_t, priorityMaterial0Count);           \
-    HVD_MEMBER(int32_t, priorityMaterial1Count);           \
-    HVD_MEMBER(int32_t, priorityMaterial2Count);           \
-    HVD_MEMBER(int32_t, priorityMaterial3Count);           \
-    HVD_PTR(const void*, instance0OrLight);                \
-    HVD_PTR(const void*, instance1);                       \
-    HVD_PTR(const void*, instance2);                       \
-    HVD_PTR(const void*, instance3);                       \
-    HVD_MEMBER(int32_t, instanceAttributesDepth);          \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Xform3f), l2r);         \
-    HVD_MEMBER(int32_t, volumeInstanceState);              \
-    HVD_MEMBER(int32_t, shadowReceiverId);                 \
-    HVD_ISPC_PAD(pad, 4)
+#define MCRT_COMMON_RAY_DIFFERENTIAL_PADDING 4  /*Alignment: 8, Total size: 164, Padded size: 168 */
+
+#define MCRT_COMMON_RAY_EXTENSION_MEMBERS                       /*  size */\
+    HVD_MEMBER(int32_t, materialID);                            /*    4  */\
+    HVD_MEMBER(int32_t, depth);                                 /*    8  */\
+    HVD_PTR(void*, userData);                                   /*   16  */\
+    HVD_PTR(const void*, priorityMaterial0);                    /*   24  */\
+    HVD_PTR(const void*, priorityMaterial1);                    /*   32  */\
+    HVD_PTR(void*, geomTls);                                    /*   40  */\
+    HVD_PTR(const void*, priorityMaterial2);                    /*   48  */\
+    HVD_PTR(const void*, priorityMaterial3);                    /*   56  */\
+    HVD_MEMBER(int32_t, priorityMaterial0Count);                /*   60  */\
+    HVD_MEMBER(int32_t, priorityMaterial1Count);                /*   64  */\
+    HVD_MEMBER(int32_t, priorityMaterial2Count);                /*   68  */\
+    HVD_MEMBER(int32_t, priorityMaterial3Count);                /*   72  */\
+    HVD_PTR(const void*, instance0OrLight);                     /*   80  */\
+    HVD_PTR(const void*, instance1);                            /*   88  */\
+    HVD_PTR(const void*, instance2);                            /*   96  */\
+    HVD_PTR(const void*, instance3);                            /*  104  */\
+    HVD_MEMBER(int32_t, instanceAttributesDepth);               /*  108  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Xform3f), l2r);  /*  156  */\
+    HVD_MEMBER(int32_t, volumeInstanceState);                   /*  160  */\
+    HVD_MEMBER(int32_t, shadowReceiverId);                      /*  164  */\
+    HVD_ISPC_PAD(pad, MCRT_COMMON_RAY_DIFFERENTIAL_PADDING)     /*  168  */\
+                                          /* macOS: 168 * 4 lanes = 672  */\
+                                         /* linux: 168 * 8 lanes = 1344  */\
 
 #define MCRT_COMMON_RAY_EXTENSION_VALIDATION(vlen)         \
     HVD_BEGIN_VALIDATION(RayExtension, vlen);              \
@@ -61,23 +65,25 @@
     HVD_VALIDATE(RayExtension, shadowReceiverId);          \
     HVD_END_VALIDATION
 
-#define MCRT_COMMON_RAY_MEMBERS                            \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), org);    \
-    HVD_MEMBER(float, tnear);                              \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), dir);           \
-    HVD_MEMBER(float, time);                               \
-    HVD_MEMBER(float, tfar);                               \
-    HVD_MEMBER(int32_t, mask);                             \
-    HVD_MEMBER(uint32_t, id);                              \
-    HVD_MEMBER(uint32_t, pad);                             \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), Ng);            \
-    HVD_MEMBER(float, u);                                  \
-    HVD_MEMBER(float, v);                                  \
-    HVD_MEMBER(int32_t, primID);                           \
-    HVD_MEMBER(int32_t, geomID);                           \
-    HVD_MEMBER(int32_t, instID);                           \
-    HVD_MEMBER(RayExtension, ext);                         \
-    HVD_MEMBER(Flags, mFlags)
+#define MCRT_COMMON_RAY_MEMBERS                                 /*  size */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), org);    /*   12  */\
+    HVD_MEMBER(float, tnear);                                   /*   16  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), dir);    /*   28  */\
+    HVD_MEMBER(float, time);                                    /*   32  */\
+    HVD_MEMBER(float, tfar);                                    /*   36  */\
+    HVD_MEMBER(int32_t, mask);                                  /*   40  */\
+    HVD_MEMBER(uint32_t, id);                                   /*   44  */\
+    HVD_MEMBER(uint32_t, pad);                                  /*   48  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), Ng);     /*   60  */\
+    HVD_MEMBER(float, u);                                       /*   64  */\
+    HVD_MEMBER(float, v);                                       /*   68  */\
+    HVD_MEMBER(int32_t, primID);                                /*   72  */\
+    HVD_MEMBER(int32_t, geomID);                                /*   76  */\
+    HVD_MEMBER(int32_t, instID);                                /*   80  */\
+    HVD_MEMBER(RayExtension, ext);                              /*  248  */\
+    HVD_MEMBER(Flags, mFlags)                                   /*  252  */\
+                                         /* macOS: 252 * 4 lanes = 1008  */\
+                                         /* linux: 252 * 8 lanes = 2016  */\
 
 #if CACHE_LINE_SIZE == 128
 #define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD   (4)
@@ -85,13 +91,15 @@
 #define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD   0
 #endif
 
-#define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS               \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginX);      \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirX);         \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginY);      \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirY);         \
-    HVD_MEMBER(float, mOrigTfar);                                      \
-    HVD_ARRAY(uint32_t, pad1, MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD)
+#define MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS                                    /*   size   macOS */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginX);               /*    264    264  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirX);                  /*    276    276  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOriginY);               /*    288    288  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDirY);                  /*    300    300  */\
+    HVD_MEMBER(float, mOrigTfar);                                               /*    304    304  */\
+    HVD_ARRAY(uint32_t, pad1, MCRT_COMMON_RAY_DIFFERENTIAL_MEMBERS_CACHE_PAD)   /*    304    320  */\
+                                                                  /* macOS: 320 * 4 lanes = 1280  */\
+                                                                  /* linux: 304 * 8 lanes = 2432  */\
 
 #define MCRT_COMMON_RAY_DIFFERENTIAL_VALIDATION(vlen)       \
     HVD_BEGIN_VALIDATION(RayDifferential, vlen);            \

@@ -20,32 +20,32 @@ enum OcclTestType
 //
 
 #if __APPLE__
-#define BUNDLED_OCCL_RAY_MEMBERS_PAD (60+64)
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD (60+64) /*Alignment: 128, Total size: 132, Padded size: 256*/
 #else
-#define BUNDLED_OCCL_RAY_MEMBERS_PAD  60
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD  60 /*Alignment: 64, Total size: 132, Padded size: 192*/
 #endif
 
-#define BUNDLED_OCCL_RAY_MEMBERS                                    \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOrigin);    \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDir);       \
-    HVD_MEMBER(float, mMinT);                                       \
-    HVD_MEMBER(float, mMaxT);                                       \
-    HVD_MEMBER(float, mTime);                                       \
-    HVD_MEMBER(int, mDepth);                                        \
-    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mRadiance);  \
-    HVD_MEMBER(uint32_t, mPixel);                                   \
-    HVD_MEMBER(int, mSubpixelIndex);                                \
-    HVD_MEMBER(uint32_t, mSequenceID);                              \
-    HVD_MEMBER(uint32_t, mTilePass);                                \
-    HVD_MEMBER(uint32_t, mDataPtrHandle);                           \
-    HVD_MEMBER(uint32_t, mDeepDataHandle);                          \
-    HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP); \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoP0);   \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN); \
-    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  \
-    HVD_MEMBER(uint32_t, mOcclTestType);                            \
-    HVD_MEMBER(int32_t,  mShadowReceiverId);                        \
+#define BUNDLED_OCCL_RAY_MEMBERS                                    /*  size  */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mOrigin);    /*   12   */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mDir);       /*   24   */\
+    HVD_MEMBER(float, mMinT);                                       /*   28   */\
+    HVD_MEMBER(float, mMaxT);                                       /*   32   */\
+    HVD_MEMBER(float, mTime);                                       /*   36   */\
+    HVD_MEMBER(int, mDepth);                                        /*   40   */\
+    HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Color), mRadiance);  /*   52   */\
+    HVD_MEMBER(uint32_t, mPixel);                                   /*   56   */\
+    HVD_MEMBER(int, mSubpixelIndex);                                /*   60   */\
+    HVD_MEMBER(uint32_t, mSequenceID);                              /*   64   */\
+    HVD_MEMBER(uint32_t, mTilePass);                                /*   68   */\
+    HVD_MEMBER(uint32_t, mDataPtrHandle);                           /*   72   */\
+    HVD_MEMBER(uint32_t, mDeepDataHandle);                          /*   76   */\
+    HVD_MEMBER(uint32_t, mCryptomatteDataHandle);                   /*   80   */\
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefP);/*   92   */\
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoP0);  /*  104   */\
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mCryptoRefN);/*  116   */\
+    HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  /*  124   */\
+    HVD_MEMBER(uint32_t, mOcclTestType);                            /*  128   */\
+    HVD_MEMBER(int32_t,  mShadowReceiverId);                        /*  132   */\
     HVD_ISPC_PAD(mIspcPad, BUNDLED_OCCL_RAY_MEMBERS_PAD)
 
 #define BUNDLED_OCCL_RAY_VALIDATION(vlen)                   \
