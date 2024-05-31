@@ -332,7 +332,7 @@ private:
     }
 
     std::unique_ptr<geom::internal::BVHHandle> createQuadricInBVH(
-        const geom::internal::NamedPrimitive& quadric,
+        geom::internal::NamedPrimitive& quadric,
         const RTCBuildQuality flag) {
 
         RTCGeometry rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_USER);
@@ -367,14 +367,18 @@ private:
             new geom::internal::BVHUserData(mLayer, &quadric, filterManager);
         mBVHUserData.emplace_back(userData);
         rtcSetGeometryUserData(rtcGeom, (void*)userData);
+        quadric.mEmbreeUserData = (void*)userData;
+
         uint32_t geomID = rtcAttachGeometry(mParentScene, rtcGeom);
+        quadric.mEmbreeGeomID = geomID;
+
         rtcCommitGeometry(rtcGeom);
         return fauxstd::make_unique<geom::internal::BVHHandle>(
             mParentScene, geomID);
     }
 
     std::unique_ptr<geom::internal::BVHHandle> createCurvesInBVH(
-        const geom::internal::Curves& geomCurves,
+        geom::internal::Curves& geomCurves,
         const geom::Curves::Type curvesType,
         const geom::Curves::SubType curvesSubType,
         const int tessellationRate,
@@ -457,7 +461,11 @@ private:
             new geom::internal::BVHUserData(mLayer, &geomCurves, filterManager);
         mBVHUserData.emplace_back(userData);
         rtcSetGeometryUserData(rtcGeom, (void*)userData);
+        geomCurves.mEmbreeUserData = (void*)userData;
+
         uint32_t geomID = rtcAttachGeometry(mParentScene, rtcGeom);
+        geomCurves.mEmbreeGeomID = geomID;
+
         rtcCommitGeometry(rtcGeom);
 
         // catch any embree errors in this function
@@ -468,7 +476,7 @@ private:
     }
 
     std::unique_ptr<geom::internal::BVHHandle> createInstanceInBVH(
-        const geom::internal::Instance& instance, const RTCBuildQuality flag) {
+        geom::internal::Instance& instance, const RTCBuildQuality flag) {
 
         RTCGeometry rtcGeom = rtcNewGeometry(mDevice, RTC_GEOMETRY_TYPE_USER);
         rtcSetGeometryUserPrimitiveCount(rtcGeom, 1);
@@ -510,15 +518,18 @@ private:
             new geom::internal::BVHUserData(mLayer, &instance, nullptr);
         mBVHUserData.emplace_back(userData);
         rtcSetGeometryUserData(rtcGeom, (void*)userData);
+        instance.mEmbreeUserData = (void*)userData;
 
         uint32_t geomID = rtcAttachGeometry(mParentScene, rtcGeom);
+        instance.mEmbreeGeomID = geomID;
+
         rtcCommitGeometry(rtcGeom);
         return fauxstd::make_unique<geom::internal::BVHHandle>(
             mParentScene, geomID);
     }
 
     std::unique_ptr<geom::internal::BVHHandle> createVolumeInBVH(
-        const geom::internal::VdbVolume& geomVolume,
+        geom::internal::VdbVolume& geomVolume,
         const RTCBuildQuality flag) {
 
         geom::internal::BufferDesc vertexBufferDesc[2];
@@ -566,7 +577,11 @@ private:
             new geom::internal::BVHUserData(mLayer, &geomVolume, filterManager);
         mBVHUserData.emplace_back(userData);
         rtcSetGeometryUserData(rtcGeom, (void*)userData);
+        geomVolume.mEmbreeUserData = (void*)userData;
+
         uint32_t geomID = rtcAttachGeometry(mParentScene, rtcGeom);
+        geomVolume.mEmbreeGeomID = geomID;
+
         rtcCommitGeometry(rtcGeom);
         return fauxstd::make_unique<geom::internal::BVHHandle>(
             mParentScene, geomID);

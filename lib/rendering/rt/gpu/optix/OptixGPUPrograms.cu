@@ -152,42 +152,57 @@ void __closesthit__()
     prd->mDidHitGeom = true;
 
     if (!prd->mIsOcclusionRay) {
-        // TODO
         const moonray::rt::HitGroupData* data = (moonray::rt::HitGroupData*)optixGetSbtDataPointer();
 
         prd->mTFar = optixGetRayTmax();
-
-        float3 verts[3]; 
-        optixGetTriangleVertexData(optixGetGASTraversableHandle(),
-                                   optixGetPrimitiveIndex(),
-                                   optixGetSbtGASIndex(),
-                                   optixGetRayTime(),
-                                   verts);
-        // Compute the geometric normal.  We do not need to normalize this (Embree does
-        //  not normalize and we want to exactly match its behavior.)
-        float3 ng = cross(verts[1] - verts[0], verts[2] - verts[0]);
-        prd->mNgX = ng.x;
-        prd->mNgY = ng.y; 
-        prd->mNgZ = ng.z;
-
-        float2 uv = optixGetTriangleBarycentrics();
-        if (data->mWasQuads) {
-            unsigned int triIdx = optixGetPrimitiveIndex();
-            if ((triIdx & 1) == 0) {
-                prd->mU = uv.x;
-                prd->mV = uv.y;
-            } else {
-                prd->mU = 1.f - uv.x;
-                prd->mV = 1.f - uv.y;
-            }
-            prd->mPrimID = triIdx / 2;
-        } else {
-            prd->mU = uv.x;
-            prd->mV = uv.y;
-            prd->mPrimID = optixGetPrimitiveIndex();
-        }
         prd->mEmbreeGeomID = data->mEmbreeGeomID;
         prd->mEmbreeUserData = data->mEmbreeUserData;
+
+        switch (data->mType) {
+            case HitGroupData::TRIANGLE_MESH:
+            case HitGroupData::QUAD_MESH:
+            {
+                float3 verts[3]; 
+                optixGetTriangleVertexData(optixGetGASTraversableHandle(),
+                                        optixGetPrimitiveIndex(),
+                                        optixGetSbtGASIndex(),
+                                        optixGetRayTime(),
+                                        verts);
+                // Compute the geometric normal.  We do not need to normalize this (Embree does
+                //  not normalize and we want to exactly match its behavior.)
+                float3 ng = cross(verts[1] - verts[0], verts[2] - verts[0]);
+                prd->mNgX = ng.x;
+                prd->mNgY = ng.y; 
+                prd->mNgZ = ng.z;
+
+                float2 uv = optixGetTriangleBarycentrics();
+                if (data->mType == HitGroupData::QUAD_MESH) {
+                    unsigned int triIdx = optixGetPrimitiveIndex();
+                    if ((triIdx & 1) == 0) {
+                        prd->mU = uv.x;
+                        prd->mV = uv.y;
+                    } else {
+                        prd->mU = 1.f - uv.x;
+                        prd->mV = 1.f - uv.y;
+                    }
+                    prd->mPrimID = triIdx >> 1; // / 2
+                } else {
+                    prd->mU = uv.x;
+                    prd->mV = uv.y;
+                    prd->mPrimID = optixGetPrimitiveIndex();
+                }
+            }
+            break;
+            default:
+                // TODO: Other geometry types
+                prd->mNgX = 0.f;
+                prd->mNgY = 0.f; 
+                prd->mNgZ = 1.f;
+                prd->mU = 0.f;
+                prd->mV = 0.f;
+                prd->mPrimID = 0;
+        };
+
     } else {
         // not used for occlusion tests, but clear them anyway
         prd->mTFar = 0.f;

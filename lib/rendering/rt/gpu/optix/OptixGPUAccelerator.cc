@@ -309,6 +309,8 @@ OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
     gpuBox->mIsSingleSided = geomBox.getIsSingleSided();
     gpuBox->mIsNormalReversed = geomBox.getIsNormalReversed();
     gpuBox->mVisibleShadow = resolveVisibilityMask(geomBox) & scene_rdl2::rdl2::SHADOW;
+    gpuBox->mEmbreeUserData = reinterpret_cast<intptr_t>(geomBox.mEmbreeUserData);
+    gpuBox->mEmbreeGeomID = geomBox.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomBox,
                                 gpuBox->mShadowLinkLights)) {
@@ -354,6 +356,8 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     gpuCurve->mIsSingleSided = false;
     gpuCurve->mIsNormalReversed = false;
     gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
+    gpuCurve->mEmbreeUserData = reinterpret_cast<intptr_t>(geomCurves.mEmbreeUserData);
+    gpuCurve->mEmbreeGeomID = geomCurves.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomCurves,
                                 gpuCurve->mShadowLinkLights)) {
@@ -476,6 +480,8 @@ OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
     gpuCurve->mIsSingleSided = false;
     gpuCurve->mIsNormalReversed = false;
     gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
+    gpuCurve->mEmbreeUserData = reinterpret_cast<intptr_t>(geomCurves.mEmbreeUserData);
+    gpuCurve->mEmbreeGeomID = geomCurves.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomCurves,
                                 gpuCurve->mShadowLinkLights)) {
@@ -581,6 +587,8 @@ OptixGPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
     gpuPoints->mIsSingleSided = false;
     gpuPoints->mIsNormalReversed = false;
     gpuPoints->mVisibleShadow = resolveVisibilityMask(geomPoints) & scene_rdl2::rdl2::SHADOW;
+    gpuPoints->mEmbreeUserData = reinterpret_cast<intptr_t>(geomPoints.mEmbreeUserData);
+    gpuPoints->mEmbreeGeomID = geomPoints.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomPoints,
                                 gpuPoints->mShadowLinkLights)) {
@@ -843,6 +851,8 @@ OptixGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
     gpuSphere->mIsSingleSided = geomSphere.getIsSingleSided();
     gpuSphere->mIsNormalReversed = geomSphere.getIsNormalReversed();
     gpuSphere->mVisibleShadow = resolveVisibilityMask(geomSphere) & scene_rdl2::rdl2::SHADOW;
+    gpuSphere->mEmbreeUserData = reinterpret_cast<intptr_t>(geomSphere.mEmbreeUserData);
+    gpuSphere->mEmbreeGeomID = geomSphere.mEmbreeGeomID;
 
     if (!getShadowLinkingLights(geomSphere,
                                 gpuSphere->mShadowLinkLights)) {
@@ -927,6 +937,9 @@ OptixGPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
     OptixGPUInstance* gpuInstance = new OptixGPUInstance();
     mParentGroup->mInstances.push_back(gpuInstance);
     gpuInstance->mGroup = group;
+    // TODO
+    //gpuInstance->mEmbreeUserData = reinterpret_cast<intptr_t>(instance.mEmbreeUserData);
+    //gpuInstance->mEmbreeGeomID = instance.mEmbreeGeomID;
 
     if (hasMotionBlur) {
         for (int i = 0; i < OptixGPUInstance::sNumMotionKeys; i++) {

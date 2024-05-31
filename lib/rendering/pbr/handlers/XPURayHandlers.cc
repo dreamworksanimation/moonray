@@ -222,7 +222,6 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
         pbrTls->mStatistics.addToCounter(STATS_BUNDLED_GPU_INTERSECTION_RAYS, numEntries);
 
         rt::GPUAccelerator *accel = const_cast<rt::GPUAccelerator*>(fs.mGPUAccel);
-        const rt::EmbreeAccelerator *embreeAccel = fs.mEmbreeAccel; // Used for test code below
 
         threadsUsingGPU++;
         {
@@ -252,55 +251,43 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
             rs->mRay.ext.userData = reinterpret_cast<void*>(isects[i].mEmbreeUserData);
 
             // Validate the GPU intersection results against CPU Embree
+            if (true) {
+                const rt::EmbreeAccelerator *embreeAccel = fs.mEmbreeAccel;
+                embreeAccel->intersect(rsCPU.mRay);
 
-            embreeAccel->intersect(rsCPU.mRay);
-
-            if (rs->mRay.geomID != rsCPU.mRay.geomID) {
-                std::cout << "ray: " << i << " embree geomID: " << rsCPU.mRay.geomID << " optix geomID: " << rs->mRay.geomID << std::endl;
-            } else {
-                if (rs->mRay.geomID != -1) {
-                    if (rs->mRay.primID != rsCPU.mRay.primID) {
-                        std::cout << "ray: " << i << " embree primID: " << rsCPU.mRay.primID << " optix primID: " << rs->mRay.primID << std::endl;
-                    }
-                    if (rs->mRay.instID != rsCPU.mRay.instID) {
-                        std::cout << "ray: " << i << " embree instID: " << rsCPU.mRay.instID << " optix instID: " << rs->mRay.instID << std::endl;
-                    }
-                    if (rs->mRay.ext.userData != rsCPU.mRay.ext.userData) {
-                        std::cout << "ray: " << i << " embree ext.userData: " << rsCPU.mRay.ext.userData << 
-                                    " optix ext.userData: " << rs->mRay.ext.userData << std::endl;
-                    }
-                    if (rs->mRay.primID == rsCPU.mRay.primID) {
-                        if (fabs(rs->mRay.tfar - rsCPU.mRay.tfar) > 0.001f) {
-                            std::cout << "ray: " << i << " embree tfar: " << rsCPU.mRay.tfar << " optix tfar: " << rs->mRay.tfar << std::endl;
+                if (rs->mRay.geomID != rsCPU.mRay.geomID) {
+                    std::cout << "ray: " << i << " embree geomID: " << rsCPU.mRay.geomID << " optix geomID: " << rs->mRay.geomID << std::endl;
+                } else {
+                    if (rs->mRay.geomID != -1) {
+                        if (rs->mRay.primID != rsCPU.mRay.primID) {
+                            std::cout << "ray: " << i << " embree primID: " << rsCPU.mRay.primID << " optix primID: " << rs->mRay.primID << std::endl;
                         }
-                        if (fabs(rs->mRay.u - rsCPU.mRay.u) > 0.001f) {
-                            std::cout << "ray: " << i << " embree u: " << rsCPU.mRay.u << " optix u: " << rs->mRay.u << std::endl;
+                        if (rs->mRay.instID != rsCPU.mRay.instID) {
+                            std::cout << "ray: " << i << " embree instID: " << rsCPU.mRay.instID << " optix instID: " << rs->mRay.instID << std::endl;
                         }
-                        if (fabs(rs->mRay.v - rsCPU.mRay.v) > 0.001f) {
-                            std::cout << "ray: " << i << " embree v: " << rsCPU.mRay.v << " optix v: " << rs->mRay.v << std::endl;
+                        if (rs->mRay.ext.userData != rsCPU.mRay.ext.userData) {
+                            std::cout << "ray: " << i << " embree ext.userData: " << rsCPU.mRay.ext.userData << 
+                                        " optix ext.userData: " << rs->mRay.ext.userData << std::endl;
                         }
-
-                        if (fabs(rs->mRay.Ng.x) <= 1.f && fabs(rs->mRay.Ng.x - rsCPU.mRay.Ng.x) > 0.001f) {
-                            // abs diff for values <= 1 (including zero)
-                            std::cout << "ray: " << i << " embree Ng.x: " << rsCPU.mRay.Ng.x << " optix Ng.x: " << rs->mRay.Ng.x << std::endl;
-                        }
-                        if (fabs(rs->mRay.Ng.x) > 1.f && fabs((rs->mRay.Ng.x - rsCPU.mRay.Ng.x) / rsCPU.mRay.Ng.x) > 0.001f) {
-                            // relative diff for values > 1
-                            std::cout << "ray: " << i << " embree Ng.x: " << rsCPU.mRay.Ng.x << " optix Ng.x: " << rs->mRay.Ng.x << std::endl;
-                        }
-
-                        if (fabs(rs->mRay.Ng.y) <= 1.f && fabs(rs->mRay.Ng.y - rsCPU.mRay.Ng.y) > 0.001f) {
-                            std::cout << "ray: " << i << " embree Ng.y: " << rsCPU.mRay.Ng.y << " optix Ng.y: " << rs->mRay.Ng.y << std::endl;
-                        }
-                        if (fabs(rs->mRay.Ng.y) > 1.f && fabs((rs->mRay.Ng.y - rsCPU.mRay.Ng.y) / rsCPU.mRay.Ng.y) > 0.001f) {
-                            std::cout << "ray: " << i << " embree Ng.y: " << rsCPU.mRay.Ng.y << " optix Ng.y: " << rs->mRay.Ng.y << std::endl;
-                        }
-
-                        if (fabs(rs->mRay.Ng.z) <= 1.f && fabs(rs->mRay.Ng.z - rsCPU.mRay.Ng.z) > 0.001f) {
-                            std::cout << "ray: " << i << " embree Ng.z: " << rsCPU.mRay.Ng.z << " optix Ng.z: " << rs->mRay.Ng.z << std::endl;
-                        }
-                        if (fabs(rs->mRay.Ng.z) > 1.f && fabs((rs->mRay.Ng.z - rsCPU.mRay.Ng.z) / rsCPU.mRay.Ng.z) > 0.001f) {
-                            std::cout << "ray: " << i << " embree Ng.z: " << rsCPU.mRay.Ng.z << " optix Ng.z: " << rs->mRay.Ng.z << std::endl;
+                        if (rs->mRay.primID == rsCPU.mRay.primID) {
+                            if (!scene_rdl2::math::isEqual(rs->mRay.tfar, rsCPU.mRay.tfar, 0.001f)) {
+                                std::cout << "ray: " << i << " embree tfar: " << rsCPU.mRay.tfar << " optix tfar: " << rs->mRay.tfar << std::endl;
+                            }
+                            if (!scene_rdl2::math::isEqual(rs->mRay.u, rsCPU.mRay.u, 0.001f)) {
+                                std::cout << "ray: " << i << " embree u: " << rsCPU.mRay.u << " optix u: " << rs->mRay.u << std::endl;
+                            }
+                            if (!scene_rdl2::math::isEqual(rs->mRay.v, rsCPU.mRay.v, 0.001f)) {
+                                std::cout << "ray: " << i << " embree v: " << rsCPU.mRay.v << " optix v: " << rs->mRay.v << std::endl;
+                            }
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.x, rs->mRay.Ng.x, 0.001f)) {
+                                std::cout << "ray: " << i << " embree Ng.x: " << rsCPU.mRay.Ng.x << " optix Ng.x: " << rs->mRay.Ng.x << std::endl;
+                            }
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.y, rs->mRay.Ng.y, 0.001f)) {
+                                std::cout << "ray: " << i << " embree Ng.y: " << rsCPU.mRay.Ng.y << " optix Ng.y: " << rs->mRay.Ng.y << std::endl;
+                            }
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.z, rs->mRay.Ng.z, 0.001f)) {
+                                std::cout << "ray: " << i << " embree Ng.z: " << rsCPU.mRay.Ng.z << " optix Ng.z: " << rs->mRay.Ng.z << std::endl;
+                            }
                         }
                     }
                 }

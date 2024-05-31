@@ -366,6 +366,10 @@ public:
         return scene_rdl2::math::Color(1.0f);
     }
 
+    // These are used later by XPU
+    void* mEmbreeUserData;
+    unsigned int mEmbreeGeomID;
+
 protected:
     std::unique_ptr<BVHHandle> mBVHHandle;
     const scene_rdl2::rdl2::Geometry* mRdlGeometry;

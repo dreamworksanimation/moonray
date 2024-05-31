@@ -190,10 +190,6 @@ public:
     virtual void setRequiredAttributes(int primId, float time, float u, float v,
         float w, bool isFirst, shading::Intersection& intersection) const = 0;
 
-    // These are used later by XPU
-    void* mEmbreeUserData;
-    unsigned int mEmbreeGeomID;
-
 protected:
     // reverse orientation by reversing the order of vertex data on each
     // face

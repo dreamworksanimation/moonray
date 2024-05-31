@@ -262,7 +262,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
         rec.mData.mEmbreeGeomID = triMesh->mEmbreeGeomID;
         rec.mData.mEmbreeUserData = triMesh->mEmbreeUserData;
-        rec.mData.mWasQuads = triMesh->mWasQuads;
+        rec.mData.mType = triMesh->mWasQuads ? HitGroupData::QUAD_MESH : HitGroupData::TRIANGLE_MESH;
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);
@@ -283,7 +283,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkReceivers = triMesh->mShadowLinkReceivers.ptr();
         rec.mData.mEmbreeGeomID = triMesh->mEmbreeGeomID;
         rec.mData.mEmbreeUserData = triMesh->mEmbreeUserData;
-        rec.mData.mWasQuads = triMesh->mWasQuads;
+        rec.mData.mType = triMesh->mWasQuads ? HitGroupData::QUAD_MESH : HitGroupData::TRIANGLE_MESH;
 
         // Specify the program group to use
         optixSbtRecordPackHeader(pgs["triMeshHG"], &rec);
@@ -302,6 +302,9 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
         rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
         rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
+        rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
+        rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
+        rec.mData.mType = HitGroupData::ROUND_CURVES;
 
         // Specify the program group to use
         switch (curves->mType) {
@@ -329,6 +332,9 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
         rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
         rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
+        rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
+        rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
+        rec.mData.mType = HitGroupData::ROUND_CURVES;
 
         // Specify the program group to use
         switch (curves->mType) {
@@ -358,10 +364,13 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkLights = prim->mShadowLinkLights.ptr();
         rec.mData.mNumShadowLinkReceivers = prim->mShadowLinkReceivers.count();
         rec.mData.mShadowLinkReceivers = prim->mShadowLinkReceivers.ptr();
+        rec.mData.mEmbreeGeomID = prim->mEmbreeGeomID;
+        rec.mData.mEmbreeUserData = prim->mEmbreeUserData;
 
         // Fill in the primitive type-specific properties
         OptixGPUCurve* curve = dynamic_cast<OptixGPUCurve*>(prim);
         if (curve) {
+            rec.mData.mType = HitGroupData::CURVES;
             rec.mData.curve.mMotionSamplesCount = curve->mMotionSamplesCount;
             rec.mData.curve.mSegmentsPerCurve = curve->mSegmentsPerCurve;
             rec.mData.curve.mIndices = curve->mIndices.ptr();
@@ -383,12 +392,14 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         }
         OptixGPUPoints* points = dynamic_cast<OptixGPUPoints*>(prim);
         if (points) {
+            rec.mData.mType = HitGroupData::POINTS;
             rec.mData.points.mMotionSamplesCount = points->mMotionSamplesCount;
             rec.mData.points.mPoints = points->mPoints.ptr();
             optixSbtRecordPackHeader(pgs["pointsHG"], &rec);
         }
         OptixGPUSphere* sphere = dynamic_cast<OptixGPUSphere*>(prim);
         if (sphere) {
+            rec.mData.mType = HitGroupData::SPHERE;
             rec.mData.sphere.mL2P = sphere->mL2P;
             rec.mData.sphere.mP2L = sphere->mP2L;
             rec.mData.sphere.mRadius = sphere->mRadius;
@@ -399,6 +410,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         }
         OptixGPUBox* box = dynamic_cast<OptixGPUBox*>(prim);
         if (box) {
+            rec.mData.mType = HitGroupData::BOX;
             rec.mData.box.mL2P = box->mL2P;
             rec.mData.box.mP2L = box->mP2L;
             rec.mData.box.mLength = box->mLength;

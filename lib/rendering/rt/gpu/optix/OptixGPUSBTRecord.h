@@ -38,6 +38,16 @@ typedef SBTRecord<MissData> MissRecord;
 
 struct HitGroupData
 {
+    enum Type {
+        TRIANGLE_MESH,
+        QUAD_MESH,
+        ROUND_CURVES,
+        CURVES,
+        POINTS,
+        SPHERE,
+        BOX
+    } mType;
+
     // Properties common to all primitives
     bool mIsSingleSided;
     bool mIsNormalReversed;
@@ -45,7 +55,6 @@ struct HitGroupData
     int *mAssignmentIds;
     intptr_t mEmbreeUserData;
     unsigned int mEmbreeGeomID;
-    bool mWasQuads;
 
     // Whether this primitive will cast a shadow from specific lights
     unsigned mNumShadowLinkLights;
@@ -57,9 +66,6 @@ struct HitGroupData
 
     // Primitive type-specific properties.  This is all unioned together because
     // we need a fixed-size data structure for the Shader Binding Table entries.
-    // Note that there is no type field telling us the primitive type.  We don't
-    // need it because each primitive type is handled by its own programs,
-    // (see program groups), thus it is already known.
     // Also note that we only store raw pointers below while on the host side we
     // use OptixGPUBuffer objects.  These pointers are obtained from the host-side
     // OptixGPUBuffer objects.
