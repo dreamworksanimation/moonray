@@ -45,7 +45,7 @@ LightAccelerator::LightAccelerator() :
     mBoundedLightCount(0),
     mUnboundedLights(nullptr),
     mUnboundedLightCount(0),
-    mSamplingTree(0.f, 0.f)
+    mSamplingTree(0.f)
 {
 }
 
@@ -166,8 +166,7 @@ intersectCallback(const RTCIntersectFunctionNArguments* args)
 // This function sets all of the callbacks required by Embree.
 
 void
-LightAccelerator::init(const Light*const* lights, int lightCount, const RTCDevice& rtcDevice, 
-                       float sceneDiameter, float samplingThreshold)
+LightAccelerator::init(const Light*const* lights, int lightCount, const RTCDevice& rtcDevice, float samplingThreshold)
 {
     // Deal with boundary cases
     if (lights == nullptr) {
@@ -230,7 +229,6 @@ LightAccelerator::init(const Light*const* lights, int lightCount, const RTCDevic
         mRtcScene = nullptr;
     }
 
-    mSamplingTree.setSceneDiameter(sceneDiameter);
     mSamplingTree.setSamplingThreshold(samplingThreshold);
 }
 

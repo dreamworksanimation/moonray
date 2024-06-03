@@ -7,15 +7,9 @@
 namespace moonray {
 namespace pbr {
 
-// =====================================================================================================================
-// References:
-// =====================================================================================================================
-// [1] Alejandro Conty Estevez and Christopher Kulla. 2018. 
-//     "Importance Sampling of Many Lights with Adaptive Tree Splitting"
-// =====================================================================================================================
 
-LightTree::LightTree(float sceneDiameter, float samplingThreshold) 
-    : mSceneDiameter(sceneDiameter), mSamplingThreshold(samplingThreshold) 
+LightTree::LightTree(float samplingThreshold) 
+    : mSamplingThreshold(samplingThreshold) 
 {}
 
 // ----------------------------- BUILD METHODS ---------------------------------------------------------------------- //
@@ -261,52 +255,50 @@ void LightTree::sampleBranch(int& lightIndex, float& pdf, float& r, uint32_t nod
     }
 }
 
-/// Computes the combined variance of the distance and energy terms. A higher variance indicates fewer lights should be 
-/// sampled, since there is a clearer winner for importance sampling. A lower variance indicates more lights should be 
-/// sampled, since each subtree has the potential for equally important contributions. 
+/// Computes the spread of the lights in the node, biased by the energy variance. A higher value indicates that the 
+/// lights are fairly compact, and/or that the energy doesn't vary much between them. A lower value indicates that the 
+/// lights are spread apart, and/or that the energy varies much more. This measure is used to determine whether we 
+/// split the node in question during sampling traversal, or whether we use importance sampling to choose a
+/// representative light to sample. We could think of this as a confidence measure. How confident are we that our
+/// importance sampling algorithm will choose a good representative light for this node? 
 ///
-/// @see [1] eqs (8), (9), (10)
+/// @see Alejandro Conty Estevez and Christopher Kulla. 2018. 
+///      "Importance Sampling of Many Lights with Adaptive Tree Splitting" 
+///       eqs (8), (9), (10)
 ///
-float splittingHeuristic(const LightTreeNode& node, const scene_rdl2::math::Vec3f& p, 
-                         const LightTreeNode& root, float sceneDiameter)
+float splittingHeuristic(const LightTreeNode& node, const scene_rdl2::math::Vec3f& p)
 {
-    // "(a, b) is the range where the distance to an emitter in the cluster varies"
-    // "This can be simply obtained from the cluster center and the radius of the bounding sphere"
+    // TODO: also base this on the orientation cone?
+
     const scene_rdl2::math::BBox3f bbox = node.getBBox();
     const float radius = scene_rdl2::math::length(bbox.size()) * 0.5f;
-    const float dist_to_bbox_center = scene_rdl2::math::distance(p, center(bbox));
+    const float distance = scene_rdl2::math::distance(p, center(bbox));
 
-    /// TODO: find tighter bounds 
-    // Normalize a and b by dividing by the scene scale
-    const float b = (dist_to_bbox_center + radius) / sceneDiameter;
-    const float a = (dist_to_bbox_center - radius) / sceneDiameter;
-
-    if (a <= 0.f || b == 0.f) {
+    // if inside the bounding box, always split
+    if (distance <= radius) {
         return 0.f;
     }
-    const float b_minus_a = b - a;
 
-    // [1] eq (8) E[g] = 1 / ab
-    const float distanceMean = 1.f / (a * b);
-    const float distanceMean2 = distanceMean*distanceMean;
+    // Find the size of the bbox (i.e. angle made with the bounding sphere) from the perspective of the point
+    // theta should be between 0 and 90 deg (this is the half angle)
+    const float lightSpreadTheta = scene_rdl2::math::asin(radius / distance); 
+    // map to the [0,1] range by dividing by pi/2
+    const float lightSpread = scene_rdl2::math::min(lightSpreadTheta * scene_rdl2::math::sTwoOverPi, 1.f);
+    // take the sqrt to boost the lower values (i.e. raise the chance of splitting).
+    // when splitting is low, it results in scenes with high amounts of noise -- this is 
+    // why we generally bias more splitting over less.
+    const float lightSpreadSqrt = sqrt(lightSpread);
+    // map the energy variance to [0, 1] range, then take power of 4 to boost splitting chances
+    // then map to [0.5, 1] so that we only ever boost (not lower) splitting chances
+    // this is the simplified version of the calculation (1 - (1 / (1 + sqrt(x)))^4 ) + 1) / 2
+    // (this calculation is primarily based on experimentation; finding what works best)
+    float arg = 1.f + sqrt(node.getEnergyVariance());
+    float arg2 = arg * arg;
+    float energyVarianceMapped = 1.f - (0.5f / (arg2*arg2));
 
-    // [1] eq (9) V[g] =  [(b^3 - a^3) / (3(b - a) * a^3 * b^3)] - [1 / a^2b^2]
-    const float a2 = a*a;
-    const float b2 = b*b;
-    const float a3 = a2*a;
-    const float b3 = b2*b;
-    const float distanceVariance = ((b3 - a3) / (3 * b_minus_a * a3 * b3)) - (1.f / (a2*b2));
-
-    // [1] eq (10) (total light variance) omega^2 = [V[e] * V[g] + V[e] * E[g]^2 + E[e]^2 * V[g]]
-    // where V[e] is the precomputed variance of the energy stored in the cluster
-    float lightVariance = node.getEnergyVariance()*distanceVariance 
-                        + node.getEnergyVariance()*distanceMean2 
-                        + node.getEnergyMean()*node.getEnergyMean()*distanceVariance;
-
-    // remap light variance to [0, 1] range using (1 / 1 + omega)^(1/4)
-    float powArg1 = 1.f / (1.f + sqrt(lightVariance)); 
-    lightVariance = lightVariance == 0.f ? 0.f : pow(powArg1, 0.25);
-    return lightVariance;
+    // energy variance is often 0, and in those cases we don't want to completely ignore the distance 
+    // variance. So, let's instead bias the distance variance using the energy variance
+    return 1 - scene_rdl2::math::bias_Schlick(lightSpreadSqrt, energyVarianceMapped);
 }
 
 void LightTree::sampleRecurse(float* lightSelectionPdfs, int nodeIndices[2], const scene_rdl2::math::Vec3f& p, 
@@ -335,8 +327,7 @@ void LightTree::sampleRecurse(float* lightSelectionPdfs, int nodeIndices[2], con
 
         // Decide whether to traverse both subtrees (if the splitting heuristic is below the threshold/sampling quality)
         // OR to stop traversing and choose a light using importance sampling. 
-        float continueCost = splittingHeuristic(node, p, mNodes[0], mSceneDiameter);
-        if (continueCost > mSamplingThreshold) {
+        if (mSamplingThreshold == 0.f || splittingHeuristic(node, p) > mSamplingThreshold) {
             // must generate new random number for every subtree traversal
             float r;
             lightSelectionSample.getSample(&r, nonMirrorDepth);

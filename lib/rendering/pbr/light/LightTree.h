@@ -28,7 +28,7 @@ class LightTree
 {
 public:
     /// Constructor
-    LightTree(float sceneDiameter, float samplingThreshold);
+    LightTree(float samplingThreshold);
 
     /// Destructor
     ~LightTree() {};
@@ -55,9 +55,6 @@ public:
                 const scene_rdl2::math::Vec3f* cullingNormal,
                 const IntegratorSample1D& lightSelectionSample,
                 const int* lightIdMap, int nonMirrorDepth) const;
-
-    /// Sets the scene diameter (size of the scene bvh's bounding box)
-    void setSceneDiameter(float sceneDiameter) { mSceneDiameter = sceneDiameter; }
 
     /// Sets the sampling threshold (which determines the amount of adaptive tree splitting)
     void setSamplingThreshold(float threshold) { mSamplingThreshold = threshold; }

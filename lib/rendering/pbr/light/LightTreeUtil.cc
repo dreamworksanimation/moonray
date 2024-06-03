@@ -176,9 +176,9 @@ void LightTreeNode::calcEnergyVariance(uint lightCount, uint startIndex, const L
 
         float diff = luminance(light->getRadiance()) - mEnergyMean;
         diff *= diff;
-        diff /= lightCount;
         mEnergyVariance += diff;
     }
+    mEnergyVariance /= lightCount;
 }
 
 

@@ -314,7 +314,6 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     // since that's where the lights' bounding boxes are set.
 
     // Get parameters for adaptive light sampling
-    const float sceneDiameter = scene_rdl2::math::length(mEmbreeAccel->getBounds().size());
     const pbr::LightSamplingMode lightSamplingMode = 
                     static_cast<pbr::LightSamplingMode>(vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingMode));
     const float lightSamplingQuality = vars.get(scene_rdl2::rdl2::SceneVariables::sLightSamplingQuality);
@@ -324,7 +323,7 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
     MNRY_ASSERT(acc);
     LightPtrList* lightPtrList = mLightSets.data();
     for (unsigned int i=0; i<mLightSets.size(); i++, acc++, lightPtrList++) {
-        acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice, sceneDiameter, lightSamplingQuality);
+        acc->init(lightPtrList->data(), lightPtrList->size(), rtcDevice, lightSamplingQuality);
         if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
             RenderTimer buildLightBVHTimer(stats.mBuildLightBVHTime);
             acc->buildSamplingTree();
@@ -334,7 +333,7 @@ Scene::preFrame(const LightAovs &lightAovs, mcrt_common::ExecutionMode execution
 
     // Finally the visible light set
     size_t visibleLightCount = mVisibleLightSet.getLightCount();
-    acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice, sceneDiameter, lightSamplingQuality);
+    acc->init(mVisibleLightSet.getLights(), visibleLightCount, rtcDevice, lightSamplingQuality);
     if (lightSamplingMode == pbr::LightSamplingMode::ADAPTIVE) {
         RenderTimer buildLightBVHTimer(stats.mBuildLightBVHTime);
         acc->buildSamplingTree();

@@ -58,7 +58,6 @@
     HUD_MEMBER(uint32_t, mUnboundedLightCount);                                 \
     HUD_PTR(LightTreeNode*, mNodesPtr);                                         \
     HUD_PTR(uint*, mLightIndicesPtr);                                           \
-    HUD_MEMBER(float, mSceneDiameter);                                          \
     HUD_MEMBER(float, mSamplingThreshold)
 
 
@@ -70,7 +69,6 @@
     HUD_VALIDATE(LightTree, mUnboundedLightCount);   \
     HUD_VALIDATE(LightTree, mNodesPtr);              \
     HUD_VALIDATE(LightTree, mLightIndicesPtr);       \
-    HUD_VALIDATE(LightTree, mSceneDiameter);         \
     HUD_VALIDATE(LightTree, mSamplingThreshold);     \
     HUD_END_VALIDATION
 
