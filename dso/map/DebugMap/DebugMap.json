@@ -57,7 +57,7 @@
             "label": "primitive attribute name",
             "aliases": [ "primitive attribute name" ],
             "type": "String",
-            "default": "\"surface_st\"",
+            "default": "\"st\"",
             "comment": "the name of primitive attribute to displayed when attribute 'map type' is set to 'primitive attribute'",
             "group": "Primitive Attribute"
         },

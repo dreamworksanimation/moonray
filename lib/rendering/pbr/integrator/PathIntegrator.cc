@@ -226,7 +226,7 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
         shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(cryptoUVAttributeName);
         mCryptoUVAttrIdx = cryptoUVAttrKey.getIndex();
     } else {
-        mCryptoUVAttrIdx = shading::StandardAttributes::sSurfaceST;
+        mCryptoUVAttrIdx = shading::StandardAttributes::sSt;
     }
 
     // initialize path guiding

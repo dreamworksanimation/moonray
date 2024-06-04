@@ -58,9 +58,15 @@ public:
     bool initTextureSt()
     {
         mTextureRate = shading::RATE_UNKNOWN;
-        const shading::TypedAttributeKey<scene_rdl2::math::Vec2f>& stKey = shading::StandardAttributes::sSurfaceST;
+        shading::TypedAttributeKey<scene_rdl2::math::Vec2f> stKey = shading::StandardAttributes::sSurfaceST;
         if (!mPrimitiveAttributeTable.hasAttribute(stKey)) {
-            return false;
+            stKey = shading::StandardAttributes::sSt;
+            if (!mPrimitiveAttributeTable.hasAttribute(stKey)) {
+                stKey = shading::StandardAttributes::sUv;
+                if (!mPrimitiveAttributeTable.hasAttribute(stKey)) {
+                    return false;
+                }
+            }
         }
         const shading::PrimitiveAttribute<scene_rdl2::math::Vec2f>& textureSt =
             mPrimitiveAttributeTable.getAttribute(stKey);

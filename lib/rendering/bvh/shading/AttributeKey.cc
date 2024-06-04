@@ -16,6 +16,7 @@ std::vector<int8_t> AttributeKey::sHasDerivatives;
 std::map<std::pair<std::string, AttributeType>, int> AttributeKey::sTable;
 int AttributeKey::sNumKeys = 0;
 
+TypedAttributeKey<math::Vec2f> StandardAttributes::sSt;
 TypedAttributeKey<math::Vec2f> StandardAttributes::sUv;
 TypedAttributeKey<math::Vec2f> StandardAttributes::sClosestSurfaceST;
 TypedAttributeKey<math::Vec2f> StandardAttributes::sSurfaceST;
