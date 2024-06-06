@@ -1060,7 +1060,7 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     pipelineCompileOptions.usesMotionBlur = true;
     pipelineCompileOptions.traversableGraphFlags = OPTIX_TRAVERSABLE_GRAPH_FLAG_ALLOW_ANY;
     pipelineCompileOptions.numPayloadValues = 2;
-    pipelineCompileOptions.numAttributeValues = 2;
+    pipelineCompileOptions.numAttributeValues = 5;
     //pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_DEBUG;
     pipelineCompileOptions.exceptionFlags = OPTIX_EXCEPTION_FLAG_NONE;
     pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";

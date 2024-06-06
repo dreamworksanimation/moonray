@@ -276,6 +276,7 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
         RTCHitN_Ng_z(hits, N, index) = pHit.z;
         // v will be computed at postIntersect
         RTCHitN_u(hits, N, index) = phi;
+        RTCHitN_v(hits, N, index) = 0.f;
     }
 }
 

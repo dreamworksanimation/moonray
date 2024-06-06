@@ -41,8 +41,11 @@ struct HitGroupData
     enum Type {
         TRIANGLE_MESH,
         QUAD_MESH,
-        ROUND_CURVES,
-        CURVES,
+        FLAT_LINEAR_CURVES,
+        FLAT_BSPLINE_CURVES,
+        FLAT_BEZIER_CURVES,
+        ROUND_LINEAR_CURVES,
+        ROUND_CUBIC_BSPLINE_CURVES,
         POINTS,
         SPHERE,
         BOX

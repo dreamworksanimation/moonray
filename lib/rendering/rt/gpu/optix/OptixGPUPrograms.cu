@@ -53,6 +53,30 @@ void *reconstructPointer(const unsigned int i0, const unsigned int i1)
     return ptr;
 }
 
+
+union PackedFloat
+{
+    unsigned int ibits;
+    float fbits;
+};
+
+inline __device__
+float asFloat(const unsigned int i)
+{
+    PackedFloat pf;
+    pf.ibits = i;
+    return pf.fbits;
+}
+
+inline __device__
+unsigned int asInt(const float f)
+{
+    PackedFloat pf;
+    pf.fbits = f;
+    return pf.ibits;
+}
+
+
 template<typename T>
 inline __device__
 T *getPRD()
@@ -164,10 +188,10 @@ void __closesthit__()
             {
                 float3 verts[3]; 
                 optixGetTriangleVertexData(optixGetGASTraversableHandle(),
-                                        optixGetPrimitiveIndex(),
-                                        optixGetSbtGASIndex(),
-                                        optixGetRayTime(),
-                                        verts);
+                                           optixGetPrimitiveIndex(),
+                                           optixGetSbtGASIndex(),
+                                           optixGetRayTime(),
+                                           verts);
                 // Compute the geometric normal.  We do not need to normalize this (Embree does
                 //  not normalize and we want to exactly match its behavior.)
                 float3 ng = cross(verts[1] - verts[0], verts[2] - verts[0]);
@@ -193,8 +217,88 @@ void __closesthit__()
                 }
             }
             break;
+            case HitGroupData::SPHERE:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
+                prd->mV = 0.f;  // computed in cpu side postIntersect()
+                prd->mPrimID = 0;
+            }
+            break;
+            case HitGroupData::BOX:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
+                prd->mV = asFloat(optixGetAttribute_4());
+                prd->mPrimID = 0;
+            }
+            break;
+            case HitGroupData::POINTS:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = 0.f; // always zeros for points
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
+            case HitGroupData::FLAT_LINEAR_CURVES:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
+            case HitGroupData::FLAT_BSPLINE_CURVES:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
+            case HitGroupData::FLAT_BEZIER_CURVES:
+            {
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1()); 
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
+            case HitGroupData::ROUND_LINEAR_CURVES:
+            {
+                prd->mNgX = 0.f; // TODO
+                prd->mNgY = 0.f; 
+                prd->mNgZ = 1.f;
+                prd->mU = optixGetCurveParameter();
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
+            case HitGroupData::ROUND_CUBIC_BSPLINE_CURVES:
+            {
+                prd->mNgX = 0.f; // TODO
+                prd->mNgY = 0.f; 
+                prd->mNgZ = 1.f;
+                prd->mU = optixGetCurveParameter();
+                prd->mV = 0.f;
+                prd->mPrimID = optixGetPrimitiveIndex();
+            }
+            break;
             default:
-                // TODO: Other geometry types
+                // Should never get here
                 prd->mNgX = 0.f;
                 prd->mNgY = 0.f; 
                 prd->mNgZ = 1.f;
@@ -313,17 +417,17 @@ void __intersection__box()
 
     const bool isSingleSided = data->mIsSingleSided;
     const bool isNormalReversed = data->mIsNormalReversed;
-    const float3 minCoord = {-xLength * 0.5f, -yHeight * 0.5f, -zWidth * 0.5f};
-    const float3 maxCoord = {xLength * 0.5f, yHeight * 0.5f, zWidth * 0.5f};
+    const float3 pMin = {-xLength * 0.5f, -yHeight * 0.5f, -zWidth * 0.5f};
+    const float3 pMax = {xLength * 0.5f, yHeight * 0.5f, zWidth * 0.5f};
 
     float t0 = -FLOAT_MAX;
     float t1 = FLOAT_MAX;
     {
         const float invDirX = 1.f / rayDir.x;
-        float tNearX = (minCoord.x - rayOrigin.x) * invDirX;
-        float tFarX = (maxCoord.x - rayOrigin.x) * invDirX;
+        float tNearX = (pMin.x - rayOrigin.x) * invDirX;
+        float tFarX = (pMax.x - rayOrigin.x) * invDirX;
         // Note that tNearX or tFarX can be NaN if rayDir.x == 0 
-        // and min/maxCoord.x == rayOrigin.x.  This is an indeterminate situation
+        // and min/pMax.x == rayOrigin.x.  This is an indeterminate situation
         // where the ray lies entirely in the YZ plane and grazes the box at the
         // min/max X coordinate.  We make the simplification that the hit/miss
         // is "don't care" when this happens.
@@ -341,8 +445,8 @@ void __intersection__box()
     }
     {
         const float invDirY = 1.f / rayDir.y;
-        float tNearY = (minCoord.y - rayOrigin.y) * invDirY;
-        float tFarY = (maxCoord.y - rayOrigin.y) * invDirY;
+        float tNearY = (pMin.y - rayOrigin.y) * invDirY;
+        float tFarY = (pMax.y - rayOrigin.y) * invDirY;
         if (tNearY > tFarY) {
             swapf(tNearY, tFarY);
         }
@@ -354,8 +458,8 @@ void __intersection__box()
     }
     {
         const float invDirZ = 1.f / rayDir.z;
-        float tNearZ = (minCoord.z - rayOrigin.z) * invDirZ;
-        float tFarZ = (maxCoord.z - rayOrigin.z) * invDirZ;
+        float tNearZ = (pMin.z - rayOrigin.z) * invDirZ;
+        float tFarZ = (pMax.z - rayOrigin.z) * invDirZ;
         if (tNearZ > tFarZ) {
             swapf(tNearZ, tFarZ);
         }
@@ -377,7 +481,45 @@ void __intersection__box()
         }
     }
 
-    optixReportIntersection(tHit, 0);
+    // compute hit position
+    float3 pHit = rayOrigin + tHit * rayDir;
+
+    // Needed to check on which face of the box a ray intersects
+    static float constexpr sEpsilonEdge = 1e-5f;
+
+    float3 Ng;
+    float u, v;
+    // local space normal will be transformed
+    // to parent space at postIntersect
+    if (pHit.x < pMin.x * (1 - sEpsilonEdge) ||
+        pHit.x > pMax.x * (1 - sEpsilonEdge)) { // left or right face
+        Ng.x = pHit.x >= 0.f ? 1.f : -1.f;
+        Ng.y = 0.0f;
+        Ng.z = 0.0f;
+        u = (pHit.y - pMin.y) / (pMax.y - pMin.y);
+        v = (pHit.z - pMin.z) / (pMax.z - pMin.z);
+    } else if (pHit.y < pMin.y * (1 - sEpsilonEdge) ||
+               pHit.y > pMax.y * (1 - sEpsilonEdge)) { // top or bottom face
+        Ng.x = 0.0f;
+        Ng.y = pHit.y >= 0.f ? 1.f : -1.f;
+        Ng.z = 0.0f;
+        u = (pHit.x - pMin.x) / (pMax.x - pMin.x);
+        v = (pHit.z - pMin.z) / (pMax.z - pMin.z);
+    } else { // front or back face
+        Ng.x = 0.0f;
+        Ng.y = 0.0f;
+        Ng.z = pHit.z >= 0.f ? 1.f : -1.f;
+        u = (pHit.x - pMin.x) / (pMax.x - pMin.x);
+        v = (pHit.y - pMin.y) / (pMax.y - pMin.y);
+    }
+
+    optixReportIntersection(tHit,
+                            0,
+                            asInt(Ng.x),
+                            asInt(Ng.y),
+                            asInt(Ng.z),
+                            asInt(u),
+                            asInt(v));
 }
 
 __inline__ __device__
@@ -550,7 +692,12 @@ void __intersection__flat_bezier_curve()
     }
 
     if (hit) {
-        optixReportIntersection(closestHitT, 0);
+        optixReportIntersection(closestHitT,
+                                0,
+                                asInt(-rayDir.x),
+                                asInt(-rayDir.y),
+                                asInt(-rayDir.z),
+                                asInt(0.f));
     }
 }
 
@@ -644,7 +791,12 @@ void __intersection__flat_bspline_curve()
     }
 
     if (hit) {
-        optixReportIntersection(closestHitT, 0);
+        optixReportIntersection(closestHitT,
+                                0,
+                                asInt(-rayDir.x),
+                                asInt(-rayDir.y),
+                                asInt(-rayDir.z),
+                                asInt(0.f));
     }
 }
 
@@ -708,8 +860,16 @@ void __intersection__flat_linear_curve()
     const float r = p.w;
     const float r2 = r * r;
 
+    // The normal is actually the tangent.  (This is what Embree does.)
+    float4 tangent = cp[1] - cp[0];
+
     if (d2 <= r2 && rayTmin <= t && t <= rayTmax && t > 2.f * r / dirLength) {
-        optixReportIntersection(t, 0);
+        optixReportIntersection(t,
+                                0,
+                                asInt(tangent.x),
+                                asInt(tangent.y),
+                                asInt(tangent.z),
+                                asInt(u));
     }
 }
 
@@ -738,36 +898,40 @@ void __intersection__points()
     const float3 p = make_float3(p4);
     const float r = p4.w;
     const float r2 = r * r;
-
-    const float3 rayOrg = optixGetObjectRayOrigin();
-    float3 rayDir = optixGetObjectRayDirection();
+    const float3 o = optixGetObjectRayOrigin();
+    const float3 d = optixGetObjectRayDirection();
     const float rayTnear = optixGetRayTmin();
     const float rayTfar = optixGetRayTmax();
 
-    const float3 v = p - rayOrg;
-    if (dot(rayDir, v) < 0.f) {
+    const float3 u = p - o;
+    if (dot(d, u) < 0.0f) {
         // ray is travelling away from sphere centre
         return;
     }
-    if (dot(v, v) < r2) {
+    if (dot(u, u) < r2) {
         // ray origin is inside sphere
         return;
     }
-
-    const float3 dxv = cross(rayDir, v);
-    const float d2 = dot(rayDir, rayDir);
-    const float D = d2 * r2 - dot(dxv, dxv);
-    if (D < 0.f) {
+    const float3 v = cross(d, u);
+    float v2 = dot(v, v);
+    float d2 = dot(d, d);
+    float r2d2 = r2 * d2;
+    float D = r2d2 - v2;
+    if (D < 0.0f) {
         // no intersections
         return;
     }
-
-    const float Q = sqrtf(D);
-    const float3 dxdxv = cross(rayDir, dxv);
-    float3 Ng = (dxdxv - Q * rayDir) / d2;
-    const float t = length(v + Ng);
+    float s = sqrt(D);
+    const float3 w = cross(d, v);
+    const float3 rn = (1.0f / d2) * (w - s * d);
+    float t = length(u + rn) * rsqrt(d2);
     if (rayTnear < t && t < rayTfar) {
-        optixReportIntersection(t, 0);
+        float3 Ng = (1.0f / r) * rn;
+        optixReportIntersection(t,
+                                0,
+                                asInt(Ng.x),
+                                asInt(Ng.y),
+                                asInt(Ng.z));
     }
 }
 
@@ -804,7 +968,6 @@ void __intersection__sphere()
     if (t0 > t1) {
         swapf(t0, t1);
     }
-
     // compute intersection distance along ray
     if (t0 > rayTfar || t1 < rayTnear) {
         return;
@@ -818,17 +981,13 @@ void __intersection__sphere()
     }
     // compute hit position and phi
     float3 pHit = rayOrigin + tHit * rayDir;
-
-    float phi;
     if (pHit.x == 0.0f && pHit.y == 0.0f) {
-        phi = 0.f;
-    } else {
-        phi = atan2f(pHit.y, pHit.x);
-        if (phi < 0.0f) {
-            phi += 2.f * M_PI;
-        }
+        pHit.x = 1e-5f * radius;
     }
-
+    float phi = atan2f(pHit.y, pHit.x);
+    if (phi < 0.0f) {
+        phi += 2.f * M_PI;
+    }
     float zMin = data->sphere.mZMin;
     float zMax = data->sphere.mZMax;
     float phiMax = data->sphere.mPhiMax;
@@ -842,21 +1001,22 @@ void __intersection__sphere()
         }
         tHit = t1;
         pHit = rayOrigin + tHit * rayDir;
-
-        float phi;
         if (pHit.x == 0.0f && pHit.y == 0.0f) {
-            phi = 0.f;
-        } else {
-            phi = atan2f(pHit.y, pHit.x);
-            if (phi < 0.0f) {
-                phi += 2.f * M_PI;
-            }
+            pHit.x = 1e-5f * radius;
         }
-
+        phi = atan2f(pHit.y, pHit.x);
+        if (phi < 0.0f) {
+            phi += 2.f * M_PI;
+        }
         if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
             return;
         }
     }
 
-    optixReportIntersection(tHit, 0);
+    optixReportIntersection(tHit,
+                            0,
+                            asInt(pHit.x),
+                            asInt(pHit.y),
+                            asInt(pHit.z),
+                            asInt(phi));
 }

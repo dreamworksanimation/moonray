@@ -279,13 +279,13 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                             if (!scene_rdl2::math::isEqual(rs->mRay.v, rsCPU.mRay.v, 0.001f)) {
                                 std::cout << "ray: " << i << " embree v: " << rsCPU.mRay.v << " optix v: " << rs->mRay.v << std::endl;
                             }
-                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.x, rs->mRay.Ng.x, 0.001f)) {
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.x, rsCPU.mRay.Ng.x, 0.001f)) {
                                 std::cout << "ray: " << i << " embree Ng.x: " << rsCPU.mRay.Ng.x << " optix Ng.x: " << rs->mRay.Ng.x << std::endl;
                             }
-                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.y, rs->mRay.Ng.y, 0.001f)) {
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.y, rsCPU.mRay.Ng.y, 0.001f)) {
                                 std::cout << "ray: " << i << " embree Ng.y: " << rsCPU.mRay.Ng.y << " optix Ng.y: " << rs->mRay.Ng.y << std::endl;
                             }
-                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.z, rs->mRay.Ng.z, 0.001f)) {
+                            if (!scene_rdl2::math::isEqual(rs->mRay.Ng.z, rsCPU.mRay.Ng.z, 0.001f)) {
                                 std::cout << "ray: " << i << " embree Ng.z: " << rsCPU.mRay.Ng.z << " optix Ng.z: " << rs->mRay.Ng.z << std::endl;
                             }
                         }

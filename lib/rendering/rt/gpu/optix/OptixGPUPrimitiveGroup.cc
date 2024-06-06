@@ -304,14 +304,15 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
         rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
         rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
-        rec.mData.mType = HitGroupData::ROUND_CURVES;
 
         // Specify the program group to use
         switch (curves->mType) {
         case OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR:
+            rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
             optixSbtRecordPackHeader(pgs["roundLinearCurvesHG"], &rec);
         break;
         case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
+            rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
             optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesHG"], &rec);
         break;
         default:
@@ -334,14 +335,15 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
         rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
         rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
-        rec.mData.mType = HitGroupData::ROUND_CURVES;
 
         // Specify the program group to use
         switch (curves->mType) {
         case OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR:
+            rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
             optixSbtRecordPackHeader(pgs["roundLinearCurvesMBHG"], &rec);
         break;
         case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
+            rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
             optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesMBHG"], &rec);
         break;
         default:
@@ -370,7 +372,6 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         // Fill in the primitive type-specific properties
         OptixGPUCurve* curve = dynamic_cast<OptixGPUCurve*>(prim);
         if (curve) {
-            rec.mData.mType = HitGroupData::CURVES;
             rec.mData.curve.mMotionSamplesCount = curve->mMotionSamplesCount;
             rec.mData.curve.mSegmentsPerCurve = curve->mSegmentsPerCurve;
             rec.mData.curve.mIndices = curve->mIndices.ptr();
@@ -378,15 +379,19 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
             rec.mData.curve.mControlPoints = curve->mControlPoints.ptr();
             switch (curve->mBasis) {
             case BEZIER:
+                rec.mData.mType = HitGroupData::FLAT_BEZIER_CURVES;
                 optixSbtRecordPackHeader(pgs["flatBezierCurveHG"], &rec);
             break;
             case BSPLINE:
+                rec.mData.mType = HitGroupData::FLAT_BSPLINE_CURVES;
                 optixSbtRecordPackHeader(pgs["flatBsplineCurveHG"], &rec);
             break;
             case LINEAR:
+                rec.mData.mType = HitGroupData::FLAT_LINEAR_CURVES;
                 optixSbtRecordPackHeader(pgs["flatLinearCurveHG"], &rec);
             break;
             default:
+                MNRY_ASSERT_REQUIRE(false);
             break;
             }
         }
