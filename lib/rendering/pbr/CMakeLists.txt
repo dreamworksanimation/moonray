@@ -318,6 +318,7 @@ target_sources(${component}
         camera/Camera.cc
         camera/BakeCamera.cc
         camera/DomeMaster3DCamera.cc
+        camera/FisheyeCamera.cc
         camera/OrthographicCamera.cc
         camera/PerspectiveCamera.cc
         camera/ProjectiveCamera.cc
