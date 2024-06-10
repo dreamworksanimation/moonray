@@ -670,7 +670,7 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         MNRY_ASSERT_REQUIRE(false);
         break;
     }
-    
+
     // Record the bounding box of all vertices
     scene_rdl2::math::Vec3fa vMin(std::numeric_limits<float>::max(),
                                   std::numeric_limits<float>::max(),
@@ -681,7 +681,7 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 
     if (vertsPerFace == 3) {
         gpuMesh->mNumVertices = mesh.mVertexCount;
-        gpuMesh->mNumFaces = mesh.mFaceCount; 
+        gpuMesh->mNumFaces = mesh.mFaceCount;
 
         // When a mesh uses motion blur, the vertices of each motion key are stored consecutively in a single buffer.
         // According to Nvidia, GAS construction is most efficient when each motion buffer is 16-byte aligned. This
@@ -703,7 +703,7 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             gpuIndices[i * 3 + 0] = indices[i * 3 + 0];
             gpuIndices[i * 3 + 1] = indices[i * 3 + 1];
             gpuIndices[i * 3 + 2] = indices[i * 3 + 2];
-            
+
             assert(gpuIndices[i * 3 + 0] < gpuMesh->mNumVertices);
             assert(gpuIndices[i * 3 + 1] < gpuMesh->mNumVertices);
             assert(gpuIndices[i * 3 + 2] < gpuMesh->mNumVertices);
@@ -731,7 +731,7 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
                 if (vtx.z > vMax.z) vMax.z = vtx.z;
             }
         }
-        
+
         gpuMesh->mBounds[0].x = vMin.x;
         gpuMesh->mBounds[0].y = vMin.y;
         gpuMesh->mBounds[0].z = vMin.z;
@@ -804,7 +804,7 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             for (size_t i = 0; i < mesh.mVertexCount; i++) {
                 scene_rdl2::math::Vec3fa vtx = *reinterpret_cast<const scene_rdl2::math::Vec3fa*>(&vertices[offset + stride * i]);
                 gpuVertices[motionKeyOffset + i] = {vtx.x, vtx.y, vtx.z};
-                
+
                 if (vtx.x < vMin.x) vMin.x = vtx.x;
                 if (vtx.y < vMin.y) vMin.y = vtx.y;
                 if (vtx.z < vMin.z) vMin.z = vtx.z;
@@ -1084,7 +1084,7 @@ MetalGPUAccelerator::MetalGPUAccelerator(bool allowUnsupportedFeatures,
                                      errorMsg)) {
             return;
         }
-        
+
         if (!createIntersectionFunctionTables(pso.linkedFunctions,
                                               pso.rayGenPSO,
                                               &pso.intersectFuncTable,
@@ -1130,7 +1130,7 @@ MetalGPUAccelerator::MetalGPUAccelerator(bool allowUnsupportedFeatures,
             return;
         }
     }
-    
+
     scene_rdl2::logging::Logger::info("GPU: Setup complete");
 }
 
@@ -1163,7 +1163,7 @@ MetalGPUAccelerator::~MetalGPUAccelerator()
         [mModule release];
         mModule = nil;
     }
-    
+
     if (mContext != nullptr) {
         [mContext release];
         mContext = nil;
@@ -1187,7 +1187,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                     std::vector<std::string>& warningMsgs,
                     std::string* errorMsg)
 {
-    
+
     // Extremely similar to EmbreeAccelerator.cc buildBVHBottomUp().  This is intentional so
     // it behaves the same and is easy to maintain and debug.
 
@@ -1203,7 +1203,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
     // Do a bottom up traversal so that referenced BVH is built first
     const scene_rdl2::rdl2::SceneObjectVector& references =
         geometry->get(scene_rdl2::rdl2::Geometry::sReferenceGeometries);
-    
+
     for (const auto& ref : references) {
         if (!ref->isA<scene_rdl2::rdl2::Geometry>()) {
             continue;
@@ -1219,7 +1219,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                             warningMsgs,
                             errorMsg);
     }
-    
+
     // We disable parallelism here to solve the non-deterministic
     // issue for some hair/fur related scenes.
     // Also, testing shows no speed gain is achieved when this for() loop is parallelized.
@@ -1238,16 +1238,16 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
         }
     } else {
         MetalGPUPrimitiveGroup *aGroup = rootGroup;
-        
+
         MetalGPUBVHBuilder geomBuilder(context,
                                   allowUnsupportedFeatures,
                                   layer,
                                   geometry,
                                   aGroup,
                                   groups);
-        
+
         unsigned int aCount = procedural->getPrimitivesCount();
-        
+
         procedural->forEachPrimitive(geomBuilder, doParallel);
 
         warningMsgs.insert(warningMsgs.end(),
@@ -1301,7 +1301,7 @@ MetalGPUAccelerator::build(const scene_rdl2::rdl2::Layer *layer,
     unsigned int baseID = 0;
     mRootGroup->setAccelStructBaseID(baseID);
     mRootGroup->hasMotionBlur(&mHasMotionBlur);
-    
+
     for (auto& groupEntry : mSharedGroups) {
         MetalGPUPrimitiveGroup *group = groupEntry.second;
         group->setAccelStructBaseID(baseID);
@@ -1348,18 +1348,18 @@ MetalGPUAccelerator::createIntersectionFunctions(std::string* errorMsg)
             std::string full_name = std::string(functionNames[i]) + group_ext[group];
             const char *name = full_name.c_str();
             NSError *error = NULL;
-            
+
             desc.name = [@(name) copy];
             id<MTLFunction> function = [mModule newFunctionWithDescriptor:desc error:&error];
-            
+
             if (function == nil) {
                 NSString *err = [error localizedDescription];
                 std::string errors = [err UTF8String];
-                
+
                 *errorMsg = "Error fetching intersection function \"" + std::string(name) + ": " + errors;
                 return false;
             }
-            
+
             function.label = [@(name) copy];
             [mPSOs[group].linkedFunctions addObject:function];
         }
@@ -1377,7 +1377,7 @@ MetalGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
             MetalGPUPrimitiveGroup *group = groupEntry.second;
             group->getSBTRecords(hitgroupRecs, mUsedIndirectResources);
         }
-        
+
         mUsedIndirectResources.erase(
                     std::remove_if(begin(mUsedIndirectResources), end(mUsedIndirectResources),
                                    [](id<MTLBuffer> b) { return b == nil; }),
@@ -1397,7 +1397,7 @@ void
 MetalGPUAccelerator::prepareEncoder(const uint32_t queueIdx) const
 {
     MNRY_ASSERT_REQUIRE(queueIdx < mEncoderStates.size());
-    
+
     int psoIdx = mHasMotionBlur;
 
     if (!mEncoderStates[queueIdx].mQueue) {
@@ -1406,7 +1406,7 @@ MetalGPUAccelerator::prepareEncoder(const uint32_t queueIdx) const
     id<MTLCommandBuffer> commandBuffer = [mEncoderStates[queueIdx].mQueue commandBuffer];
     id<MTLComputeCommandEncoder> encoder =
         [commandBuffer computeCommandEncoderWithDispatchType:MTLDispatchTypeConcurrent];
-    
+
     // Setup the parameters
     [encoder setComputePipelineState:mPSOs[psoIdx].rayGenPSO];
     [encoder setBuffer:mParamsBuf[queueIdx].deviceptr()
@@ -1422,7 +1422,7 @@ MetalGPUAccelerator::prepareEncoder(const uint32_t queueIdx) const
     [encoder setBuffer:mDebugBuf.deviceptr()
                 offset:0
                atIndex:4];
-    
+
     // Buffer bindings to intersect functions
     [mPSOs[psoIdx].intersectFuncTable setBuffer:mHitGroupRecordBuf.deviceptr()
                                          offset:0
@@ -1441,7 +1441,7 @@ MetalGPUAccelerator::prepareEncoder(const uint32_t queueIdx) const
     [encoder useResources:mUsedIndirectResources.data()
                     count:mUsedIndirectResources.size()
                     usage:MTLResourceUsageRead];
-    
+
     mEncoderStates[queueIdx].commandBuffer = commandBuffer;
     mEncoderStates[queueIdx].encoder = encoder;
 }
@@ -1462,6 +1462,13 @@ MetalGPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t queueIdx,
 }
 
 void
+MetalGPUAccelerator::intersect(const uint32_t numRays,
+                               const GPURay* rays) const
+{
+    // not yet implemented
+}
+
+void
 MetalGPUAccelerator::occluded(const uint32_t queueIdx,
                               const uint32_t numRays,
                               const GPURay* rays,
@@ -1474,7 +1481,7 @@ MetalGPUAccelerator::occluded(const uint32_t queueIdx,
     MNRY_ASSERT_REQUIRE(numRays <= mRaysBufSize);
     // Ensure getBundledOcclRaysBufUMA was called to allocate the cpuRays pointer for this queue
     MNRY_ASSERT_REQUIRE(cpuRays == [mEncoderStates[queueIdx].cpuBuffer contents]);
-    
+
     // Setup the global GPU parameters
     MetalGPUParams &params(*mParamsBuf[queueIdx].cpu_ptr());
     params.mCPURays = [mEncoderStates[queueIdx].cpuBuffer gpuAddress];
@@ -1486,7 +1493,7 @@ MetalGPUAccelerator::occluded(const uint32_t queueIdx,
     if (!mEncoderStates[queueIdx].encoder) {
         prepareEncoder(queueIdx);
     }
-    
+
     // Dispatch the kernel
     const int executionWidth = 128;
     MTLSize threadsPerThreadgroup = MTLSizeMake(executionWidth, 1, 1);
@@ -1502,7 +1509,7 @@ MetalGPUAccelerator::occluded(const uint32_t queueIdx,
     // Before waiting for the GPU to complete, use the time to set up the next
     // encoder
     prepareEncoder(queueIdx);
-    
+
     // Now block until the GPU is done
     [commandBuffer waitUntilCompleted];
 }

@@ -23,10 +23,10 @@
 #include <moonray/rendering/rt/gpu/GPUAccelerator.h>
 #include <scene_rdl2/common/fb_util/VariablePixelBuffer.h>
 
-#include <scene_rdl2/render/util/CpuSocketUtil.h>
 #include <scene_rdl2/render/util/Memory.h>
 
 #ifndef PLATFORM_APPLE
+#include <scene_rdl2/render/util/CpuSocketUtil.h>
 #include <scene_rdl2/render/util/ProcCpuAffinity.h>
 #endif
 
@@ -699,7 +699,7 @@ RenderDriver::setProcCpuAffinity(TLSInitParams& tlsInitParams)
         Logger::error(ostr.str());
         if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
     }
-#endif
+#endif // end ifndef PLATFORM_APPLE
 }
 
 RenderDriver::~RenderDriver()
@@ -2540,6 +2540,7 @@ void
 RenderDriver::setupCpuAffinityLogInfo(std::vector<std::string>& titleTbl,
                                       std::vector<std::string>& msgTbl) const
 {
+#ifndef PLATFORM_APPLE
     titleTbl.push_back("RenderPrep CPU-affinity");
     if (mEnableRenderPrepCpuAffinity) {
         if (mSocketAffinityDefStr.empty()) {
@@ -2565,6 +2566,7 @@ RenderDriver::setupCpuAffinityLogInfo(std::vector<std::string>& titleTbl,
     } else {
         msgTbl.push_back("disabled");
     }
+#endif // end ifndef PLATFORM_APPLE
 }
 
 //------------------------------------------------------------------------------------------

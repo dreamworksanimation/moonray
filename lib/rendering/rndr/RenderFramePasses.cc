@@ -28,7 +28,9 @@
 #include <moonray/rendering/pbr/sampler/PixelScramble.h>
 
 #include <scene_rdl2/common/math/Color.h>
+#ifndef PLATFORM_APPLE
 #include <scene_rdl2/render/util/CpuSocketUtil.h>
+#endif
 #include <scene_rdl2/render/util/ThreadPoolExecutor.h>
 
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_COUNT // See RuntimeVerify.h
@@ -98,7 +100,7 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     if (!PixSampleSpanRuntimeVerify::get()) {
         PixSampleSpanRuntimeVerify::init(fs.mWidth, fs.mHeight);
     }
-#   endif // end RUNTIME_VERIFY1    
+#   endif // end RUNTIME_VERIFY1
 
     MNRY_ASSERT(fs.mNumRenderThreads <= mcrt_common::getNumTBBThreads());
 
@@ -114,13 +116,14 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     std::string msg = "TBB MCRT thread pool";
     scene_rdl2::logging::Logger::info(msg);
     if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
-#   else // else TBB_MCRT_THREADPOOL
+#   else // moonray MCRT threadpool
     auto calcCpuIdSequential = [&](size_t threadId) -> size_t { return threadId; };
     auto calcCpuIdByTbl = [&](size_t threadId) -> size_t { return (*fs.mAffinityCpuIdTbl)[threadId]; };
     scene_rdl2::ThreadPoolExecutor::CalcCpuIdFunc calcCpuIdFunc = nullptr;
 
     std::ostringstream ostr;
     ostr << "MOONRAY MCRT thread pool";
+#   ifndef PLATFORM_APPLE
     if (fs.mEnableMcrtCpuAffinity) {
         driver->mEnableMcrtCpuAffinity = true;
         if (fs.mNumRenderThreads == std::thread::hardware_concurrency()) {
@@ -150,10 +153,9 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
             displayCpuAffinityMessage = true;
         }
     }
-#   ifdef PLATFORM_APPLE
-    scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, nullptr);
-#   else
     scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, calcCpuIdFunc);
+#   else // is PLATFORM_APPLE
+    scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, nullptr);
 #   endif // end ifndef PLATFORM_APPLE
 #   endif // end else TBB_MCRT_THREADPOOL
 #   endif // end ifndef FORCE_SINGLE_THREADED_RENDERING
