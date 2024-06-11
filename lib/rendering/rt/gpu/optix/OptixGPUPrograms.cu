@@ -10,6 +10,7 @@ using namespace moonray::rt;
 
 extern "C" __constant__ static OptixGPUParams params;
 
+#define EMBREE_INVALID_GEOMETRY_ID (static_cast<unsigned int>(-1))
 
 // Each ray has a PerRayData associated with it that is globally
 // available in all of the programs.  Inputs and outputs are passed via this
@@ -133,8 +134,8 @@ void __raygen__()
             params.mIsectBuf[idx.x].mPrimID = prd.mPrimID;
             params.mIsectBuf[idx.x].mEmbreeUserData = prd.mEmbreeUserData;
         } else {
-            params.mIsectBuf[idx.x].mEmbreeGeomID = -1;
-            params.mIsectBuf[idx.x].mPrimID = -1;
+            params.mIsectBuf[idx.x].mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
+            params.mIsectBuf[idx.x].mPrimID = 0;
             params.mIsectBuf[idx.x].mEmbreeUserData = 0;
         }
     } else {
@@ -249,31 +250,22 @@ void __closesthit__()
             break;
             case HitGroupData::FLAT_LINEAR_CURVES:
             {
-                prd->mNgX = asFloat(optixGetAttribute_0());
-                prd->mNgY = asFloat(optixGetAttribute_1()); 
-                prd->mNgZ = asFloat(optixGetAttribute_2());
-                prd->mU = asFloat(optixGetAttribute_3());
-                prd->mV = 0.f;
-                prd->mPrimID = optixGetPrimitiveIndex();
-            }
-            break;
-            case HitGroupData::FLAT_BSPLINE_CURVES:
-            {
-                prd->mNgX = asFloat(optixGetAttribute_0());
-                prd->mNgY = asFloat(optixGetAttribute_1()); 
-                prd->mNgZ = asFloat(optixGetAttribute_2());
-                prd->mU = asFloat(optixGetAttribute_3());
-                prd->mV = 0.f;
+                prd->mNgX = 0.f; // unused by MoonRay
+                prd->mNgY = 0.f; // unused by MoonRay
+                prd->mNgZ = 1.f; // unused by MoonRay
+                prd->mU = asFloat(optixGetAttribute_0());
+                prd->mV = 0.f; // always zero
                 prd->mPrimID = optixGetPrimitiveIndex();
             }
             break;
             case HitGroupData::FLAT_BEZIER_CURVES:
+            case HitGroupData::FLAT_BSPLINE_CURVES:
             {
-                prd->mNgX = asFloat(optixGetAttribute_0());
-                prd->mNgY = asFloat(optixGetAttribute_1()); 
-                prd->mNgZ = asFloat(optixGetAttribute_2());
-                prd->mU = asFloat(optixGetAttribute_3());
-                prd->mV = 0.f;
+                prd->mNgX = 0.f; // unused by MoonRay
+                prd->mNgY = 0.f; // unused by MoonRay
+                prd->mNgZ = 1.f; // unused by MoonRay
+                prd->mU = asFloat(optixGetAttribute_0());
+                prd->mV = asFloat(optixGetAttribute_1());
                 prd->mPrimID = optixGetPrimitiveIndex();
             }
             break;
@@ -315,8 +307,8 @@ void __closesthit__()
         prd->mNgZ = 0.f;
         prd->mU = 0.f;
         prd->mV = 0.f;
-        prd->mPrimID = -1;
-        prd->mEmbreeGeomID = -1; 
+        prd->mPrimID = 0;
+        prd->mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
         prd->mEmbreeUserData = 0;
     }
 }
@@ -645,11 +637,15 @@ void __intersection__flat_bezier_curve()
 
     bool hit = false;
     float closestHitT = rayTmax;
+    float isectU = 0.f;
+    float isectV = 0.f;
+
+    float deltaT = 1.f / static_cast<float>(segmentsPerCurve);
 
     float4 p1 = cp2d[0]; // The bezier basis at u=0 is {1, 0, 0, 0}
     float3 tangentVec = 3.f * make_float3(cp2d[1] - cp2d[0]);
     if (maxAbsComponent(tangentVec) < eps) {
-        float t2 = 1.f / static_cast<float>(segmentsPerCurve);
+        float t2 = deltaT;
         tangentVec = make_float3(evalBezier(cp2d, t2)) - make_float3(p1);
     }
     float3 n1 = p1.w * normalize({tangentVec.y, -tangentVec.x, 0.f});
@@ -659,7 +655,8 @@ void __intersection__flat_bezier_curve()
         float4 p0 = p1;
         float3 n0 = n1;
 
-        float t1 = static_cast<float>(i+1) / static_cast<float>(segmentsPerCurve);
+        float t0 = static_cast<float>(i) * deltaT;
+        float t1 = static_cast<float>(i+1) * deltaT;
         p1 = evalBezier(cp2d, t1);
 
         tangentVec = evalBezierDerivative(cp2d, t1);
@@ -689,15 +686,15 @@ void __intersection__flat_bezier_curve()
 
         hit = true;
         closestHitT = t;
+        isectU = t0 + u * deltaT;
+        isectV = 2.f * v - 1.f;
     }
 
     if (hit) {
         optixReportIntersection(closestHitT,
                                 0,
-                                asInt(-rayDir.x),
-                                asInt(-rayDir.y),
-                                asInt(-rayDir.z),
-                                asInt(0.f));
+                                asInt(isectU),
+                                asInt(isectV));
     }
 }
 
@@ -745,11 +742,15 @@ void __intersection__flat_bspline_curve()
 
     bool hit = false;
     float closestHitT = rayTmax;
+    float isectU = 0.f;
+    float isectV = 0.f;
+
+    float deltaT = 1.f / static_cast<float>(segmentsPerCurve);
 
     float4 p1 = evalBspline(cp2d, 0.f);
     float3 tangentVec = evalBsplineDerivative(cp2d, 0.f);
     if (maxAbsComponent(tangentVec) < eps) {
-        float t2 = 1.f / static_cast<float>(segmentsPerCurve);
+        float t2 = deltaT;
         tangentVec = make_float3(evalBspline(cp2d, t2)) - make_float3(p1);
     }
     float3 n1 = p1.w * normalize({tangentVec.y, -tangentVec.x, 0.f});
@@ -759,7 +760,8 @@ void __intersection__flat_bspline_curve()
         float4 p0 = p1;
         float3 n0 = n1;
 
-        float t1 = static_cast<float>(i+1) / static_cast<float>(segmentsPerCurve);
+        float t0 = static_cast<float>(i) * deltaT;
+        float t1 = static_cast<float>(i+1) * deltaT;
         p1 = evalBspline(cp2d, t1);
         tangentVec = evalBsplineDerivative(cp2d, t1);
         if (maxAbsComponent(tangentVec) < eps) {
@@ -788,15 +790,15 @@ void __intersection__flat_bspline_curve()
 
         hit = true;
         closestHitT = t;
+        isectU = t0 + u * deltaT;
+        isectV = 2.f * v - 1.f;
     }
 
     if (hit) {
         optixReportIntersection(closestHitT,
                                 0,
-                                asInt(-rayDir.x),
-                                asInt(-rayDir.y),
-                                asInt(-rayDir.z),
-                                asInt(0.f));
+                                asInt(isectU),
+                                asInt(isectV));
     }
 }
 
@@ -860,15 +862,9 @@ void __intersection__flat_linear_curve()
     const float r = p.w;
     const float r2 = r * r;
 
-    // The normal is actually the tangent.  (This is what Embree does.)
-    float4 tangent = cp[1] - cp[0];
-
     if (d2 <= r2 && rayTmin <= t && t <= rayTmax && t > 2.f * r / dirLength) {
         optixReportIntersection(t,
                                 0,
-                                asInt(tangent.x),
-                                asInt(tangent.y),
-                                asInt(tangent.z),
                                 asInt(u));
     }
 }
