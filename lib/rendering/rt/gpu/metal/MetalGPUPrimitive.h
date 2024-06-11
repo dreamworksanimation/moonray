@@ -8,9 +8,6 @@
 #include "MetalGPUBuffer.h"
 #include "MetalGPUMath.h"
 #include "MetalGPUShadowLinking.h"
-//MCAST
-
-// END MCAST
 
 using namespace simd;
 
