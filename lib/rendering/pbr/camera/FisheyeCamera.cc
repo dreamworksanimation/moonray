@@ -56,16 +56,16 @@ void FisheyeCamera::updateImpl(const Mat4d& world2render)
     switch (format) {
     case 0:
         // circular
-        diameter = min(w, h);
+        diameter = scene_rdl2::math::min(w, h);
         break;
     case 1:
         // cropped
-        diameter = max(w, h);
+        diameter = scene_rdl2::math::max(w, h);
         break;
     case 2:
     default:
         // diagonal
-        diameter = sqrt(w*w + h*h);
+        diameter = scene_rdl2::math::sqrt(w*w + h*h);
         break;
     }
     mRadialScale = 2.0f / diameter;
@@ -110,7 +110,7 @@ Vec3f FisheyeCamera::createDirection(float x, float y) const
     x -= 0.5f * w;
     y -= 0.5f * h;
 
-    const float d = sqrt(x*x + y*y);
+    const float d = scene_rdl2::math::sqrt(x*x + y*y);
     const float r = d * mRadialScale;
 
     float sintheta, costheta;
@@ -132,7 +132,7 @@ Vec3f FisheyeCamera::createDirection(float x, float y) const
     case 2: {
         // equisolid angle
         // theta = 2.0f * asin(r * sqrt(0.5f));
-        sintheta = r * sqrt(2.0f - r*r);
+        sintheta = r * scene_rdl2::math::sqrt(2.0f - r*r);
         costheta = 1.0f - r*r;
     }
     break;
@@ -141,7 +141,7 @@ Vec3f FisheyeCamera::createDirection(float x, float y) const
         // orthographic
         // theta = asin(r);
         sintheta = r;
-        costheta = sqrt(1.0f - r*r);
+        costheta = scene_rdl2::math::sqrt(1.0f - r*r);
     }
     break;
     }
