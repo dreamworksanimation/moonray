@@ -1462,7 +1462,8 @@ MetalGPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t queueIdx,
 }
 
 void
-MetalGPUAccelerator::intersect(const uint32_t numRays,
+MetalGPUAccelerator::intersect(const uint32_t queueIdx,
+                               const uint32_t numRays,
                                const GPURay* rays) const
 {
     // not yet implemented
