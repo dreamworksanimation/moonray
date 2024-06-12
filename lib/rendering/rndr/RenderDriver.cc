@@ -2164,10 +2164,8 @@ RenderDriver::flushXPUQueues(mcrt_common::ThreadLocalState *tls, scene_rdl2::all
 {
     unsigned numFlushed = 0;
 
-    if (mXPUOcclusionRayQueue) {
+    if (mFs.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         numFlushed += mXPUOcclusionRayQueue->flush(tls, arena);
-    }
-    if (mXPURayQueue) {
         numFlushed += mXPURayQueue->flush(tls, arena);
     }
 
