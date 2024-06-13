@@ -642,6 +642,11 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     geom::internal::Mesh::TessellatedMesh mesh;
     geomMesh.getTessellatedMesh(mesh);
 
+    if (mesh.mVertexCount == 0 || mesh.mFaceCount == 0) {
+        // Embree tolerates empty meshes but Optix does not
+        return;
+    }
+
     // This code assumes that there is a max of 2 motion samples
     // TODO: add support for mesh with more motion samples.
     size_t mbSamples = mesh.mVertexBufferDesc.size();

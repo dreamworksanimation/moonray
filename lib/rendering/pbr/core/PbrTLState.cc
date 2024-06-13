@@ -544,7 +544,7 @@ TLState::addRayQueueEntries(unsigned numEntries, RayState **entries)
     if (!numEntries) {
         return;
     }
-    if (mXPURayQueue) {
+    if (MNRY_VERIFY(mFs)->mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         mXPURayQueue->addEntries(mTopLevelTls, numEntries, entries, mArena);
     } else {
         mRayQueue.addEntries(mTopLevelTls, numEntries, entries, mArena);
@@ -584,7 +584,7 @@ TLState::addOcclusionQueueEntries(unsigned numEntries, BundledOcclRay *entries)
     if (!numEntries) {
         return;
     }
-    if (mXPUOcclusionRayQueue) {
+    if (MNRY_VERIFY(mFs)->mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         mXPUOcclusionRayQueue->addEntries(mTopLevelTls, numEntries, entries);
     } else {
         mOcclusionQueue.addEntries(mTopLevelTls, numEntries, entries, mArena);
