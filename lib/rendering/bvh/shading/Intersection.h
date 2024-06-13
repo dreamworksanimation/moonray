@@ -685,12 +685,12 @@ Intersection::computeShadingSortKey() const
 
     // Interleave bits with 64-bit multiplies.
     // http://graphics.stanford.edu/~seander/bithacks.html#Interleave64bitOps
-    // This interleaved multiply is what converts the coorindates from linear
+    // This interleaved multiply is what converts the coordinates from linear
     // to morton ordering.
-    uint32_t uv = ((x * 0x0101010101010101ULL & 0x8040201008040201ULL) *
-                  0x0102040810204081ULL >> 49) & 0x5555 |
-                  ((y * 0x0101010101010101ULL & 0x8040201008040201ULL) *
-                  0x0102040810204081ULL >> 48) & 0xAAAA;
+    uint32_t uv = (((x * 0x0101010101010101ULL & 0x8040201008040201ULL) *
+                  0x0102040810204081ULL >> 49) & 0x5555) |
+                  (((y * 0x0101010101010101ULL & 0x8040201008040201ULL) *
+                  0x0102040810204081ULL >> 48) & 0xAAAA);
 
     float mipSelector = computeMipSelector(mdSdx, mdTdx, mdSdy, mdTdy);
 

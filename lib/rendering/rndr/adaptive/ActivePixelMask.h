@@ -138,9 +138,9 @@ public:
     void dilate() noexcept
     {
         // clang-format off
-        mActiveMask |= mActiveMask << 1ULL & 0xFEFEFEFEFEFEFEFEULL |
-                       mActiveMask >> 1ULL & 0x7F7F7F7F7F7F7F7FULL |
-                       mActiveMask << 8ULL                         |
+        mActiveMask |= (mActiveMask << 1ULL & 0xFEFEFEFEFEFEFEFEULL) |
+                       (mActiveMask >> 1ULL & 0x7F7F7F7F7F7F7F7FULL) |
+                       mActiveMask << 8ULL                           |
                        mActiveMask >> 8ULL;
         // clang-format on
     }
