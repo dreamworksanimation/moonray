@@ -345,7 +345,7 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         foundAtIndex = args.getFlagValues("-layer", 1, values);
         validFlags.push_back("-layer");
         while (foundAtIndex >= 0) {
-            addOverride(overrides, "__SceneVariables__", "layer name", values[0], "", true);
+            addOverride(overrides, "__SceneVariables__", "layer", values[0], "", true);
             foundAtIndex = args.getFlagValues("-layer", 1, values, foundAtIndex + 1);
         }
 
