@@ -1148,8 +1148,11 @@ PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_com
     if (!mEnableShadowing) {
         return false;
     }
-    // offset shadow ray from surface
+    // offset shadow ray from surface, using the max of:
+    // 1) shadowRayEpsilon, which is geometry-based, and
+    // 2) minShadowDistance, which is light-based
     shadowRay.tnear = scene_rdl2::math::max(shadowRay.tnear, shadowRayEpsilon);
+    shadowRay.tnear = scene_rdl2::math::max(shadowRay.tnear, light->getMinShadowDistance());
 
     // if falloff enabled, don't shorten ray -- instead, use color interpolation (more expensive)
     const float clearRadius = light->getClearRadiusFalloffDistance() > 0.f ? 0.f : light->getClearRadius();

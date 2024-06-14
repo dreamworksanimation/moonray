@@ -461,6 +461,7 @@ MeshLight::update(const scene_rdl2::math::Mat4d& world2render)
     updatePresenceShadows();
     updateRayTermination();
     updateMaxShadowDistance();
+    updateMinShadowDistance();
 
     // update rdl geometry
     scene_rdl2::rdl2::SceneObject* geomSo = mRdlLight->get(sGeometryKey);

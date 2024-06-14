@@ -244,6 +244,9 @@ public:
     /// Get the maximum shadow distance
     float getMaxShadowDistance() const { return mMaxShadowDistance; }
 
+    /// Get the minimum shadow distance
+    float getMinShadowDistance() const { return mMinShadowDistance; }
+
     /// Get radiance
     scene_rdl2::math::Color getRadiance() const { return mRadiance; }
 
@@ -279,6 +282,7 @@ protected:
     void updateTextureFilter();
     void updateSidedness();
     void updateMaxShadowDistance();
+    void updateMinShadowDistance();
 
     /// See Light.hh for details
     finline bool isMb() const { return mMb; }

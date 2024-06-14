@@ -143,6 +143,7 @@ DistantLight::update(const Mat4d& world2render)
     updatePresenceShadows();
     updateRayTermination();
     updateMaxShadowDistance();
+    updateMinShadowDistance();
 
     const Mat4d l2w0 = mRdlLight->get(scene_rdl2::rdl2::Node::sNodeXformKey, /* rayTime = */ 0.0f);
     const Mat4d l2w1 = mRdlLight->get(scene_rdl2::rdl2::Node::sNodeXformKey, /* rayTime = */ 1.0f);

@@ -75,6 +75,7 @@ SpotLight::update(const Mat4d &world2render)
     updateRayTermination();
     updateTextureFilter();
     updateMaxShadowDistance();
+    updateMinShadowDistance();
     UPDATE_ATTRS_CLEAR_RADIUS
 
     const Mat4d l2w0 = mRdlLight->get(scene_rdl2::rdl2::Node::sNodeXformKey, /* rayTime = */ 0.f);

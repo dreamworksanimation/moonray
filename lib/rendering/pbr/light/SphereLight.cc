@@ -106,6 +106,7 @@ SphereLight::update(const Mat4d& world2render)
     updateRayTermination();
     updateTextureFilter();
     updateMaxShadowDistance();
+    updateMinShadowDistance();
 
     // Radius gets baked into the the mLocal2Render and other matrices such
     // that the sphere radius is always 1 in local light space.

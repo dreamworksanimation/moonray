@@ -143,6 +143,11 @@ prepareOcclusionTestRays(
     // if falloff enabled, don't shorten ray -- instead, use color interpolation (more expensive)
     float clearRadius = light->mClearRadiusFalloffDistance > 0.f ? 0.f : light->mClearRadius;
 
+    // offset shadow ray from surface, using the max of:
+    // 1) rayEpsilon/shadowRayEpsilon, which are geometry-based, and
+    // 2) minShadowDistance, which is light-based
+    rayEpsilon = max(rayEpsilon, light->mMinShadowDistance);
+
     // 2 * rayEpsilon ensures that the ray has non-zero length. 
     // Zero length shadow rays are not queued, which in this case we don't want.
     maxT = max((distance - clearRadius) * sHitEpsilonEnd, rayEpsilon * 2);

@@ -158,6 +158,7 @@ RectLight::update(const Mat4d& world2render)
     updateRayTermination();
     updateTextureFilter();
     updateMaxShadowDistance();
+    updateMinShadowDistance();
 
     mWidth  = mRdlLight->get<scene_rdl2::rdl2::Float>(sWidthKey);
     mHeight = mRdlLight->get<scene_rdl2::rdl2::Float>(sHeightKey);

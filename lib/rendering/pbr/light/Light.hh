@@ -105,7 +105,10 @@ enum LightSidednessType
     HUD_MEMBER(float, mClearRadius);                                        \
     HUD_MEMBER(float, mClearRadiusFalloffDistance);                         \
     HUD_MEMBER(float, mClearRadiusInterpolation);                           \
+    /* Max distance from shadow caster at which the light can cast shadows*/\
     HUD_MEMBER(float, mMaxShadowDistance);                                  \
+    /* Min distance from shadow caster at which the light can cast shadows*/\
+    HUD_MEMBER(float, mMinShadowDistance);                                  \
     /* Index in the scene's light list -- used for updating stats */        \
     HUD_MEMBER(uint32_t, mSceneIndex)
 

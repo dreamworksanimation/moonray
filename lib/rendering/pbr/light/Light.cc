@@ -215,6 +215,12 @@ Light::updateMaxShadowDistance()
     mMaxShadowDistance = getRdlLight()->get(scene_rdl2::rdl2::Light::sMaxShadowDistanceKey);
 }
 
+void
+Light::updateMinShadowDistance()
+{
+    mMinShadowDistance = getRdlLight()->get(scene_rdl2::rdl2::Light::sMinShadowDistanceKey);
+}
+
 //----------------------------------------------------------------------------
 
 HUD_VALIDATOR(LocalParamLight);
