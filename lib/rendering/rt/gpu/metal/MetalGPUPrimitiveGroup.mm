@@ -126,9 +126,6 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
                                        errorMsg)) {
             return false;
         }
-        for (auto& prim : mCustomPrimitives) {
-            prim->freeHostMemory();
-        }
     }
 
     if (!mInstances.empty()) {
@@ -144,6 +141,12 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
         usleep(1);
     }
 
+    if (!mCustomPrimitives.empty()) {
+        for (auto& prim : mCustomPrimitives) {
+            prim->freeHostMemory();
+        }
+    }
+    
     int meshIdx = 0;
     for (auto& triMesh : mTriMeshes) {
         AccelData instance(mTrianglesGAS[meshIdx++], userID++);
@@ -244,7 +247,7 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
         }
     }
 
-    if (bottomLevelAS && mUserInstanceIDs.size() && !mInstances.empty()) {
+    if (bottomLevelAS && mUserInstanceIDs.size()) {
         
         size_t head = bottomLevelAS->size();
         
@@ -258,12 +261,15 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
 
         id<MTLBuffer> instanceBuf = [device newBufferWithLength:mUserInstanceIDs.size() * instance_size
                                                         options:MTLResourceStorageModeShared];
+        [instanceBuf setLabel:@"Instance Buffer (Shared)"];
+        
         id<MTLBuffer> motionKeysBuf = nil;
         MTLPackedFloat4x3 *motionKeys = nullptr;
         if (motionBlurFlags & GPU_MOTION_INSTANCES) {
             motionKeysBuf = [device
                 newBufferWithLength:numTotalMotionKeys * sizeof(MTLPackedFloat4x3)
                              options:MTLResourceStorageModeShared];
+            [motionKeysBuf setLabel:@"Motion Keys Buffer (Shared)"];
             motionKeys = (MTLPackedFloat4x3*)motionKeysBuf.contents;
         }
         
@@ -344,6 +350,7 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
                             queue,
                             structuresBuilding,
                             accelDesc,
+                            @"PrimGroup: Accel Struct",
                             true,
                             &mTopLevelIAS,
                             instanceBuf,
@@ -356,6 +363,8 @@ MetalGPUPrimitiveGroup::build(id<MTLDevice> device,
             usleep(1);
         }
 
+        [instanceBuf release];
+        
         if (motionKeysBuf) {
             [motionKeysBuf release];
         }

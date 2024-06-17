@@ -320,6 +320,7 @@ MetalGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
         mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
         return;
     }
+    [gpuBox->mAssignmentIds.deviceptr() setLabel:@"GPUBox: AssigmentIDs Buf"];
 
     gpuBox->mL2P = mat43ToMetalGPUXform(geomBox.getL2P());
     gpuBox->mP2L = mat43ToMetalGPUXform(geomBox.getP2L());
@@ -402,18 +403,21 @@ MetalGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
         mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
         return;
     }
+    [gpuCurve->mAssignmentIds.deviceptr() setLabel:@"GPUCurve: AssigmentIDs Buf"];
 
     if (gpuCurve->mIndices.allocAndUpload(gpuCurve->mHostIndices) != cudaSuccess) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the curve indices to the GPU";
         return;
     }
+    [gpuCurve->mIndices.deviceptr() setLabel:@"GPUCurve: Indices Buf"];
 
     if (gpuCurve->mControlPoints.allocAndUpload(gpuCurve->mHostControlPoints)) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the curve control points to the GPU";
         return;
     }
+    [gpuCurve->mControlPoints.deviceptr() setLabel:@"GPUCurve: Control Points Buf"];
 
     gpuCurve->mSegmentsPerCurve = tessellationRate;  // for bezier and bspline, embree default
 }
@@ -519,24 +523,28 @@ MetalGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
         mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
         return;
     }
+    [gpuCurve->mAssignmentIds.deviceptr() setLabel:@"GPUCurve: AssigmentIDs Buf"];
 
     if (gpuCurve->mIndices.allocAndUpload(hostIndices) != cudaSuccess) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the curve indices to the GPU";
         return;
     }
+    [gpuCurve->mIndices.deviceptr() setLabel:@"GPUCurve: Indices Buf"];
 
     if (gpuCurve->mVertices.allocAndUpload(hostVertices) != cudaSuccess) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the curve vertices to the GPU";
         return;
     }
+    [gpuCurve->mVertices.deviceptr() setLabel:@"GPUCurve: Vertices Buf"];
 
     if (gpuCurve->mWidths.allocAndUpload(hostWidths) != cudaSuccess) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the curve widths to the GPU";
         return;
     }
+    [gpuCurve->mWidths.deviceptr() setLabel:@"GPUCurve: Widths Buf"];
 
     // Get the vertex/width buffer pointers.  For curves without motion blur, the
     // second pointer is null.
@@ -600,12 +608,14 @@ MetalGPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
         mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
         return;
     }
+    [gpuPoints->mAssignmentIds.deviceptr() setLabel:@"GPUPoints: AssigmentIDs Buf"];
 
     if (gpuPoints->mPoints.allocAndUpload(gpuPoints->mHostPoints) != cudaSuccess) {
         mFailed = true;
         mWhyFailed = "There was a problem uploading the points to the GPU";
         return;
     }
+    [gpuPoints->mPoints.deviceptr() setLabel:@"GPUPoints: Points Buf"];
 }
 
 void
@@ -744,16 +754,21 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             mWhyFailed = "There was a problem uploading the vertices to the GPU";
             return;
         }
+        [gpuMesh->mVertices.deviceptr() setLabel:@"GPUMesh: Vertices Buffer"];
+        
         if (gpuMesh->mIndices.allocAndUpload(gpuIndices) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the indices to the GPU";
             return;
         }
+        [gpuMesh->mIndices.deviceptr() setLabel:@"GPUMesh: Indices Buffer"];
+        
         if (gpuMesh->mAssignmentIds.allocAndUpload(assignmentIds) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
             return;
         }
+        [gpuMesh->mAssignmentIds.deviceptr() setLabel:@"GPUMesh: AssigmentIDs Buf"];
 
         gpuMesh->mVerticesPtrs[0] = 0;
         gpuMesh->mVerticesPtrs[1] = motionKeyOffsets[1] * sizeof(float3);
@@ -820,16 +835,21 @@ MetalGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             mWhyFailed = "There was a problem uploading the vertices to the GPU";
             return;
         }
+        [gpuMesh->mVertices.deviceptr() setLabel:@"GPUMesh: Vertices Buffer"];
+        
         if (gpuMesh->mIndices.allocAndUpload(gpuIndices) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the indices to the GPU";
             return;
         }
+        [gpuMesh->mIndices.deviceptr() setLabel:@"GPUMesh: Indices Buffer"];
+        
         if (gpuMesh->mAssignmentIds.allocAndUpload(assignmentIds) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
             return;
         }
+        [gpuMesh->mAssignmentIds.deviceptr() setLabel:@"GPUMesh: AssigmentIDs Buf"];
 
         gpuMesh->mVerticesPtrs[0] = 0;
         gpuMesh->mVerticesPtrs[1] = motionKeyOffsets[1] * sizeof(float3);
@@ -871,6 +891,7 @@ MetalGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
         mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
         return;
     }
+    [gpuSphere->mAssignmentIds.deviceptr() setLabel:@"GPUSphere: AssigmentIDs Buf"];
 
     gpuSphere->mL2P = mat43ToMetalGPUXform(geomSphere.getL2P());
     gpuSphere->mP2L = mat43ToMetalGPUXform(geomSphere.getP2L());
@@ -1119,16 +1140,19 @@ MetalGPUAccelerator::MetalGPUAccelerator(bool allowUnsupportedFeatures,
             *errorMsg = "GPU: Error allocating rays buffer";
             return;
         }
+        [mRaysBuf[i].deviceptr() setLabel:[NSString stringWithFormat:@"GPU Occl Ray [%d]", i]];
         mIsOccludedBuf.push_back(MetalGPUBuffer<unsigned char>(mContext));
         if (mIsOccludedBuf[i].alloc(mRaysBufSize) != cudaSuccess) {
             *errorMsg = "GPU: Error allocating occlusion buffer";
             return;
         }
+        [mIsOccludedBuf[i].deviceptr() setLabel:[NSString stringWithFormat:@"Is it Occluded?  [%d]", i]];
         mParamsBuf.push_back(MetalGPUBuffer<MetalGPUParams>(mContext));
         if (mParamsBuf[i].alloc(1) != cudaSuccess) {
             *errorMsg = "GPU: Error allocating params buffer";
             return;
         }
+        [mParamsBuf[i].deviceptr() setLabel:[NSString stringWithFormat:@"GPU Params [%d]", i]];
     }
 
     scene_rdl2::logging::Logger::info("GPU: Setup complete");
@@ -1388,6 +1412,8 @@ MetalGPUAccelerator::createShaderBindingTable(std::string* errorMsg)
             *errorMsg = "GPU: Error allocating HitGroup SBT record buffer";
             return false;
         }
+        
+        [mHitGroupRecordBuf.deviceptr() setLabel:@"HitGroupRec Buffer"];
     }
 
     return true;
@@ -1458,6 +1484,9 @@ MetalGPUAccelerator::getBundledOcclRaysBufUMA(const uint32_t queueIdx,
             [mContext newBufferWithLength:numRays * stride
                                   options:MTLResourceStorageModeShared];
     }
+    
+    [mEncoderStates[queueIdx].cpuBuffer setLabel:[NSString stringWithFormat:@"CPU Occl Ray  [%u]", queueIdx]];
+    
     return [mEncoderStates[queueIdx].cpuBuffer contents];
 }
 
