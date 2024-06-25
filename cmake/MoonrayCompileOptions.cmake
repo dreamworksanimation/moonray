@@ -46,6 +46,11 @@ function(${PROJECT_NAME}_cxx_compile_options target)
                 -Wno-uninitialized              # Disable warning for Interpolater
                 -Wno-register                   # Flex uses deprecated register keyword
         )
+    elseif (CMAKE_CXX_COMPILER_ID STREQUAL AppleClang)
+        target_compile_options(${target}
+            PUBLIC
+                -Wno-gnu-alignof-expression
+        )
     elseif (CMAKE_CXX_COMPILER_ID STREQUAL Intel)
         target_compile_options(${target}
             # TODO: Some if not all of these should probably be PUBLIC

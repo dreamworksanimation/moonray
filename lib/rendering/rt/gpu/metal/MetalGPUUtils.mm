@@ -187,6 +187,7 @@ createMetalAccel(id<MTLDevice> context,
                  id<MTLCommandQueue> queue,
                  std::atomic<int> &structuresBuilding,
                  MTLAccelerationStructureDescriptor* input,
+                 NSString * aLabel,
                  bool compact,
                  id<MTLAccelerationStructure>* accelHandle,
                  id<MTLBuffer> tempBufferToFree,
@@ -196,9 +197,12 @@ createMetalAccel(id<MTLDevice> context,
                                                 accelerationStructureSizesWithDescriptor:input];
     id<MTLAccelerationStructure> accel_uncompressed = [context
                                                        newAccelerationStructureWithSize:accelSizes.accelerationStructureSize];
+    [accel_uncompressed setLabel:[NSString stringWithFormat:@"%@ - Uncompressed", aLabel]];
     id<MTLBuffer> scratchBuf = [context newBufferWithLength:accelSizes.buildScratchBufferSize
                                                     options:MTLResourceStorageModePrivate];
+    [scratchBuf setLabel:[NSString stringWithFormat:@"%@ - Scratch Buffer", aLabel]];
     id<MTLBuffer> sizeBuf = [context newBufferWithLength:8 options:MTLResourceStorageModeShared];
+    [sizeBuf setLabel:[NSString stringWithFormat:@"%@ - Size Buffer", aLabel]];
     id<MTLCommandBuffer> accelCommands = [queue commandBuffer];
     id<MTLAccelerationStructureCommandEncoder> accelEnc =
         [accelCommands accelerationStructureCommandEncoder];
@@ -214,7 +218,6 @@ createMetalAccel(id<MTLDevice> context,
     [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> command_buffer) {
         /* free temp resources */
         [scratchBuf release];
-        [tempBufferToFree release];
         
         /* Compact the accel structure */
         uint64_t compressed_size = *(uint64_t*)sizeBuf.contents;
@@ -226,9 +229,11 @@ createMetalAccel(id<MTLDevice> context,
                 [accelCommands accelerationStructureCommandEncoder];
             id<MTLAccelerationStructure> accel = [context
                                                   newAccelerationStructureWithSize:compressed_size];
+            [accel setLabel:[NSString stringWithFormat:@"%@ - Compressed", aLabel]];
             [accelEnc copyAndCompactAccelerationStructure:accel_uncompressed
                                   toAccelerationStructure:accel];
             [accelEnc endEncoding];
+
             [accelCommands addCompletedHandler:^(id<MTLCommandBuffer> command_buffer) {
                 uint64_t allocated_size = [accel allocatedSize];
                 *accelHandle = accel;
@@ -265,6 +270,8 @@ createTrianglesGAS(id<MTLDevice> context,
     accels.reserve(triMeshes.size());
     int accelIndex = 0;
     for (auto& tm : triMeshes) {
+        
+        scene_rdl2::logging::Logger::info("GPU: Creating AccelStruct for GPUMesh: ", tm->mName.c_str());
         MTLAccelerationStructureGeometryDescriptor *geomDesc;
         
         if (enableMotionBlur) {
@@ -321,6 +328,7 @@ createTrianglesGAS(id<MTLDevice> context,
                               queue,
                               structuresBuilding,
                               accelDesc,
+                              @"GPUMesh: Accel Struct",
                               true,
                               &accels[accelIndex++],
                               nil,
@@ -347,6 +355,9 @@ createRoundCurvesGAS(id<MTLDevice> context,
     int accelIndex = 0;
 
     for (const auto& shape : roundCurves) {
+        
+        scene_rdl2::logging::Logger::info("GPU: Creating AccelStruct for GPUCurve: ", shape->mName.c_str());
+        
         MTLAccelerationStructureGeometryDescriptor *geomDesc;
 
         MTLAccelerationStructureCurveGeometryDescriptor  *geomDescNoMotion =
@@ -383,6 +394,7 @@ createRoundCurvesGAS(id<MTLDevice> context,
                               queue,
                               structuresBuilding,
                               accelDesc,
+                              @"GPUCurve: Accel Struct",
                               true,
                               &accels[accelIndex++],
                               nil,
@@ -424,6 +436,7 @@ createCustomPrimitivesGAS(id<MTLDevice> context,
     id<MTLBuffer> aabbsBuf = [context
         newBufferWithLength:numAabbs * sizeof(MTLAxisAlignedBoundingBox)
                     options:MTLResourceStorageModeShared];
+    [aabbsBuf setLabel:@"Axis Aligned Bounding Box Buffer"];
 
     // OptixAabb should be the same size and layout as MTLAxisAlignedBoundingBox
     static_assert(sizeof(MTLAxisAlignedBoundingBox) == sizeof(OptixAabb));
@@ -453,6 +466,7 @@ createCustomPrimitivesGAS(id<MTLDevice> context,
                               queue,
                               structuresBuilding,
                               accelDesc,
+                              @"CustomPrim: Accel Struct",
                               true,
                               &accels[accelIndex++],
                               aabbsBuf,
