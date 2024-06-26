@@ -181,16 +181,11 @@ TestDistribution::testImage(const std::string &path, const std::string &filename
 void
 TestDistribution::testImages()
 {
-    std::string path("/work/rd/raas/maps/env_maps/");
+    std::string path("./");
 
-    testImage(path, "parking_lot-med.exr");
+    testImage(path, "parking_lot-small.exr");
     testImage(path, "parking_lot-vsmall.exr");
     testImage(path, "parking_lot-vvsmall.exr");
-
-//    testImage(path, "burning_man-med.exr");
-//    testImage(path, "green_house-med.exr");
-//    testImage(path, "monument_valley-med.exr");
-//    testImage(path, "papermill_ruin-med.exr");
 }
 
 namespace

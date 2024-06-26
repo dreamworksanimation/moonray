@@ -150,6 +150,16 @@ target_compile_definitions(${target}
 )
 # ---------------------------------------------------
 
+# Copy test resources from source dir to binary dir
+add_custom_command(
+  TARGET ${target} POST_BUILD
+  COMMAND "${CMAKE_COMMAND}" -E copy
+      -t "$<TARGET_FILE_DIR:${target}>"
+      "${CMAKE_CURRENT_SOURCE_DIR}/parking_lot-small.exr"
+      "${CMAKE_CURRENT_SOURCE_DIR}/parking_lot-vsmall.exr"
+      "${CMAKE_CURRENT_SOURCE_DIR}/parking_lot-vvsmall.exr"
+)
+
 add_test(NAME ${target} COMMAND ${target})
 set_tests_properties(${target} PROPERTIES
     LABELS "unit"
