@@ -875,8 +875,8 @@ TestLights::setUp()
 
     // Important: This must be an environment map without any areas of black or
     // at least a very minimal amount. See comments for testLightPDF.
-    std::string basePath("/work/rd/raas/maps/env_maps/");
-    const std::string texturePath = basePath + "Frozen_Waterfall_Ref.exr";
+    std::string basePath("./");
+    const std::string texturePath = basePath + "parking_lot-small.exr";
 
     //
     // RectLight tests:
