@@ -775,7 +775,7 @@ DisplayFilterDriver::Impl::createInputBuffers(const DisplayFilterDriver::Impl::I
                 // VLEN pixels are submitted to a display filter at a time.
                 // If there are n tiles to either side of the center tile(s)
                 // that fit VLEN pixels, then windowWidth must be (VLEN / 8 + 2n) * 8 pixels.
-                windowWidth = ((VLEN / TILE_WIDTH) /* number of tiles needed for VLEN pixels */
+                windowWidth = (scene_rdl2::math::max(VLEN / TILE_WIDTH, 1U) /* number of tiles needed for VLEN pixels */
                             + 2 * (windowWidth / TILE_WIDTH + (windowWidth % TILE_WIDTH > 0))) /* 2n */
                             * TILE_WIDTH; /* 8 pixels */
 
