@@ -20,9 +20,9 @@
     HVD_MEMBER(int32_t, materialID);                            /*    4  */\
     HVD_MEMBER(int32_t, depth);                                 /*    8  */\
     HVD_PTR(void*, userData);                                   /*   16  */\
-    HVD_PTR(const void*, priorityMaterial0);                    /*   24  */\
-    HVD_PTR(const void*, priorityMaterial1);                    /*   32  */\
-    HVD_PTR(void*, geomTls);                                    /*   40  */\
+    HVD_PTR(void*, geomTls);                                    /*   24  */\
+    HVD_PTR(const void*, priorityMaterial0);                    /*   32  */\
+    HVD_PTR(const void*, priorityMaterial1);                    /*   40  */\
     HVD_PTR(const void*, priorityMaterial2);                    /*   48  */\
     HVD_PTR(const void*, priorityMaterial3);                    /*   56  */\
     HVD_MEMBER(int32_t, priorityMaterial0Count);                /*   60  */\
