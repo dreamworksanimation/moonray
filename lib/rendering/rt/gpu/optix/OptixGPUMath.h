@@ -270,6 +270,14 @@ enum CurveType
     LINEAR
 };
 
+enum CurveSubType
+{
+    RAY_FACING,
+    ROUND,
+    NORMAL_ORIENTED,
+    UNKNOWN
+};
+
 // https://en.wikipedia.org/wiki/B%C3%A9zier_curve
 inline __host__ __device__
 float4 getBezierBasis(const float t)

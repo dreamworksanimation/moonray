@@ -101,8 +101,6 @@ private:
     OptixModule mModule;
 
     // There are special built-in modules for Optix round curves
-    OptixModule mRoundLinearCurvesModule;
-    OptixModule mRoundLinearCurvesMBModule;
     OptixModule mRoundCubicBsplineCurvesModule;
     OptixModule mRoundCubicBsplineCurvesMBModule;
 

@@ -5,6 +5,7 @@
 #include "OptixGPUMath.h"
 #include "OptixGPUParams.h"
 #include "OptixGPUSBTRecord.h"
+#include "RoundLine_Intersector.h"
 
 using namespace moonray::rt;
 
@@ -271,10 +272,10 @@ void __closesthit__()
             break;
             case HitGroupData::ROUND_LINEAR_CURVES:
             {
-                prd->mNgX = 0.f; // TODO
-                prd->mNgY = 0.f; 
-                prd->mNgZ = 1.f;
-                prd->mU = optixGetCurveParameter();
+                prd->mNgX = asFloat(optixGetAttribute_0());
+                prd->mNgY = asFloat(optixGetAttribute_1());
+                prd->mNgZ = asFloat(optixGetAttribute_2());
+                prd->mU = asFloat(optixGetAttribute_3());
                 prd->mV = 0.f;
                 prd->mPrimID = optixGetPrimitiveIndex();
             }
@@ -866,6 +867,104 @@ void __intersection__flat_linear_curve()
         optixReportIntersection(t,
                                 0,
                                 asInt(u));
+    }
+}
+
+extern "C" __global__
+void __intersection__round_linear_curve()
+{
+    const HitGroupData* data = (HitGroupData*)optixGetSbtDataPointer();
+    const unsigned int primIdx = optixGetPrimitiveIndex();
+
+    const float3 rayOrg = optixGetObjectRayOrigin();
+    const float3 rayDir = optixGetObjectRayDirection();
+    const float rayTmin = optixGetRayTmin();
+    const float rayTmax = optixGetRayTmax();
+    const float dirLength = length(rayDir);
+
+    const int motionSamplesCount = data->curve.mMotionSamplesCount;
+    float4 cp[2];
+    float4 cpL, cpR;
+    if (motionSamplesCount == 1) {
+        unsigned int cpIdx = data->curve.mIndices[primIdx];
+        cp[0] = data->curve.mControlPoints[cpIdx];
+        cp[1] = data->curve.mControlPoints[cpIdx + 1];
+        cpL = { inf, inf, inf, inf };
+        if (primIdx > 0) {
+            unsigned int cpLeftIdx = data->curve.mIndices[primIdx - 1];
+            if ((cpLeftIdx + 1) == cpIdx) {
+                // Curve continues to the left
+                // From embree docs: left segment exists if segment(id-1)+1 == segment(id)
+                cpL = data->curve.mControlPoints[cpLeftIdx];
+            }
+        }
+        cpR = { inf, inf, inf, inf };
+        if (primIdx + 1 < data->curve.mNumIndices) {
+            unsigned int cpRightIdx = data->curve.mIndices[primIdx + 1];
+            if ((cpRightIdx - 1) == cpIdx) {
+                // Curve continues to the right
+                // From embree docs: right segment exists if segment(id+1)-1 == segment(id)
+                cpR = data->curve.mControlPoints[cpRightIdx];
+            }
+        }
+    } else {
+        const float time = optixGetRayTime();
+        const float sample0PlusT = time * (motionSamplesCount - 1);
+        const unsigned int sample0 = static_cast<unsigned int>(sample0PlusT);
+        const unsigned int sample1 = fminf(sample0 + 1, motionSamplesCount - 1); // clamp to time = 1
+        const float t = sample0PlusT - static_cast<float>(sample0);
+        unsigned int cpIdx = data->curve.mIndices[primIdx];
+        const float4* cp0 = data->curve.mControlPoints + data->curve.mNumControlPoints * sample0 +
+                                                         cpIdx;
+        const float4* cp1 = data->curve.mControlPoints + data->curve.mNumControlPoints * sample1 +
+                                                         cpIdx;
+        cp[0] = lerp(cp0[0], cp1[0], t);
+        cp[1] = lerp(cp0[1], cp1[1], t);
+        cpL = { inf, inf, inf, inf };
+        if (primIdx > 0) {
+            unsigned int cpLeftIdx = data->curve.mIndices[primIdx - 1];
+            if ((cpLeftIdx + 1) == cpIdx) {
+                // Curve continues to the left
+                float4 cpL0 = data->curve.mControlPoints[data->curve.mNumControlPoints * sample0 + cpLeftIdx];
+                float4 cpL1 = data->curve.mControlPoints[data->curve.mNumControlPoints * sample1 + cpLeftIdx];
+                cpL = lerp(cpL0, cpL1, t);
+            }
+        }
+        cpR = { inf, inf, inf, inf };
+        if (primIdx + 1 < data->curve.mNumIndices) {
+            unsigned int cpRightIdx = data->curve.mIndices[primIdx + 1];
+            if ((cpRightIdx - 1) == cpIdx) {
+                // Curve continues to the right
+                float4 cpR0 = data->curve.mControlPoints[data->curve.mNumControlPoints * sample0 + cpRightIdx];
+                float4 cpR1 = data->curve.mControlPoints[data->curve.mNumControlPoints * sample1 + cpRightIdx];
+                cpR = lerp(cpR0, cpR1, t);
+            }
+        }
+    }
+
+    EmbreeRayHit rayHit;
+    rayHit.org = rayOrg;
+    rayHit.dir = rayDir;
+    rayHit.tnear = rayTmin;
+    rayHit.tfar = rayTmax;
+    rayHit.Ng = {0.f, 0.f, 0.f};
+    rayHit.u = 0.f;
+    rayHit.v = 0.f;
+
+    RoundLinearCurveEpilog epilog(&rayHit);
+
+    RoundLinearCurveIntersector intersector;
+    if (intersector.intersect(true,
+                              rayHit,
+                              cp[0], cp[1],
+                              cpL, cpR,
+                              epilog)) {
+        optixReportIntersection(rayHit.tfar,
+                                0,
+                                asInt(rayHit.Ng.x),
+                                asInt(rayHit.Ng.y),
+                                asInt(rayHit.Ng.z),
+                                asInt(rayHit.u));
     }
 }
 

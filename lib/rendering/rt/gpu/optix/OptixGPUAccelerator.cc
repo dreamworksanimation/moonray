@@ -70,19 +70,23 @@ public:
         MNRY_ASSERT_REQUIRE(pImpl->getType() == geom::internal::Primitive::CURVES);
         const auto pCurves = static_cast<geom::internal::Curves*>(pImpl);
 
-        switch (pCurves->getSubType()) {
-        case geom::internal::Curves::SubType::RAY_FACING:
-            createCurves(*pCurves, c.getCurvesType(), c.getTessellationRate());
+        switch (c.getCurvesSubType()) {
+        case geom::Curves::SubType::RAY_FACING:
+            createCurves(*pCurves, c.getCurvesType(), geom::Curves::SubType::RAY_FACING, c.getTessellationRate());
         break;
-        case geom::internal::Curves::SubType::ROUND:
-            createRoundCurves(*pCurves, c.getCurvesType());
+        case geom::Curves::SubType::ROUND:
+            if (c.getCurvesType() == geom::Curves::Type::LINEAR) {
+                createCurves(*pCurves, geom::Curves::Type::LINEAR, geom::Curves::SubType::ROUND, c.getTessellationRate());
+            } else {
+                createOptixRoundCurves(*pCurves, c.getCurvesType());
+            }
         break;
-        case geom::internal::Curves::SubType::NORMAL_ORIENTED:
+        case geom::Curves::SubType::NORMAL_ORIENTED:
             if (mAllowUnsupportedFeatures) {
                 logWarningMsg(
                     "Normal-oriented curves are not supported in XPU mode.  "
                     "Using ray-facing curves instead.");
-                createCurves(*pCurves, c.getCurvesType(), c.getTessellationRate());
+                createCurves(*pCurves, c.getCurvesType(), geom::Curves::SubType::RAY_FACING, c.getTessellationRate());
             } else {
                 mFailed = true;
                 mWhyFailed = "Normal-oriented curves are not supported in XPU mode";
@@ -253,10 +257,11 @@ private:
 
     void createCurves(const geom::internal::Curves& geomCurves,
                       const geom::Curves::Type curvesType,
+                      const geom::Curves::SubType curvesSubType,
                       const int tessellationRate);
 
-    void createRoundCurves(const geom::internal::Curves& geomCurves,
-                           const geom::Curves::Type curvesType);
+    void createOptixRoundCurves(const geom::internal::Curves& geomCurves,
+                                const geom::Curves::Type curvesType);
 
     void createPoints(const geom::internal::Points& geomPoints);
 
@@ -343,8 +348,9 @@ OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
 
 void
 OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
-                            const geom::Curves::Type curvesType,
-                            const int tessellationRate)
+                                 const geom::Curves::Type curvesType,
+                                 const geom::Curves::SubType curvesSubType,
+                                 const int tessellationRate)
 {
     geom::internal::Curves::Spans spans;
     geomCurves.getTessellatedSpans(spans);
@@ -374,6 +380,7 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     }
 
     gpuCurve->mMotionSamplesCount = geomCurves.getMotionSamplesCount();
+    gpuCurve->mNumIndices = spans.mSpanCount;
     gpuCurve->mHostIndices.resize(spans.mSpanCount);
     gpuCurve->mNumControlPoints = spans.mVertexCount;
     gpuCurve->mHostControlPoints.resize(spans.mVertexCount * gpuCurve->mMotionSamplesCount);
@@ -387,6 +394,17 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     break;
     case geom::Curves::Type::BSPLINE:
         gpuCurve->mBasis = BSPLINE; // the furdeform/willow default
+    break;
+    default:
+        MNRY_ASSERT_REQUIRE(false);
+    }
+
+    switch (curvesSubType) {
+    case geom::Curves::SubType::RAY_FACING:
+        gpuCurve->mSubType = RAY_FACING;
+    break;
+    case geom::Curves::SubType::ROUND:
+        gpuCurve->mSubType = ROUND;
     break;
     default:
         MNRY_ASSERT_REQUIRE(false);
@@ -434,8 +452,8 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
 }
 
 void
-OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
-                                      const geom::Curves::Type curvesType)
+OptixGPUBVHBuilder::createOptixRoundCurves(const geom::internal::Curves& geomCurves,
+                                           const geom::Curves::Type curvesType)
 {
     if (curvesType == geom::Curves::Type::BEZIER) {
         // todo: this is supported in Optix 7.7
@@ -503,9 +521,6 @@ OptixGPUBVHBuilder::createRoundCurves(const geom::internal::Curves& geomCurves,
     }
 
     switch (curvesType) {
-    case geom::Curves::Type::LINEAR:
-        gpuCurve->mType = OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR;
-    break;
     case geom::Curves::Type::BSPLINE:
         gpuCurve->mType = OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE;
     break;
@@ -1042,8 +1057,6 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     mNumCPUThreads {numCPUThreads},
     mContext {nullptr},
     mModule {nullptr},
-    mRoundLinearCurvesModule {nullptr},
-    mRoundLinearCurvesMBModule {nullptr},
     mRoundCubicBsplineCurvesModule {nullptr},
     mRoundCubicBsplineCurvesMBModule {nullptr},
     mRootGroup {nullptr}
@@ -1097,26 +1110,6 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     }
 
     scene_rdl2::logging::Logger::info("GPU: Loading built in modules");
-
-    if (!getBuiltinISModule(mContext,
-                            moduleCompileOptions,
-                            pipelineCompileOptions,
-                            OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR,
-                            false,
-                            &mRoundLinearCurvesModule,
-                            errorMsg)) {
-        return;
-    }
-
-    if (!getBuiltinISModule(mContext,
-                            moduleCompileOptions,
-                            pipelineCompileOptions,
-                            OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR,
-                            true,
-                            &mRoundLinearCurvesMBModule,
-                            errorMsg)) {
-        return;
-    }
 
     if (!getBuiltinISModule(mContext,
                             moduleCompileOptions,
@@ -1255,14 +1248,6 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
 
     if (mModule != nullptr) {
         optixModuleDestroy(mModule);
-    }
-
-    if (mRoundLinearCurvesModule != nullptr) {
-        optixModuleDestroy(mRoundLinearCurvesModule);
-    }
-
-    if (mRoundLinearCurvesMBModule != nullptr) {
-        optixModuleDestroy(mRoundLinearCurvesMBModule);
     }
 
     if (mRoundCubicBsplineCurvesModule != nullptr) {
@@ -1504,26 +1489,13 @@ OptixGPUAccelerator::createProgramGroups(std::string* errorMsg)
                                          "__anyhit__",
                                          mModule,
                                          "__closesthit__",
-                                         mRoundLinearCurvesModule,
-                                         nullptr,
+                                         mModule,
+                                         "__intersection__round_linear_curve",
                                          &pg,
                                          errorMsg)) {
         return false;
     }
-    mProgramGroups["roundLinearCurvesHG"] = pg;
-
-    if (!createOptixHitGroupProgramGroup(mContext,
-                                         mModule,
-                                         "__anyhit__",
-                                         mModule,
-                                         "__closesthit__",
-                                         mRoundLinearCurvesMBModule,
-                                         nullptr,
-                                         &pg,
-                                         errorMsg)) {
-        return false;
-    }
-    mProgramGroups["roundLinearCurvesMBHG"] = pg;
+    mProgramGroups["roundLinearCurveHG"] = pg;
 
     if (!createOptixHitGroupProgramGroup(mContext,
                                          mModule,

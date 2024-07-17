@@ -83,6 +83,7 @@ struct HitGroupData
         struct {
             int mMotionSamplesCount;
             unsigned int mSegmentsPerCurve;
+            int mNumIndices;
             const unsigned int* mIndices;
             int mNumControlPoints;
             const float4* mControlPoints;

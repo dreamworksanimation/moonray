@@ -68,6 +68,7 @@ public:
     int mMotionSamplesCount; // 1 or 2 - a current limitation of RoundCurves
 
     // each index points to the first control point in a curve segment
+    int mNumIndices;
     OptixGPUBuffer<unsigned int> mIndices;
 
     int mNumControlPoints;
@@ -119,11 +120,13 @@ public:
     void freeHostMemory() override;
 
     unsigned int mSegmentsPerCurve;
-    unsigned int mBasis;  // BEZIER, BSPLINE, LINEAR
+    unsigned int mBasis;   // BEZIER, BSPLINE, LINEAR
+    unsigned int mSubType; // RAY_FACING or ROUND; NORMAL_ORIENTED is not yet supported
 
     // Number of motion samples for motion blur.  1 = no motion blur.
     int mMotionSamplesCount;
 
+    int mNumIndices;
     // Host-side copy of the curve indices
     std::vector<unsigned int> mHostIndices;
 

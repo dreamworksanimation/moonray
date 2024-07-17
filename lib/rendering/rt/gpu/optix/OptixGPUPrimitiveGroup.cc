@@ -307,10 +307,6 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
 
         // Specify the program group to use
         switch (curves->mType) {
-        case OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR:
-            rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
-            optixSbtRecordPackHeader(pgs["roundLinearCurvesHG"], &rec);
-        break;
         case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
             rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
             optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesHG"], &rec);
@@ -338,10 +334,6 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
 
         // Specify the program group to use
         switch (curves->mType) {
-        case OPTIX_PRIMITIVE_TYPE_ROUND_LINEAR:
-            rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
-            optixSbtRecordPackHeader(pgs["roundLinearCurvesMBHG"], &rec);
-        break;
         case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
             rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
             optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesMBHG"], &rec);
@@ -374,6 +366,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         if (curve) {
             rec.mData.curve.mMotionSamplesCount = curve->mMotionSamplesCount;
             rec.mData.curve.mSegmentsPerCurve = curve->mSegmentsPerCurve;
+            rec.mData.curve.mNumIndices = curve->mNumIndices;
             rec.mData.curve.mIndices = curve->mIndices.ptr();
             rec.mData.curve.mNumControlPoints = curve->mNumControlPoints;
             rec.mData.curve.mControlPoints = curve->mControlPoints.ptr();
@@ -387,8 +380,14 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
                 optixSbtRecordPackHeader(pgs["flatBsplineCurveHG"], &rec);
             break;
             case LINEAR:
-                rec.mData.mType = HitGroupData::FLAT_LINEAR_CURVES;
-                optixSbtRecordPackHeader(pgs["flatLinearCurveHG"], &rec);
+                if (curve->mSubType == RAY_FACING) {
+                    rec.mData.mType = HitGroupData::FLAT_LINEAR_CURVES;
+                    optixSbtRecordPackHeader(pgs["flatLinearCurveHG"], &rec);
+                }
+                if (curve->mSubType == ROUND) {
+                    rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
+                    optixSbtRecordPackHeader(pgs["roundLinearCurveHG"], &rec);
+                }
             break;
             default:
                 MNRY_ASSERT_REQUIRE(false);
