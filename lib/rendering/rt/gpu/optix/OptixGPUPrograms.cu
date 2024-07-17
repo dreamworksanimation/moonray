@@ -1081,7 +1081,7 @@ void __intersection__sphere()
     }
     float phi = atan2f(pHit.y, pHit.x);
     if (phi < 0.0f) {
-        phi += 2.f * M_PI;
+        phi += 2.f * static_cast<float>(M_PI);
     }
     float zMin = data->sphere.mZMin;
     float zMax = data->sphere.mZMax;
@@ -1101,7 +1101,7 @@ void __intersection__sphere()
         }
         phi = atan2f(pHit.y, pHit.x);
         if (phi < 0.0f) {
-            phi += 2.f * M_PI;
+            phi += 2.f * static_cast<float>(M_PI);
         }
         if (pHit.z < zMin || pHit.z > zMax || phi > phiMax) {
             return;
