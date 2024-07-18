@@ -125,11 +125,9 @@ public:
     /// Given a point p in render space, compute its z-distance
     /// from the camera at ray time t.  For projective cameras, this is
     /// the value typically computed in "depth" maps.  For non-projective
-    /// cameras the function returns the euclidean distance between p
-    /// and the render space ray origin o.  The ray origin is needed to
-    /// support cameras that do no have a constant location
-    /// (such as the BakeCamera).
-    float computeZDistance(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f &o, float time) const;
+    /// cameras the function simply returns the t value of the hit point,
+    /// passed in here as the 2nd argument.
+    float computeZDistance(const scene_rdl2::math::Vec3f &p, float tHit, float time) const;
 
 protected:
     /// Compute W <--> C matrices at time t
@@ -141,8 +139,7 @@ private:
     virtual void computeFrustumImpl(mcrt_common::Frustum *frust, float t, bool useRenderRegion) const;
     virtual void bakeUvMapsImpl();
     virtual void getRequiredPrimAttributesImpl(shading::PerGeometryAttributeKeySet &keys) const;
-    virtual float computeZDistanceImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f &o,
-                                       float time) const;
+    virtual float computeZDistanceImpl(const scene_rdl2::math::Vec3f &p, float tHit, float time) const;
     virtual void updateImpl(const scene_rdl2::math::Mat4d& world2render) = 0;
 
     virtual void createRayImpl(mcrt_common::RayDifferential* dstRay,

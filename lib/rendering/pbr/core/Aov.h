@@ -325,7 +325,8 @@ void aovSetStateVars(pbr::TLState *pbrTls,
                      const mcrt_common::RayDifferential &ray,
                      const Scene &scene,
                      float pixelWeight,
-                     float *dest);
+                     float *dest,
+                     float tHit);
 
 // Same as above but called when we have volume position/depth AOVs
 //  but no hard-surface isect.

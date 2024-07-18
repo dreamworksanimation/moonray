@@ -401,6 +401,10 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                     }
                 }
 
+                // Save the t value of the intersection point since we're about to relocate the ray origin there.
+                // (Note that Embree uses tfar to signal the t value of the intersection point.)
+                float tHit = ray->tfar;
+
                 // TODO: Apply volume transmittance on the segment
                 // ray origin --> ray isect
 
@@ -430,7 +434,8 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                                      *ray,
                                      *scene,
                                      pv.pathPixelWeight,
-                                     aovs);
+                                     aovs,
+                                     tHit);
                     aovSetPrimAttrs(pbrTls,
                                      *fs.mAovSchema,
                                      ext->getAovFlags(),

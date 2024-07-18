@@ -191,13 +191,12 @@ ProjectiveCamera::createRayImpl(mcrt_common::RayDifferential *dstRay, float x, f
 }
 
 float
-ProjectiveCamera::computeZDistanceImpl(const Vec3f &p, const Vec3f &o, float time) const
+ProjectiveCamera::computeZDistanceImpl(const Vec3f &p, float tHit, float time) const
 {
     // This result is typically thought of as the "depth" value used in
-    // depth maps.  The ray origin is not needed as the camera is
-    // the origin of all camera spaces.  Transform p from render space
-    // to the camera space at time t, and return the negative z component
-    // of that result.
+    // depth maps. The tHit is not needed. Transform p from render space
+    // to the camera space at the given time, and return the negative z
+    // component of that result.
     const Mat4f render2camera = computeRender2Camera(time);
     const float cpz = dot(Vec4f(p.x, p.y, p.z, 1.f), render2camera.col2());
     return -cpz;

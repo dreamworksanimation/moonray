@@ -542,7 +542,7 @@ aovAddToBundledQueue(pbr::TLState *pbrTls,
                 entry.filter() == AOV_FILTER_CLOSEST) {
                 // compute it
                 depth = scene.getCamera()->computeZDistance(isect.getP(),
-                                                            ray.getOrigin(),
+                                                            ray.getEnd(),
                                                             ray.getTime());
                 break;
             }
@@ -857,7 +857,7 @@ getStateVarVolumeOnly(int aovSchemaId, float volumeT,
 static inline void
 getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
             const mcrt_common::RayDifferential &ray, const Scene &scene,
-            float pixelWeight, float *dest)
+            float pixelWeight, float *dest, float tHit)
 {
     MNRY_ASSERT(aovType(aovSchemaId) == AOV_TYPE_STATE_VAR);
 
@@ -940,7 +940,7 @@ getStateVar(int aovSchemaId, const shading::Intersection &isect, float volumeT,
         case AOV_SCHEMA_ID_STATE_DEPTH:
             {
                 float cameraZ = scene.getCamera()->computeZDistance(
-                                    isect.getP(), ray.getOrigin(), ray.getTime());
+                                    isect.getP(), tHit, ray.getTime());
                 // Same conversion we use in the DeepBuffer
                 float volumeZ = -volumeT * ray.getDirection().z;
                 float z = min(cameraZ, volumeZ);
@@ -970,14 +970,15 @@ aovSetStateVars(pbr::TLState *pbrTls,
                 const mcrt_common::RayDifferential &ray,
                 const Scene &scene,
                 float pixelWeight,
-                float *dest)
+                float *dest,
+                float tHit)
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
     for (const auto &entry: aovSchema) {
         if (entry.type() == AOV_TYPE_STATE_VAR) {
             float weight = entry.filter() == AOV_FILTER_AVG ? pixelWeight : 1.0f;
-            getStateVar(entry.id(), isect, volumeT, ray, scene, weight, dest);
+            getStateVar(entry.id(), isect, volumeT, ray, scene, weight, dest, tHit);
         }
 
         // onto the next
@@ -2097,9 +2098,10 @@ computeStateAov(const MaterialAovs::ComputeParams &p, float *dest)
     const bool matched = labelMatch(p);
 
     if (matched) {
-        // if we matched, we compute the state aov
+        // If we matched, we compute the state aov.
+        // (Note the final param, p.mRay.tfar - Embree uses tfar to signal the t value of the hit point.)
         getStateVar(p.mEntry.mStateAovId, p.mIsect, scene_rdl2::math::sMaxValue, p.mRay, p.mScene,
-                    p.mPixelWeight, dest);
+                    p.mPixelWeight, dest, p.mRay.tfar);
     } else {
         // if not, need to fill in dest with an appropriate miss value
         setMissValue(p, dest);

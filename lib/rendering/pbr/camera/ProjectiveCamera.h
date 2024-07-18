@@ -52,8 +52,7 @@ private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass& sceneClass);
 
     bool getIsDofEnabledImpl() const override {  return mDof  &&  mDofLensRadius > 0.0f;  }
-    float computeZDistanceImpl(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f &o,
-                               float time) const final;
+    float computeZDistanceImpl(const scene_rdl2::math::Vec3f &p, float tHit, float time) const final;
 
     /// Create a primary ray *in render space*, given:
     /// - pixel in viewport coordinates)

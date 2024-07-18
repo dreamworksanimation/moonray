@@ -575,6 +575,10 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                  pv.minRoughness,
                                  -ray.getDirection());
 
+    // Save the t value of the intersection point since we're about to relocate the ray origin there.
+    // (Note that Embree uses tfar to signal the t value of the intersection point.)
+    float tHit = ray.tfar;
+
     //---------------------------------------------------------------------
     // Run the material shader at the ray intersection point to get the Bsdf
 
@@ -810,13 +814,14 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                                nullptr, nullptr, earlyTerminatorPathPixelWeight, pv.lpeStateId, aovs);
         }
         if (aovs && ray.getDepth() == 0) {
-            aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, earlyTerminatorPathPixelWeight, aovs);
+            aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, earlyTerminatorPathPixelWeight,
+                            aovs, tHit);
             aovSetPrimAttrs(pbrTls, aovSchema, material->get<shading::Material>().getAovFlags(),
                             isect, earlyTerminatorPathPixelWeight, aovs);
         }
 
         if (depth && ray.getDepth() == 0) {
-            *depth = scene->getCamera()->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
+            *depth = scene->getCamera()->computeZDistance(isect.getP(), tHit, ray.getTime());
         }
 
         if (deepParams) {
@@ -845,13 +850,13 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
 
     // if this is a primary ray, fill out the intersection and primitive attribute aovs
     if (aovs && ray.getDepth() == 0) {
-        aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, pv.pathPixelWeight, aovs);
+        aovSetStateVars(pbrTls, aovSchema, isect, volumeSurfaceT, ray, *scene, pv.pathPixelWeight, aovs, tHit);
         aovSetPrimAttrs(pbrTls, aovSchema, material->get<shading::Material>().getAovFlags(),
                          isect, pv.pathPixelWeight, aovs);
     }
 
     if (depth && ray.getDepth() == 0) {
-        *depth = scene->getCamera()->computeZDistance(isect.getP(), ray.getOrigin(), ray.getTime());
+        *depth = scene->getCamera()->computeZDistance(isect.getP(), tHit, ray.getTime());
     }
 
     //---------------------------------------------------------------------

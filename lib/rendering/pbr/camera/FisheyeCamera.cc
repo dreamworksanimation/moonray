@@ -95,11 +95,24 @@ void FisheyeCamera::createRayImpl(mcrt_common::RayDifferential* dstRay,
     const Vec3f dir_dx = transformVector(ct2render, createDirection(x+1.0f, y));
     const Vec3f dir_dy = transformVector(ct2render, createDirection(x, y+1.0f));
 
+    // A fisheye lens needs to capture only the hemisphere in front of the camera,
+    // i.e. with -ve z-component. We invalidate the ray if it has +ve z-component.
+    // This invalidation is done by setting the ray's near and far to sMaxValue.
+    float near, far;
+    if (dir.z <= 0.0f) {
+        near = getNear();
+        far  = getFar();
+    } else {
+        // invalidate backwards-pointing rays
+        near = scene_rdl2::math::sMaxValue;
+        far  = scene_rdl2::math::sMaxValue;
+    }
+
     *dstRay = mcrt_common::RayDifferential(
         org, dir,
         org, dir_dx,
         org, dir_dy,
-        getNear(), getFar(), time, 0);
+        near, far, time, 0);
 }
 
 Vec3f FisheyeCamera::createDirection(float x, float y) const
