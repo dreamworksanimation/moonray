@@ -31,9 +31,20 @@ private:
     scene_rdl2::math::Vec3f createDirection(float x, float y) const;
 
     static bool sAttributeKeyInitialized;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sMinLatitudeKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sMaxLatitudeKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sLatitudeZoomOffsetKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sMinLongitudeKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sMaxLongitudeKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sLongitudeZoomOffsetKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sFocalKey;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>  sInsideOutKey;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sOffsetRadiusKey;
 
+    float mThetaScale;
+    float mThetaOffset;
+    float mPhiScale;
+    float mPhiOffset;
     bool  mInsideOut;
     float mOffsetRadius;
 };
