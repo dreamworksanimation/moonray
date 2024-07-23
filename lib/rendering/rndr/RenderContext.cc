@@ -801,11 +801,16 @@ RenderContext::startFrame()
             executionModeString += ".";
             mExecutionMode = ExecutionMode::SCALAR;
         } else {
-            executionModeString = "Executing an XPU render since execution mode was set to auto.";
-            allowUnsupportedXPUFeatures = false; // want to fall back if unsupported
-            mExecutionMode = ExecutionMode::XPU;
+            // Uncomment the following to have AUTO mode start with XPU:
+            //   executionModeString = "Executing an XPU render since execution mode was set to auto.";
+            //   allowUnsupportedXPUFeatures = false; // want to fall back if unsupported
+            //   mExecutionMode = ExecutionMode::XPU;
             // If there is an error setting up the GPU, we will fall back to vector mode
             // in GeometryManager::updateGPUAccelerator().
+
+            // AUTO mode starts with vector mode
+            executionModeString = "Executing a vectorized render since execution mode was set to auto.";
+            mExecutionMode = ExecutionMode::VECTORIZED;
         }    
     }
 
