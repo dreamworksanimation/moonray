@@ -654,8 +654,7 @@ GeometryManager::loadGeometries(scene_rdl2::rdl2::Layer* layer,
                                                  scene_rdl2::rdl2::TIMESTEP_END) * world2render);
                 }
 
-                if (scene_rdl2::math::isEqual(l2r0, l2r1) ||
-                    !motionBlurParams.isMotionBlurOn()) {
+                if (scene_rdl2::math::isEqual(l2r0, l2r1)) {
                     geometry2render = {xform<Xform3f>(l2r0)};
                 } else {
                     geometry2render = {xform<Xform3f>(l2r0), xform<Xform3f>(l2r1)};

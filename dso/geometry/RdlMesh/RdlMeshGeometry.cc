@@ -310,8 +310,14 @@ RdlMeshProcedural::getVertexData(
     // Copy vertices
     VertexBuffer<Vec3fa, InterleavedTraits> vertices(vertCount, numPosSamples);
     for (size_t i = 0; i < vertCount; i++) {
-        const auto& p = procPosList0[i];
-        vertices(i, 0) = Vec3fa(p[0], p[1], p[2], 0.f);
+
+        if (pos1Valid && motionBlurType == scene_rdl2::rdl2::MotionBlurType::STATIC) {
+            const auto& p = procPosList1[i];
+            vertices(i, 0) = Vec3fa(p[0], p[1], p[2], 0.f);
+        } else {
+            const auto& p = procPosList0[i];
+            vertices(i, 0) = Vec3fa(p[0], p[1], p[2], 0.f);
+        }
     }
     if (numPosSamples == 2) {
         for (size_t i = 0; i < vertCount; i++) {
