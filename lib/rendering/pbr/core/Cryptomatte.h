@@ -162,15 +162,16 @@ public:
     void unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsigned>& samplesCount);
     void addFragments(unsigned x, unsigned y, 
                       const scene_rdl2::rdl2::RenderOutput& ro,
-                      const float *idAndCoverageData,
-                      const float *positionData,
-                      const float *p0Data,
-                      const float *normalData,
-                      const float *beautyData,
-                      const float *refPData,
-                      const float *refNData,
-                      const float *uvData,
-                      const float *resumeRenderSupportData);
+                      const float *idAndCoverageData[NUM_CRYPTOMATTE_TYPES],
+                      const float *positionData[NUM_CRYPTOMATTE_TYPES],
+                      const float *p0Data[NUM_CRYPTOMATTE_TYPES],
+                      const float *normalData[NUM_CRYPTOMATTE_TYPES],
+                      const float *beautyData[NUM_CRYPTOMATTE_TYPES],
+                      const float *refPData[NUM_CRYPTOMATTE_TYPES],
+                      const float *refNData[NUM_CRYPTOMATTE_TYPES],
+                      const float *uvData[NUM_CRYPTOMATTE_TYPES],
+                      const float *resumeRenderSupportData[NUM_CRYPTOMATTE_TYPES]);
+
 
     // --------------------------------------------- Print -------------------------------------------------------------
     void printAllPixelEntries() const;

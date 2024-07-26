@@ -527,15 +527,40 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                 ([&](const int startX, const int endX, const int pixY, const int nChan, const float* pix) {
                     for (int x = startX; x < endX; ++x) {
                         // get the offsets to the cryptomatte data (the data isn't necessarily contiguous!)
-                        const float* idAndCoverageData       = pix + reader.getPixChanOffset("Cryptomatte00.R");
-                        const float* positionData            = pix + reader.getPixChanOffset("CryptoP00.R");
-                        const float* p0Data                  = pix + reader.getPixChanOffset("CryptoP000.R");
-                        const float* normalData              = pix + reader.getPixChanOffset("CryptoN00.R");
-                        const float* beautyData              = pix + reader.getPixChanOffset("CryptoB00.R");
-                        const float* refPData                = pix + reader.getPixChanOffset("CryptoRefP00.R");
-                        const float* refNData                = pix + reader.getPixChanOffset("CryptoRefN00.R");
-                        const float* uvData                  = pix + reader.getPixChanOffset("CryptoUV00.R");
-                        const float* resumeRenderSupportData = pix + reader.getPixChanOffset("CryptoS00.R");
+                        const float* idAndCoverageData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* positionData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* p0Data[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* normalData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* beautyData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* refPData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* refNData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* uvData[pbr::NUM_CRYPTOMATTE_TYPES];
+                        const float* resumeRenderSupportData[pbr::NUM_CRYPTOMATTE_TYPES];
+
+                        // get the offsets to the cryptomatte data (the data isn't necessarily contiguous!)
+                        idAndCoverageData[pbr::CRYPTOMATTE_TYPE_REGULAR]       = pix + reader.getPixChanOffset("Cryptomatte00.R");
+                        positionData[pbr::CRYPTOMATTE_TYPE_REGULAR]            = pix + reader.getPixChanOffset("CryptoP00.R");
+                        p0Data[pbr::CRYPTOMATTE_TYPE_REGULAR]                  = pix + reader.getPixChanOffset("CryptoP000.R");
+                        normalData[pbr::CRYPTOMATTE_TYPE_REGULAR]              = pix + reader.getPixChanOffset("CryptoN00.R");
+                        beautyData[pbr::CRYPTOMATTE_TYPE_REGULAR]              = pix + reader.getPixChanOffset("CryptoB00.R");
+                        refPData[pbr::CRYPTOMATTE_TYPE_REGULAR]                = pix + reader.getPixChanOffset("CryptoRefP00.R");
+                        refNData[pbr::CRYPTOMATTE_TYPE_REGULAR]                = pix + reader.getPixChanOffset("CryptoRefN00.R");
+                        uvData[pbr::CRYPTOMATTE_TYPE_REGULAR]                  = pix + reader.getPixChanOffset("CryptoUV00.R");
+                        resumeRenderSupportData[pbr::CRYPTOMATTE_TYPE_REGULAR] = pix + reader.getPixChanOffset("CryptoS00.R");
+
+                        // also need the offsets to refracted cryptomatte data, if present
+                        if (ro->getCryptomatteEnableRefract()) {
+                            idAndCoverageData[pbr::CRYPTOMATTE_TYPE_REFRACTED] = pix + reader.getPixChanOffset("CryptomatteRefract00.R");
+                            positionData[pbr::CRYPTOMATTE_TYPE_REFRACTED]      = pix + reader.getPixChanOffset("CryptoRefractP00.R");
+                            p0Data[pbr::CRYPTOMATTE_TYPE_REFRACTED]            = pix + reader.getPixChanOffset("CryptoRefractP000.R");
+                            normalData[pbr::CRYPTOMATTE_TYPE_REFRACTED]        = pix + reader.getPixChanOffset("CryptoRefractN00.R");
+                            beautyData[pbr::CRYPTOMATTE_TYPE_REFRACTED]        = pix + reader.getPixChanOffset("CryptoRefractB00.R");
+                            refPData[pbr::CRYPTOMATTE_TYPE_REFRACTED]          = pix + reader.getPixChanOffset("CryptoRefractRefP00.R");
+                            refNData[pbr::CRYPTOMATTE_TYPE_REFRACTED]          = pix + reader.getPixChanOffset("CryptoRefractRefN00.R");
+                            uvData[pbr::CRYPTOMATTE_TYPE_REFRACTED]            = pix + reader.getPixChanOffset("CryptoRefractUV00.R");
+                            resumeRenderSupportData[pbr::CRYPTOMATTE_TYPE_REFRACTED]
+                                                                               = pix + reader.getPixChanOffset("CryptoRefractS00.R");
+                        }
 
                         cryptomatteBuf->addFragments(x, pixY, *ro, idAndCoverageData, positionData, p0Data, normalData,
                                                      beautyData, refPData, refNData, uvData, resumeRenderSupportData);

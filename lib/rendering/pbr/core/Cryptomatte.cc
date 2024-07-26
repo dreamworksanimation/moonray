@@ -350,15 +350,15 @@ void CryptomatteBuffer::unfinalize(const scene_rdl2::fb_util::PixelBuffer<unsign
 
 void CryptomatteBuffer::addFragments(unsigned x, unsigned y, 
                                      const scene_rdl2::rdl2::RenderOutput& ro,
-                                     const float *idAndCoverageData,
-                                     const float *positionData,
-                                     const float *p0Data,
-                                     const float *normalData,
-                                     const float *beautyData,
-                                     const float *refPData,
-                                     const float *refNData,
-                                     const float *uvData,
-                                     const float *resumeRenderSupportData)
+                                     const float *idAndCoverageData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *positionData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *p0Data[NUM_CRYPTOMATTE_TYPES],
+                                     const float *normalData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *beautyData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *refPData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *refNData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *uvData[NUM_CRYPTOMATTE_TYPES],
+                                     const float *resumeRenderSupportData[NUM_CRYPTOMATTE_TYPES])
 {
     // The number of fragments will always equal the cryptomatte depth when we reconstruct the data. The cryptomatte 
     // depth represents the max number of fragments. Though there will not necessarily be that many fragments, the 
@@ -375,9 +375,9 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
 
         PixelEntry &pixelEntry = mPixelEntries[cryptoType][y * mWidth + x];
         for (int i = 0; i < numFragments; i++) {
-            const float id       = idAndCoverageData[0];
-            const float coverage = idAndCoverageData[1];
-            idAndCoverageData += 2;
+            const float id       = idAndCoverageData[cryptoType][0];
+            const float coverage = idAndCoverageData[cryptoType][1];
+            idAndCoverageData[cryptoType] += 2;
 
             // -------------- Reconstruct extra data (positions, normals, beauty) ------------------ //
             scene_rdl2::math::Vec3f position(0.f);
@@ -391,37 +391,38 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
             unsigned numFragSamples = 1;
 
             if (ro.getCryptomatteOutputPositions()) {
-                position = scene_rdl2::math::Vec3f(positionData);
-                positionData += 4;
+                position = scene_rdl2::math::Vec3f(positionData[cryptoType]);
+                positionData[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputP0()) {
-                p0 = scene_rdl2::math::Vec3f(p0Data);
-                p0Data += 4;
+                p0 = scene_rdl2::math::Vec3f(p0Data[cryptoType]);
+                p0Data[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputNormals()) {
-                normal = scene_rdl2::math::Vec3f(normalData);
-                normalData += 4;
+                normal = scene_rdl2::math::Vec3f(normalData[cryptoType]);
+                normalData[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputBeauty()) {
-                beauty = scene_rdl2::math::Color4(beautyData[0], beautyData[1], beautyData[2], beautyData[3]);
-                beautyData += 4;
+                beauty = scene_rdl2::math::Color4(beautyData[cryptoType][0], beautyData[cryptoType][1],
+                                                  beautyData[cryptoType][2], beautyData[cryptoType][3]);
+                beautyData[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputRefP()) {
-                refP = scene_rdl2::math::Vec3f(refPData);
-                refPData += 4;
+                refP = scene_rdl2::math::Vec3f(refPData[cryptoType]);
+                refPData[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputRefN()) {
-                refN = scene_rdl2::math::Vec3f(refNData);
-                refNData += 4;
+                refN = scene_rdl2::math::Vec3f(refNData[cryptoType]);
+                refNData[cryptoType] += 4;
             }
             if (ro.getCryptomatteOutputUV()) {
-                uv = scene_rdl2::math::Vec2f(uvData);
-                uvData += 2;
+                uv = scene_rdl2::math::Vec2f(uvData[cryptoType]);
+                uvData[cryptoType] += 2;
             }
             if (ro.getCryptomatteSupportResumeRender()) {
-                presenceDepth  = static_cast<unsigned>(resumeRenderSupportData[0]);
-                numFragSamples = static_cast<unsigned>(resumeRenderSupportData[1]);
-                resumeRenderSupportData += 2;
+                presenceDepth  = static_cast<unsigned>(resumeRenderSupportData[cryptoType][0]);
+                numFragSamples = static_cast<unsigned>(resumeRenderSupportData[cryptoType][1]);
+                resumeRenderSupportData[cryptoType] += 2;
             }
 
             if (coverage > 0.f) {
