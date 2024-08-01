@@ -100,10 +100,6 @@ private:
     // one .cu source file so there is only one module.
     OptixModule mModule;
 
-    // There are special built-in modules for Optix round curves
-    OptixModule mRoundCubicBsplineCurvesModule;
-    OptixModule mRoundCubicBsplineCurvesMBModule;
-
     // Specifies the programs to call for ray generation and for each different type of
     // geometry (OptixGPUPrimitive):
     // "intersection" , "closest hit" and "any hit" programs called during BVH traversal.

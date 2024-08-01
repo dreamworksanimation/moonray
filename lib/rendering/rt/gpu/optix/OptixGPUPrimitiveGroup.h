@@ -52,18 +52,9 @@ public:
     // GAS = geometry acceleration structure.  A BVH (a.k.a. Traversable) containing
     // only primitives (not other acceleration structures (AS.)
     OptixTraversableHandle mTrianglesGAS;    // the handle to the GAS
-    OptixGPUBuffer<char> mTrianglesGASBuf;        // the actual memory buffer on the GPU
+    OptixGPUBuffer<char> mTrianglesGASBuf;   // the actual memory buffer on the GPU
     OptixTraversableHandle mTrianglesMBGAS;  // the handle to the motion blurred GAS
-    OptixGPUBuffer<char> mTrianglesMBGASBuf;      // the actual memory buffer on the GPU
-
-    // Similar to mTriMeshes, this is the host-side representation of the round curves.
-    std::vector<OptixGPURoundCurves*> mRoundCurves;
-    OptixTraversableHandle mRoundCurvesGAS;  // the handle to the GAS
-    OptixGPUBuffer<char> mRoundCurvesGASBuf;      // the actual memory buffer on the GPU
-
-    std::vector<OptixGPURoundCurves*> mRoundCurvesMB;
-    OptixTraversableHandle mRoundCurvesMBGAS;  // the handle to the GAS
-    OptixGPUBuffer<char> mRoundCurvesMBGASBuf;      // the actual memory buffer on the GPU
+    OptixGPUBuffer<char> mTrianglesMBGASBuf; // the actual memory buffer on the GPU
 
     // OptixGPUCustomPrimitive is used for any non-TriMesh primitives.  These all must
     // have intersection programs.  We can support any kind of geometry that we can

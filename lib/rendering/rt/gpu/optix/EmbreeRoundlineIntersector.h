@@ -1,6 +1,9 @@
 // Copyright 2009-2021 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 
+// Copyright 2023-2024 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
 // This is pulled from Embree 4 almost verbatim so we match Embree's round
 // linear curves behavior.  There are things in here that can be simplified
 // or cleaned up, but we don't want to do that because we want to remain 1:1 with
@@ -8,66 +11,9 @@
 
 #include <limits>
 
+#include "EmbreeSupport.h"
+
 #pragma once
-
-inline __device__
-float rcp(const float x)
-{
-    return 1.f / x;
-}
-
-inline __device__
-float select(const bool s, const float t, const float f)
-{
-    return s ? t : f;
-}
-
-inline __device__
-float3 select(const bool s, const float3& t, const float3& f)
-{
-    return s ? t : f;
-}
-
-inline __device__
-float sqr(const float a)
-{
-    return a * a;
-}
-
-inline __device__
-float sqr(const float3& a)
-{
-    return dot(a, a);
-}
-
-inline __device__
-float clamp(const float x, const float lower = 0.f, const float upper = 1.f)
-{
-    return fmaxf(fminf(x, upper), lower);
-}
-
-inline __device__
-float3 xyz(const float4& v)
-{
-    return {v.x, v.y, v.z};
-}
-
-constexpr float pos_inf = std::numeric_limits<float>::infinity();
-constexpr float inf = pos_inf;
-constexpr float neg_inf = -pos_inf;
-constexpr float ulp = std::numeric_limits<float>::epsilon();
-constexpr float min_rcp_input = 1E-18f;
-
-struct EmbreeRayHit
-{
-    float3 org;
-    float3 dir;
-    float tnear;
-    float tfar;
-    float3 Ng;
-    float u;
-    float v;
-};
 
 /*
 
@@ -146,8 +92,8 @@ struct ConeGeometry
 {
     inline __device__
     ConeGeometry (const float4& a, const float4& b) :
-        p0{xyz(a)},
-        p1{xyz(b)},
+        p0{make_float3(a)},
+        p1{make_float3(b)},
         dP(p1-p0),
         dPdP(dot(dP,dP)),
         r0(a.w),
@@ -625,7 +571,7 @@ bool intersectConeSphere(const bool valid_i,
     /* move ray origin closer to make calculations numerically stable */
     const float dOdO = sqr(ray_dir);
     const float rcp_dOdO = rcp(dOdO);
-    const float3 center = float(0.5f)*(xyz(v0)+xyz(v1));
+    const float3 center = float(0.5f)*(make_float3(v0)+make_float3(v1));
     const float dt = dot(center-ray_org_in,ray_dir)*rcp_dOdO;
     const float3 ray_org = ray_org_in + dt*ray_dir;
 

@@ -45,7 +45,7 @@ struct HitGroupData
         FLAT_BSPLINE_CURVES,
         FLAT_BEZIER_CURVES,
         ROUND_LINEAR_CURVES,
-        ROUND_CUBIC_BSPLINE_CURVES,
+        ROUND_BSPLINE_CURVES,
         POINTS,
         SPHERE,
         BOX
@@ -110,4 +110,3 @@ typedef SBTRecord<HitGroupData> HitGroupRecord;
 
 } // namespace rt
 } // namespace moonray
-

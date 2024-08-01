@@ -75,11 +75,7 @@ public:
             createCurves(*pCurves, c.getCurvesType(), geom::Curves::SubType::RAY_FACING, c.getTessellationRate());
         break;
         case geom::Curves::SubType::ROUND:
-            if (c.getCurvesType() == geom::Curves::Type::LINEAR) {
-                createCurves(*pCurves, geom::Curves::Type::LINEAR, geom::Curves::SubType::ROUND, c.getTessellationRate());
-            } else {
-                createOptixRoundCurves(*pCurves, c.getCurvesType());
-            }
+            createCurves(*pCurves, c.getCurvesType(), geom::Curves::SubType::ROUND, c.getTessellationRate());
         break;
         case geom::Curves::SubType::NORMAL_ORIENTED:
             if (mAllowUnsupportedFeatures) {
@@ -259,9 +255,6 @@ private:
                       const geom::Curves::Type curvesType,
                       const geom::Curves::SubType curvesSubType,
                       const int tessellationRate);
-
-    void createOptixRoundCurves(const geom::internal::Curves& geomCurves,
-                                const geom::Curves::Type curvesType);
 
     void createPoints(const geom::internal::Points& geomPoints);
 
@@ -449,147 +442,6 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     }
 
     gpuCurve->mSegmentsPerCurve = tessellationRate;  // for bezier and bspline, embree default
-}
-
-void
-OptixGPUBVHBuilder::createOptixRoundCurves(const geom::internal::Curves& geomCurves,
-                                           const geom::Curves::Type curvesType)
-{
-    if (curvesType == geom::Curves::Type::BEZIER) {
-        // todo: this is supported in Optix 7.7
-        if (mAllowUnsupportedFeatures) {
-            logWarningMsg(
-                "Round bezier curves are currently unsupported in XPU mode.  "
-                "Ignoring geometry.");
-            return;
-        } else {
-            mFailed = true;
-            mWhyFailed = "Round bezier curves are currently unsupported in XPU mode";
-            return;
-        }
-    }
-
-    // This code assumes that there is a max of 2 motion samples.
-    // TODO: add support for round curves with more motion samples.
-    bool motionBlur = geomCurves.getMotionSamplesCount() > 1;
-    if (geomCurves.getMotionSamplesCount() > 2) {
-        if (mAllowUnsupportedFeatures) {
-            logWarningMsg(
-                "Round curves with more than 2 motion samples are currently unsupported in XPU mode.  "
-                "Only using first 2 samples.");
-        } else {
-            mFailed = true;
-            mWhyFailed = "Round curves with more than 2 motion samples are currently unsupported in XPU mode";
-            return;
-        }
-    }
-
-    geom::internal::Curves::Spans spans;
-    geomCurves.getTessellatedSpans(spans);
-
-    OptixGPURoundCurves* gpuCurve = new OptixGPURoundCurves();
-    if (!motionBlur) {
-        mParentGroup->mRoundCurves.push_back(gpuCurve);
-    } else {
-        mParentGroup->mRoundCurvesMB.push_back(gpuCurve);
-    }
-
-    gpuCurve->mInputFlags = 0;
-    gpuCurve->mIsSingleSided = false;
-    gpuCurve->mIsNormalReversed = false;
-    gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
-    gpuCurve->mEmbreeUserData = reinterpret_cast<intptr_t>(geomCurves.mEmbreeUserData);
-    gpuCurve->mEmbreeGeomID = geomCurves.mEmbreeGeomID;
-
-    if (!getShadowLinkingLights(geomCurves,
-                                gpuCurve->mShadowLinkLights)) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking light IDs to the GPU";
-        return;
-    }
-
-    if (!getShadowLinkingReceivers(geomCurves,
-                                   gpuCurve->mShadowLinkReceivers)) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the shadow linking receiver IDs to the GPU";
-        return;
-    }
-
-    gpuCurve->mMotionSamplesCount = geomCurves.getMotionSamplesCount();
-    if (gpuCurve->mMotionSamplesCount > 2) {
-        gpuCurve->mMotionSamplesCount = 2;
-    }
-
-    switch (curvesType) {
-    case geom::Curves::Type::BSPLINE:
-        gpuCurve->mType = OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE;
-    break;
-    default:
-        MNRY_ASSERT_REQUIRE(false);
-    }
-
-    gpuCurve->mNumControlPoints = spans.mVertexCount;
-    const unsigned int* indices = reinterpret_cast<const unsigned int*>(spans.mIndexBufferDesc.mData);
-
-    std::vector<int> assignmentIds(spans.mSpanCount);
-    std::vector<unsigned int> hostIndices(spans.mSpanCount);
-    std::vector<float3> hostVertices(spans.mVertexCount * gpuCurve->mMotionSamplesCount);
-    std::vector<float> hostWidths(spans.mVertexCount * gpuCurve->mMotionSamplesCount);
-
-    for (size_t i = 0; i < spans.mSpanCount; i++) {
-        // We only want every third element of the index buffer to get the vertex index.
-        // See: geom/prim/Curves.h struct IndexData
-        hostIndices[i] = indices[i * 3];
-        assignmentIds[i] = geomCurves.getIntersectionAssignmentId(i);
-    }
-
-    const geom::Curves::VertexBuffer& verts = geomCurves.getVertexBuffer();
-
-    for (int ms = 0; ms < gpuCurve->mMotionSamplesCount; ms++) {
-        for (size_t i = 0; i < spans.mVertexCount; i++) {
-            const scene_rdl2::math::Vec3fa& cp = verts(i, ms);
-            hostVertices[ms * spans.mVertexCount + i] = {cp.x, cp.y, cp.z};
-            hostWidths[ms * spans.mVertexCount + i] = cp.w;
-        }
-    }
-
-    if (gpuCurve->mAssignmentIds.allocAndUpload(assignmentIds) != cudaSuccess) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
-        return;
-    }
-
-    if (gpuCurve->mIndices.allocAndUpload(hostIndices) != cudaSuccess) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the curve indices to the GPU";
-        return;
-    }
-
-    if (gpuCurve->mVertices.allocAndUpload(hostVertices) != cudaSuccess) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the curve vertices to the GPU";
-        return;
-    }
-
-    if (gpuCurve->mWidths.allocAndUpload(hostWidths) != cudaSuccess) {
-        mFailed = true;
-        mWhyFailed = "There was a problem uploading the curve widths to the GPU";
-        return;
-    }
-
-    // Get the vertex/width buffer pointers.  For curves without motion blur, the
-    // second pointer is null.
-    gpuCurve->mVerticesPtrs[0] = gpuCurve->mVertices.deviceptr();
-    gpuCurve->mWidthsPtrs[0] = gpuCurve->mWidths.deviceptr();
-    if (gpuCurve->mMotionSamplesCount == 2) {
-        gpuCurve->mVerticesPtrs[1] = gpuCurve->mVertices.deviceptr() +
-                                     gpuCurve->mNumControlPoints * sizeof(float3);
-        gpuCurve->mWidthsPtrs[1] = gpuCurve->mWidths.deviceptr() +
-                                   gpuCurve->mNumControlPoints * sizeof(float);
-    } else {
-        gpuCurve->mVerticesPtrs[1] = 0;
-        gpuCurve->mWidthsPtrs[1] = 0;
-    }
 }
 
 void
@@ -1057,8 +909,6 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     mNumCPUThreads {numCPUThreads},
     mContext {nullptr},
     mModule {nullptr},
-    mRoundCubicBsplineCurvesModule {nullptr},
-    mRoundCubicBsplineCurvesMBModule {nullptr},
     mRootGroup {nullptr}
 {
     // The constructor fully initializes the GPU.  We are ready to trace rays afterwards.
@@ -1084,9 +934,7 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     pipelineCompileOptions.pipelineLaunchParamsVariableName = "params";
     pipelineCompileOptions.usesPrimitiveTypeFlags = static_cast<unsigned int>(
         OPTIX_PRIMITIVE_TYPE_FLAGS_TRIANGLE |
-        OPTIX_PRIMITIVE_TYPE_FLAGS_CUSTOM |
-        OPTIX_PRIMITIVE_TYPE_FLAGS_ROUND_LINEAR |
-        OPTIX_PRIMITIVE_TYPE_FLAGS_ROUND_CUBIC_BSPLINE);
+        OPTIX_PRIMITIVE_TYPE_FLAGS_CUSTOM);
 
     const std::string moonrayRootPath = scene_rdl2::util::getenv<std::string>("REZ_MOONRAY_ROOT");
     const std::string ptxPath = moonrayRootPath + "/shaders/OptixGPUPrograms.ptx";
@@ -1110,26 +958,6 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     }
 
     scene_rdl2::logging::Logger::info("GPU: Loading built in modules");
-
-    if (!getBuiltinISModule(mContext,
-                            moduleCompileOptions,
-                            pipelineCompileOptions,
-                            OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE,
-                            false,
-                            &mRoundCubicBsplineCurvesModule,
-                            errorMsg)) {
-        return;
-    }
-
-    if (!getBuiltinISModule(mContext,
-                            moduleCompileOptions,
-                            pipelineCompileOptions,
-                            OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE,
-                            true,
-                            &mRoundCubicBsplineCurvesMBModule,
-                            errorMsg)) {
-        return;
-    }
 
     scene_rdl2::logging::Logger::info("GPU: Creating program groups");
 
@@ -1248,14 +1076,6 @@ OptixGPUAccelerator::~OptixGPUAccelerator()
 
     if (mModule != nullptr) {
         optixModuleDestroy(mModule);
-    }
-
-    if (mRoundCubicBsplineCurvesModule != nullptr) {
-        optixModuleDestroy(mRoundCubicBsplineCurvesModule);
-    }
-
-    if (mRoundCubicBsplineCurvesMBModule != nullptr) {
-        optixModuleDestroy(mRoundCubicBsplineCurvesMBModule);
     }
 
     if (mContext != nullptr) {
@@ -1502,26 +1322,13 @@ OptixGPUAccelerator::createProgramGroups(std::string* errorMsg)
                                          "__anyhit__",
                                          mModule,
                                          "__closesthit__",
-                                         mRoundCubicBsplineCurvesModule,
-                                         nullptr,
+                                         mModule,
+                                         "__intersection__round_bspline_curve",
                                          &pg,
                                          errorMsg)) {
         return false;
     }
-    mProgramGroups["roundCubicBsplineCurvesHG"] = pg;
-
-    if (!createOptixHitGroupProgramGroup(mContext,
-                                         mModule,
-                                         "__anyhit__",
-                                         mModule,
-                                         "__closesthit__",
-                                         mRoundCubicBsplineCurvesMBModule,
-                                         nullptr,
-                                         &pg,
-                                         errorMsg)) {
-        return false;
-    }
-    mProgramGroups["roundCubicBsplineCurvesMBHG"] = pg;
+    mProgramGroups["roundBsplineCurveHG"] = pg;
 
     if (!createOptixHitGroupProgramGroup(mContext,
                                          mModule,

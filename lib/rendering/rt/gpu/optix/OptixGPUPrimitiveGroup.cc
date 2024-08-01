@@ -15,12 +15,6 @@ OptixGPUPrimitiveGroup::~OptixGPUPrimitiveGroup()
     for (auto& prim : mTriMeshesMB) {
         delete prim;
     }
-    for (auto& prim : mRoundCurves) {
-        delete prim;
-    }
-    for (auto& prim : mRoundCurvesMB) {
-        delete prim;
-    }
     for (auto& prim : mCustomPrimitives) {
         delete prim;
     }
@@ -34,7 +28,6 @@ OptixGPUPrimitiveGroup::setSBTOffset(unsigned int& sbtOffset)
 {
     mSBTOffset = sbtOffset;
     sbtOffset += mTriMeshes.size() + mTriMeshesMB.size() + 
-                 mRoundCurves.size() + mRoundCurvesMB.size() +
                  mCustomPrimitives.size();
 }
 
@@ -92,48 +85,6 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         instances.push_back(oinstance);
     }
 
-    if (!mRoundCurves.empty()) {
-        // Create the GAS (geometry acceleration structure) for all of the round
-        // curves in the scene and wrap them in an OptixInstance.
-        if (!createRoundCurvesGAS(cudaStream,
-                                  context,
-                                  mRoundCurves,
-                                  &mRoundCurvesGAS,
-                                  &mRoundCurvesGASBuf,
-                                  errorMsg)) {
-            return false;
-        }
-        OptixInstance oinstance;
-        OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
-        oinstance.instanceId = 0;
-        oinstance.visibilityMask = 255;
-        oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size();
-        oinstance.flags = 0;
-        oinstance.traversableHandle = mRoundCurvesGAS;
-        instances.push_back(oinstance);
-    }
-
-    if (!mRoundCurvesMB.empty()) {
-        // Create the GAS (geometry acceleration structure) for all of the motion-blurred round
-        // curves in the scene and wrap them in an OptixInstance.
-        if (!createRoundCurvesGAS(cudaStream,
-                                  context,
-                                  mRoundCurvesMB,
-                                  &mRoundCurvesMBGAS,
-                                  &mRoundCurvesMBGASBuf,
-                                  errorMsg)) {
-            return false;
-        }
-        OptixInstance oinstance;
-        OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
-        oinstance.instanceId = 0;
-        oinstance.visibilityMask = 255;
-        oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size() + mRoundCurves.size();
-        oinstance.flags = 0;
-        oinstance.traversableHandle = mRoundCurvesMBGAS;
-        instances.push_back(oinstance);
-    }
-
     if (!mCustomPrimitives.empty()) {
         // Create the GAS for all of the custom primitives in the scene and
         // wrap them in an OptixInstance.
@@ -149,8 +100,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
         oinstance.instanceId = 0;
         oinstance.visibilityMask = 255;
-        oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size() +
-                                           mRoundCurves.size() + mRoundCurvesMB.size();
+        oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size();
         oinstance.flags = 0;
         oinstance.traversableHandle = mCustomPrimitivesGAS;
         instances.push_back(oinstance);
@@ -291,60 +241,6 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         hitgroupRecs.push_back(rec);
     }
 
-    for (size_t i = 0; i < mRoundCurves.size(); i++) {
-        HitGroupRecord rec = {};
-        OptixGPURoundCurves* curves = mRoundCurves[i];
-        rec.mData.mIsSingleSided = curves->mIsSingleSided;
-        rec.mData.mIsNormalReversed = curves->mIsNormalReversed;
-        rec.mData.mVisibleShadow = curves->mVisibleShadow;
-        rec.mData.mAssignmentIds = curves->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkLights = curves->mShadowLinkLights.count();
-        rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
-        rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
-        rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
-        rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
-        rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
-
-        // Specify the program group to use
-        switch (curves->mType) {
-        case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
-            rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
-            optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesHG"], &rec);
-        break;
-        default:
-            MNRY_ASSERT_REQUIRE(false);
-        }
-
-        hitgroupRecs.push_back(rec);
-    }
-
-    for (size_t i = 0; i < mRoundCurvesMB.size(); i++) {
-        HitGroupRecord rec = {};
-        OptixGPURoundCurves* curves = mRoundCurvesMB[i];
-        rec.mData.mIsSingleSided = curves->mIsSingleSided;
-        rec.mData.mIsNormalReversed = curves->mIsNormalReversed;
-        rec.mData.mVisibleShadow = curves->mVisibleShadow;
-        rec.mData.mAssignmentIds = curves->mAssignmentIds.ptr();
-        rec.mData.mNumShadowLinkLights = curves->mShadowLinkLights.count();
-        rec.mData.mShadowLinkLights = curves->mShadowLinkLights.ptr();
-        rec.mData.mNumShadowLinkReceivers = curves->mShadowLinkReceivers.count();
-        rec.mData.mShadowLinkReceivers = curves->mShadowLinkReceivers.ptr();
-        rec.mData.mEmbreeGeomID = curves->mEmbreeGeomID;
-        rec.mData.mEmbreeUserData = curves->mEmbreeUserData;
-
-        // Specify the program group to use
-        switch (curves->mType) {
-        case OPTIX_PRIMITIVE_TYPE_ROUND_CUBIC_BSPLINE:
-            rec.mData.mType = HitGroupData::ROUND_CUBIC_BSPLINE_CURVES;
-            optixSbtRecordPackHeader(pgs["roundCubicBsplineCurvesMBHG"], &rec);
-        break;
-        default:
-            MNRY_ASSERT_REQUIRE(false);
-        }
-
-        hitgroupRecs.push_back(rec);
-    }
-
     for (size_t i = 0; i < mCustomPrimitives.size(); i++) {
         HitGroupRecord rec = {};
 
@@ -376,17 +272,25 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
                 optixSbtRecordPackHeader(pgs["flatBezierCurveHG"], &rec);
             break;
             case BSPLINE:
-                rec.mData.mType = HitGroupData::FLAT_BSPLINE_CURVES;
-                optixSbtRecordPackHeader(pgs["flatBsplineCurveHG"], &rec);
+                if (curve->mSubType == RAY_FACING) {
+                    rec.mData.mType = HitGroupData::FLAT_BSPLINE_CURVES;
+                    optixSbtRecordPackHeader(pgs["flatBsplineCurveHG"], &rec);
+                } else if (curve->mSubType == ROUND) {
+                    rec.mData.mType = HitGroupData::ROUND_BSPLINE_CURVES;
+                    optixSbtRecordPackHeader(pgs["roundBsplineCurveHG"], &rec);
+                } else {
+                    MNRY_ASSERT_REQUIRE(false);
+                }
             break;
             case LINEAR:
                 if (curve->mSubType == RAY_FACING) {
                     rec.mData.mType = HitGroupData::FLAT_LINEAR_CURVES;
                     optixSbtRecordPackHeader(pgs["flatLinearCurveHG"], &rec);
-                }
-                if (curve->mSubType == ROUND) {
+                } else if (curve->mSubType == ROUND) {
                     rec.mData.mType = HitGroupData::ROUND_LINEAR_CURVES;
                     optixSbtRecordPackHeader(pgs["roundLinearCurveHG"], &rec);
+                } else {
+                    MNRY_ASSERT_REQUIRE(false);
                 }
             break;
             default:
