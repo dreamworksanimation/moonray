@@ -460,6 +460,9 @@ sampleAndAddDirectLightContributionsBundled( const uniform PathIntegrator * unif
     for (uniform int lightIndex = 0, lightSamplesSoFar = 0; lightIndex < lightCount; lightIndex++) {
         const uniform Light * uniform light = LightSetSampler_getLight(&lSampler, lightIndex);
 
+        // Reset lsmp after each light has been sampled
+        memset(lsmp, 0, sizeof(varying LightSample) * lightSampleCount);
+        
         // Sample ALL unbounded and mesh lights, regardless of light sampling mode
         // TODO: the paper used for adaptive light sampling has some probability specifying whether to sample unbounded 
         // lights vs. the BVH. Then, if the unbounded light set is chosen, it randomly picks an unbounded light to 
