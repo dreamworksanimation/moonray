@@ -834,25 +834,19 @@ RenderContext::startFrame()
 
 #if defined(USE_PARTITIONED_PIXEL)
         if (!mPbrScene->getRdlSceneContext()->getSceneVariables().get(temporalKey)) {
-            if (mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
-                pbr::kPixelPartition.rotate(frameNum);
-            }
+            pbr::kPixelPartition.rotate(frameNum);
         }
 #endif
 
 #if defined(USE_PARTITIONED_LENS)
         if (!mPbrScene->getRdlSceneContext()->getSceneVariables().get(temporalKey)) {
-            if (mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
-                pbr::kLensPartition.rotate(frameNum);
-            }
+            pbr::kLensPartition.rotate(frameNum);
         }
 #endif
 
 #if defined(USE_PARTITIONED_TIME)
         if (!mPbrScene->getRdlSceneContext()->getSceneVariables().get(temporalKey)) {
-            if (mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
-                pbr::kTimePartition.rotate(frameNum);
-            }
+            pbr::kTimePartition.rotate(frameNum);
         }
 #endif
     }
@@ -923,8 +917,7 @@ RenderContext::startFrame()
 
     // Don't spam the logs if in real-time mode.
     // mTotalRenderPrepTime was set inside of the prep function call
-    if (getRenderMode() != RenderMode::REALTIME &&
-        mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
+    if (getRenderMode() != RenderMode::REALTIME) {
         if (mLogTime) { // only print this if previous pass printing timing
             mRenderStats->logInfoEmptyLine();
             mRenderStats->updateAndLogRenderPrepStats();
@@ -1006,8 +999,7 @@ RenderContext::startFrame()
     }
 
     // Don't spam the logs if in real-time mode.
-    if (getRenderMode() != RenderMode::REALTIME &&
-        mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
+    if (getRenderMode() != RenderMode::REALTIME) {
 
         if (frameState.mExecutionMode == mcrt_common::ExecutionMode::VECTORIZED ||
             frameState.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
@@ -1104,8 +1096,7 @@ RenderContext::stopFrame()
     // looking at the result, and then deciding to move the camera again.
     // The decision for this pass is remembered in mLogTime for next pass to stop
     // it from printing renderprep timing.
-    if (getRenderMode() != RenderMode::REALTIME &&
-        mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
+    if (getRenderMode() != RenderMode::REALTIME) {
         if (isFrameComplete() || mPbrStatistics->mMcrtTime >= 10.0) {
             mLogTime = true;
             mRenderStats->logInfoEmptyLine();
@@ -1849,11 +1840,8 @@ RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
         const scene_rdl2::rdl2::SceneVariables & sv = mSceneContext->getSceneVariables();
 
         // Check for the need to reload all procedurals for changes in frame
-        // or motion blur. If the applicationMode is set to MOTIONCAPTURE
-        // the program will not load geometry from disk each time
-        // the frame ID changes
-        bool frameChanged = (sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sFrameKey) &&
-            mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE);
+        // or motion blur.
+        bool frameChanged = sv.hasChanged(scene_rdl2::rdl2::SceneVariables::sFrameKey);
 
         // Our camera could have changed.
         // A camera change requires a geometry rebuild, our definition of
@@ -1900,14 +1888,11 @@ RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
 
         mRenderPrepTimingStats->recTime(RenderPrepTimingStats::RenderPrepTag::LOAD_GEOMETRIES);
 
-        // Report memory footprint for geometry primitives.
-        if (mOptions.getApplicationMode() != ApplicationMode::MOTIONCAPTURE) {
-            if (mRenderStats->getLogInfo() ||
-                mRenderStats->getLogCsv()  ||
-                mRenderStats->getLogAthena()) {
-                reportGeometryTessellationTime();
-                reportGeometryMemory();
-            }
+        if (mRenderStats->getLogInfo() ||
+            mRenderStats->getLogCsv()  ||
+            mRenderStats->getLogAthena()) {
+            reportGeometryTessellationTime();
+            reportGeometryMemory();
         }
 
         mRenderPrepTimingStats->recTime(RenderPrepTimingStats::RenderPrepTag::REPORT_GEOMETRY_MEMORY);

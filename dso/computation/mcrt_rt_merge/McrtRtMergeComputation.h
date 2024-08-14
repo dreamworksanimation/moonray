@@ -41,8 +41,6 @@ protected:
 private:
     void onViewportChanged(const network::PartialFrame& msg);
     bool fpsIntervalPassed();
-    void onIdle_mocap();        // onIdle function for mocap mode
-    void onMessage_mocap(const moonray::network::Message::Ptr msg); // onMessage function for mocap mode
 
     util::Ref<alloc::ArenaBlockPool> mArenaBlockPool;
     alloc::Arena mArena;
@@ -98,8 +96,6 @@ private:
 
     /// flag to indicate that we have a region of interest viewport set
     bool mUsingROI;
-
-    bool mMotionCaptureMode;
 };
 
 } // namespace mcrt_rt_merge_computation

@@ -125,7 +125,6 @@ namespace {
     const std::string sFastGeometryUpdate = "fastGeometryUpdate";
     const std::string sRenderedEye = "renderedEye";
     const std::string sRenderMode = "renderMode";
-    const std::string sApplicationMode = "applicationMode";
     const std::string sExecMode = "exec_mode";
     const std::string sRayStreaming = "ray_streaming";
     const std::string sTextureCacheSize = "textureCacheSize";
@@ -286,16 +285,6 @@ McrtRtComputation::configure(const object::Object& aConfig)
             mOptions.setRenderMode(rndr::RenderMode::REALTIME);
         } else {
             MOONRAY_LOG_INFO("Unrecognized render mode, setting to default Progressive Mode");
-        }
-    }
-
-    // Undefined mode is backward compatible with previous behavior and has been added as such.
-    mOptions.setApplicationMode(rndr::ApplicationMode::UNDEFINED);
-    if (!aConfig[sApplicationMode].isNull()) {
-        if (aConfig[sApplicationMode].value().asInt() == 1) {
-            mOptions.setApplicationMode(rndr::ApplicationMode::MOTIONCAPTURE);
-        } else {
-            MOONRAY_LOG_ERROR("APPLICATION MODE SET TO UNDEFIND");
         }
     }
 
@@ -505,14 +494,6 @@ McrtRtComputation::onIdle()
         }
     }
 
-    // Application specific behavior for motion capture, we do not want to reset render unless updates exist.
-    //     the implication here is that rendering fps can only go as fast as animation fps -- b.stastny
-    if ((mOptions.getApplicationMode() == rndr::ApplicationMode::MOTIONCAPTURE) && (!mFirstFrame && !haveUpdates)) {
-        if (mRenderContext->getRenderMode() != rndr::RenderMode::REALTIME) {
-            return;
-        }
-    }
-
     if (mRenderContext->getRenderMode() == rndr::RenderMode::REALTIME) {
         if (!mRenderContext->isFrameComplete()) {
             return;
@@ -562,25 +543,9 @@ McrtRtComputation::onIdle()
 
         // Make sure pixel information actually changes and we are ready to display
         bool isFrameReadyForDisplay = mRenderContext->isFrameReadyForDisplay();
-        if (mOptions.getApplicationMode() == rndr::ApplicationMode::MOTIONCAPTURE) {
-            if (mRenderContext->getRenderMode() != rndr::RenderMode::REALTIME) {
-                if (isMultiMachine()) {
-                    isFrameReadyForDisplay = true;    // always true even still coarse pass is not finished yet.
-                }
-            }
-        }
 
         if (renderSamplesPending && isFrameReadyForDisplay && !mCompleteRendering) {
             TEST_SHOW_TIMING_INFO(ms.mLap.sectionStart(ms.mId_endStart));
-
-            if (mOptions.getApplicationMode() == rndr::ApplicationMode::MOTIONCAPTURE) {
-                if (mRenderContext->getRenderMode() != rndr::RenderMode::REALTIME) {
-                    TEST_SHOW_TIMING_INFO(ms.mLap.sectionEnd(ms.mId_startEnd));
-                    TEST_SHOW_TIMING_INFO(ms.mLap.sectionStart(ms.mId_stop));
-                    mRenderContext->stopFrame();
-                    TEST_SHOW_TIMING_INFO(ms.mLap.sectionEnd(ms.mId_stop));
-                }
-            }
 
             // Update the snapshot timestamp
             mLastSnapshotTimestamp = mRenderTimestamp;
@@ -674,12 +639,9 @@ McrtRtComputation::snapshotBuffers()
     // on this node if rendering is done on a single machine.
     bool untileDuringSnapshot = !isMultiMachine();
 
-    // If we're in applicationMode == MOTIONCAPTURE or renderMode == realtime then all
+    // If we're in renderMode == realtime then all
     // rendering should have stopped by this point, so use all threads for the snapshot.
     bool parallel = mRenderContext->getRenderMode() == rndr::RenderMode::REALTIME;
-    if (mOptions.getApplicationMode() == rndr::ApplicationMode::MOTIONCAPTURE) {
-        parallel = true;
-    }
 
     {
         bool extrapolationStat = !mRenderContext->areCoarsePassesComplete();
@@ -696,18 +658,16 @@ McrtRtComputation::snapshotBuffers()
     // doesn't cost anything significant and avoids unnecessary additional logic
     mReceivedSnapshotRequest = false;
 
-    if (mOptions.getApplicationMode() != rndr::ApplicationMode::MOTIONCAPTURE) {
-        // Make sure that the frame is ready for display before we start sending the depth buffer
-        if (!mReceivedFinalPixelInfoBuffer && mRenderContext->hasPixelInfoBuffer()) {
-            // If we finished the coarse passes then we have a sample for each pixel and
-            // we can send one more depth buffer and then stop sending anymore.
-            if (mRenderContext->areCoarsePassesComplete()) {
-                mReceivedFinalPixelInfoBuffer = true;
-            }
-            mRenderContext->snapshotPixelInfoBuffer(&mPixelInfoBuffer,
-                                                    untileDuringSnapshot,
-                                                    parallel);
+    // Make sure that the frame is ready for display before we start sending the depth buffer
+    if (!mReceivedFinalPixelInfoBuffer && mRenderContext->hasPixelInfoBuffer()) {
+        // If we finished the coarse passes then we have a sample for each pixel and
+        // we can send one more depth buffer and then stop sending anymore.
+        if (mRenderContext->areCoarsePassesComplete()) {
+            mReceivedFinalPixelInfoBuffer = true;
         }
+        mRenderContext->snapshotPixelInfoBuffer(&mPixelInfoBuffer,
+                                                untileDuringSnapshot,
+                                                parallel);
     }
 
     // Gamma correct and quantize to 8-bit before sending downstream.
@@ -733,11 +693,9 @@ McrtRtComputation::applyUpdatesAndRestartRender()
 
     TEST_SHOW_TIMING_INFO(ms.mLap.sectionStart(ms.mId_startA));
 
-    if (mOptions.getApplicationMode() != rndr::ApplicationMode::MOTIONCAPTURE) {
-        // Stop rendering.  The frame may not have started yet, so only stop it if it has
-        if (mRenderContext->isFrameRendering()) {
-            mRenderContext->stopFrame();
-        }
+    // Stop rendering.  The frame may not have started yet, so only stop it if it has
+    if (mRenderContext->isFrameRendering()) {
+        mRenderContext->stopFrame();
     }
 
     // APPLY ALL THE UPDATES HERE
@@ -894,19 +852,17 @@ McrtRtComputation::processMultimachine(BaseFrame::Status& status)
     frameMsg->addBuffer(network::makeValPtr(data), dataLength, AOV_BEAUTY.c_str(), mImageEncoding);
     frameMsg->mHeader.mFrameId = mRenderFrameId;
 
-    if (mOptions.getApplicationMode() != rndr::ApplicationMode::MOTIONCAPTURE) {
-        // Add the depth buffer if it's ready
-        if (mRenderContext->hasPixelInfoBuffer() && !mSentFinalPixelInfoBuffer) {
-            unsigned dataLength = numTiles * (COARSE_TILE_SIZE * COARSE_TILE_SIZE * sizeof(fb_util::PixelInfoBuffer::PixelType));
-            data = new uint8_t[dataLength];
-            fb_util::packSparseTiles((fb_util::PixelInfoBuffer::PixelType *)data, mPixelInfoBuffer, *mRenderContext->getTiles());
+    // Add the depth buffer if it's ready
+    if (mRenderContext->hasPixelInfoBuffer() && !mSentFinalPixelInfoBuffer) {
+        unsigned dataLength = numTiles * (COARSE_TILE_SIZE * COARSE_TILE_SIZE * sizeof(fb_util::PixelInfoBuffer::PixelType));
+        data = new uint8_t[dataLength];
+        fb_util::packSparseTiles((fb_util::PixelInfoBuffer::PixelType *)data, mPixelInfoBuffer, *mRenderContext->getTiles());
 
-            if (mReceivedFinalPixelInfoBuffer) {
-                mSentFinalPixelInfoBuffer = true;
-            }
-
-            frameMsg->addBuffer(network::makeValPtr(data), dataLength, AOV_DEPTH.c_str(), BaseFrame::ENCODING_FLOAT);
+        if (mReceivedFinalPixelInfoBuffer) {
+            mSentFinalPixelInfoBuffer = true;
         }
+
+        frameMsg->addBuffer(network::makeValPtr(data), dataLength, AOV_DEPTH.c_str(), BaseFrame::ENCODING_FLOAT);
     }
 
     send(frameMsg);
@@ -993,27 +949,25 @@ McrtRtComputation::processSingleMachine(BaseFrame::Status& status)
     frameMsg->mHeader.mStatus = status;
     frameMsg->mHeader.mProgress = getRenderProgress();
 
-    if (mOptions.getApplicationMode() != rndr::ApplicationMode::MOTIONCAPTURE) {
-        // Only do this part if we want to send a depth buffer, which
-        // we do only if not in batch mode.
-        if (mRenderContext->hasPixelInfoBuffer() && !mSentFinalPixelInfoBuffer) {
-            if (usingRoi) {
-                fb_util::copyRoiBuffer<float>
-                    (roiViewport, mViewport, 1,
-                     reinterpret_cast<float *>(mRoiPixelInfoBuffer.getData()),
-                     reinterpret_cast<float *>(mPixelInfoBuffer.getData()), bufferLength);
-                buffer = mRoiPixelInfoBuffer.getDataSharedAs<uint8_t>();
-            } else {
-                buffer = mPixelInfoBuffer.getDataSharedAs<uint8_t>();
-                bufferLength = mPixelInfoBuffer.getArea() * sizeof(decltype(mPixelInfoBuffer)::PixelType); // 1 float per pixel
-            }
+    // Only do this part if we want to send a depth buffer, which
+    // we do only if not in batch mode.
+    if (mRenderContext->hasPixelInfoBuffer() && !mSentFinalPixelInfoBuffer) {
+        if (usingRoi) {
+            fb_util::copyRoiBuffer<float>
+                (roiViewport, mViewport, 1,
+                 reinterpret_cast<float *>(mRoiPixelInfoBuffer.getData()),
+                 reinterpret_cast<float *>(mPixelInfoBuffer.getData()), bufferLength);
+            buffer = mRoiPixelInfoBuffer.getDataSharedAs<uint8_t>();
+        } else {
+            buffer = mPixelInfoBuffer.getDataSharedAs<uint8_t>();
+            bufferLength = mPixelInfoBuffer.getArea() * sizeof(decltype(mPixelInfoBuffer)::PixelType); // 1 float per pixel
+        }
 
-            MOONRAY_LOG_DEBUG("Adding depth buffer");
-            frameMsg->addBuffer(buffer, bufferLength, AOV_DEPTH.c_str(), BaseFrame::ENCODING_FLOAT);
+        MOONRAY_LOG_DEBUG("Adding depth buffer");
+        frameMsg->addBuffer(buffer, bufferLength, AOV_DEPTH.c_str(), BaseFrame::ENCODING_FLOAT);
 
-            if (mReceivedFinalPixelInfoBuffer) {
-                mSentFinalPixelInfoBuffer = true;
-            }
+        if (mReceivedFinalPixelInfoBuffer) {
+            mSentFinalPixelInfoBuffer = true;
         }
     }
 

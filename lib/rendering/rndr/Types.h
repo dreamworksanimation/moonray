@@ -52,24 +52,6 @@ enum class FastRenderMode
     NUM_MODES,
 };
 
-enum class ApplicationMode
-{
-    // default mode in the future should not be used but
-    // is currently used for backward compatibility
-    UNDEFINED,
-
-    // Specific use for motion capture, used to change key logic where needed
-    MOTIONCAPTURE,
-
-    // Beards Application
-    BEARDS,
-
-    // VR Application
-    VR,
-
-    NUM_MODES,
-};
-
 enum class SamplingMode
 {
     UNIFORM = 0,        // Previous non-adaptive sampling behavior.

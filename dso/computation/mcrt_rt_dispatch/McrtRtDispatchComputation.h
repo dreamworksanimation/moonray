@@ -32,8 +32,6 @@ public:
 
     void setFps(const float fps) { mFps = fps; }
     float getFps() const { return mFps; }
-    void setMotionCaptureMode(const bool mode) { mMotionCaptureMode = mode; }
-    bool getMotionCaptureMode() const { return mMotionCaptureMode; }
     void setGeoUpdateMode(const bool mode) { mGeoUpdateMode = mode; }
     bool getGeoUpdateMode() const { return mGeoUpdateMode; }
 
@@ -56,7 +54,6 @@ private:
     float mFps;
     double mLastTime;
     bool mContinuous;
-    bool mMotionCaptureMode;
     bool mGeoUpdateMode;
     int mFrameId;
 

@@ -64,7 +64,6 @@ McrtRtDispatchComputationDebugConsole::cmdHelp()
     ostr << "help {\n"
          << "  fps <val>          : set fps rate\n"
          << "  help               : show this message\n"
-         << "  mocap <on|off>     : mocap mode on or off\n"
          << "  geoUpdate <on|off> : geometry message send condition on or off\n"
          << "  show               : show internal info\n"
          << "}\n";
@@ -79,8 +78,6 @@ McrtRtDispatchComputationDebugConsole::cmdParse(const std::string &cmdLine)
         cmdFps(cmdLine);
     } else if (cmdCmp("help", cmdLine)) {
         cmdHelp();
-    } else if (cmdCmp("mocap", cmdLine)) {
-        cmdMocap(cmdLine);
     } else if (cmdCmp("geoUpdate", cmdLine)) {
         cmdGeoUpdate(cmdLine);
     } else if (cmdCmp("show", cmdLine)) {
@@ -113,28 +110,6 @@ McrtRtDispatchComputationDebugConsole::cmdFps(const std::string &cmdLine)
 }
 
 void
-McrtRtDispatchComputationDebugConsole::cmdMocap(const std::string &cmdLine)
-{
-    std::istringstream istr(cmdLine);
-    std::string token;
-
-    istr >> token;              // skip "app"
-    istr >> token;
-
-    std::ostringstream ostr;
-    bool sw;
-    if (token == "on") {
-        ostr << "> mocap on\n";
-        sw = true;
-    } else {
-        ostr << "> mocap off\n";
-        sw = false;
-    }
-    mDispatchComputation->setMotionCaptureMode(sw);
-    mTlSvr.send(ostr.str());
-}
-
-void
 McrtRtDispatchComputationDebugConsole::cmdGeoUpdate(const std::string &cmdLine)
 {
     std::istringstream istr(cmdLine);
@@ -162,7 +137,6 @@ McrtRtDispatchComputationDebugConsole::cmdShow()
     std::ostringstream ostr;
     ostr << "status {\n"
          << "        fps:" << mDispatchComputation->getFps() << std::endl
-         << "      mocap:" << ((mDispatchComputation->getMotionCaptureMode())? "true": "false") << std::endl
          << "  geoUpdate:" << ((mDispatchComputation->getGeoUpdateMode())? "true": "false") << std::endl 
          << "}\n";
     mTlSvr.send(ostr.str());

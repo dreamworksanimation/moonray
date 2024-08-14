@@ -94,7 +94,6 @@ McrtRtMergeComputation::McrtRtMergeComputation() :
     mLastTime(0.0),
     mFps(5.0f),
     mUsingROI(false),
-    mMotionCaptureMode(false)
 {
     mArena.init(mArenaBlockPool.get());
 }
@@ -103,16 +102,6 @@ void
 McrtRtMergeComputation::configure(const object::Object& aConfig)
 {
     MOONRAY_LOG_INFO(">>> McrtRtMergeComputation <<< ...");
-
-    mMotionCaptureMode = false;
-    const std::string sApplicationMode = "applicationMode";
-    if (!aConfig[sApplicationMode].isNull()) {
-        if (aConfig[sApplicationMode].value().asInt() == 1) {
-            mMotionCaptureMode = true;
-        } else {
-        	MOONRAY_LOG_ERROR("APPLICATION MODE SET TO UNDEFIND");
-        }
-    }
 
     if (!aConfig["numMachines"].isNull()) {
         mNumMachines = aConfig["numMachines"];
@@ -158,12 +147,6 @@ McrtRtMergeComputation::fpsIntervalPassed()
 void
 McrtRtMergeComputation::onIdle()
 {
-    // If we don't have any upstream buffers, don't bother.
-    if (mMotionCaptureMode) {
-        onIdle_mocap();
-        return;
-    }
-
     if (mNumMachines == 0 || mUpstreamBuffers.empty() || mFinalFrame.getArea() == 0 || !fpsIntervalPassed()) {
         //MOONRAY_LOG_DEBUG("Returning early: mNumMachines: %d | mUpstreamBuffers.empty(): %s | mFinalFrame.getArea(): %d | fpsIntervalPassed: %s", mNumMachines, boolToString(mUpstreamBuffers.empty()), mFinalFrame.getArea(), boolToString(fpsIntervalPassed()));
         //MOONRAY_LOG_DEBUG_STR("Returning early: mNumMachines:" << mNumMachines << " | mUpstreamBuffers.empty(): " << boolToString(mUpstreamBuffers.empty()) << " | mFinalFrame.getArea(): " << mFinalFrame.getArea() << " | fpsIntervalPassed: " << boolToString(fpsIntervalPassed()));
@@ -312,101 +295,8 @@ McrtRtMergeComputation::onIdle()
 }
 
 void
-McrtRtMergeComputation::onIdle_mocap()
-{
-    if (mNumMachines == 0 || !mFbArray || mFinalFrame.getArea() == 0) {
-        return;
-    }
-
-    if (!mFbArray->isActive()) {
-        return;
-    }
-
-    double now = util::getSeconds();
-    if (now - mLastTime < (1.0f / 60.0f)) {
-        return;
-    }
-
-    if (!mFbArray->completeTestAndShift()) {
-        return;                 // could not find completed renderFb yet.
-    }
-
-    mLastTime = now;
-
-    RenderFb * cRenderFb = mFbArray->getLocal(0); // get first frame data in the fbArray
-    float progress = cRenderFb->unpackSparseTiles(mTiles, mTiledFrame);
-    mFbArray->shiftFbTbl();     // shift one frame
-
-    // basically, mocap case, we always report as FINISHED.
-    /*
-    BaseFrame::Status status = BaseFrame::FINISHED;
-    if (mNeedsStartedSent) {
-        // It is important that at least one STARTED notice is sent at the begining
-        status = BaseFrame::STARTED;
-        mNeedsStartedSent = false;
-    }
-    */
-    BaseFrame::Status status = BaseFrame::STARTED;
-
-    // Untile buffer.
-    fb_util::Tiler tiler(mFinalFrame.getWidth(), mFinalFrame.getHeight());
-    mFinalFrame.untile(mTiledFrame, tiler, true);
-
-    // Send it downstream.
-    RenderedFrame::Ptr frameMsg(new RenderedFrame);
-
-    frameMsg->mHeader.mRezedViewport = mRezedViewport;
-    frameMsg->mHeader.mStatus = status;
-    frameMsg->mHeader.mProgress = progress;
-
-    // Image buffer as unsigned char
-    moonray::network::DataPtr buffer;
-
-    // Size of image buffer in bytes
-    size_t bufferLength;
-
-    math::Viewport fullViewport(0, 0, mFrameWidth - 1, mFrameHeight - 1);
-
-    // If we're using an ROI viewport, then copy the contents of the final frame into our smaller buffer
-    if (mUsingROI) {
-        frameMsg->mHeader.setViewport(mViewport.mMinX, mViewport.mMinY, mViewport.mMaxX, mViewport.mMaxY);
-        MOONRAY_LOG_DEBUG("Using ROI Viewport: (%d, %d, %d, %d) (%d x %d)",
-                        mViewport.mMinX, mViewport.mMinY, mViewport.mMaxX, mViewport.mMaxY,
-                        mViewport.width(), mViewport.height());
-        fb_util::copyRoiBuffer<uint8_t>(mViewport, fullViewport, mFinalFrame.getSizeOfPixel(),
-                                     mRoiPixelBuffer.getData(),
-                                     mFinalFrame.getData(), bufferLength);
-        buffer = mRoiPixelBuffer.getDataShared();
-    } else { // Otherwise, use the full buffer
-        frameMsg->mHeader.mViewport.reset();
-        buffer = mFinalFrame.getDataShared();
-        bufferLength = mFinalFrame.getArea() * mFinalFrame.getSizeOfPixel();
-    }
-
-    frameMsg->addBuffer(buffer, bufferLength, "beauty", mImageEncoding);
-
-    // Not support pixelInfo mode for mocap
-
-    MOONRAY_LOG_DEBUG("Sending frame!");
-    send(frameMsg);
-
-    if(mFirstFrame == true ) {
-        moonray::network::GenericMessage::Ptr firstFrameMsg(new moonray::network::GenericMessage);
-        firstFrameMsg->mValue = "MCRT Rendered First Frame";
-        send(firstFrameMsg);
-        mFirstFrame = false;
-        MOONRAY_LOG_INFO("McrtMerge Sent first frame message");
-    }
-}
-
-void
 McrtRtMergeComputation::onMessage(const Message::Ptr aMsg)
 {
-    if (mMotionCaptureMode) {
-        onMessage_mocap(aMsg);
-        return;
-    }
-
     if (aMsg->id() == PartialFrame::ID) {
         PartialFrame& partial = static_cast<PartialFrame&>(*aMsg);
         onViewportChanged(partial);
@@ -437,19 +327,6 @@ McrtRtMergeComputation::onMessage(const Message::Ptr aMsg)
                 mHasPixelInfo = true;
             }
         }
-    }
-}
-
-void
-McrtRtMergeComputation::onMessage_mocap(const Message::Ptr aMsg)
-{
-    MOONRAY_LOG_INFO("Merge received message: %s", aMsg->name());
-
-    if (aMsg->id() == PartialFrame::ID) {
-        PartialFrame& partial = static_cast<PartialFrame&>(*aMsg);
-        onViewportChanged(partial);
-        mFbArray->storePartialFrame(partial, mViewport);
-        // mFbArray->show();
     }
 }
 

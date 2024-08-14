@@ -137,10 +137,6 @@ public:
     void setFastRenderMode(FastRenderMode mode) noexcept { mFastMode = mode; }
     FastRenderMode getFastRenderMode() const noexcept { return mFastMode; }
 
-    // Set/get the application mode.
-    void setApplicationMode(ApplicationMode mode) { mApplicationMode = mode; }
-    ApplicationMode getApplicationMode() const { return mApplicationMode; }
-
     // Set/get fps value for realtime renderMode
     void setFps(float fps) { mFps = fps; }
     float getFps() const { return mFps; }
@@ -274,7 +270,6 @@ private:
     std::string mCommandLine;
     mcrt_common::ExecutionMode mExecutionMode;
     bool mTileProgress;        // moonray_gui only
-    ApplicationMode mApplicationMode;
     bool mApplyColorRenderTransform; // moonray_gui only
     std::string mSnapshotPath; // moonray_gui only
     std::string mColorRenderTransformOverrideLut;

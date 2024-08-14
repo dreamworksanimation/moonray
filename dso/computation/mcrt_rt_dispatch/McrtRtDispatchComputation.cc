@@ -80,7 +80,6 @@ McrtRtDispatchComputation::McrtRtDispatchComputation() :
     mFps(5.0f),
     mLastTime(0.0),
     mContinuous(false),
-    mMotionCaptureMode(false),
     mGeoUpdateMode(true),
     mFrameId(0)
 #ifdef RTT_TEST_MODE
@@ -105,16 +104,6 @@ McrtRtDispatchComputation::configure(const object::Object& aConfig)
     }
 
     mContinuous = aConfig["continuous"].value().asBool();
-
-    mMotionCaptureMode = false;
-    const std::string sApplicationMode = "applicationMode";
-    if (!aConfig[sApplicationMode].isNull()) {
-        if (aConfig[sApplicationMode].value().asInt() == 1) {
-            mMotionCaptureMode = true;
-        } else {
-            MOONRAY_LOG_ERROR("APPLICATION MODE SET TO UNDEFIND");
-        }
-    }
 
 #ifdef DEBUG_CONSOLE_MODE
     mDebugConsole.open(20000, this);
@@ -141,14 +130,8 @@ McrtRtDispatchComputation::onIdle()
 
     // Is it time to kick out a frame yet?
     double now = util::getSeconds();
-    if (mMotionCaptureMode && mFps == 0.0f) {
-        if (!mReceivedGeometryUpdate && !mReceivedCameraUpdate) {
-            return;
-        }
-    } else {
-        if (now - mLastTime < (1.0f / mFps)) {
-            return;
-        }
+    if (now - mLastTime < (1.0f / mFps)) {
+        return;
     }
 
     TEST_SHOW_ONIDLE(ms.mLap.sectionStart(ms.mId_whole));
@@ -183,13 +166,8 @@ McrtRtDispatchComputation::onIdle()
     }
 
     // Forward the most geometry update, if received.
-    bool sendGeomST = false;
-    if (mMotionCaptureMode) {
-        // mocap mode, always send current geomtry 
-        sendGeomST = (mGeometryUpdate != 0x0)? true: false;
-    } else {
-        sendGeomST = mReceivedGeometryUpdate;
-    }
+    bool sendGeomST = mReceivedGeometryUpdate;
+
     if (sendGeomST) {
         mFrameId++;
         mGeometryUpdate->mFrame = mFrameId;

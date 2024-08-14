@@ -28,7 +28,6 @@ protected:
     void cmdParse(const std::string &cmdLine);
     void cmdFps(const std::string &cmdLine);
     void cmdHelp();
-    void cmdMocap(const std::string &cmdLine);
     void cmdGeoUpdate(const std::string &cmdLine);
     void cmdShow();
     bool cmdCmp(const std::string& cmdName, const std::string& cmdLine) const;
