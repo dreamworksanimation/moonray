@@ -2136,6 +2136,7 @@ void
 RenderDriver::createXPUQueues(const rt::GPUAccelerator* gpuAccel)
 {
     unsigned numCPUThreads = mcrt_common::getNumTBBThreads();
+
     // This queue size was determined empirically through performance testing.
     const unsigned cpuThreadQueueSize = 65536; // number of rays
     uint32_t rayHandlerFlags = 0;

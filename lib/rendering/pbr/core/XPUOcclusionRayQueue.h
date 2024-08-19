@@ -194,6 +194,13 @@ public:
         return numFlushed;
     }
 
+    void reset()
+    {
+        for (size_t i = 0; i < mNumCPUThreads; i++) {
+            mCPUThreadQueueNumQueued[i] = 0;
+        }
+    }
+
 protected:
 
     void processRays(mcrt_common::ThreadLocalState *tls,

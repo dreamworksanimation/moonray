@@ -119,6 +119,13 @@ public:
         return flushInternal(tls, 0, nullptr, arena);
     }
 
+    void reset()
+    {
+        for (size_t i = 0; i < mNumCPUThreads; i++) {
+            mCPUThreadQueueNumQueued[i] = 0;
+        }
+    }
+
 protected:
     unsigned flushInternal(mcrt_common::ThreadLocalState *tls,
                            uint32_t numNewEntries, RayState **newEntries,

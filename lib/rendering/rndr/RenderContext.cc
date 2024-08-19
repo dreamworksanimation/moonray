@@ -990,6 +990,8 @@ RenderContext::startFrame()
 
     // Setup the XPU queues in the RenderDriver if we are XPU accelerated.
     if (frameState.mExecutionMode == mcrt_common::ExecutionMode::XPU) {
+        // Free any existing queues.  TODO: be smarter about not recreating these.
+        mDriver->freeXPUQueues();
         mDriver->createXPUQueues(frameState.mGPUAccel);
     }
 

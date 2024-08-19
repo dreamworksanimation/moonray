@@ -325,6 +325,12 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
             shading::forEachShadeQueue(nullptr, [](mcrt_common::ThreadLocalState *tls, shading::ShadeQueue *queue) {
                 queue->reset();
             });
+            if (driver->mXPURayQueue) {
+                driver->mXPURayQueue->reset();
+            }
+            if (driver->mXPUOcclusionRayQueue) {
+                driver->mXPUOcclusionRayQueue->reset();
+            }
         } else {
             MNRY_ASSERT(verifyNoBundledLeaks(fs));
         }
