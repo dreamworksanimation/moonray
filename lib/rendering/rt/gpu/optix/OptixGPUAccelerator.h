@@ -72,6 +72,8 @@ public:
 
     static uint32_t getRaysBufSize() { return mRaysBufSize; }
 
+    void* instanceIdToInstancePtr(unsigned int instanceId) const;
+
 private:
     bool build(CUstream cudaStream,
                OptixDeviceContext context,
@@ -147,6 +149,10 @@ private:
 
     // A parameters object that is globally available on the GPU side.
     mutable std::vector<OptixGPUBuffer<OptixGPUParams>> mParamsBuf; // per-thread (queue) param buffers
+
+    // Optix only supports a 32-bit instance ID but we need the original 64-bit Instance* pointer from
+    // the ray intersection.
+    std::vector<void*> mInstanceIdToInstancePtr;
 };
 
 } // namespace rt

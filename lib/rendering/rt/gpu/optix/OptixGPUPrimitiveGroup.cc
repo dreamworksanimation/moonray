@@ -122,7 +122,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
 
         for (size_t i = 0; i < mInstances.size(); i++) {
             OptixInstance oinstance = {};
-            oinstance.instanceId = 0;
+            oinstance.instanceId = mInstances[i]->mInstanceId;
             oinstance.visibilityMask = 255;
             oinstance.sbtOffset = 0;
             if (!mInstances[i]->mHasMotionBlur) {

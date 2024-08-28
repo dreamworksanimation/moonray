@@ -23,6 +23,10 @@ public:
                OptixDeviceContext context,
                std::string* errorMsg);
 
+    intptr_t mEmbreeUserData;
+    unsigned int mEmbreeGeomID;
+    int mInstanceId;
+
     bool mIsBuilt;
 
     OptixGPUPrimitiveGroup* mGroup;

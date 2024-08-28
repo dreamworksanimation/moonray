@@ -7,6 +7,7 @@
 #include <moonray/rendering/pbr/core/Aov.h>
 
 #include <moonray/rendering/geom/prim/BVHUserData.h>
+#include <moonray/rendering/geom/prim/Instance.h>
 #include <moonray/rendering/geom/prim/Primitive.h>
 #include <moonray/rendering/mcrt_common/Clock.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
@@ -250,6 +251,25 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
             rs->mRay.instID = -1;
             rs->mRay.ext.userData = reinterpret_cast<void*>(isects[i].mEmbreeUserData);
 
+            void* topLevelInstance = accel->instanceIdToInstancePtr(isects[i].mInstance0IdOrLight);
+            rs->mRay.ext.instance0OrLight = topLevelInstance;
+            rs->mRay.ext.instance1 = accel->instanceIdToInstancePtr(isects[i].mInstance1Id);
+            rs->mRay.ext.instance2 = accel->instanceIdToInstancePtr(isects[i].mInstance2Id);
+            rs->mRay.ext.instance3 = accel->instanceIdToInstancePtr(isects[i].mInstance3Id);
+            rs->mRay.ext.l2r = scene_rdl2::math::Xform3f(
+                isects[i].mL2R[0][0], isects[i].mL2R[0][1], isects[i].mL2R[0][2],
+                isects[i].mL2R[1][0], isects[i].mL2R[1][1], isects[i].mL2R[1][2],
+                isects[i].mL2R[2][0], isects[i].mL2R[2][1], isects[i].mL2R[2][2],
+                isects[i].mL2R[3][0], isects[i].mL2R[3][1], isects[i].mL2R[3][2]);
+
+            if (topLevelInstance != nullptr) {
+                geom::internal::Instance* inst = reinterpret_cast<geom::internal::Instance*>(topLevelInstance);
+                int geomID = inst->getGeomID();
+                // both geomID and instID are set to the instance's geomID
+                rs->mRay.geomID = geomID;
+                rs->mRay.instID = geomID;
+            }
+
             // Validate the GPU intersection results against CPU Embree
             if (true) {
                 const rt::EmbreeAccelerator *embreeAccel = fs.mEmbreeAccel;
@@ -268,6 +288,26 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                         if (rs->mRay.ext.userData != rsCPU.mRay.ext.userData) {
                             std::cout << "ray: " << i << " embree ext.userData: " << rsCPU.mRay.ext.userData << 
                                         " optix ext.userData: " << rs->mRay.ext.userData << std::endl;
+                        }
+                        if (rs->mRay.ext.instance0OrLight != rsCPU.mRay.ext.instance0OrLight) {
+                            std::cout << "ray: " << i << " embree ext.instance0OrLight: " << rsCPU.mRay.ext.instance0OrLight <<
+                                        " optix ext.instance0OrLight: " << rs->mRay.ext.instance0OrLight << std::endl;
+                        }
+                        if (topLevelInstance &&
+                            ((!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vx.x, rsCPU.mRay.ext.l2r.l.vx.x, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vx.y, rsCPU.mRay.ext.l2r.l.vx.y, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vx.z, rsCPU.mRay.ext.l2r.l.vx.z, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vy.x, rsCPU.mRay.ext.l2r.l.vy.x, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vy.y, rsCPU.mRay.ext.l2r.l.vy.y, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vy.z, rsCPU.mRay.ext.l2r.l.vy.z, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vz.x, rsCPU.mRay.ext.l2r.l.vz.x, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vz.y, rsCPU.mRay.ext.l2r.l.vz.y, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.l.vz.z, rsCPU.mRay.ext.l2r.l.vz.z, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.p.x, rsCPU.mRay.ext.l2r.p.x, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.p.y, rsCPU.mRay.ext.l2r.p.y, 0.001f)) ||
+                             (!scene_rdl2::math::isEqual(rs->mRay.ext.l2r.p.z, rsCPU.mRay.ext.l2r.p.z, 0.001f)))) {
+                                std::cout << "ray: " << i << " embree ext.l2r: " << rsCPU.mRay.ext.l2r << std::endl <<
+                                        "     optix ext.l2r: " << rs->mRay.ext.l2r << std::endl;
                         }
                         if (rs->mRay.primID == rsCPU.mRay.primID) {
                             if (!scene_rdl2::math::isEqual(rs->mRay.tfar, rsCPU.mRay.tfar, 0.001f)) {

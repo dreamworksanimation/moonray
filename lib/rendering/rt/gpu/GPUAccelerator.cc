@@ -109,6 +109,12 @@ GPUAccelerator::getRaysBufSize()
     return GPUAcceleratorType::getRaysBufSize();
 }
 
+void*
+GPUAccelerator::instanceIdToInstancePtr(unsigned int instanceId) const
+{
+    return mImpl->instanceIdToInstancePtr(instanceId);
+}
+
 } // namespace rt
 } // namespace moonray
 
@@ -193,6 +199,12 @@ uint32_t
 GPUAccelerator::getRaysBufSize()
 {
     return 0;
+}
+
+void*
+GPUAccelerator::instanceIdToInstancePtr(unsigned int instanceId) const
+{
+    return nullptr;
 }
 
 } // namespace rt

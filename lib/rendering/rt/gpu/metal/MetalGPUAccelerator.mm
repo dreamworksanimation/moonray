@@ -1544,6 +1544,13 @@ MetalGPUAccelerator::occluded(const uint32_t queueIdx,
     [commandBuffer waitUntilCompleted];
 }
 
+void*
+MetalGPUAccelerator::instanceIdToInstancePtr(unsigned int /*instanceId*/) const
+{
+    // not yet implemented
+    return nullptr;
+}
+
 } // namespace rt
 } // namespace moonray
 

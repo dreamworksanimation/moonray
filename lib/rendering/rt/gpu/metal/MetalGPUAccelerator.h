@@ -66,6 +66,8 @@ public:
 
     static uint32_t getRaysBufSize() { return mRaysBufSize; }
 
+    void* instanceIdToInstancePtr(unsigned int instanceId) const;
+
 private:
     bool build(const scene_rdl2::rdl2::Layer *layer,
                const scene_rdl2::rdl2::SceneContext::GeometrySetVector& geometrySets,

@@ -50,13 +50,15 @@ public:
                        const scene_rdl2::rdl2::Layer* layer,
                        const scene_rdl2::rdl2::Geometry* geometry,
                        OptixGPUPrimitiveGroup* parentGroup,
-                       SharedGroupMap& groups) :
+                       SharedGroupMap& groups,
+                       std::vector<void*>& instanceIdToInstancePtr) :
         mAllowUnsupportedFeatures(allowUnsupportedFeatures),
         mFailed(false),
         mLayer(layer),
         mGeometry(geometry),
         mParentGroup(parentGroup),
-        mSharedGroups(groups) {}
+        mSharedGroups(groups),
+        mInstanceIdToInstancePtr(instanceIdToInstancePtr) {}
 
     virtual void visitCurves(geom::Curves& c) override
     {
@@ -201,7 +203,7 @@ public:
         // visit the referenced Primitive if it's not visited yet
         if (mSharedGroups.insert(std::make_pair(ref, nullptr)).second) {
             OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
-            OptixGPUBVHBuilder builder(mAllowUnsupportedFeatures, mLayer, mGeometry, group, mSharedGroups);
+            OptixGPUBVHBuilder builder(mAllowUnsupportedFeatures, mLayer, mGeometry, group, mSharedGroups, mInstanceIdToInstancePtr);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -262,7 +264,7 @@ private:
 
     void createSphere(const geom::internal::Sphere& geomSphere);
 
-    void createInstance(const geom::internal::Instance& instance,
+    void createInstance(geom::internal::Instance& instance,
                         OptixGPUPrimitiveGroup* group);
 
     unsigned int resolveVisibilityMask(const geom::internal::NamedPrimitive& np) const;
@@ -281,6 +283,7 @@ private:
     const scene_rdl2::rdl2::Geometry* mGeometry;
     OptixGPUPrimitiveGroup* mParentGroup;
     SharedGroupMap& mSharedGroups;
+    std::vector<void*>& mInstanceIdToInstancePtr;
 };
 
 void
@@ -757,8 +760,8 @@ OptixGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
 }
 
 void
-OptixGPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
-                              OptixGPUPrimitiveGroup* group)
+OptixGPUBVHBuilder::createInstance(geom::internal::Instance& instance,
+                                   OptixGPUPrimitiveGroup* group)
 {
     const geom::internal::MotionTransform& l2pXform = instance.getLocal2Parent();
 
@@ -809,9 +812,12 @@ OptixGPUBVHBuilder::createInstance(const geom::internal::Instance& instance,
     OptixGPUInstance* gpuInstance = new OptixGPUInstance();
     mParentGroup->mInstances.push_back(gpuInstance);
     gpuInstance->mGroup = group;
-    // TODO
-    //gpuInstance->mEmbreeUserData = reinterpret_cast<intptr_t>(instance.mEmbreeUserData);
-    //gpuInstance->mEmbreeGeomID = instance.mEmbreeGeomID;
+    gpuInstance->mEmbreeUserData = reinterpret_cast<intptr_t>(instance.mEmbreeUserData);
+
+    gpuInstance->mEmbreeGeomID = instance.mEmbreeGeomID;
+
+    gpuInstance->mInstanceId = static_cast<unsigned int>(mInstanceIdToInstancePtr.size());
+    mInstanceIdToInstancePtr.push_back(reinterpret_cast<void*>(&instance));
 
     if (hasMotionBlur) {
         for (int i = 0; i < OptixGPUInstance::sNumMotionKeys; i++) {
@@ -911,6 +917,12 @@ OptixGPUAccelerator::OptixGPUAccelerator(bool allowUnsupportedFeatures,
     mModule {nullptr},
     mRootGroup {nullptr}
 {
+    // id 0 is reserved to mean "not a regular MoonRay instance", hence there is no
+    // MoonRay instance pointer associated with the Id.  Recall that we need this mapping
+    // because Optix only supports a 32-bit instance ID but we need the original 64-bit
+    // MoonRay Instance* pointer from the ray intersection.
+    mInstanceIdToInstancePtr.push_back(nullptr);
+
     // The constructor fully initializes the GPU.  We are ready to trace rays afterwards.
 
     scene_rdl2::logging::Logger::info("GPU: Creating accelerator");
@@ -1111,6 +1123,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                     OptixGPUPrimitiveGroup* rootGroup,
                     SharedGroupMap& groups,
                     std::unordered_set<scene_rdl2::rdl2::Geometry*>& visitedGeometry,
+                    std::vector<void*>& instanceIdToInstancePtr,
                     std::vector<std::string>& warningMsgs,
                     std::string* errorMsg)
 {
@@ -1140,6 +1153,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                             rootGroup,
                             groups,
                             visitedGeometry,
+                            instanceIdToInstancePtr,
                             warningMsgs,
                             errorMsg);
     }
@@ -1152,7 +1166,7 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
             procedural->getReference();
         if (groups.insert(std::make_pair(ref, nullptr)).second) {
             OptixGPUPrimitiveGroup *group = new OptixGPUPrimitiveGroup();
-            OptixGPUBVHBuilder builder(allowUnsupportedFeatures, layer, geometry, group, groups);
+            OptixGPUBVHBuilder builder(allowUnsupportedFeatures, layer, geometry, group, groups, instanceIdToInstancePtr);
             ref->getPrimitive()->accept(builder);
             // mark the BVH representation of referenced primitive (group)
             // has been correctly constructed so that all the instances
@@ -1164,7 +1178,8 @@ buildGPUBVHBottomUp(bool allowUnsupportedFeatures,
                                        layer,
                                        geometry,
                                        rootGroup,
-                                       groups);
+                                       groups,
+                                       instanceIdToInstancePtr);
         procedural->forEachPrimitive(geomBuilder, doParallel);
         warningMsgs.insert(warningMsgs.end(),
                            geomBuilder.warningMsgs().begin(),
@@ -1206,6 +1221,7 @@ OptixGPUAccelerator::build(CUstream cudaStream,
                                      mRootGroup,
                                      mSharedGroups,
                                      visitedGeometry,
+                                     mInstanceIdToInstancePtr,
                                      warningMsgs,
                                      errorMsg)) {
                 return false;
@@ -1522,6 +1538,12 @@ OptixGPUAccelerator::occluded(const uint32_t queueIdx,
         scene_rdl2::logging::Logger::error("GPU: cudaStreamSynchronize() error: ",
                             cudaGetErrorString(error));
     }
+}
+
+void*
+OptixGPUAccelerator::instanceIdToInstancePtr(unsigned int instanceId) const
+{
+    return mInstanceIdToInstancePtr[instanceId];
 }
 
 } // namespace rt

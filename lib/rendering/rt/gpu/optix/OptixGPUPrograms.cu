@@ -12,7 +12,8 @@ using namespace moonray::rt;
 
 extern "C" __constant__ static OptixGPUParams params;
 
-#define EMBREE_INVALID_GEOMETRY_ID (static_cast<unsigned int>(-1))
+#define EMBREE_INVALID_GEOMETRY_ID 0xffffffff
+#define INVALID_LIGHT_ID 0xffffffff
 
 // Each ray has a PerRayData associated with it that is globally
 // available in all of the programs.  Inputs and outputs are passed via this
@@ -32,6 +33,12 @@ struct PerRayData
     unsigned int mPrimID;
     unsigned int mEmbreeGeomID;
     intptr_t mEmbreeUserData;
+
+    unsigned int mInstance0IdOrLight;
+    unsigned int mInstance1Id;
+    unsigned int mInstance2Id;
+    unsigned int mInstance3Id;
+    float mL2R[4][3]; // layout matches Mat43
 };
 
 
@@ -89,6 +96,28 @@ T *getPRD()
     return reinterpret_cast<T*>(reconstructPointer(u0, u1));
 }
 
+__device__
+void concatInstanceTransform(const float4* trns, float l2r[4][3])
+{
+    float m[4][3]; // [col][row]
+
+    m[0][0] = l2r[0][0] * trns[0].x + l2r[1][0] * trns[1].x + l2r[2][0] * trns[2].x;
+    m[1][0] = l2r[0][0] * trns[0].y + l2r[1][0] * trns[1].y + l2r[2][0] * trns[2].y;
+    m[2][0] = l2r[0][0] * trns[0].z + l2r[1][0] * trns[1].z + l2r[2][0] * trns[2].z;
+    m[3][0] = l2r[0][0] * trns[0].w + l2r[1][0] * trns[1].w + l2r[2][0] * trns[2].w + l2r[3][0];
+
+    m[0][1] = l2r[0][1] * trns[0].x + l2r[1][1] * trns[1].x + l2r[2][1] * trns[2].x;
+    m[1][1] = l2r[0][1] * trns[0].y + l2r[1][1] * trns[1].y + l2r[2][1] * trns[2].y;
+    m[2][1] = l2r[0][1] * trns[0].z + l2r[1][1] * trns[1].z + l2r[2][1] * trns[2].z;
+    m[3][1] = l2r[0][1] * trns[0].w + l2r[1][1] * trns[1].w + l2r[2][1] * trns[2].w + l2r[3][1];
+
+    m[0][2] = l2r[0][2] * trns[0].x + l2r[1][2] * trns[1].x + l2r[2][2] * trns[2].x;
+    m[1][2] = l2r[0][2] * trns[0].y + l2r[1][2] * trns[1].y + l2r[2][2] * trns[2].y;
+    m[2][2] = l2r[0][2] * trns[0].z + l2r[1][2] * trns[1].z + l2r[2][2] * trns[2].z;
+    m[3][2] = l2r[0][2] * trns[0].w + l2r[1][2] * trns[1].w + l2r[2][2] * trns[2].w + l2r[3][2];
+
+    memcpy(l2r, m, 12 * sizeof(float));
+}
 
 // The __raygen__ program sets up the PerRayData and then calls optixTrace()
 // which starts the BVH traversal and calling of other programs.  It copies 
@@ -107,8 +136,10 @@ void __raygen__()
         PerRayData prd;
         prd.mIsOcclusionRay = false;
         prd.mShadowReceiverId = -1;
-        prd.mLightId = -1;
+        prd.mLightId = INVALID_LIGHT_ID;
         prd.mDidHitGeom = false;
+        // other prd members don't need to be cleared
+
         unsigned int u0, u1;
         splitPointer(&prd, u0, u1);
 
@@ -125,20 +156,30 @@ void __raygen__()
                 0,             // missSBTIndex
                 u0, u1);
 
+        GPURayIsect *isect = params.mIsectBuf + idx.x;
         if (prd.mDidHitGeom) {
-            params.mIsectBuf[idx.x].mTFar = prd.mTFar;
-            params.mIsectBuf[idx.x].mNgX = prd.mNgX;
-            params.mIsectBuf[idx.x].mNgY = prd.mNgY;
-            params.mIsectBuf[idx.x].mNgZ = prd.mNgZ;
-            params.mIsectBuf[idx.x].mU = prd.mU;
-            params.mIsectBuf[idx.x].mV = prd.mV;
-            params.mIsectBuf[idx.x].mEmbreeGeomID = prd.mEmbreeGeomID;
-            params.mIsectBuf[idx.x].mPrimID = prd.mPrimID;
-            params.mIsectBuf[idx.x].mEmbreeUserData = prd.mEmbreeUserData;
+            isect->mTFar = prd.mTFar;
+            isect->mNgX = prd.mNgX;
+            isect->mNgY = prd.mNgY;
+            isect->mNgZ = prd.mNgZ;
+            isect->mU = prd.mU;
+            isect->mV = prd.mV;
+            isect->mEmbreeGeomID = prd.mEmbreeGeomID;
+            isect->mPrimID = prd.mPrimID;
+            isect->mEmbreeUserData = prd.mEmbreeUserData;
+            isect->mInstance0IdOrLight = prd.mInstance0IdOrLight;
+            isect->mInstance1Id = prd.mInstance1Id;
+            isect->mInstance2Id = prd.mInstance2Id;
+            isect->mInstance3Id = prd.mInstance3Id;
+            memcpy(isect->mL2R, prd.mL2R, 12 * sizeof(float));
         } else {
-            params.mIsectBuf[idx.x].mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
-            params.mIsectBuf[idx.x].mPrimID = 0;
-            params.mIsectBuf[idx.x].mEmbreeUserData = 0;
+            isect->mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
+            isect->mPrimID = 0;
+            isect->mEmbreeUserData = 0;
+            isect->mInstance0IdOrLight = 0;
+            isect->mInstance1Id = 0;
+            isect->mInstance2Id = 0;
+            isect->mInstance3Id = 0;
         }
     } else {
         // occlusion ray
@@ -147,6 +188,8 @@ void __raygen__()
         prd.mShadowReceiverId = ray->mShadowReceiverId;
         prd.mLightId = ray->mLightId;
         prd.mDidHitGeom = false;
+        // other prd members don't need to be cleared
+
         unsigned int u0, u1;
         splitPointer(&prd, u0, u1);
 
@@ -184,6 +227,59 @@ void __closesthit__()
         prd->mTFar = optixGetRayTmax();
         prd->mEmbreeGeomID = data->mEmbreeGeomID;
         prd->mEmbreeUserData = data->mEmbreeUserData;
+
+        prd->mL2R[0][0] = 1.f;
+        prd->mL2R[0][1] = 0.f;
+        prd->mL2R[0][2] = 0.f;
+        prd->mL2R[1][0] = 0.f;
+        prd->mL2R[1][1] = 1.f;
+        prd->mL2R[1][2] = 0.f;
+        prd->mL2R[2][0] = 0.f;
+        prd->mL2R[2][1] = 0.f;
+        prd->mL2R[2][2] = 1.f;
+        prd->mL2R[3][0] = 0.f;
+        prd->mL2R[3][1] = 0.f;
+        prd->mL2R[3][2] = 0.f;
+
+        // Did we traverse any instances along the way to this hit?
+        prd->mInstance0IdOrLight = 0;
+        prd->mInstance1Id = 0;
+        prd->mInstance2Id = 0;
+        prd->mInstance3Id = 0;
+
+        unsigned int instanceDepth = 0;
+        for (unsigned int i = 0; i < optixGetTransformListSize(); ++i) {
+            OptixTraversableHandle handle = optixGetTransformListHandle(i);
+            switch (optixGetTransformTypeFromHandle(handle)) {
+                case OPTIX_TRANSFORM_TYPE_INSTANCE:
+                {
+                    unsigned int instanceId = optixGetInstanceIdFromHandle(handle);
+                    if (instanceId == 0) {
+                        // not a regular MoonRay instance
+                        continue;
+                    }
+                    // else this is a MoonRay instance, record the Id
+                    // refer to lib/rendering/geom/prim/Instance.cc::intersectFunc()
+                    switch (instanceDepth) {
+                        case 0: prd->mInstance0IdOrLight = instanceId;
+                        break;
+                        case 1: prd->mInstance1Id = instanceId;
+                        break;
+                        case 2: prd->mInstance2Id = instanceId;
+                        break;
+                        case 3: prd->mInstance3Id = instanceId;
+                        break;
+                        // We ignore instances more than 4 deep.
+                    }
+
+                    const float4* trns = optixGetInstanceTransformFromHandle(handle);
+                    concatInstanceTransform(trns, prd->mL2R);
+
+                    instanceDepth++;
+                }
+                break;
+            }
+        }
 
         switch (data->mType) {
             case HitGroupData::TRIANGLE_MESH:
@@ -303,6 +399,10 @@ void __closesthit__()
         prd->mPrimID = 0;
         prd->mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
         prd->mEmbreeUserData = 0;
+        prd->mInstance0IdOrLight = 0;
+        prd->mInstance1Id = 0;
+        prd->mInstance2Id = 0;
+        prd->mInstance3Id = 0;
     }
 }
 

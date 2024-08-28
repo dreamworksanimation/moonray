@@ -171,6 +171,8 @@ public:
 
     static uint32_t getRaysBufSize();
 
+    void* instanceIdToInstancePtr(unsigned int instanceId) const;
+
 private:
 
 #ifdef MOONRAY_USE_OPTIX
