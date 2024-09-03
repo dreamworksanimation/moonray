@@ -173,6 +173,7 @@ void __raygen__()
             isect->mInstance3Id = prd.mInstance3Id;
             memcpy(isect->mL2R, prd.mL2R, 12 * sizeof(float));
         } else {
+            isect->mTFar = ray->mMaxT; // must be set even if no intersection or volumes will fail
             isect->mEmbreeGeomID = EMBREE_INVALID_GEOMETRY_ID;
             isect->mPrimID = 0;
             isect->mEmbreeUserData = 0;
@@ -416,11 +417,12 @@ void __anyhit__()
     PerRayData* prd = getPRD<PerRayData>();
     const moonray::rt::HitGroupData* data = (moonray::rt::HitGroupData*)optixGetSbtDataPointer();
 
+    if (data->mIsSingleSided && optixIsTriangleBackFaceHit()) {
+        optixIgnoreIntersection();
+        return;
+    }
+
     if (prd->mIsOcclusionRay) {
-        if (data->mIsSingleSided && optixIsTriangleBackFaceHit()) {
-            optixIgnoreIntersection();
-            return;
-        }
         if (!data->mVisibleShadow) {
             optixIgnoreIntersection();
             return;

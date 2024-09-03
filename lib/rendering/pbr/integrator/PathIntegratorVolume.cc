@@ -2326,7 +2326,6 @@ PathIntegrator::transmittance(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
                               uint32_t pixel, int subpixelIndex, unsigned sequenceID,
                               const Light* light, float scaleFactor, bool estimateInScatter) const
 {
-
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
 
     size_t intervalCount =

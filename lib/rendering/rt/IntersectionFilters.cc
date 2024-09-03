@@ -332,7 +332,6 @@ backFaceCullingFilter(const RTCFilterFunctionNArguments* args)
 void
 skipOcclusionFilter(const RTCFilterFunctionNArguments* args)
 {
-
     // Although "args" points to a packet of N rays, in practice we always set N=1 (and there are parts of the code
     // base which already rely on this assumption). So here we hardcode for that case - thus we only need to inspect
     // valid[0] here, which we can write as *valid.

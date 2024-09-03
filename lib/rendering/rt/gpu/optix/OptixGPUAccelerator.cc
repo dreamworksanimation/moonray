@@ -534,6 +534,12 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         }
     }
 
+    bool hasVolumeAssignment = geomMesh.hasVolumeAssignment(mLayer);
+    if (hasVolumeAssignment) {
+        // ignore volume bounding geometry
+        return;
+    }
+
     OptixGPUTriMesh* gpuMesh = new OptixGPUTriMesh();
     gpuMesh->mName = geomMesh.getName();
     if (enableMotionBlur) {
@@ -542,10 +548,8 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         mParentGroup->mTriMeshes.push_back(gpuMesh);
     }
 
-    bool hasVolumeAssignment = geomMesh.hasVolumeAssignment(mLayer);
-
     gpuMesh->mInputFlags = 0;
-    gpuMesh->mIsSingleSided = geomMesh.getIsSingleSided() && !hasVolumeAssignment;
+    gpuMesh->mIsSingleSided = geomMesh.getIsSingleSided();
     gpuMesh->mIsNormalReversed = geomMesh.getIsNormalReversed();
     gpuMesh->mVisibleShadow = resolveVisibilityMask(geomMesh) & scene_rdl2::rdl2::SHADOW;
     gpuMesh->mEnableMotionBlur = enableMotionBlur;
