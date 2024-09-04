@@ -907,6 +907,7 @@ GeometryManager::bakeGeometry(scene_rdl2::rdl2::Layer* layer,
         const scene_rdl2::math::Mat4d& world2render,
         std::vector<std::unique_ptr<geom::BakedMesh>>& bakedMeshes,
         std::vector<std::unique_ptr<geom::BakedCurves>>& bakedCurves,
+        const moonray::pbr::Camera* mainCamera,
         const scene_rdl2::rdl2::Camera* globalDicingCamera)
 {
     // update changes for BVH
@@ -960,6 +961,7 @@ GeometryManager::bakeGeometry(scene_rdl2::rdl2::Layer* layer,
                 const geom::internal::TessellationParams params(layer,
                                                                 dicingCamExists ? dicingFrustums : frustums,
                                                                 dicingCamExists ? dicingWorld2Render : world2render,
+                                                                mainCamera,
                                                                 enableDisplacement,
                                                                 fastGeomUpdate,
                                                                 /* isBaking = */ true,
@@ -1025,6 +1027,7 @@ GeometryManager::finalizeChanges(scene_rdl2::rdl2::Layer* layer,
         const std::vector<mcrt_common::Frustum>& frustums,
         const scene_rdl2::math::Mat4d& world2render,
         OptimizationTarget accelMode, 
+        const moonray::pbr::Camera* mainCamera,
         const scene_rdl2::rdl2::Camera* dicingCamera,
         bool updateSceneBVH)
 {
@@ -1093,8 +1096,8 @@ GeometryManager::finalizeChanges(scene_rdl2::rdl2::Layer* layer,
         }
 
         // (re)tessellate the primitives
-        if (tessellate(layer, primitivesToTessellate, frustums, world2render, motionBlurParams, dicingCamera) ==
-            GM_RESULT::CANCELED) {
+        if (tessellate(layer, primitivesToTessellate, frustums, world2render, motionBlurParams, mainCamera,
+                       dicingCamera) == GM_RESULT::CANCELED) {
             return GM_RESULT::CANCELED;
         }
 
@@ -1392,6 +1395,7 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
         const std::vector<mcrt_common::Frustum>& frustums,
         const scene_rdl2::math::Mat4d& world2render,
         const geom::MotionBlurParams& motionBlurParams,
+        const moonray::pbr::Camera* mainCamera,
         const scene_rdl2::rdl2::Camera* globalDicingCamera)
 {
     mOptions.stats.logString(
@@ -1476,6 +1480,7 @@ GeometryManager::tessellate(scene_rdl2::rdl2::Layer* layer,
                 const geom::internal::TessellationParams tessParams(layer,
                                                                     dicingCamExists ? dicingFrustums : frustums,
                                                                     dicingCamExists ? dicingWorld2Render : world2render,
+                                                                    mainCamera,
                                                                     enableDisplacement,
                                                                     fastGeomUpdate,
                                                                     /* isBaking = */ false,

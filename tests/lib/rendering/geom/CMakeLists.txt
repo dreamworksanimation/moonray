@@ -16,6 +16,8 @@ target_link_libraries(${target}
         Moonray::rendering_bvh_shading
         Moonray::rendering_geom
         Moonray::rendering_mcrt_common
+        Moonray::rendering_pbr
+        Moonray::rendering_rndr
         Moonray::rendering_shading
         SceneRdl2::common_math
         SceneRdl2::pdevunit

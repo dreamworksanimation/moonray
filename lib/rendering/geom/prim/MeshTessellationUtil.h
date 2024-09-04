@@ -11,6 +11,7 @@
 
 #include <moonray/rendering/geom/PolygonMesh.h>
 #include <moonray/rendering/geom/SubdivisionMesh.h>
+#include <moonray/rendering/pbr/camera/FisheyeCamera.h>
 
 #include <scene_rdl2/render/util/Arena.h>
 
@@ -153,15 +154,25 @@ struct SubdTessellationFactor
 // in util function OsdGetTessLevelsAdaptiveLimitPoints()
 finline int
 computeEdgeVertexCount(const Vec3f& v0, const Vec3f& v1,
-        float edgesPerScreenHeight, const scene_rdl2::math::Mat4f& c2s)
+        float edgesPerScreenHeight, const scene_rdl2::math::Mat4f& c2s, const pbr::Camera *camera)
 {
     // calculate the bounding sphere of this edge
     Vec3f pCenter = 0.5f * (v0 + v1);
     float diameter = distance(v0, v1);
-    // projection[1][1] = 1 / tan(fov / 2);
-    // calculate edge tessellation factor based on frustum information
-    int edgeVertexCount = 0.5f * edgesPerScreenHeight *
-        scene_rdl2::math::abs(diameter * c2s[1][1] / pCenter.z) - 1;
+
+    // get screen-space derivative for tessellation calculation
+    float deriv;
+    if (dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr) {
+        const pbr::FisheyeCamera *fishy = static_cast<const pbr::FisheyeCamera *>(camera);
+        deriv = fishy->screenSpaceDerivative(pCenter);
+    } else {
+        // abs(c2s[1][1]) = 1 / tan(fov / 2)
+        deriv = 0.5f * scene_rdl2::math::abs(c2s[1][1] / pCenter.z);
+    }
+
+    // calculate edge tessellation factor based on projection
+    int edgeVertexCount = static_cast<int>(edgesPerScreenHeight * diameter * deriv) - 1;
+
     return edgeVertexCount;
 }
 

@@ -227,6 +227,7 @@ protected:
     std::vector<PolyTessellationFactor> computeTessellationFactor(
             const scene_rdl2::rdl2::Layer *pRdlLayer,
             const std::vector<mcrt_common::Frustum>& frustums,
+            const pbr::Camera *camera,
             const PolyTopologyIdLookup& topologyIdLookup) const;
 
     std::vector<PolyFaceTopology> generatePolyFaceTopology(

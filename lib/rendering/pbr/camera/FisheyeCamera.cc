@@ -20,7 +20,8 @@ scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> FisheyeCamera::sZoomKey;
 FisheyeCamera::FisheyeCamera(const scene_rdl2::rdl2::Camera* rdlCamera) :
     Camera(rdlCamera),
     mMapping(0),
-    mRadialScale(0.0f)
+    mRadialScale(0.0f),
+    mDerivScale(0.0f)
 {
     initAttributeKeys(rdlCamera->getSceneClass());
 }
@@ -48,23 +49,20 @@ void FisheyeCamera::updateImpl(const Mat4d& world2render)
 {
     mMapping = getRdlCamera()->get(sMappingKey);
 
-    const float w = getApertureWindowWidth();
-    const float h = getApertureWindowHeight();
+    const float w = getRegionWindowWidth();
+    const float h = getRegionWindowHeight();
 
     int format  = getRdlCamera()->get(sFormatKey);
     float diameter;
     switch (format) {
-    case 0:
-        // circular
+    case FORMAT_CIRCULAR:
         diameter = scene_rdl2::math::min(w, h);
         break;
-    case 1:
-        // cropped
+    case FORMAT_CROPPED:
         diameter = scene_rdl2::math::max(w, h);
         break;
-    case 2:
+    case FORMAT_DIAGONAL:
     default:
-        // diagonal
         diameter = scene_rdl2::math::sqrt(w*w + h*h);
         break;
     }
@@ -72,6 +70,8 @@ void FisheyeCamera::updateImpl(const Mat4d& world2render)
 
     const float zoom = getRdlCamera()->get(sZoomKey);
     mRadialScale /= zoom;
+
+    mDerivScale = 1.0f / (mRadialScale * h);
 }
 
 void FisheyeCamera::createRayImpl(mcrt_common::RayDifferential* dstRay,
@@ -115,57 +115,152 @@ void FisheyeCamera::createRayImpl(mcrt_common::RayDifferential* dstRay,
         near, far, time, 0);
 }
 
-Vec3f FisheyeCamera::createDirection(float x, float y) const
+Vec3f FisheyeCamera::createDirection(float X, float Y) const
 {
-    const float w = getApertureWindowWidth();
-    const float h = getApertureWindowHeight();
+    const float W = getRegionWindowWidth();
+    const float H = getRegionWindowHeight();
 
-    x -= 0.5f * w;
-    y -= 0.5f * h;
+    X -= 0.5f * W;
+    Y -= 0.5f * H;
 
-    const float d = scene_rdl2::math::sqrt(x*x + y*y);
-    const float r = d * mRadialScale;
+    const float D = scene_rdl2::math::sqrt(X*X + Y*Y);
+    const float R = D * mRadialScale;
 
     float sintheta, costheta;
     switch (mMapping) {
-    case 0: {
-        // stereographic
-        // theta = 2.0f * atan(r);
-        float q = 1.0f / (1.0f + r*r);
-        sintheta = 2.0f * r * q;
-        costheta = (1.0f - r*r) * q;
+    case MAPPING_STEREOGRAPHIC: {
+        // theta = 2.0f * atan(R);
+        float Q = 1.0f / (1.0f + R*R);
+        sintheta = 2.0f * R * Q;
+        costheta = (1.0f - R*R) * Q;
     }
     break;
-    case 1: {
-        // equidistant
-        // theta = sHalfPi * r;
-        sincos(sHalfPi * r, &sintheta, &costheta);
+    case MAPPING_EQUIDISTANT: {
+        // theta = sHalfPi * R;
+        sincos(sHalfPi * R, &sintheta, &costheta);
     }
     break;
-    case 2: {
-        // equisolid angle
-        // theta = 2.0f * asin(r * sqrt(0.5f));
-        sintheta = r * scene_rdl2::math::sqrt(2.0f - r*r);
-        costheta = 1.0f - r*r;
+    case MAPPING_EQUISOLID_ANGLE: {
+        // theta = 2.0f * asin(R * sqrt(0.5f));
+        sintheta = R * scene_rdl2::math::sqrt(2.0f - R*R);
+        costheta = 1.0f - R*R;
     }
     break;
-    case 3:
+    case MAPPING_ORTHOGRAPHIC:
     default: {
-        // orthographic
-        // theta = asin(r);
-        sintheta = r;
-        costheta = scene_rdl2::math::sqrt(1.0f - r*r);
+        // theta = asin(R);
+        sintheta = R;
+        costheta = scene_rdl2::math::sqrt(1.0f - R*R);
     }
     break;
     }
 
-    const float cosphi = x / d;
-    const float sinphi = y / d;
+    const float cosphi = D ? X/D : 1.0f;
+    const float sinphi = D ? Y/D : 0.0f;
 
     Vec3f dir(sintheta * cosphi, sintheta * sinphi, -costheta);
 
     return dir;
 }
+
+
+
+scene_rdl2::math::Vec2f FisheyeCamera::projectPoint(const scene_rdl2::math::Vec3f &v) const
+{
+    float x = v.x;
+    float y = v.y;
+    float z = v.z;
+    float l = length(v);
+    float r = sqrt(x*x + y*y);
+    float costheta = -z/l;
+    float sintheta =  r/l;
+    float cosphi = r ? x/r : 1.0f;
+    float sinphi = r ? y/r : 0.0f;
+    float theta = atan2(r, -z);
+    float R;
+
+    switch (mMapping) {
+    case MAPPING_STEREOGRAPHIC:
+        R = tan(0.5f * theta);
+        break;
+    case MAPPING_EQUIDISTANT:
+        R = theta * sTwoOverPi;
+        break;
+    case MAPPING_EQUISOLID_ANGLE:
+        R = sqrt(2.0f) * sin(0.5f * theta);
+        break;
+    case MAPPING_ORTHOGRAPHIC:
+    default:
+        R = sintheta;
+        break;
+    }
+
+    float D = R / mRadialScale;
+    float X = D * cosphi;
+    float Y = D * sinphi;
+
+    const float w = getRegionWindowWidth();
+    const float h = getRegionWindowHeight();
+
+    X += 0.5f * w;
+    Y += 0.5f * h;
+
+    return Vec2f(X, Y);
+}
+
+
+bool FisheyeCamera::isInView(const scene_rdl2::math::Vec3f &v) const
+{
+    Vec2f V = projectPoint(v);
+    return (V.x >= 0.0f) && (V.y >= 0.0f) && (V.x <= getRegionWindowWidth()) && (V.y <= getRegionWindowHeight());
+}
+
+
+bool FisheyeCamera::testBBoxOverlaps(const scene_rdl2::math::BBox3f& bbox) const
+{
+    // TODO: make this robust - it's just a quick hack for now
+    return isInView(Vec3f(bbox.lower.x, bbox.lower.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.lower.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.upper.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.upper.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.lower.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.lower.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.upper.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.upper.y, bbox.upper.z));
+}
+
+
+float FisheyeCamera::screenSpaceDerivative(const scene_rdl2::math::Vec3f &v) const
+{
+    float x = v.x;
+    float y = v.y;
+    float z = v.z;
+    float l = length(v);
+    float r = sqrt(x*x + y*y);
+    float costheta = -z/l;
+    float sintheta =  r/l;
+    float theta = atan2(r, -z);
+    float R;
+
+    switch (mMapping) {
+    case MAPPING_STEREOGRAPHIC:
+        R = tan(0.5f * theta);
+        break;
+    case MAPPING_EQUIDISTANT:
+        R = theta * sTwoOverPi;
+        break;
+    case MAPPING_EQUISOLID_ANGLE:
+        R = sqrt(1.0f - costheta);
+        break;
+    case MAPPING_ORTHOGRAPHIC:
+    default:
+        R = sintheta;
+        break;
+    }
+
+    return mDerivScale * R/r;
+}
+
 
 } // namespace pbr
 } // namespace moonray

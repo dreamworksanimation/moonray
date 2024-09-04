@@ -61,12 +61,14 @@ struct TessellationParams {
     TessellationParams(const scene_rdl2::rdl2::Layer *rdlLayer,
         const std::vector<mcrt_common::Frustum>& frustums,
         const scene_rdl2::math::Mat4d& world2render,
+        const pbr::Camera *camera,
         bool enableDisplacement,
         bool fastGeomUpdate,
         bool isBaking,
         const VolumeAssignmentTable* volumeAssignmentTable) :
             mRdlLayer(rdlLayer), mFrustums(frustums),
             mWorld2Render(world2render),
+            mCamera(camera),
             mEnableDisplacement(enableDisplacement),
             mFastGeomUpdate(fastGeomUpdate),
             mIsBaking(isBaking),
@@ -75,6 +77,7 @@ struct TessellationParams {
     const scene_rdl2::rdl2::Layer *mRdlLayer;
     const std::vector<mcrt_common::Frustum>& mFrustums;
     const scene_rdl2::math::Mat4d& mWorld2Render;
+    const pbr::Camera *mCamera;
     bool mEnableDisplacement;
     bool mFastGeomUpdate;
     bool mIsBaking;

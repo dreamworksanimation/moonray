@@ -482,7 +482,7 @@ void TestRenderingPrimAttr::testVertex1()
     const scene_rdl2::math::Mat4d world2render;
     subdMesh->setMeshResolution(5);
     geom::internal::TessellationStats stats;
-    subdMesh->tessellate({layer, {}, world2render, false, false, false, nullptr}, stats);
+    subdMesh->tessellate({layer, {}, world2render, nullptr, false, false, false, nullptr}, stats);
 
     internal::Mesh::TessellatedMesh tessellatedMesh;
     subdMesh->getTessellatedMesh(tessellatedMesh);
@@ -552,7 +552,7 @@ void TestRenderingPrimAttr::testVertex2()
     const scene_rdl2::math::Mat4d world2render;
     subdMesh->setMeshResolution(5);
     geom::internal::TessellationStats stats;
-    subdMesh->tessellate({layer, {}, world2render, false, false, false, nullptr}, stats);
+    subdMesh->tessellate({layer, {}, world2render, nullptr, false, false, false, nullptr}, stats);
 
     internal::Mesh::TessellatedMesh tessellatedMesh;
     subdMesh->getTessellatedMesh(tessellatedMesh);

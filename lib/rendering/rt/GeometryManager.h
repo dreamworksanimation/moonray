@@ -125,6 +125,7 @@ public:
             const scene_rdl2::math::Mat4d& world2render,
             std::vector<std::unique_ptr<geom::BakedMesh>>& bakedMeshes,
             std::vector<std::unique_ptr<geom::BakedCurves>>& bakedCurves,
+            const moonray::pbr::Camera* mainCamera,
             const scene_rdl2::rdl2::Camera* globalDicingCamera);
 
     /// Client must call this method to commit all the changes in geometries
@@ -134,6 +135,7 @@ public:
                               const std::vector<mcrt_common::Frustum>& frustums,
                               const scene_rdl2::math::Mat4d& world2render,
                               OptimizationTarget accelMode,
+                              const moonray::pbr::Camera* mainCamera,
                               const scene_rdl2::rdl2::Camera* dicingCamera,
                               bool updateSceneBVH);
 
@@ -222,6 +224,7 @@ private:
                          const std::vector<mcrt_common::Frustum>& frustums,
                          const scene_rdl2::math::Mat4d& world2render,
                          const geom::MotionBlurParams& motionBlurParams,
+                         const moonray::pbr::Camera* mainCamera,
                          const scene_rdl2::rdl2::Camera* globalDicingCamera);
 
     /// Add/update geometries in the provided GeometrySets to the

@@ -17,6 +17,7 @@
 #include <moonray/rendering/bvh/shading/State.h>
 #include <moonray/rendering/geom/BakedAttribute.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
+#include <moonray/rendering/pbr/camera/FisheyeCamera.h>
 
 #include <opensubdiv/far/patchDescriptor.h>
 #include <opensubdiv/far/patchMap.h>
@@ -685,6 +686,7 @@ getOverlapVertexClusters(const FaceVaryingSeams& faceVaryingSeams,
 std::vector<SubdTessellationFactor>
 OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRdlLayer,
         const std::vector<mcrt_common::Frustum>& frustums,
+        const pbr::Camera *camera,
         bool enableDisplacement,
         bool noTessellation) const
 {
@@ -696,15 +698,23 @@ OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRd
         mControlMeshData->mIndices;
     std::vector<SubdTessellationFactor> tessellationFactors;
     // only do adaptive tessellation when adaptiveError > 0
+    // and if we either have frustums or a fisheye camera
+    bool haveViewInfo = !frustums.empty() || (dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
     if (mAdaptiveError > scene_rdl2::math::sEpsilon &&
-        !frustums.empty() && !noTessellation) {
+        haveViewInfo && !noTessellation) {
         SubdTopologyIdLookup topologyIdLookup(vertices.size(), faceVertexCount,
             indices, noTessellation);
         tessellationFactors.reserve(
             topologyIdLookup.getQuadrangulatedFaceCount());
 
-        float pixelsPerScreenHeight =
-            frustums[0].mViewport[3] - frustums[0].mViewport[1] + 1;
+        float pixelsPerScreenHeight;
+        if (!frustums.empty()) {
+            pixelsPerScreenHeight = frustums[0].mViewport[3] - frustums[0].mViewport[1];
+        } else {
+            MNRY_ASSERT_REQUIRE(dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
+            pixelsPerScreenHeight = camera->getRegionWindowHeight();
+        }
+
         float pixelsPerEdge = mAdaptiveError;
         float edgesPerScreenHeight = pixelsPerScreenHeight / pixelsPerEdge;
 
@@ -741,13 +751,23 @@ OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRd
             Vec3f radius(0.5f * scene_rdl2::math::length(bbox.size()) + padding);
             bbox.lower = pCenter - radius;
             bbox.upper = pCenter + radius;
-            // frustum culling test
-            bool inFrustum = false;
-            for (size_t i = 0; i < frustums.size(); ++i) {
-                if (frustums[i].testBBoxOverlaps(bbox)) {
-                    inFrustum = true;
-                    break;
+            bool inView = false;
+            scene_rdl2::math::Mat4f c2s;
+            if (!frustums.empty()) {
+                c2s = frustums[0].mC2S;
+                // frustum culling test
+                for (size_t i = 0; i < frustums.size(); ++i) {
+                    if (frustums[i].testBBoxOverlaps(bbox)) {
+                        inView = true;
+                        break;
+                    }
                 }
+            } else {
+                c2s = scene_rdl2::math::OneTy();
+                MNRY_ASSERT_REQUIRE(dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
+                const pbr::FisheyeCamera *fishy = static_cast<const pbr::FisheyeCamera *>(camera);
+                // fisheye culling test
+                inView = fishy->testBBoxOverlaps(bbox);
             }
 
             if (nFv == sQuadVertexCount) {
@@ -769,11 +789,11 @@ OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRd
                         Vec3f vMid = 0.5f * (v0 + v1);
                         int edge0Factor = 0;
                         int edge1Factor = 0;
-                        if (inFrustum) {
+                        if (inView) {
                             edge0Factor = computeEdgeVertexCount(v0, vMid,
-                                edgesPerScreenHeight, frustums[0].mC2S);
+                                edgesPerScreenHeight, c2s, camera);
                             edge1Factor = computeEdgeVertexCount(vMid, v1,
-                                edgesPerScreenHeight, frustums[0].mC2S);
+                                edgesPerScreenHeight, c2s, camera);
                         }
                         edgeTessellationFactor[factor.mEdgeId0[v]] = scene_rdl2::math::max(
                             edge0Factor,
@@ -819,16 +839,16 @@ OpenSubdivMesh::computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer *pRd
                         int edge0Factor = 0;
                         int edgeMidCenterFactor = 0;
                         int edgen_1Factor = 0;
-                        if (inFrustum) {
+                        if (inView) {
                             edge0Factor = computeEdgeVertexCount(
                                 v0, vMid0,
-                                edgesPerScreenHeight, frustums[0].mC2S);
+                                edgesPerScreenHeight, c2s, camera);
                             edgeMidCenterFactor = computeEdgeVertexCount(
                                 vMid0, vCenter,
-                                edgesPerScreenHeight, frustums[0].mC2S);
+                                edgesPerScreenHeight, c2s, camera);
                             edgen_1Factor = computeEdgeVertexCount(
                                 v0, vMidN_1,
-                                edgesPerScreenHeight, frustums[0].mC2S);
+                                edgesPerScreenHeight, c2s, camera);
                         }
                         edgeTessellationFactor[factor.mEdgeId0[0]] = scene_rdl2::math::max(
                             edge0Factor,
@@ -2090,7 +2110,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams, Tessell
     // calculate edge tessellation factor based on either user specified
     // resolution (uniform) or camera frustum info (adaptive)
     std::vector<SubdTessellationFactor> tessellationFactors =
-        computeSubdTessellationFactor(pRdlLayer, tessellationParams.mFrustums,
+        computeSubdTessellationFactor(pRdlLayer, tessellationParams.mFrustums, tessellationParams.mCamera,
             tessellationParams.mEnableDisplacement, noTessellation);
     stats.mMemoryUsed += tessellationFactors.size() * sizeof(SubdTessellationFactor);
 
