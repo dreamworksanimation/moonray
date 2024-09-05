@@ -246,6 +246,9 @@ integrateLightSetSample(const varying LightSetSampler &lSampler,
     const uniform int lobeCount = BsdfSampler_getLobeCount(&bSampler);
     MNRY_ASSERT(lobeCount > 0);
 
+    // set the validityMask (which tells us which lobe entries are valid) to zero
+    lsmp.lp.validityMask = 0;
+
     // initialize lpe member, setting each lobe entry to a null value
     for (uniform int k = 0; k < BSDF_MAX_LOBE; ++k) lsmp.lp.lobe[k] = nullptr;
 
@@ -290,6 +293,7 @@ integrateLightSetSample(const varying LightSetSampler &lSampler,
         MNRY_ASSERT(k < BSDF_MAX_LOBE);
         lsmp.lp.t[k] = t;
         lsmp.lp.lobe[k] = lobe;
+        LightSample_setLobeValid(&lsmp, k); // tells us this lobe exists and has a valid value
 
         isInvalid = false;
     }

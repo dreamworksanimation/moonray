@@ -19,6 +19,7 @@ struct Arena;
 struct LightSampleLPE {
     Color t[BSDF_MAX_LOBE];
     const varying BsdfLobe * uniform lobe[BSDF_MAX_LOBE];
+    varying int16_t validityMask; // this is assuming BSDF_MAX_LOBE = 16
 };
 
 struct LightSample {
@@ -40,6 +41,11 @@ inline varying bool LightSample_isValid(const varying LightSample * uniform lsmp
 {  return lsmp->distance > 0.0f;  }
 inline varying bool LightSample_isInvalid(const varying LightSample * uniform lsmp)
 {  return lsmp->distance <= 0.0f;  }
+
+inline void LightSample_setLobeValid(varying LightSample * uniform lsmp, const uniform int lobeNum)
+{ lsmp->lp.validityMask |= 1 << lobeNum; }
+inline bool LightSample_isLobeValid(const varying LightSample * uniform lsmp, const uniform int lobeNum)
+{ return lsmp->lp.validityMask & (1 << lobeNum); }
 
 
 //----------------------------------------------------------------------------
