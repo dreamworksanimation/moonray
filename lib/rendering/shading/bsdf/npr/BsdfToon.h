@@ -169,13 +169,15 @@ public:
     // Constructor / Destructor
     ToonBsdfLobe(const scene_rdl2::math::Vec3f &N,
                  const scene_rdl2::math::Color &albedo,
+                 float rampInputScale,
                  int numRampPoints,
                  const float* rampPositions,
                  const ispc::RampInterpolatorMode* rampInterpolators,
                  const scene_rdl2::math::Color* rampColors,
                  const bool extendRamp) :
         LambertBsdfLobe(N, albedo, true),
-        mExtendRamp(extendRamp)
+        mExtendRamp(extendRamp),
+        mRampInputScale(rampInputScale)
     {
         mRampControl.init(numRampPoints, rampPositions, rampColors, rampInterpolators,
                           ispc::COLOR_RAMP_CONTROL_SPACE_RGB);
@@ -190,6 +192,7 @@ public:
 private: 
     ColorRampControl mRampControl;
     bool mExtendRamp;
+    float mRampInputScale;
 };
 
 

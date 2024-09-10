@@ -405,7 +405,7 @@ ToonBsdfLobe::eval(const BsdfSlice &slice,
         cosThetaWo = max(dot(N, slice.getWo()), 0.0f);
     }
 
-    Color ramp = mRampControl.eval1D(1.0f - cosThetaWi);
+    Color ramp = mRampControl.eval1D((1.0f - cosThetaWi) / mRampInputScale);
 
     const Color albedo = clamp(ramp*mAlbedo, sBlack, sWhite);
     // Soften hard shadow terminator due to shading normals

@@ -24,6 +24,7 @@ struct ToonBsdfLobe
     BSDF_LOBE_BASE;
     ReferenceFrame mFrame;
     Color mAlbedo;
+    float mRampInputScale;
     ColorRampControl mRampControl;
     bool mExtendRamp;
 };
@@ -70,6 +71,7 @@ ToonBsdfLobe_init(varying ToonBsdfLobe * uniform lobe,
                   uniform Arena * uniform arena,
                   const varying Vec3f &normal,
                   const varying Color &albedo,
+                  const varying float rampInputScale,
                   const varying int numRampPoints,
                   const varying float* uniform rampPositions,
                   const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -93,7 +95,7 @@ ToonBsdfLobe_init(varying ToonBsdfLobe * uniform lobe,
 
     ReferenceFrame_init(lobe->mFrame, normal);
     lobe->mAlbedo = albedo;
-    
+    lobe->mRampInputScale = rampInputScale;
     ColorRampControl_init(&lobe->mRampControl, 
                            numRampPoints,
                            rampPositions,

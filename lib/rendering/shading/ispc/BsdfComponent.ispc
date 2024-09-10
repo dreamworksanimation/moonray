@@ -590,6 +590,7 @@ ToonBRDF_init(
         varying ToonBRDF& me,
         const varying Vec3f& N,
         const varying Color &albedo,
+        const varying float rampInputScale,
         const varying int numRampPoints,
         const varying float* uniform rampPositions,
         const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -599,6 +600,7 @@ ToonBRDF_init(
 {
     me.mN           = N;
     me.mAlbedo      = albedo;
+    me.mRampInputScale = rampInputScale;
     me.mRampNumPoints = numRampPoints;
     me.mRampPositions = rampPositions;
     me.mRampInterpolators = rampInterpolators;

@@ -1330,6 +1330,7 @@ BsdfBuilder_addToonBRDF(
                       me.mTls->mArena,
                       brdf.mN,
                       brdf.mAlbedo,
+                      brdf.mRampInputScale,
                       brdf.mRampNumPoints,
                       brdf.mRampPositions,
                       brdf.mRampInterpolators,

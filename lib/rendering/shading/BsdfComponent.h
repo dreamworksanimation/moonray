@@ -1510,6 +1510,7 @@ class ToonBRDF : public BsdfComponent
 public:
     ToonBRDF(const scene_rdl2::math::Vec3f& N,
              const scene_rdl2::math::Color& albedo,
+             const float rampInputScale,
              int numRampPoints,
              const float* rampPositions,
              const ispc::RampInterpolatorMode* rampInterpolators,
@@ -1519,6 +1520,7 @@ public:
                  BsdfComponent(iridescence),
                  mN(N),
                  mAlbedo(albedo),
+                 mRampInputScale(rampInputScale),
                  mRampNumPoints(numRampPoints),
                  mRampPositions(rampPositions),
                  mRampInterpolators(rampInterpolators),
@@ -1530,6 +1532,7 @@ public:
 
     finline const scene_rdl2::math::Vec3f& getN()           const { return mN; }
     finline const scene_rdl2::math::Color& getAlbedo()      const { return mAlbedo; }
+    finline float getRampInputScale()                       const { return mRampInputScale; }
     finline int getRampNumPoints()                          const { return mRampNumPoints; }
     finline const float* getRampPositions()                 const { return mRampPositions; }
     finline const ispc::RampInterpolatorMode* getRampInterpolators() const { return mRampInterpolators; }
@@ -1539,6 +1542,7 @@ public:
 private:
     scene_rdl2::math::Vec3f mN;
     scene_rdl2::math::Color mAlbedo;
+    const float mRampInputScale;
     int mRampNumPoints;
     const float* mRampPositions;
     const ispc::RampInterpolatorMode* mRampInterpolators;

@@ -380,6 +380,7 @@ void ToonBRDF_init(
         varying ToonBRDF& brdf,
         const varying Vec3f& N,
         const varying Color& albedo,
+        const varying float rampInputScale,
         const varying int numRampPoints,
         const varying float* uniform rampPositions,
         const varying RampInterpolatorMode* uniform rampInterpolators,
@@ -808,6 +809,7 @@ struct ToonBRDF
 {
     varying Vec3f mN;
     varying Color mAlbedo;
+    varying float mRampInputScale;
     varying int mRampNumPoints;
     const varying float* uniform mRampPositions;
     const varying RampInterpolatorMode* uniform mRampInterpolators;

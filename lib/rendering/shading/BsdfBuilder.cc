@@ -1835,6 +1835,7 @@ public:
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<ToonBsdfLobe>(
             component.getN(),
             component.getAlbedo(),
+            component.getRampInputScale(),
             component.getRampNumPoints(),
             component.getRampPositions(),
             component.getRampInterpolators(),
