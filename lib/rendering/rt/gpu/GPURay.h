@@ -28,6 +28,7 @@ struct GPURay
     float mMaxT;
     float mTime;
 #endif
+    int mMask;
     int mShadowReceiverId;
     uint64_t mLightId;
 };

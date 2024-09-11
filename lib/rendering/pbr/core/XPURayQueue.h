@@ -212,6 +212,7 @@ protected:
                 gpuRays[i].mMaxT = rs->mRay.tfar;
                 gpuRays[i].mTime = rs->mRay.time;
 #endif
+                gpuRays[i].mMask = rs->mRay.mask;
                 gpuRays[i].mShadowReceiverId = 0; // unused for regular rays
                 gpuRays[i].mLightId = 0; // unused for regular rays
             }

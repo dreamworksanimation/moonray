@@ -8,6 +8,8 @@
 #include <moonray/rendering/rt/gpu/GPURay.h>
 #include <moonray/rendering/rt/gpu/GPUAccelerator.h>
 
+#include <scene_rdl2/scene/rdl2/VisibilityFlags.h>
+
 // warning #1684: conversion from pointer to
 // same-sized integral type (potential portability problem)
 // needed for reinterpret_cast<intptr_t>(light)
@@ -262,6 +264,7 @@ protected:
                 gpuRays[i].mMinT = occlRay.mMinT;
                 gpuRays[i].mMaxT = occlRay.mMaxT;
                 gpuRays[i].mTime = occlRay.mTime;
+                gpuRays[i].mMask = scene_rdl2::rdl2::SHADOW;
                 gpuRays[i].mShadowReceiverId = occlRay.mShadowReceiverId;
                 const scene_rdl2::rdl2::Light* light = static_cast<BundledOcclRayData *>(
                     pbrTls->getListItem(occlRay.mDataPtrHandle, 0))->mLight->getRdlLight();

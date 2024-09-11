@@ -26,7 +26,7 @@ public:
     unsigned int mInputFlags;
     bool mIsSingleSided;
     bool mIsNormalReversed;
-    bool mVisibleShadow;
+    int mMask;
     intptr_t mEmbreeUserData;
     unsigned int mEmbreeGeomID;
 

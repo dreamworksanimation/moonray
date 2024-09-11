@@ -22,6 +22,7 @@ extern "C" __constant__ static OptixGPUParams params;
 struct PerRayData
 {
     bool mIsOcclusionRay;
+    int mMask;
     int mShadowReceiverId;        // used for shadow linking (input)
     unsigned long long mLightId;  // used for shadow linking (input)
     bool mDidHitGeom;             // did ray hit geometry? (output)
@@ -135,6 +136,7 @@ void __raygen__()
         // intersection ray
         PerRayData prd;
         prd.mIsOcclusionRay = false;
+        prd.mMask = ray->mMask;
         prd.mShadowReceiverId = -1;
         prd.mLightId = INVALID_LIGHT_ID;
         prd.mDidHitGeom = false;
@@ -186,6 +188,7 @@ void __raygen__()
         // occlusion ray
         PerRayData prd;
         prd.mIsOcclusionRay = true;
+        prd.mMask = ray->mMask;
         prd.mShadowReceiverId = ray->mShadowReceiverId;
         prd.mLightId = ray->mLightId;
         prd.mDidHitGeom = false;
@@ -417,17 +420,17 @@ void __anyhit__()
     PerRayData* prd = getPRD<PerRayData>();
     const moonray::rt::HitGroupData* data = (moonray::rt::HitGroupData*)optixGetSbtDataPointer();
 
+    if ((data->mMask & prd->mMask) == 0) {
+        optixIgnoreIntersection();
+        return;
+    }
+
     if (data->mIsSingleSided && optixIsTriangleBackFaceHit()) {
         optixIgnoreIntersection();
         return;
     }
 
     if (prd->mIsOcclusionRay) {
-        if (!data->mVisibleShadow) {
-            optixIgnoreIntersection();
-            return;
-        }
-
         unsigned int primIdx = optixGetPrimitiveIndex();
         unsigned int casterId = data->mAssignmentIds[primIdx];
 

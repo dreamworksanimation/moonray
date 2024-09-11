@@ -204,7 +204,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         OptixGPUTriMesh* triMesh = mTriMeshes[i];
         rec.mData.mIsSingleSided = triMesh->mIsSingleSided;
         rec.mData.mIsNormalReversed = triMesh->mIsNormalReversed;
-        rec.mData.mVisibleShadow = triMesh->mVisibleShadow;
+        rec.mData.mMask = triMesh->mMask;
         rec.mData.mAssignmentIds = triMesh->mAssignmentIds.ptr();
         rec.mData.mNumShadowLinkLights = triMesh->mShadowLinkLights.count();
         rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
@@ -225,7 +225,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         OptixGPUTriMesh* triMesh = mTriMeshesMB[i];
         rec.mData.mIsSingleSided = triMesh->mIsSingleSided;
         rec.mData.mIsNormalReversed = triMesh->mIsNormalReversed;
-        rec.mData.mVisibleShadow = triMesh->mVisibleShadow;
+        rec.mData.mMask = triMesh->mMask;
         rec.mData.mAssignmentIds = triMesh->mAssignmentIds.ptr();
         rec.mData.mNumShadowLinkLights = triMesh->mShadowLinkLights.count();
         rec.mData.mShadowLinkLights = triMesh->mShadowLinkLights.ptr();
@@ -248,7 +248,7 @@ OptixGPUPrimitiveGroup::getSBTRecords(std::map<std::string, OptixProgramGroup>& 
         OptixGPUCustomPrimitive* prim = mCustomPrimitives[i];
         rec.mData.mIsSingleSided = prim->mIsSingleSided;
         rec.mData.mIsNormalReversed = prim->mIsNormalReversed;
-        rec.mData.mVisibleShadow = prim->mVisibleShadow;
+        rec.mData.mMask = prim->mMask;
         rec.mData.mAssignmentIds = prim->mAssignmentIds.ptr();
         rec.mData.mNumShadowLinkLights = prim->mShadowLinkLights.count();
         rec.mData.mShadowLinkLights = prim->mShadowLinkLights.ptr();

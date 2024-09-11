@@ -54,7 +54,7 @@ struct HitGroupData
     // Properties common to all primitives
     bool mIsSingleSided;
     bool mIsNormalReversed;
-    bool mVisibleShadow;
+    int mMask;
     int *mAssignmentIds;
     intptr_t mEmbreeUserData;
     unsigned int mEmbreeGeomID;

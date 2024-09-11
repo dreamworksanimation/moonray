@@ -309,7 +309,7 @@ OptixGPUBVHBuilder::createBox(const geom::internal::Box& geomBox)
     gpuBox->mInputFlags = 0;
     gpuBox->mIsSingleSided = geomBox.getIsSingleSided();
     gpuBox->mIsNormalReversed = geomBox.getIsNormalReversed();
-    gpuBox->mVisibleShadow = resolveVisibilityMask(geomBox) & scene_rdl2::rdl2::SHADOW;
+    gpuBox->mMask = resolveVisibilityMask(geomBox);
     gpuBox->mEmbreeUserData = reinterpret_cast<intptr_t>(geomBox.mEmbreeUserData);
     gpuBox->mEmbreeGeomID = geomBox.mEmbreeGeomID;
 
@@ -357,7 +357,7 @@ OptixGPUBVHBuilder::createCurves(const geom::internal::Curves& geomCurves,
     gpuCurve->mInputFlags = 0;
     gpuCurve->mIsSingleSided = false;
     gpuCurve->mIsNormalReversed = false;
-    gpuCurve->mVisibleShadow = resolveVisibilityMask(geomCurves) & scene_rdl2::rdl2::SHADOW;
+    gpuCurve->mMask = resolveVisibilityMask(geomCurves);
     gpuCurve->mEmbreeUserData = reinterpret_cast<intptr_t>(geomCurves.mEmbreeUserData);
     gpuCurve->mEmbreeGeomID = geomCurves.mEmbreeGeomID;
 
@@ -456,7 +456,7 @@ OptixGPUBVHBuilder::createPoints(const geom::internal::Points& geomPoints)
     gpuPoints->mInputFlags = 0;
     gpuPoints->mIsSingleSided = false;
     gpuPoints->mIsNormalReversed = false;
-    gpuPoints->mVisibleShadow = resolveVisibilityMask(geomPoints) & scene_rdl2::rdl2::SHADOW;
+    gpuPoints->mMask = resolveVisibilityMask(geomPoints);
     gpuPoints->mEmbreeUserData = reinterpret_cast<intptr_t>(geomPoints.mEmbreeUserData);
     gpuPoints->mEmbreeGeomID = geomPoints.mEmbreeGeomID;
 
@@ -551,7 +551,7 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
     gpuMesh->mInputFlags = 0;
     gpuMesh->mIsSingleSided = geomMesh.getIsSingleSided();
     gpuMesh->mIsNormalReversed = geomMesh.getIsNormalReversed();
-    gpuMesh->mVisibleShadow = resolveVisibilityMask(geomMesh) & scene_rdl2::rdl2::SHADOW;
+    gpuMesh->mMask = resolveVisibilityMask(geomMesh);
     gpuMesh->mEnableMotionBlur = enableMotionBlur;
     gpuMesh->mEmbreeUserData = reinterpret_cast<intptr_t>(geomMesh.mEmbreeUserData);
     gpuMesh->mEmbreeGeomID = geomMesh.mEmbreeGeomID;
@@ -729,7 +729,7 @@ OptixGPUBVHBuilder::createSphere(const geom::internal::Sphere& geomSphere)
     gpuSphere->mInputFlags = 0;
     gpuSphere->mIsSingleSided = geomSphere.getIsSingleSided();
     gpuSphere->mIsNormalReversed = geomSphere.getIsNormalReversed();
-    gpuSphere->mVisibleShadow = resolveVisibilityMask(geomSphere) & scene_rdl2::rdl2::SHADOW;
+    gpuSphere->mMask = resolveVisibilityMask(geomSphere);
     gpuSphere->mEmbreeUserData = reinterpret_cast<intptr_t>(geomSphere.mEmbreeUserData);
     gpuSphere->mEmbreeGeomID = geomSphere.mEmbreeGeomID;
 
