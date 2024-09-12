@@ -805,21 +805,12 @@ OptixGPUBVHBuilder::createInstance(geom::internal::Instance& instance,
         mask |= mGeometry->getVisibilityMask() << scene_rdl2::rdl2::sNumVisibilityTypes;
     }
 
-    bool visibleShadow = mask & scene_rdl2::rdl2::SHADOW;
-    if (!visibleShadow) {
-        // Instance doesn't cast a shadow so it doesn't exist for occlusion
-        // queries.  Just skip it.  We will need to add some more logic when
-        // regular rays are supported by XPU.
-        return;
-    }
-
     OptixGPUInstance* gpuInstance = new OptixGPUInstance();
     mParentGroup->mInstances.push_back(gpuInstance);
     gpuInstance->mGroup = group;
+    gpuInstance->mMask = mask;
     gpuInstance->mEmbreeUserData = reinterpret_cast<intptr_t>(instance.mEmbreeUserData);
-
     gpuInstance->mEmbreeGeomID = instance.mEmbreeGeomID;
-
     gpuInstance->mInstanceId = static_cast<unsigned int>(mInstanceIdToInstancePtr.size());
     mInstanceIdToInstancePtr.push_back(reinterpret_cast<void*>(&instance));
 

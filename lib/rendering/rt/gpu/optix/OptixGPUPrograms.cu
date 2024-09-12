@@ -151,7 +151,7 @@ void __raygen__()
                 ray->mMinT,
                 ray->mMaxT,
                 ray->mTime,
-                OptixVisibilityMask( 255 ),
+                OptixVisibilityMask(ray->mMask & 0xff),
                 OPTIX_RAY_FLAG_NONE,
                 0,             // SBT offset
                 1,             // SBT stride
@@ -203,7 +203,7 @@ void __raygen__()
                 ray->mMinT,
                 ray->mMaxT,
                 ray->mTime,
-                OptixVisibilityMask( 255 ),
+                OptixVisibilityMask(ray->mMask & 0xff),
                 OPTIX_RAY_FLAG_NONE, // OPTIX_RAY_FLAG_TERMINATE_ON_FIRST_HIT for occlusion rays?
                 0,             // SBT offset
                 1,             // SBT stride

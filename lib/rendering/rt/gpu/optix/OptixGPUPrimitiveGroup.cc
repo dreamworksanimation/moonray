@@ -57,7 +57,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         OptixInstance oinstance;
         OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
         oinstance.instanceId = 0;
-        oinstance.visibilityMask = 255;
+        oinstance.visibilityMask = 0xff;
         oinstance.sbtOffset = mSBTOffset;
         oinstance.flags = 0;
         oinstance.traversableHandle = mTrianglesGAS;
@@ -78,7 +78,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         OptixInstance oinstance;
         OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
         oinstance.instanceId = 0;
-        oinstance.visibilityMask = 255;
+        oinstance.visibilityMask = 0xff;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size();
         oinstance.flags = 0;
         oinstance.traversableHandle = mTrianglesMBGAS;
@@ -99,7 +99,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         OptixInstance oinstance;
         OptixGPUXform::identityXform().toOptixTransform(oinstance.transform);
         oinstance.instanceId = 0;
-        oinstance.visibilityMask = 255;
+        oinstance.visibilityMask = 0xff;
         oinstance.sbtOffset = mSBTOffset + mTriMeshes.size() + mTriMeshesMB.size();
         oinstance.flags = 0;
         oinstance.traversableHandle = mCustomPrimitivesGAS;
@@ -123,7 +123,7 @@ OptixGPUPrimitiveGroup::build(CUstream cudaStream,
         for (size_t i = 0; i < mInstances.size(); i++) {
             OptixInstance oinstance = {};
             oinstance.instanceId = mInstances[i]->mInstanceId;
-            oinstance.visibilityMask = 255;
+            oinstance.visibilityMask = mInstances[i]->mMask & 0xff;
             oinstance.sbtOffset = 0;
             if (!mInstances[i]->mHasMotionBlur) {
                 // The instance's xform is specified on the OptixInstance and the child

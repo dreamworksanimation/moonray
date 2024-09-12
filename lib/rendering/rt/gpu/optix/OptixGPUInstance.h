@@ -23,6 +23,7 @@ public:
                OptixDeviceContext context,
                std::string* errorMsg);
 
+    int mMask;
     intptr_t mEmbreeUserData;
     unsigned int mEmbreeGeomID;
     int mInstanceId;
