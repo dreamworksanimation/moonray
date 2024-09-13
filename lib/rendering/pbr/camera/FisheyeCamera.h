@@ -15,11 +15,9 @@ public:
     explicit FisheyeCamera(const scene_rdl2::rdl2::Camera* rdlCamera);
 
     scene_rdl2::math::Vec3f createDirection(float x, float y) const;
-    bool testBBoxOverlaps(const scene_rdl2::math::BBox3f& bbox) const;
-    float screenSpaceDerivative(const scene_rdl2::math::Vec3f &v) const;
 
 private:
-    // These need to match up with the enums declared in dso/camera/FisheyeCamera/attributes.cc
+    // Keep these in sync with the enums declared in dso/camera/FisheyeCamera/attributes.cc
     enum Mapping {
         MAPPING_STEREOGRAPHIC,
         MAPPING_EQUIDISTANT,
@@ -36,6 +34,10 @@ private:
 
     bool getIsDofEnabledImpl() const override;
 
+    bool hasFishtumImpl() const override { return true; }
+    void computeFishtumImpl(mcrt_common::Fishtum *fish, float t,
+                            bool useRenderRegion) const override;
+
     void updateImpl(const scene_rdl2::math::Mat4d& world2render) override;
 
     void createRayImpl(mcrt_common::RayDifferential* dstRay,
@@ -44,9 +46,6 @@ private:
                        float time,
                        float lensU,
                        float lensV) const override;
-
-    scene_rdl2::math::Vec2f projectPoint(const scene_rdl2::math::Vec3f &v) const;
-    bool isInView(const scene_rdl2::math::Vec3f &v) const;
 
     static bool sAttributeKeyInitialized;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>   sMappingKey;

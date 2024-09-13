@@ -647,14 +647,20 @@ RenderContext::bakeGeometry(std::vector<std::unique_ptr<geom::BakedMesh>>& baked
         camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
     }
 
+    std::vector<mcrt_common::Fishtum> fishtums;
+    if (camera->hasFishtum()) {
+        fishtums.push_back(mcrt_common::Fishtum());
+        camera->computeFishtum(&fishtums.back(), 0, true);  // fishtum at shutter open
+    }
+
     const scene_rdl2::rdl2::Camera* dicingCamera = mSceneContext->getDicingCamera();
     mGeometryManager->bakeGeometry(mLayer,
                                    motionBlurParams,
                                    frustums,
+                                   fishtums,
                                    world2render,
                                    bakedMeshes,
                                    bakedCurves,
-                                   camera,
                                    dicingCamera);
     return true;
 }
@@ -2422,6 +2428,12 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
         camera->computeFrustum(&frustums.back(), 1, true);  // frustum at shutter close
     }
 
+    std::vector<mcrt_common::Fishtum> fishtums;
+    if (camera->hasFishtum()) {
+        fishtums.push_back(mcrt_common::Fishtum());
+        camera->computeFishtum(&fishtums.back(), 0, true);  // fishtum at shutter open
+    }
+
     // configure the way to construct spatial accelerator
     constexpr rt::OptimizationTarget accelMode = rt::OptimizationTarget::HIGH_QUALITY_BVH_BUILD;
 
@@ -2435,8 +2447,8 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
         return RP_RESULT::CANCELED;
     }
     const scene_rdl2::rdl2::Camera* dicingCamera = mSceneContext->getDicingCamera();
-    if (mGeometryManager->finalizeChanges(mLayer, motionBlurParams, frustums,
-                                          world2render, accelMode, camera, dicingCamera, 
+    if (mGeometryManager->finalizeChanges(mLayer, motionBlurParams, frustums, fishtums,
+                                          world2render, accelMode, dicingCamera, 
                                           true /*update scene bvh*/) == rt::GeometryManager::GM_RESULT::CANCELED) {
         return RP_RESULT::CANCELED;
     }
@@ -2450,8 +2462,8 @@ RenderContext::loadGeometries(const rt::ChangeFlag flag)
     if (mRenderPrepExecTracker.startFinalizeChange1() == RenderPrepExecTracker::RESULT::CANCELED) {
         return RP_RESULT::CANCELED;
     }
-    if (mGeometryManager->finalizeChanges(mMeshLightLayer, motionBlurParams, frustums,
-                                          world2render, accelMode, camera, dicingCamera,
+    if (mGeometryManager->finalizeChanges(mMeshLightLayer, motionBlurParams, frustums, fishtums,
+                                          world2render, accelMode, dicingCamera,
                                           false /*don't update scene bvh*/) ==
         rt::GeometryManager::GM_RESULT::CANCELED) {
         return RP_RESULT::CANCELED;

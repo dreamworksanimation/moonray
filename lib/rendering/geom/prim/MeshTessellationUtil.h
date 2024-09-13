@@ -8,10 +8,9 @@
 #pragma once
 
 #include <moonray/rendering/geom/prim/Mesh.h>
-
 #include <moonray/rendering/geom/PolygonMesh.h>
 #include <moonray/rendering/geom/SubdivisionMesh.h>
-#include <moonray/rendering/pbr/camera/FisheyeCamera.h>
+#include <moonray/rendering/mcrt_common/Frustum.h>
 
 #include <scene_rdl2/render/util/Arena.h>
 
@@ -154,7 +153,8 @@ struct SubdTessellationFactor
 // in util function OsdGetTessLevelsAdaptiveLimitPoints()
 finline int
 computeEdgeVertexCount(const Vec3f& v0, const Vec3f& v1,
-        float edgesPerScreenHeight, const scene_rdl2::math::Mat4f& c2s, const pbr::Camera *camera)
+        float edgesPerScreenHeight, const scene_rdl2::math::Mat4f& c2s,
+        const std::vector<moonray::mcrt_common::Fishtum>& fishtums)
 {
     // calculate the bounding sphere of this edge
     Vec3f pCenter = 0.5f * (v0 + v1);
@@ -162,9 +162,8 @@ computeEdgeVertexCount(const Vec3f& v0, const Vec3f& v1,
 
     // get screen-space derivative for tessellation calculation
     float deriv;
-    if (dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr) {
-        const pbr::FisheyeCamera *fishy = static_cast<const pbr::FisheyeCamera *>(camera);
-        deriv = fishy->screenSpaceDerivative(pCenter);
+    if (!fishtums.empty()) {
+        deriv = fishtums[0].screenSpaceDerivative(pCenter);
     } else {
         // abs(c2s[1][1]) = 1 / tan(fov / 2)
         deriv = 0.5f * scene_rdl2::math::abs(c2s[1][1] / pCenter.z);

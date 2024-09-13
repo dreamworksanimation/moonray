@@ -78,6 +78,27 @@ struct Frustum
     std::array<int, 4> mViewport;
 };
 
+struct Fishtum {
+
+    enum Mapping {
+        MAPPING_STEREOGRAPHIC,
+        MAPPING_EQUIDISTANT,
+        MAPPING_EQUISOLID_ANGLE,
+        MAPPING_ORTHOGRAPHIC,
+    };
+
+    scene_rdl2::math::Vec2f projectPoint(const scene_rdl2::math::Vec3f &v) const;
+    bool isInView(const scene_rdl2::math::Vec3f &v) const;
+    bool testBBoxOverlaps(const scene_rdl2::math::BBox3f& bbox) const;
+    float screenSpaceDerivative(const scene_rdl2::math::Vec3f &v) const;
+
+    float mRadialScale;
+    float mDerivScale;
+    int mMapping;
+    int mWidth;
+    int mHeight;
+};
+
 } // namespace mcrt_common
 } // namespace moonray
 

@@ -107,6 +107,12 @@ public:
         return computeFrustumImpl(frust, t, useRenderRegion);
     }
 
+    bool hasFishtum() const { return hasFishtumImpl(); }
+    void computeFishtum(mcrt_common::Fishtum *fish, float t, bool useRenderRegion) const
+    {
+        return computeFishtumImpl(fish, t, useRenderRegion);
+    }
+
     void bakeUvMaps() { bakeUvMapsImpl(); }
     void getRequiredPrimAttributes(shading::PerGeometryAttributeKeySet &keys) const
     {
@@ -136,7 +142,9 @@ protected:
 private:
     virtual bool getIsDofEnabledImpl() const = 0;
     virtual bool hasFrustumImpl() const { return false; }
+    virtual bool hasFishtumImpl() const { return false; }
     virtual void computeFrustumImpl(mcrt_common::Frustum *frust, float t, bool useRenderRegion) const;
+    virtual void computeFishtumImpl(mcrt_common::Fishtum *fish,  float t, bool useRenderRegion) const;
     virtual void bakeUvMapsImpl();
     virtual void getRequiredPrimAttributesImpl(shading::PerGeometryAttributeKeySet &keys) const;
     virtual float computeZDistanceImpl(const scene_rdl2::math::Vec3f &p, float tHit, float time) const;

@@ -139,7 +139,7 @@ private:
     std::vector<SubdTessellationFactor>
     computeSubdTessellationFactor(const scene_rdl2::rdl2::Layer* pRdlLayer,
             const std::vector<mcrt_common::Frustum>& frustums,
-            const pbr::Camera *camera,
+            const std::vector<mcrt_common::Fishtum>& fishtums,
             bool enableDisplacement,
             bool noTessellation) const;
 

@@ -201,6 +201,113 @@ Frustum::transformClipPlanes(const Mat4d& transform) {
     }
 }
 
+//----------------------------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
+
+Vec2f
+Fishtum::projectPoint(const Vec3f &v) const
+{
+    float x = v.x;
+    float y = v.y;
+    float z = v.z;
+    float l = length(v);
+    float r = sqrt(x*x + y*y);
+    float costheta = -z/l;
+    float sintheta =  r/l;
+    float cosphi = r ? x/r : 1.0f;
+    float sinphi = r ? y/r : 0.0f;
+    float theta = atan2(r, -z);
+    float R;
+
+    switch (mMapping) {
+    case MAPPING_STEREOGRAPHIC:
+        R = tan(0.5f * theta);
+        break;
+    case MAPPING_EQUIDISTANT:
+        R = theta * sTwoOverPi;
+        break;
+    case MAPPING_EQUISOLID_ANGLE:
+        R = sqrt(2.0f) * sin(0.5f * theta);
+        break;
+    case MAPPING_ORTHOGRAPHIC:
+        R = sintheta;
+        break;
+    default:
+        MNRY_ASSERT_REQUIRE(false, "Unsupported case label.");
+        break;
+    }
+
+    float D = R / mRadialScale;
+    float X = D * cosphi;
+    float Y = D * sinphi;
+
+    const float w = mWidth;
+    const float h = mHeight;
+
+    X += 0.5f * w;
+    Y += 0.5f * h;
+
+    return Vec2f(X, Y);
+}
+
+
+bool
+Fishtum::isInView(const Vec3f &v) const
+{
+    Vec2f V = projectPoint(v);
+    return (V.x >= 0.0f) && (V.y >= 0.0f) && (V.x <= mWidth) && (V.y <= mHeight);
+}
+
+
+bool
+Fishtum::testBBoxOverlaps(const BBox3f& bbox) const
+{
+    // TODO: make this robust - it's just a quick hack for now
+    return isInView(Vec3f(bbox.lower.x, bbox.lower.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.lower.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.upper.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.lower.x, bbox.upper.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.lower.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.lower.y, bbox.upper.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.upper.y, bbox.lower.z)) ||
+           isInView(Vec3f(bbox.upper.x, bbox.upper.y, bbox.upper.z));
+}
+
+float
+Fishtum::screenSpaceDerivative(const Vec3f &v) const
+{
+    float x = v.x;
+    float y = v.y;
+    float z = v.z;
+    float l = length(v);
+    float r = sqrt(x*x + y*y);
+    float costheta = -z/l;
+    float sintheta =  r/l;
+    float theta = atan2(r, -z);
+    float R;
+
+    switch (mMapping) {
+    case MAPPING_STEREOGRAPHIC:
+        R = tan(0.5f * theta);
+        break;
+    case MAPPING_EQUIDISTANT:
+        R = theta * sTwoOverPi;
+        break;
+    case MAPPING_EQUISOLID_ANGLE:
+        R = sqrt(1.0f - costheta);
+        break;
+    case MAPPING_ORTHOGRAPHIC:
+        R = sintheta;
+        break;
+    default:
+        MNRY_ASSERT_REQUIRE(false, "Unsupported case label.");
+        break;
+    }
+
+    return mDerivScale * R/r;
+}
+
+
 } // namespace mcrt_common
 } // namespace moonray
 

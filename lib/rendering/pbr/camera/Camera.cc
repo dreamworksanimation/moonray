@@ -131,6 +131,12 @@ Camera::computeFrustumImpl(mcrt_common::Frustum *frust, float t, bool useRenderR
 }
 
 void
+Camera::computeFishtumImpl(mcrt_common::Fishtum *fish, float t, bool useRenderRegion) const
+{
+    throw scene_rdl2::except::NotImplementedError("No fishtum implemented for this camera type.");
+}
+
+void
 Camera::bakeUvMapsImpl()
 {
     // empty

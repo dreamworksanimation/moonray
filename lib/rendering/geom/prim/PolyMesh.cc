@@ -18,7 +18,6 @@
 #include <moonray/rendering/bvh/shading/RootShader.h>
 #include <moonray/rendering/bvh/shading/State.h>
 #include <moonray/rendering/geom/BakedAttribute.h>
-#include <moonray/rendering/pbr/camera/FisheyeCamera.h>
 #include <scene_rdl2/common/math/MathUtil.h>
 
 namespace moonray {
@@ -98,7 +97,7 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams, TessellationS
         // calculate edge tessellation factor based on either user specified
         // resolution (uniform) or camera frustum info (adaptive)
         std::vector<PolyTessellationFactor> tessellationFactors =
-            computeTessellationFactor(pRdlLayer, tessellationParams.mFrustums, tessellationParams.mCamera,
+            computeTessellationFactor(pRdlLayer, tessellationParams.mFrustums, tessellationParams.mFishtums,
                                       topologyIdLookup);
         stats.mMemoryUsed += tessellationFactors.size() * sizeof(PolyTessellationFactor);
 
@@ -724,7 +723,7 @@ PolyMesh::shouldTessellate(bool enableDisplacement, const scene_rdl2::rdl2::Laye
 std::vector<PolyTessellationFactor>
 PolyMesh::computeTessellationFactor(const scene_rdl2::rdl2::Layer *pRdlLayer,
         const std::vector<mcrt_common::Frustum>& frustums,
-        const pbr::Camera *camera,
+        const std::vector<mcrt_common::Fishtum>& fishtums,
         const PolyTopologyIdLookup& topologyIdLookup) const
 {
     size_t faceVertexCount = getBaseFaceType() == MeshIndexType::QUAD ?
@@ -737,14 +736,14 @@ PolyMesh::computeTessellationFactor(const scene_rdl2::rdl2::Layer *pRdlLayer,
     tessellationFactors.reserve(baseFaceCount);
     // only do adaptive tessellation when adaptiveError > 0
     // and if we either have frustums or a fisheye camera
-    bool haveViewInfo = !frustums.empty() || (dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
+    bool haveViewInfo = !frustums.empty() || !fishtums.empty();
     if (mAdaptiveError > scene_rdl2::math::sEpsilon && haveViewInfo) {
         float pixelsPerScreenHeight;
         if (!frustums.empty()) {
             pixelsPerScreenHeight = frustums[0].mViewport[3] - frustums[0].mViewport[1];
         } else {
-            MNRY_ASSERT_REQUIRE(dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
-            pixelsPerScreenHeight = camera->getRegionWindowHeight();
+            MNRY_ASSERT_REQUIRE(!fishtums.empty());
+            pixelsPerScreenHeight = fishtums[0].mHeight;
         }
         float pixelsPerEdge = mAdaptiveError;
         float edgesPerScreenHeight = pixelsPerScreenHeight / pixelsPerEdge;
@@ -801,10 +800,9 @@ PolyMesh::computeTessellationFactor(const scene_rdl2::rdl2::Layer *pRdlLayer,
                     }
                 } else {
                     c2s = scene_rdl2::math::OneTy();
-                    MNRY_ASSERT_REQUIRE(dynamic_cast<const pbr::FisheyeCamera *>(camera) != nullptr);
-                    const pbr::FisheyeCamera *fishy = static_cast<const pbr::FisheyeCamera *>(camera);
+                    MNRY_ASSERT_REQUIRE(!fishtums.empty());
                     // fisheye culling test
-                    inView = fishy->testBBoxOverlaps(bbox);
+                    inView = fishtums[0].testBBoxOverlaps(bbox);
                 }
 
                 for (size_t v = 0; v < faceVertexCount; ++v) {
@@ -819,7 +817,7 @@ PolyMesh::computeTessellationFactor(const scene_rdl2::rdl2::Layer *pRdlLayer,
                         int edgeFactor = 0;
                         if (inView) {
                             edgeFactor = computeEdgeVertexCount(v0, v1,
-                                edgesPerScreenHeight, c2s, camera);
+                                edgesPerScreenHeight, c2s, fishtums);
                         }
                         edgeTessellationFactor[eid] = scene_rdl2::math::max(
                             edgeFactor, edgeTessellationFactor[eid]);
