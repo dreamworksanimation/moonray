@@ -624,18 +624,10 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
 
             // We have some self-intersections when rays leave at grazing
             // angle, so we adjust the rayEpsilon accordingly.
-            // We only trace up to the currSamp->distance. It is set to the distance
-            // to the intersected light in this direction, if any.
             varying BsdfSample *uniform currSamp = &bsmp[s];
             const varying float denom = abs(dot(getNg(isect), currSamp->wi));
             // isect.getNg() itself or the dot product above can be zero.
             const varying float start = isZero(denom) ? rayEpsilon : rayEpsilon / denom;
-            float varying end = (currSamp->distance == sMaxValue  ?  sMaxValue  :
-                                 currSamp->distance * sHitEpsilonEnd);
-
-            if (end <= start) {
-                continue;
-            }
 
             // Check transparency threshold
             varying float newAccumOpacity;
@@ -710,7 +702,7 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
             // Prepare a RayDifferential
             // Ray::depth is incremented inside of this call.
             RayDifferential &ray = rayState->mRay;
-            Ray_init(&ray, parentRay, start, end);
+            Ray_init(&ray, parentRay, start, sMaxValue);
 
             // Scatter and scale our next ray differential
             // We scatter the ray based on the sampled lobe

@@ -454,16 +454,9 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
 
             // We have some self-intersections when rays leave at grazing
             // angle, so we adjust the rayEpsilon accordingly.
-            // We only trace up to the bsmp[s].distance. It is set to the distance
-            // to the intersected light in this direction, if any.
             const float denom = scene_rdl2::math::abs(dot(isect.getNg(), bsmp[s].wi));
             // isect.getNg() itself or the dot product above can be zero.
             const float start = scene_rdl2::math::isZero(denom) ? rayEpsilon : rayEpsilon / denom;
-            float end = (bsmp[s].distance == scene_rdl2::math::sMaxValue  ?  scene_rdl2::math::sMaxValue  :
-                         bsmp[s].distance * sHitEpsilonEnd);
-            if (end <= start) {
-                continue;
-            }
 
             // Check transparency threshold
             float newAccumOpacity;
@@ -513,7 +506,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 aovAccumPostScatterExtraAovs(pbrTls, fs, pv, bsdf, aovs);
             }
             // Prepare a mcrt_common::RayDifferential
-            mcrt_common::RayDifferential ray(parentRay, start, end);
+            mcrt_common::RayDifferential ray(parentRay, start, scene_rdl2::math::sMaxValue);
 
             if (transmissionLobe) {
                 // copy in the new priority list into the ray
