@@ -126,8 +126,6 @@ EnvLight::EnvLight(const scene_rdl2::rdl2::Light* rdlLight) :
     Light(rdlLight),
     mHemispherical(false)
 {
-    mIsOpaqueInAlpha = false;
-
     initAttributeKeys(rdlLight->getSceneClass());
 
     ispc::EnvLight_init(this->asIspc());

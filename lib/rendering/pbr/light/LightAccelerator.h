@@ -33,9 +33,6 @@ public:
     int intersect(const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f* N, const scene_rdl2::math::Vec3f &wi, float time,
         float maxDistance, bool includeRayTerminationLights, int visibilityMask, IntegratorSample1D &samples,
         int depth, LightIntersection &isect, int &numHits, const int* lightIdMap) const;
-    // The 'self' parameter is used to avoid self-occlusion when light blocking is enabled
-    bool occluded(const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f &wi, float time, float maxDistance,
-        const Light* self=nullptr) const;
     finline const Light* getLight(int l) const { return mLights[l]; }
     finline int getLightCount() const { return mLightCount; }
     finline bool useAcceleration() const { return mBoundedLightCount >= SCALAR_THRESHOLD_COUNT; }

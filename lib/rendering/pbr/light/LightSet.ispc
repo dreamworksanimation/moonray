@@ -22,7 +22,7 @@ LightSet_hudValidation(uniform bool verbose)
 varying int
 LightSet_intersect(uniform PbrTLState * uniform pbrTls, const uniform LightSet * uniform lightSet,
                    const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying Vec3f &wi,
-                   varying float time, varying float maxDistance, uniform bool fromCamera,
+                   varying float time, varying float maxDistance,
                    varying bool includeRayTerminationLights, varying IntegratorSample1D &samples, varying int depth,
                    varying int visibilityMask, varying LightIntersection &chosenIsect, varying int &numHits)
 {
@@ -93,7 +93,7 @@ LightSet_intersectAndEval(uniform PbrTLState * uniform pbrTls,
     // Compute intersection with a random light
     varying LightIntersection isect;
     varying int numLightsHit = 0;
-    varying int lightIdx = LightSet_intersect(pbrTls, lightSet, P, cullingNormal, wi, time, sMaxValue, fromCamera,
+    varying int lightIdx = LightSet_intersect(pbrTls, lightSet, P, cullingNormal, wi, time, sMaxValue,
         includeRayTerminationLights, samples, depth, visibilityMask, isect, numLightsHit);
 
     const uniform Light * varying light = nullptr;

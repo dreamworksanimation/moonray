@@ -92,13 +92,14 @@ CPP_applyVolumeTransmittance(const uniform PathIntegrator * uniform pathIntegrat
     uniform PbrTLState * uniform pbrTls, const uniform uint32_t * uniform rayStateIndices,
     uniform int32_t laneMask);
 
-
 extern "C" void
 CPP_addRadianceQueueEntries(            uniform PbrTLState *     uniform pbrTls,
                                   const varying BundledRadiance *uniform radiances,
                                         uniform uint32_t                 numRadiances,
                                   const uniform uint32_t *       uniform indicies );
 
+extern "C" const uniform LightSet * uniform
+CPP_getVisibleLightSet(const uniform struct Scene * uniform scene);
 
 //-----------------------------------------------------------------------------
 
@@ -172,6 +173,10 @@ integrateBundled( const uniform PathIntegrator * uniform this,
 
     const uniform FrameState &fs = *pbrTls->mFs;
 
+    // get the scene's visible-in-camera LightSet
+    const uniform LightSet * uniform visibleLightSet =
+        CPP_getVisibleLightSet((const uniform Scene *uniform)(fs.mScene));
+
     // Aovs
     const uniform AovSchema &aovSchema = *((const uniform AovSchema * uniform) fs.mAovSchema);
     const uniform LightAovs &lightAovs = *((const uniform LightAovs * uniform) fs.mLightAovs);
@@ -212,6 +217,54 @@ integrateBundled( const uniform PathIntegrator * uniform this,
         // Account for case where numEntries isn't a multiple of VLEN.
         if (rayIndices >= numEntries) {
             continue;
+        }
+
+        // Code for rendering lights. Only executed for primary rays since lights
+        // appear in deeper passes already
+        if (rayDepth == 0) {
+            varying LightIntersection hitLightIsect;
+            varying int numHits = 0;
+
+            varying SequenceID sid;
+            SequenceID_init(sid, rs->mSubpixel.mPixel, rs->mSubpixel.mSubpixelIndex, fs.mInitialSeed);
+            varying IntegratorSample1D lightChoiceSamples;
+            IntegratorSample1D_init(lightChoiceSamples, sid);
+
+            varying Vec3f cullingNormal;
+            setInvalidCullingNormal(&cullingNormal);
+
+            // The ray origin has already been moved to the surface intersection point, so we must
+            // explicitly use the origin of render space for this ray query
+            varying Vec3f origin = Vec3f_ctor(0.0f, 0.0f, 0.0f);
+
+            varying int lightIdx = LightSet_intersect(pbrTls, visibleLightSet, origin, cullingNormal,
+                                                      Ray_getDirection(ray), Ray_getTime(ray), Ray_getEnd(ray), false,
+                                                      lightChoiceSamples, 0, -1, hitLightIsect, numHits);
+
+            if (lightIdx >= 0) {
+                const uniform Light * varying hitLight = LightSet_getLight(visibleLightSet, lightIdx);
+
+                // light filters don't apply to camera rays
+                varying LightFilterRandomValues lightFilterR = { Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f) };
+
+                // We multiply the radiance contribution by the number of lights hit. This is because we want
+                // to compute the sum of all contributing lights, but we're stochastically sampling just one.
+                varying Color lightContribution = pv.pathThroughput * numHits *
+                    Light_eval(hitLight, shadingTls, Ray_getDirection(ray), origin, lightFilterR, Ray_getTime(ray),
+                               hitLightIsect, true, nullptr, Ray_getDirFootprint(ray));
+                radiance = radiance + lightContribution;
+
+                // LPE
+                if (aovs) {
+                    // transition
+                    int lpeStateId = pv.lpeStateId;
+                    lpeStateId = LightAovs_lightEventTransition(&lightAovs, lpeStateId, hitLight);
+
+                    aovAccumLightAovs(pbrTls, aovSchema, lightAovs, lightContribution, lpeStateId,
+                                      sp.mPixel, rs->mDeepDataHandle);
+
+                }
+            }
         }
 
         // Volumes

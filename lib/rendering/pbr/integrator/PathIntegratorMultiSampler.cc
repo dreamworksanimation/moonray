@@ -452,12 +452,6 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 continue;
             }
 
-            // We have some self-intersections when rays leave at grazing
-            // angle, so we adjust the rayEpsilon accordingly.
-            const float denom = scene_rdl2::math::abs(dot(isect.getNg(), bsmp[s].wi));
-            // isect.getNg() itself or the dot product above can be zero.
-            const float start = scene_rdl2::math::isZero(denom) ? rayEpsilon : rayEpsilon / denom;
-
             // Check transparency threshold
             float newAccumOpacity;
             if (mirrorLobe && lobe->matchesFlags(shading::BsdfLobe::ALL_TRANSMISSION)) {
@@ -505,6 +499,13 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 // Accumulate post scatter extra aovs
                 aovAccumPostScatterExtraAovs(pbrTls, fs, pv, bsdf, aovs);
             }
+
+            // We have some self-intersections when rays leave at grazing
+            // angle, so we adjust the rayEpsilon accordingly.
+            const float denom = scene_rdl2::math::abs(dot(isect.getNg(), bsmp[s].wi));
+            // isect.getNg() itself or the dot product above can be zero.
+            const float start = scene_rdl2::math::isZero(denom) ? rayEpsilon : rayEpsilon / denom;
+
             // Prepare a mcrt_common::RayDifferential
             mcrt_common::RayDifferential ray(parentRay, start, scene_rdl2::math::sMaxValue);
 
@@ -626,7 +627,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // A couple things seem out of place with the parameters to function.
     //
     // First, why do we require both a doIndirect boolean and an indirectFlags?
-    // Ideally we could determine doIndirect from the indirecFlags.  But there is
+    // Ideally we could determine doIndirect from the indirectFlags.  But there is
     // some complication with hair depth that prevents this.
     //
     // Second, the ssAov parameter is unfortunate.  It is just passed along to the

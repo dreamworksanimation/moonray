@@ -65,7 +65,7 @@ LightSetSampler::~LightSetSampler()
 //----------------------------------------------------------------------------
 
 void
-LightSetSampler::sampleIntersectAndEval(mcrt_common::ThreadLocalState* tls,
+LightSetSampler::sampleAndEval(mcrt_common::ThreadLocalState* tls,
         const Light* light, const LightFilterList* lightFilterList,
         const Vec3f &P, const Vec3f *N, const LightFilterRandomValues& filterR, float time,
         const Vec3f& r, LightSample &sample, float rayDirFootprint) const

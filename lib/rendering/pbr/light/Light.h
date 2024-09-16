@@ -65,10 +65,8 @@ public:
     /// Is this light two-sided
     bool isTwoSided() const { return mSidedness == LIGHT_SIDEDNESS_2_SIDED; }
 
-    /// Is this light visible in camera, and if so is it opaque in the
-    /// alpha channel ?
+    /// Is this light visible in camera?
     bool getIsVisibleInCamera() const { return mIsVisibleInCamera; }
-    bool getIsOpaqueInAlpha() const { return mIsOpaqueInAlpha; }
 
     /// Return the rdlLight
     const scene_rdl2::rdl2::Light* getRdlLight() const { return mRdlLight; }

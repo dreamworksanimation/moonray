@@ -42,7 +42,6 @@ Light::Light(const scene_rdl2::rdl2::Light* rdlLight) :
     mRdlLight(rdlLight),
     mOn(false),
     mIsVisibleInCamera(false),
-    mIsOpaqueInAlpha(true),
     mMb(LIGHT_MB_NONE),
     mArea(1.0f),
     mInvArea(1.0f),

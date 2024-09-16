@@ -131,13 +131,13 @@ LightSet_getLightFromAcc(const uniform LightSet * uniform lightSet, uniform int 
 
 //----------------------------------------------------------------------------
 
-// Returns a pointer to a light chosen randomly from among those that
-// intersect the ray(P, wi), within maxDistance. It returns nullptr if no light was
+// Returns the index of a light chosen randomly from among those that
+// intersect the ray(P, wi), within maxDistance. It returns -1 if no light was
 // intersected.
 varying int LightSet_intersect(uniform PbrTLState * uniform pbrTls,
         const uniform LightSet * uniform lightSet,
         const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying Vec3f &wi,
-        varying float time, varying float maxDistance, uniform bool fromCamera,
+        varying float time, varying float maxDistance,
         varying bool includeRayTerminationLights, varying IntegratorSample1D &samples, varying int depth,
         varying int visibilityMask, varying LightIntersection &chosenIsect, varying int &numHits);
 

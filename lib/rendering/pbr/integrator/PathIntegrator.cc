@@ -491,18 +491,16 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Code for rendering lights, only executed for primary rays since lights
     // appear in deeper passes already.
     if ((ray.getDepth() == 0)) {
-
         LightIntersection hitLightIsect;
         int numHits = 0;
-        const Light *hitLight;
         SequenceIDIntegrator sid(0, sp.mPixel, sp.mSubpixelIndex,
             SequenceType::IndexSelection, sequenceID);
         IntegratorSample1D lightChoiceSamples(sid);
-        hitLight = scene->intersectVisibleLight(ray,
+        const Light *hitLight = scene->intersectVisibleLight(ray,
             hitGeom ? ray.getEnd() : sInfiniteLightDistance,
             lightChoiceSamples, hitLightIsect, numHits);
 
-        if (hitLight) {
+        if (hitLight != nullptr) {
             // Evaluate the radiance on the selected light in camera.
             // Note: we multiply the radiance contribution by the number of
             // lights hit. This is because we want to compute the sum of all
@@ -515,15 +513,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                     ray.getDirection(), ray.getOrigin(), lightFilterR,
                     ray.getTime(), hitLightIsect, true, nullptr, ray.getDirFootprint());
             radiance += lightContribution;
-            // If we hit a light that's opaque, set the transparency to the
-            // minimum volume transmittance: if the volume is not a cutout,
-            // volumeTransmittanceM == 0 and it is fully opaque.  If the volume is
-            // a cutout, volumeTransmittanceMin > 0 and we are not fully opaque.
-            // If we hit a light that's not opaque, then we just use the volume
-            // alpha transmittance.
-            transparency = (hitLight->getIsOpaqueInAlpha() ?
-                reduceTransparency(vt.mTransmittanceMin) :
-                reduceTransparency(vt.mTransmittanceAlpha));
 
             checkForNan(radiance, "Camera visible lights", sp, pv, ray, isect);
 
@@ -538,8 +527,6 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
                 aovAccumLightAovs(pbrTls, *fs.mAovSchema, *fs.mLightAovs,
                     lightContribution, nullptr, AovSchema::sLpePrefixNone, lpeStateId, aovs);
             }
-
-            return indirectRadianceType;
         }
     }
 

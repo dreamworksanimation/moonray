@@ -158,24 +158,11 @@ Light_init(uniform Light * uniform light,
 }
 
 
-/// Is this light visible in camera, and if so is it opaque in the
-/// alpha channel ?
+/// Is this light visible in camera?
 inline uniform bool
 Light_getIsVisibleInCamera(const uniform Light * uniform light)
 {
     return light->mIsVisibleInCamera;
-}
-
-inline uniform bool
-Light_getIsOpaqueInAlpha(const uniform Light * uniform light)
-{
-    return light->mIsOpaqueInAlpha;
-}
-
-inline varying bool
-Light_getIsOpaqueInAlpha(const uniform Light * varying light)
-{
-    return light->mIsOpaqueInAlpha;
 }
 
 inline varying int32_t

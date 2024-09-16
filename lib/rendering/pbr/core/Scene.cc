@@ -1000,6 +1000,10 @@ bool CPP_LightFilterNeedsSamples(const moonray::pbr::Scene *scene)
     return MNRY_VERIFY(scene)->lightFilterNeedsSamples();
 }
 
+const moonray::pbr::LightSet * CPP_getVisibleLightSet(const moonray::pbr::Scene *scene)
+{
+    return &(MNRY_VERIFY(scene)->getVisibleLightSet());
 }
 
+}
 

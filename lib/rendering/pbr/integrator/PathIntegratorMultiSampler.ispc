@@ -622,12 +622,7 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
                 continue;
             }
 
-            // We have some self-intersections when rays leave at grazing
-            // angle, so we adjust the rayEpsilon accordingly.
             varying BsdfSample *uniform currSamp = &bsmp[s];
-            const varying float denom = abs(dot(getNg(isect), currSamp->wi));
-            // isect.getNg() itself or the dot product above can be zero.
-            const varying float start = isZero(denom) ? rayEpsilon : rayEpsilon / denom;
 
             // Check transparency threshold
             varying float newAccumOpacity;
@@ -698,6 +693,12 @@ addIndirectOrDirectVisibleContributionsBundled( const uniform PathIntegrator * u
                     pv.lpeStateIdLight = LightAovs_lightEventTransition(lightAovs, pv.lpeStateId, light);
                 }
             }
+
+            // We have some self-intersections when rays leave at grazing
+            // angle, so we adjust the rayEpsilon accordingly.
+            const varying float denom = abs(dot(getNg(isect), currSamp->wi));
+            // isect.getNg() itself or the dot product above can be zero.
+            const varying float start = isZero(denom) ? rayEpsilon : rayEpsilon / denom;
 
             // Prepare a RayDifferential
             // Ray::depth is incremented inside of this call.

@@ -253,7 +253,7 @@ drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSe
                                                 != 0;
 
         // lobeMask is used for comparison against a light's visibility flags.
-        // This comparison is made in the LightSampler's intersectAndEval() function inside the loop below.
+        // This comparison is made in the LightSet's intersectAndEval() function inside the loop below.
         int lobeMask = lobeTypeToRayMask(lobeType);
 
         // Loop over each lobe's samples
@@ -295,10 +295,13 @@ drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSe
             // direction, and return the distance to the chosen light if
             // there is. The distance is set to infinity if there is no light or
             // to sInfiniteLightDistance if there is an InfiniteAreaLight.
-            lSampler.intersectAndEval(pbrTls->mTopLevelTls, P, N, bsmp[s].wi, lightFilterSample, time, false, includeRayTerminationLights,
-                                      lightChoiceSamples, pv.nonMirrorDepth, lobeMask, lCo, rayDirFootprint);
+            const LightSet &lightSet = lSampler.getLightSet();
+            lightSet.intersectAndEval(pbrTls->mTopLevelTls, P, N, bsmp[s].wi, lightFilterSample, time, false,
+                                      includeRayTerminationLights, lightChoiceSamples, pv.nonMirrorDepth, lobeMask,
+                                      lCo, rayDirFootprint);
 
             integrateBsdfSample(bSampler, lobeIndex, lSampler, pv.pathThroughput, lCo, bsmp[s]);
+
             // save the light, we'll need it (for its labels) when processing lpes
             bsmp[s].lp.light = lCo.isInvalid ? nullptr : lCo.light;
 
@@ -538,10 +541,8 @@ drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const Bs
             lightFilterSamples.getSample(&lightFilterSample.r2[0], pv.nonMirrorDepth);
             lightFilterSamples3D.getSample(&lightFilterSample.r3[0], pv.nonMirrorDepth);
         }
-        lSampler.sampleIntersectAndEval(pbrTls->mTopLevelTls,
-                                        light, lightFilterList,
-                                        P, N, lightFilterSample, time, lightSample,
-                                        lsmp[i], rayDirFootprint);
+        lSampler.sampleAndEval(pbrTls->mTopLevelTls, light, lightFilterList, P, N, lightFilterSample,
+                               time, lightSample, lsmp[i], rayDirFootprint);
 
         if (lsmp[i].isInvalid()) {
             // These samples occur on the shadow terminator -- they are invalid because they face

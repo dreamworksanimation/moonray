@@ -123,22 +123,13 @@ public:
     // int s = 0;
     // for (int lightIndex = 0; lightIndex < getLightCount(); ++lightIndex) {
     //     for (int i = 0; i < getLightSampleCount(); ++i, ++s) {
-    //         sampleIntersectAndEval(lightIndex, P, N, time, r1, r2, lsmp[s]);
+    //         sampleAndEval(lightIndex, P, N, time, r1, r2, lsmp[s]);
     //     }
     // }
-    void sampleIntersectAndEval(mcrt_common::ThreadLocalState* tls,
+    void sampleAndEval(mcrt_common::ThreadLocalState* tls,
             const Light* light, const LightFilterList *lightFilterList,
             const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, const LightFilterRandomValues& filterR,
             float time, const scene_rdl2::math::Vec3f& r, LightSample &sample, float rayDirFootprint) const;
-
-    finline void intersectAndEval(mcrt_common::ThreadLocalState* tls,
-            const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f* N, const scene_rdl2::math::Vec3f &wi,
-            const LightFilterRandomValues& filterR, float time, bool fromCamera, bool includeRayTerminationLights,
-            IntegratorSample1D &samples, int depth, int visibilityMask, LightContribution &lCo,
-            float rayDirFootprint) const {
-        mLightSet.intersectAndEval(tls, P, N, wi, filterR, time, fromCamera, includeRayTerminationLights, samples,
-            depth, visibilityMask, lCo, rayDirFootprint);
-    }
 
     finline const shading::Bsdf &getBsdf() const { return *mBsdf; }
 

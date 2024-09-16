@@ -553,13 +553,8 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         // attenuate based on volume transmittance
                         if (rs->mVolHit) radiance *= (rs->mVolTr * rs->mVolTh);
 
-                        // alpha depends on light opacity and volumes
-                        if (hitLight->getIsOpaqueInAlpha()) {
-                            // We hit a visible light that is opaque in alpha.
-                            // Volumes are irrelevant, the alpha contribution is
-                            // the full pixel weight.
-                            alpha = rs->mPathVertex.pathPixelWeight;
-                        } else if (rs->mVolHit) {
+                        // alpha depends on volumes
+                        if (rs->mVolHit) {
                             // We hit a visible light, but the light is not
                             // opaque in alpha (e.g. a distant or env light).
                             // There is a volume along this ray.  The volume

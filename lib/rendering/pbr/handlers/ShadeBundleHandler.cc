@@ -166,291 +166,163 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
         mcrt_common::RayDifferential *ray = &rs->mRay;
         PathVertex &pv = rs->mPathVertex;
 
-        // Code for rendering lights. Only executed for primary rays since lights
-        // appear in deeper passes already. Do this here so that we can avoid
-        // evaluating shaders for any points that hit a light before they hit a
-        // surface.
-        bool terminate = false;
-        if (ray->getDepth() == 0) {
-
-            MNRY_ASSERT(scene_rdl2::math::isEqual(pv.pathPixelWeight, reduce_avg(pv.pathThroughput)));
-
-            // Entries on this code path have hit a geometric surface. Before attempting
-            // to execute the attached shader, we must first check that there isn't a light
-            // blocking the path to the surface.
-
-            LightIntersection hitLightIsect;
-            int numHits = 0;
-            const Light *hitLight;
-
-            SequenceIDIntegrator sid(rs->mSubpixel.mPixel,
-                                     rs->mSubpixel.mSubpixelIndex,
-                                     fs.mInitialSeed);
-            IntegratorSample1D lightChoiceSamples(sid);
-            hitLight = scene->intersectVisibleLight(*ray, ray->getEnd(), lightChoiceSamples, hitLightIsect, numHits);
-
-            if (hitLight) {
-
-                // Evaluate the radiance on a random visible light in camera
-                // Note: we multiply the radiance contribution by the number of lights hit. This is
-                // because we want to compute the sum of all contributing lights, but we're
-                // stochastically sampling just one.
-
-                LightFilterRandomValues lightFilterR = {
-                    scene_rdl2::math::Vec2f(0.f, 0.f), 
-                    scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
-                scene_rdl2::math::Color radiance = pv.pathThroughput * hitLight->eval(
-                    tls, ray->getDirection(), ray->getOrigin(), lightFilterR, ray->getTime(), hitLightIsect, true,
-                    nullptr, ray->getDirFootprint()) * numHits;
-
-                // Volumes
-                // This matches the scalar code, but is potentially a bug.  We have intersected a geometry
-                // and computed volume transmittance and radiance relative to the ray to the geometry.
-                // We have now discovered a visible light between the geometry and our viewpoint.  It seems
-                // like we should recompute the volume radiance and transmittance at this point, but the scalar
-                // code does not do this, so we don't either.  It would be expensive to recompute
-                // the transmittance and radiance along this ray, so as long as we aren't seeing artifacts
-                // as a result of this, it is probably best to continue using this approach.
-                if (rs->mVolHit) {
-                    radiance *= (rs->mVolTr * rs->mVolTh);
-                    radiance += rs->mVolRad;
-                }
-
-                // alpha depends on light opacity and volumes
-                float alpha = 0.0f;
-                if (hitLight->getIsOpaqueInAlpha()) {
-                    // We hit a visible light that is opaque in alpha.
-                    // Volumes are irrelevant, the alpha contribution is
-                    // the full pixel weight.
-                    alpha = rs->mPathVertex.pathPixelWeight;
-                } else if (rs->mVolHit) {
-                    // We hit a visible light, but the light is not
-                    // opaque in alpha (e.g. a distant or env light).
-                    // There is a volume along this ray.  The volume
-                    // transparency determines the alpha contribution.
-                    // This is probably an impossible case to hit because visible lights
-                    // that are not opaque in alpha are typically env or distant lights.
-                    // Such a light would not come between the camera and scene geometry.
-                    alpha = rs->mPathVertex.pathPixelWeight * (1.f - reduceTransparency(rs->mVolTalpha));
-                } else {
-                    // We hit a visible light, but the light is not
-                    // opaque in alpha (e.g. a distant or env light).
-                    // There is no volume along the ray.
-                    // The alpha contribution is 0.
-                    // This is probably an impossible case to hit because visible lights
-                    // that are not opaque in alpha are typically env or distant lights.
-                    // Such a light would not come between the camera and scene geometry.
-                    // If it did, then the light would act like a cutout.
-                    alpha = 0.0f;
-                }
-
-                currRadiance->mRadiance = RenderColor(radiance.r, radiance.g, radiance.b, alpha);
-                currRadiance->mPathPixelWeight = pv.pathPixelWeight;
-                currRadiance->mPixel = rs->mSubpixel.mPixel;
-                currRadiance->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
-                currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
-                currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
-                currRadiance->mCryptoRefP = rs->mCryptoRefP;
-                currRadiance->mCryptoP0 = rs->mCryptoP0;
-                currRadiance->mCryptoRefN = rs->mCryptoRefN;
-                currRadiance->mCryptoUV = rs->mCryptoUV;
-                currRadiance->mTilePass = rs->mTilePass;
-
-                // To maintain parity with scalar mode, specify that we hit something with an Id of 0 when we hit
-                // a light for cryptomattes:
-                if (rs->mCryptomatteDataHandle != pbr::nullHandle) {
-                    pbr::CryptomatteData *cryptomatteData =
-                        static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
-                    cryptomatteData->mHit = 1;
-                    cryptomatteData->mId = 0.f;
-                }
-
-                ++currRadiance;
-
-                // LPE
-                if (aovs) {
-                    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-
-                    const LightAovs &lightAovs = *fs.mLightAovs;
-
-                    // transition
-                    int lpeStateId = pv.lpeStateId;
-                    lpeStateId = lightAovs.lightEventTransition(pbrTls, lpeStateId, hitLight);
-
-                    // accumulate matching aovs.
-                    aovAccumLightAovsBundled(pbrTls, *fs.mAovSchema,
-                                             lightAovs, radiance, nullptr, AovSchema::sLpePrefixNone, lpeStateId,
-                                             rs->mSubpixel.mPixel,
-                                             rs->mDeepDataHandle);
-                }
-
-                rayStatesToFree[numRayStatesToFree++] = rs;
-
-                terminate = true;
-            }
-        }
-
         // Disable ray by default.
         // All terminated rays are put at the end of the sorted list.
         // Anything with a sortkey of 0xffffffff is counted as a terminated
         // ray and doesn't hit the shader evaluation code path.
         sortedEntries[i].mSortKey = 0xffffffff;
 
-        if (!terminate) {
+        const bool isSubsurfaceAllowed = fs.mIntegrator->isSubsurfaceAllowed(pv.subsurfaceDepth);
 
-            const bool isSubsurfaceAllowed = fs.mIntegrator->isSubsurfaceAllowed(pv.subsurfaceDepth);
+        // Initialize intersections.
+        geom::initIntersectionFull(isectMemory[i],
+                                   tls, *ray, layer,
+                                   pv.mirrorDepth,
+                                   pv.glossyDepth,
+                                   pv.diffuseDepth,
+                                   isSubsurfaceAllowed,
+                                   pv.minRoughness,
+                                   -ray->getDirection());
 
-            // Initialize intersections.
-            geom::initIntersectionFull(isectMemory[i],
-                                       tls, *ray, layer,
-                                       pv.mirrorDepth,
-                                       pv.glossyDepth,
-                                       pv.diffuseDepth,
-                                       isSubsurfaceAllowed,
-                                       pv.minRoughness,
-                                       -ray->getDirection());
+        shading::Intersection *isect = &isectMemory[i];
 
-            shading::Intersection *isect = &isectMemory[i];
+        // early termination if intersection doesn't provide all the
+        // required primitive attributes shader request
+        if (!isect->hasAllRequiredAttributes()) {
+            scene_rdl2::math::Color radiance = pv.pathThroughput * fs.mFatalColor;
+            currRadiance->mRadiance = RenderColor(
+                radiance.r, radiance.g, radiance.b, pv.pathPixelWeight);
+            currRadiance->mPathPixelWeight = pv.pathPixelWeight;
+            currRadiance->mPixel = rs->mSubpixel.mPixel;
+            currRadiance->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
+            currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
+            currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
+            currRadiance->mCryptoRefP = rs->mCryptoRefP;
+            currRadiance->mCryptoP0 = rs->mCryptoP0;
+            currRadiance->mCryptoRefN = rs->mCryptoRefN;
+            currRadiance->mCryptoUV = rs->mCryptoUV;
+            currRadiance->mTilePass = rs->mTilePass;
+            ++currRadiance;
 
-            // early termination if intersection doesn't provide all the
-            // required primitive attributes shader request
-            if (!isect->hasAllRequiredAttributes()) {
-                scene_rdl2::math::Color radiance = pv.pathThroughput * fs.mFatalColor;
-                currRadiance->mRadiance = RenderColor(
-                    radiance.r, radiance.g, radiance.b, pv.pathPixelWeight);
-                currRadiance->mPathPixelWeight = pv.pathPixelWeight;
-                currRadiance->mPixel = rs->mSubpixel.mPixel;
-                currRadiance->mSubPixelIndex = rs->mSubpixel.mSubpixelIndex;
-                currRadiance->mDeepDataHandle = pbrTls->acquireDeepData(rs->mDeepDataHandle);
-                currRadiance->mCryptomatteDataHandle = pbrTls->acquireCryptomatteData(rs->mCryptomatteDataHandle);
-                currRadiance->mCryptoRefP = rs->mCryptoRefP;
-                currRadiance->mCryptoP0 = rs->mCryptoP0;
-                currRadiance->mCryptoRefN = rs->mCryptoRefN;
-                currRadiance->mCryptoUV = rs->mCryptoUV;
-                currRadiance->mTilePass = rs->mTilePass;
-                ++currRadiance;
+            rayStatesToFree[numRayStatesToFree++] = rs;
+        } else {
+            // Populate deep data, first hit only for now
+            if (ray->getDepth() == 0 && rs->mDeepDataHandle != pbr::nullHandle) {
+                pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
+                deepData->mHitDeep = 1;
+                deepData->mSubpixelX = rs->mSubpixel.mSubpixelX;
+                deepData->mSubpixelY = rs->mSubpixel.mSubpixelY;
+                deepData->mRayZ = ray->dir.z;
+                deepData->mDeepT = ray->tfar;
+                deepData->mDeepNormal = ray->Ng;
 
-                rayStatesToFree[numRayStatesToFree++] = rs;
-                terminate = true;
-            } else {
-                // Populate deep data, first hit only for now
-                if (ray->getDepth() == 0 && rs->mDeepDataHandle != pbr::nullHandle) {
-                    pbr::DeepData *deepData = static_cast<pbr::DeepData*>(pbrTls->getListItem(rs->mDeepDataHandle, 0));
-                    deepData->mHitDeep = 1;
-                    deepData->mSubpixelX = rs->mSubpixel.mSubpixelX;
-                    deepData->mSubpixelY = rs->mSubpixel.mSubpixelY;
-                    deepData->mRayZ = ray->dir.z;
-                    deepData->mDeepT = ray->tfar;
-                    deepData->mDeepNormal = ray->Ng;
+                // retrieve all of the deep IDs for this intersection from the primitive attrs
+                for (size_t i = 0; i < fs.mIntegrator->getDeepIDAttrIdxs().size(); i++) {
+                    shading::TypedAttributeKey<float> deepIDAttrKey((fs.mIntegrator->getDeepIDAttrIdxs())[i]);
+                    if (isect->isProvided(deepIDAttrKey)) {
+                        deepData->mDeepIDs[i] = isect->getAttribute<float>(deepIDAttrKey);
+                    } else {
+                        deepData->mDeepIDs[i] = 0.f;
+                    }
+                }
+            }
 
-                    // retrieve all of the deep IDs for this intersection from the primitive attrs
-                    for (size_t i = 0; i < fs.mIntegrator->getDeepIDAttrIdxs().size(); i++) {
-                        shading::TypedAttributeKey<float> deepIDAttrKey((fs.mIntegrator->getDeepIDAttrIdxs())[i]);
-                        if (isect->isProvided(deepIDAttrKey)) {
-                            deepData->mDeepIDs[i] = isect->getAttribute<float>(deepIDAttrKey);
-                        } else {
-                            deepData->mDeepIDs[i] = 0.f;
-                        }
+            // Populate cryptomatte data
+            if (ray->getDepth() == 0 && rs->mCryptomatteDataHandle != pbr::nullHandle) {
+                pbr::CryptomatteData *cryptomatteData =
+                            static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
+
+                // Don't want to double count, so we set mHit to 0 only if it was originally a presence ray.
+                if (cryptomatteData->mPrevPresence) {
+                    cryptomatteData->mHit = 0;
+                    handlePresenceContinue = true;
+                } else {
+                    cryptomatteData->mHit = 1;
+                }
+
+                // add position and normal data
+                cryptomatteData->mPosition = isect->getP();
+                cryptomatteData->mNormal = isect->getN();
+                shading::State sstate(isect);
+                sstate.getRefP(rs->mCryptoRefP);
+                sstate.getRefN(rs->mCryptoRefN);
+
+                if (isect->isProvided(shading::StandardAttributes::sP0)) {
+                    rs->mCryptoP0 = scene_rdl2::math::transformPoint(
+                        sstate.getGeometryObject()->getSceneClass().getSceneContext()->getRender2World()->inverse(),
+                        isect->getAttribute(shading::StandardAttributes::sP0));
+                }
+
+                // Retrieve the first deep id (if present) for this intersection from the primitive attrs.
+                // At the request of production, cryptomatte currently only supports one deep id associated
+                // with each layer, rather than a generalized vector of ids. So here we are only interested
+                // in the first id.
+                if (fs.mIntegrator->getDeepIDAttrIdxs().size() != 0) {
+                    shading::TypedAttributeKey<float> deepIDAttrKey(fs.mIntegrator->getDeepIDAttrIdxs()[0]);
+                    if (isect->isProvided(deepIDAttrKey)) {
+                        cryptomatteData->mId = isect->getAttribute<float>(deepIDAttrKey);
+                    } else {
+                        cryptomatteData->mId = 0.f;
                     }
                 }
 
-                // Populate cryptomatte data
-                if (ray->getDepth() == 0 && rs->mCryptomatteDataHandle != pbr::nullHandle) {
-                    pbr::CryptomatteData *cryptomatteData =
-                                static_cast<pbr::CryptomatteData*>(pbrTls->getListItem(rs->mCryptomatteDataHandle, 0));
-
-                    // Don't want to double count, so we set mHit to 0 only if it was originally a presence ray.
-                    if (cryptomatteData->mPrevPresence) {
-                        cryptomatteData->mHit = 0;
-                        handlePresenceContinue = true;
-                    } else {
-                        cryptomatteData->mHit = 1;
-                    }
-
-                    // add position and normal data
-                    cryptomatteData->mPosition = isect->getP();
-                    cryptomatteData->mNormal = isect->getN();
-                    shading::State sstate(isect);
-                    sstate.getRefP(rs->mCryptoRefP);
-                    sstate.getRefN(rs->mCryptoRefN);
-
-                    if (isect->isProvided(shading::StandardAttributes::sP0)) {
-                        rs->mCryptoP0 = scene_rdl2::math::transformPoint(
-                            sstate.getGeometryObject()->getSceneClass().getSceneContext()->getRender2World()->inverse(),
-                            isect->getAttribute(shading::StandardAttributes::sP0));
-                    }
-
-                    // Retrieve the first deep id (if present) for this intersection from the primitive attrs.
-                    // At the request of production, cryptomatte currently only supports one deep id associated
-                    // with each layer, rather than a generalized vector of ids. So here we are only interested
-                    // in the first id.
-                    if (fs.mIntegrator->getDeepIDAttrIdxs().size() != 0) {
-                        shading::TypedAttributeKey<float> deepIDAttrKey(fs.mIntegrator->getDeepIDAttrIdxs()[0]);
-                        if (isect->isProvided(deepIDAttrKey)) {
-                            cryptomatteData->mId = isect->getAttribute<float>(deepIDAttrKey);
-                        } else {
-                            cryptomatteData->mId = 0.f;
-                        }
-                    }
-
-                    shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(fs.mIntegrator->getCryptoUVAttrIdx());
-                    if (isect->isProvided(cryptoUVAttrKey)) {
-                        rs->mCryptoUV = isect->getAttribute<scene_rdl2::rdl2::Vec2f>(cryptoUVAttrKey);
-                    } else {
-                        rs->mCryptoUV = isect->getSt();
-                    }
+                shading::TypedAttributeKey<scene_rdl2::rdl2::Vec2f> cryptoUVAttrKey(fs.mIntegrator->getCryptoUVAttrIdx());
+                if (isect->isProvided(cryptoUVAttrKey)) {
+                    rs->mCryptoUV = isect->getAttribute<scene_rdl2::rdl2::Vec2f>(cryptoUVAttrKey);
+                } else {
+                    rs->mCryptoUV = isect->getSt();
                 }
+            }
 
-                // Save the t value of the intersection point since we're about to relocate the ray origin there.
-                // (Note that Embree uses tfar to signal the t value of the intersection point.)
-                float tHit = ray->tfar;
+            // Save the t value of the intersection point since we're about to relocate the ray origin there.
+            // (Note that Embree uses tfar to signal the t value of the intersection point.)
+            float tHit = ray->tfar;
 
-                // TODO: Apply volume transmittance on the segment
-                // ray origin --> ray isect
+            // TODO: Apply volume transmittance on the segment
+            // ray origin --> ray isect
 
-                // Transfer the ray to its intersection before we run shaders.
-                // This is needed for texture filtering based on ray differentials.
-                // Also scale the final differentials by a user factor.
-                // This is left until the very end and not baked into the
-                // ray differentials since the factor will typically be > 1,
-                // and would cause the ray differentials to be larger
-                // than necessary.
-                isect->transferAndComputeDerivatives(tls, ray,
-                    rs->mSubpixel.mTextureDiffScale);
+            // Transfer the ray to its intersection before we run shaders.
+            // This is needed for texture filtering based on ray differentials.
+            // Also scale the final differentials by a user factor.
+            // This is left until the very end and not baked into the
+            // ray differentials since the factor will typically be > 1,
+            // and would cause the ray differentials to be larger
+            // than necessary.
+            isect->transferAndComputeDerivatives(tls, ray,
+                rs->mSubpixel.mTextureDiffScale);
 
-                sortedEntries[i].mSortKey = isect->computeShadingSortKey();
+            sortedEntries[i].mSortKey = isect->computeShadingSortKey();
 
-                sortedEntries[i].mLayerAssignmentId = isect->getLayerAssignmentId();
+            sortedEntries[i].mLayerAssignmentId = isect->getLayerAssignmentId();
 
-                // state and prim attr aovs
-                const bool doAovs = ray->getDepth() == 0 && !fs.mAovSchema->empty();
-                if (doAovs) {
-                    EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
-                    fs.mAovSchema->initFloatArray(aovs);
-                    aovSetStateVars(pbrTls,
+            // state and prim attr aovs
+            const bool doAovs = ray->getDepth() == 0 && !fs.mAovSchema->empty();
+            if (doAovs) {
+                EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+                fs.mAovSchema->initFloatArray(aovs);
+                aovSetStateVars(pbrTls,
+                                 *fs.mAovSchema,
+                                 *isect,
+                                 rs->mVolumeSurfaceT,
+                                 *ray,
+                                 *scene,
+                                 pv.pathPixelWeight,
+                                 aovs,
+                                 tHit);
+                aovSetPrimAttrs(pbrTls,
+                                 *fs.mAovSchema,
+                                 ext->getAovFlags(),
+                                 *isect,
+                                 pv.pathPixelWeight,
+                                 aovs);
+                aovAddToBundledQueue(pbrTls,
                                      *fs.mAovSchema,
                                      *isect,
-                                     rs->mVolumeSurfaceT,
-                                     *ray,
-                                     *scene,
-                                     pv.pathPixelWeight,
+                                     rs->mRay,
+                                     AOV_TYPE_STATE_VAR | AOV_TYPE_PRIM_ATTR,
                                      aovs,
-                                     tHit);
-                    aovSetPrimAttrs(pbrTls,
-                                     *fs.mAovSchema,
-                                     ext->getAovFlags(),
-                                     *isect,
-                                     pv.pathPixelWeight,
-                                     aovs);
-                    aovAddToBundledQueue(pbrTls,
-                                         *fs.mAovSchema,
-                                         *isect,
-                                         rs->mRay,
-                                         AOV_TYPE_STATE_VAR | AOV_TYPE_PRIM_ATTR,
-                                         aovs,
-                                         rs->mSubpixel.mPixel,
-                                         rs->mDeepDataHandle);
-                }
+                                     rs->mSubpixel.mPixel,
+                                     rs->mDeepDataHandle);
             }
         }
 

@@ -118,8 +118,6 @@ DistantLight::globalToLocalXform(float time, bool needed) const
 DistantLight::DistantLight(const scene_rdl2::rdl2::Light* rdlLight, bool uniformSampling) :
     Light(rdlLight)
 {
-    mIsOpaqueInAlpha = false;
-
     initAttributeKeys(rdlLight->getSceneClass());
 
     ispc::DistantLight_init(this->asIspc(), uniformSampling);
