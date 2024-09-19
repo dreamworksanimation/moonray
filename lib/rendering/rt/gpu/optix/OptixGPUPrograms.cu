@@ -97,29 +97,6 @@ T *getPRD()
     return reinterpret_cast<T*>(reconstructPointer(u0, u1));
 }
 
-__device__
-void concatInstanceTransform(const float4* trns, float l2r[4][3])
-{
-    float m[4][3]; // [col][row]
-
-    m[0][0] = l2r[0][0] * trns[0].x + l2r[1][0] * trns[1].x + l2r[2][0] * trns[2].x;
-    m[1][0] = l2r[0][0] * trns[0].y + l2r[1][0] * trns[1].y + l2r[2][0] * trns[2].y;
-    m[2][0] = l2r[0][0] * trns[0].z + l2r[1][0] * trns[1].z + l2r[2][0] * trns[2].z;
-    m[3][0] = l2r[0][0] * trns[0].w + l2r[1][0] * trns[1].w + l2r[2][0] * trns[2].w + l2r[3][0];
-
-    m[0][1] = l2r[0][1] * trns[0].x + l2r[1][1] * trns[1].x + l2r[2][1] * trns[2].x;
-    m[1][1] = l2r[0][1] * trns[0].y + l2r[1][1] * trns[1].y + l2r[2][1] * trns[2].y;
-    m[2][1] = l2r[0][1] * trns[0].z + l2r[1][1] * trns[1].z + l2r[2][1] * trns[2].z;
-    m[3][1] = l2r[0][1] * trns[0].w + l2r[1][1] * trns[1].w + l2r[2][1] * trns[2].w + l2r[3][1];
-
-    m[0][2] = l2r[0][2] * trns[0].x + l2r[1][2] * trns[1].x + l2r[2][2] * trns[2].x;
-    m[1][2] = l2r[0][2] * trns[0].y + l2r[1][2] * trns[1].y + l2r[2][2] * trns[2].y;
-    m[2][2] = l2r[0][2] * trns[0].z + l2r[1][2] * trns[1].z + l2r[2][2] * trns[2].z;
-    m[3][2] = l2r[0][2] * trns[0].w + l2r[1][2] * trns[1].w + l2r[2][2] * trns[2].w + l2r[3][2];
-
-    memcpy(l2r, m, 12 * sizeof(float));
-}
-
 // The __raygen__ program sets up the PerRayData and then calls optixTrace()
 // which starts the BVH traversal and calling of other programs.  It copies 
 // the prd.mDidHitGeom result to the appropriate location in the output buffer.
@@ -232,18 +209,20 @@ void __closesthit__()
         prd->mEmbreeGeomID = data->mEmbreeGeomID;
         prd->mEmbreeUserData = data->mEmbreeUserData;
 
-        prd->mL2R[0][0] = 1.f;
-        prd->mL2R[0][1] = 0.f;
-        prd->mL2R[0][2] = 0.f;
-        prd->mL2R[1][0] = 0.f;
-        prd->mL2R[1][1] = 1.f;
-        prd->mL2R[1][2] = 0.f;
-        prd->mL2R[2][0] = 0.f;
-        prd->mL2R[2][1] = 0.f;
-        prd->mL2R[2][2] = 1.f;
-        prd->mL2R[3][0] = 0.f;
-        prd->mL2R[3][1] = 0.f;
-        prd->mL2R[3][2] = 0.f;
+        float objectToWorld[12];
+        optixGetObjectToWorldTransformMatrix(objectToWorld);
+        prd->mL2R[0][0] = objectToWorld[0];
+        prd->mL2R[0][1] = objectToWorld[4];
+        prd->mL2R[0][2] = objectToWorld[8];
+        prd->mL2R[1][0] = objectToWorld[1];
+        prd->mL2R[1][1] = objectToWorld[5];
+        prd->mL2R[1][2] = objectToWorld[9];
+        prd->mL2R[2][0] = objectToWorld[2];
+        prd->mL2R[2][1] = objectToWorld[6];
+        prd->mL2R[2][2] = objectToWorld[10];
+        prd->mL2R[3][0] = objectToWorld[3];
+        prd->mL2R[3][1] = objectToWorld[7];
+        prd->mL2R[3][2] = objectToWorld[11];
 
         // Did we traverse any instances along the way to this hit?
         prd->mInstance0IdOrLight = 0;
@@ -275,10 +254,6 @@ void __closesthit__()
                         break;
                         // We ignore instances more than 4 deep.
                     }
-
-                    const float4* trns = optixGetInstanceTransformFromHandle(handle);
-                    concatInstanceTransform(trns, prd->mL2R);
-
                     instanceDepth++;
                 }
                 break;
