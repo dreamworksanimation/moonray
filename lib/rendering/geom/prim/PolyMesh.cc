@@ -1040,6 +1040,9 @@ PolyMesh::displaceMesh(const scene_rdl2::rdl2::Layer* pRdlLayer,
                 if (!scene_rdl2::math::isFinite(normal)) {
                     normal = Vec3f(0, 0, 1);
                 }
+                if (mIsOrientationReversed) {
+                    normal *= -1.0f;
+                }
                 Vec3f dpdst[2];
                 if (!computeTrianglePartialDerivatives(
                     p1, p2, p3, st1, st2, st3, dpdst)) {
