@@ -1941,7 +1941,9 @@ RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::RenderPrepTag::WHOLE);
 
     // Update XPU
-    if (mExecutionMode == mcrt_common::ExecutionMode::XPU) {
+    if (mExecutionMode == mcrt_common::ExecutionMode::XPU &&
+        (geomChangeFlag == rt::ChangeFlag::ALL ||
+         (geomChangeFlag == rt::ChangeFlag::UPDATE && !mLayer->getChangedOrDeformedGeometries().empty()))) {
         // Any update to the scene causes render prep to re-run which resets mExecutionMode.
         // Thus we must recreate the GPU accelerator to sync up with any scene changes and to
         // fall back properly if there is a problem.  E.g. what if we were running in XPU mode and

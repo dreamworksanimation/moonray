@@ -115,7 +115,6 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     tbb::task_group taskGroup;
     std::string msg = "TBB MCRT thread pool";
     scene_rdl2::logging::Logger::info(msg);
-    if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
 #   else // moonray MCRT threadpool
     auto calcCpuIdSequential = [&](size_t threadId) -> size_t { return threadId; };
     auto calcCpuIdByTbl = [&](size_t threadId) -> size_t { return (*fs.mAffinityCpuIdTbl)[threadId]; };

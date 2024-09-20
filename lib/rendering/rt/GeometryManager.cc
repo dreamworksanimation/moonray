@@ -1114,6 +1114,10 @@ GeometryManager::finalizeChanges(scene_rdl2::rdl2::Layer* layer,
         }
 
         if (updateSceneBVH) {
+            if (mChangeStatus == ChangeFlag::UPDATE && layer->getChangedOrDeformedGeometries().empty()) {
+                mOptions.stats.logString("Scene updated but no need to build BVH, skipping...");
+                return GM_RESULT::FINISHED;
+            }
             if (mOptions.stats.mGeometryManagerExecTracker.startBVHConstruction() ==
                 GeometryManagerExecTracker::RESULT::CANCELED) {
                 return GM_RESULT::CANCELED;
