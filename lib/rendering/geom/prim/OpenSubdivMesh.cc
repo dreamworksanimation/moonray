@@ -3017,7 +3017,9 @@ OpenSubdivMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
 
     const Vec3f Ng = normalize(ray.getNg());
 
-    Vec3f N, dPds, dPdt;
+    Vec3f N = scene_rdl2::math::zero;
+    Vec3f dPds = scene_rdl2::math::zero;
+    Vec3f dPdt = scene_rdl2::math::zero;
     const bool hasExplicitAttributes = getExplicitAttributes(*primitiveAttributes,
                                                              intersection,
                                                              N, dPds, dPdt);
