@@ -180,15 +180,24 @@ add_subdirectory(dso)
 if(GLD STREQUAL "$ENV{STUDIO}")
     if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
         add_subdirectory(bart_tools)
-        install(FILES
-            ${CMAKE_CURRENT_SOURCE_DIR}/SDKScript
-            DESTINATION
-            .)
+        install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/SDKScript
+            DESTINATION .
+            PERMISSIONS
+              OWNER_READ OWNER_WRITE
+              GROUP_READ GROUP_WRITE
+              WORLD_READ
+        )
     endif()
-    install(DIRECTORY
-        ${CMAKE_CURRENT_SOURCE_DIR}/SConscripts
-        DESTINATION
-        .)
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/SConscripts
+        DESTINATION .
+        FILE_PERMISSIONS
+          OWNER_READ OWNER_WRITE
+          GROUP_READ GROUP_WRITE
+          WORLD_READ
+        DIRECTORY_PERMISSIONS
+          OWNER_READ OWNER_EXECUTE OWNER_WRITE
+          GROUP_READ GROUP_EXECUTE GROUP_WRITE
+          WORLD_READ WORLD_EXECUTE)
 endif()
 
 if((CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME OR ${PROJECT_NAME_UPPER}_BUILD_TESTING)
