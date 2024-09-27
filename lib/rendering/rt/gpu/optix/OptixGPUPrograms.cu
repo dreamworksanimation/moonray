@@ -191,6 +191,36 @@ void __raygen__()
     }
 }
 
+inline __device__
+void getTriVerts(const moonray::rt::HitGroupData* data, float3 verts[3])
+{
+    int motionSamplesCount = data->mesh.mMotionSamplesCount;
+    int primIdx = optixGetPrimitiveIndex();
+    int idx0 = data->mesh.mIndices[primIdx * 3];
+    int idx1 = data->mesh.mIndices[primIdx * 3 + 1];
+    int idx2 = data->mesh.mIndices[primIdx * 3 + 2];
+
+    if (motionSamplesCount == 1) {
+        verts[0] = data->mesh.mVertices[0][idx0];
+        verts[1] = data->mesh.mVertices[0][idx1];
+        verts[2] = data->mesh.mVertices[0][idx2];
+    } else {
+        const float time = optixGetRayTime();
+        const float sample0PlusT = time * (motionSamplesCount - 1);
+        const unsigned int sample0 = static_cast<unsigned int>(sample0PlusT);
+        const unsigned int sample1 = fminf(sample0 + 1, motionSamplesCount - 1); // clamp to time = 1
+        const float t = sample0PlusT - static_cast<float>(sample0);
+        float3 vtx0_0 = data->mesh.mVertices[sample0][idx0];
+        float3 vtx1_0 = data->mesh.mVertices[sample0][idx1];
+        float3 vtx2_0 = data->mesh.mVertices[sample0][idx2];
+        float3 vtx0_1 = data->mesh.mVertices[sample1][idx0];
+        float3 vtx1_1 = data->mesh.mVertices[sample1][idx1];
+        float3 vtx2_1 = data->mesh.mVertices[sample1][idx2];
+        verts[0] = lerp(vtx0_0, vtx0_1, t);
+        verts[1] = lerp(vtx1_0, vtx1_1, t);
+        verts[2] = lerp(vtx2_0, vtx2_1, t);
+    }
+}
 
 // The __closesthit__ program is called after optixReportIntersection() has been
 // called in one or more of the __intersection__ programs and Optix has finished 
@@ -264,17 +294,11 @@ void __closesthit__()
             case HitGroupData::TRIANGLE_MESH:
             case HitGroupData::QUAD_MESH:
             {
-                float3 verts[3]; 
-                optixGetTriangleVertexData(optixGetGASTraversableHandle(),
-                                           optixGetPrimitiveIndex(),
-                                           optixGetSbtGASIndex(),
-                                           optixGetRayTime(),
-                                           verts);
-                // Compute the geometric normal.  We do not need to normalize this (Embree does
-                //  not normalize and we want to exactly match its behavior.)
+                float3 verts[3];
+                getTriVerts(data, verts);
                 float3 ng = cross(verts[1] - verts[0], verts[2] - verts[0]);
                 prd->mNgX = ng.x;
-                prd->mNgY = ng.y; 
+                prd->mNgY = ng.y;
                 prd->mNgZ = ng.z;
 
                 float2 uv = optixGetTriangleBarycentrics();

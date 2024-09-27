@@ -46,15 +46,14 @@ public:
     // case in Optix that can't be mixed with other types of primitives.  You do not
     // need to specify an "intersection" program for triangle meshes because it is baked
     // into the GPU.
-    std::vector<OptixGPUTriMesh*> mTriMeshes;
-    std::vector<OptixGPUTriMesh*> mTriMeshesMB;
+    std::vector<OptixGPUTriMesh*> mTriMeshes[MAX_MOTION_BLUR_SAMPLES + 1];
+    // It's MAX_MOTION_BLUR_SAMPLES+1 because we use the elements 1..MAX_MOTION_BLUR_SAMPLES
+    // and ignore the 0th element.
 
     // GAS = geometry acceleration structure.  A BVH (a.k.a. Traversable) containing
     // only primitives (not other acceleration structures (AS.)
-    OptixTraversableHandle mTrianglesGAS;    // the handle to the GAS
-    OptixGPUBuffer<char> mTrianglesGASBuf;   // the actual memory buffer on the GPU
-    OptixTraversableHandle mTrianglesMBGAS;  // the handle to the motion blurred GAS
-    OptixGPUBuffer<char> mTrianglesMBGASBuf; // the actual memory buffer on the GPU
+    OptixTraversableHandle mTrianglesGAS[MAX_MOTION_BLUR_SAMPLES + 1];    // the handle to the GAS
+    OptixGPUBuffer<char> mTrianglesGASBuf[MAX_MOTION_BLUR_SAMPLES + 1];   // the actual memory buffer on the GPU
 
     // OptixGPUCustomPrimitive is used for any non-TriMesh primitives.  These all must
     // have intersection programs.  We can support any kind of geometry that we can

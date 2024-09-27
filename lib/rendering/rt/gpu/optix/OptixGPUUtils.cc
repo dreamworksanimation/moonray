@@ -424,19 +424,19 @@ bool
 createTrianglesGAS(CUstream cudaStream,
                    OptixDeviceContext optixContext,
                    const std::vector<OptixGPUTriMesh*>& triMeshes,
+                   unsigned int numMotionBlurSamples,
                    OptixTraversableHandle* accel,
                    OptixGPUBuffer<char>* accelBuf,
                    std::string* errorMsg)
 {
     std::vector<OptixBuildInput> inputs;
 
-    bool enableMotionBlur = false;
     for (auto& tm : triMeshes) {
         OptixBuildInput input = {};  // zero everything
         input.type = OPTIX_BUILD_INPUT_TYPE_TRIANGLES;
         input.triangleArray.vertexFormat = OPTIX_VERTEX_FORMAT_FLOAT3;
         input.triangleArray.numVertices = tm->mNumVertices;
-        input.triangleArray.vertexBuffers = tm->mVerticesPtrs.data();
+        input.triangleArray.vertexBuffers = tm->mVerticesPtrs;
         input.triangleArray.indexFormat = OPTIX_INDICES_FORMAT_UNSIGNED_INT3;
         input.triangleArray.numIndexTriplets = tm->mNumFaces;
         input.triangleArray.indexBuffer = tm->mIndices.deviceptr();
@@ -445,23 +445,17 @@ createTrianglesGAS(CUstream cudaStream,
         input.triangleArray.sbtIndexOffsetBuffer = 0;
         input.triangleArray.sbtIndexOffsetSizeInBytes = 0;
         input.triangleArray.sbtIndexOffsetStrideInBytes = 0;
-
-        if (tm->mEnableMotionBlur) {
-            enableMotionBlur = true;
-        }
-
         inputs.push_back(input);
     }
 
     OptixAccelBuildOptions accelOptions = {};
     accelOptions.buildFlags             = OPTIX_BUILD_FLAG_ALLOW_COMPACTION |
-                                          OPTIX_BUILD_FLAG_PREFER_FAST_TRACE |
-                                          OPTIX_BUILD_FLAG_ALLOW_RANDOM_VERTEX_ACCESS;
+                                          OPTIX_BUILD_FLAG_PREFER_FAST_TRACE;
     accelOptions.motionOptions.numKeys  = 0;
     accelOptions.operation              = OPTIX_BUILD_OPERATION_BUILD;
 
-    if (enableMotionBlur) {
-        accelOptions.motionOptions.numKeys   = 2;
+    if (numMotionBlurSamples > 1) {
+        accelOptions.motionOptions.numKeys   = numMotionBlurSamples;
         accelOptions.motionOptions.timeBegin = 0.f;
         accelOptions.motionOptions.timeEnd   = 1.f;
         accelOptions.motionOptions.flags     = OPTIX_MOTION_FLAG_NONE;

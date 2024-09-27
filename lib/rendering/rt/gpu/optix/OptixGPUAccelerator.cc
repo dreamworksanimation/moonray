@@ -517,19 +517,16 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         return;
     }
 
-    // This code assumes that there is a max of 2 motion samples
-    // TODO: add support for mesh with more motion samples.
     size_t mbSamples = mesh.mVertexBufferDesc.size();
-    const bool enableMotionBlur = mbSamples > 1;
-    if (mbSamples > 2) {
+    if (mbSamples > MAX_MOTION_BLUR_SAMPLES) { // 16
       if (mAllowUnsupportedFeatures) {
             logWarningMsg(
-                "Meshes with more than 2 motion samples are currently unsupported in XPU mode.  "
-                "Only using first 2 samples.");
-            mbSamples = 2;
+                "Meshes with more than 16 motion samples are currently unsupported in XPU mode.  "
+                "Only using first 16 samples.");
+            mbSamples = MAX_MOTION_BLUR_SAMPLES;
         } else {
             mFailed = true;
-            mWhyFailed = "Meshes with more than 2 motion samples are currently unsupported in XPU mode";
+            mWhyFailed = "Meshes with more than 16 motion samples are currently unsupported in XPU mode";
             return;
         }
     }
@@ -542,19 +539,14 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
 
     OptixGPUTriMesh* gpuMesh = new OptixGPUTriMesh();
     gpuMesh->mName = geomMesh.getName();
-    if (enableMotionBlur) {
-        mParentGroup->mTriMeshesMB.push_back(gpuMesh);
-    } else {
-        mParentGroup->mTriMeshes.push_back(gpuMesh);
-    }
-
     gpuMesh->mInputFlags = 0;
     gpuMesh->mIsSingleSided = geomMesh.getIsSingleSided();
     gpuMesh->mIsNormalReversed = geomMesh.getIsNormalReversed();
     gpuMesh->mMask = resolveVisibilityMask(geomMesh);
-    gpuMesh->mEnableMotionBlur = enableMotionBlur;
+    gpuMesh->mNumMotionBlurSamples = mbSamples;
     gpuMesh->mEmbreeUserData = reinterpret_cast<intptr_t>(geomMesh.mEmbreeUserData);
     gpuMesh->mEmbreeGeomID = geomMesh.mEmbreeGeomID;
+    mParentGroup->mTriMeshes[mbSamples].push_back(gpuMesh);
 
     if (!getShadowLinkingLights(geomMesh,
                                 gpuMesh->mShadowLinkLights)) {
@@ -592,16 +584,6 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         gpuMesh->mNumVertices = mesh.mVertexCount;
         gpuMesh->mNumFaces = mesh.mFaceCount; 
 
-        // When a mesh uses motion blur, the vertices of each motion key are stored consecutively in a single buffer.
-        // According to Nvidia, GAS construction is most efficient when each motion buffer is 16-byte aligned. This
-        // isn't a problem for the first motion key buffer, but the second motion key buffer may not be correctly aligned.
-        // We handle that case here. Note that motionKeyOffsets is {0, 0} if there is no motion. This way, if some mesh
-        // don't support motion blur, their mVerticesPtrs will both point to the same buffer. Optix needs both pointers
-        // to point to a valid buffer.
-        const std::array<size_t, 2> motionKeyOffsets = {0, enableMotionBlur ? scene_rdl2::util::alignUp<size_t>(mesh.mVertexCount, 4) : 0};
-        const size_t gpuVerticesSize = motionKeyOffsets[1] + mesh.mVertexCount;
-        std::vector<float3> gpuVertices(gpuVerticesSize);
-
         std::vector<unsigned int> gpuIndices(mesh.mFaceCount * 3);
         const unsigned int* indices = reinterpret_cast<const unsigned int*>(mesh.mIndexBufferDesc.mData);
         std::vector<int> assignmentIds(mesh.mFaceCount);
@@ -614,26 +596,6 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             gpuIndices[i * 3 + 2] = indices[i * 3 + 2];
         }
 
-        for (size_t ms = 0; ms < mbSamples; ms++) {
-            // Because the offset and stride members of mVertexBufferDesc are in bytes, we want to perform pointer
-            // arithmetic on pointers to char (or anything byte sized).
-            const char* vertices = reinterpret_cast<const char*>(mesh.mVertexBufferDesc[ms].mData);
-
-            const unsigned int offset = mesh.mVertexBufferDesc[ms].mOffset;
-            const unsigned int stride = mesh.mVertexBufferDesc[ms].mStride;
-            const size_t motionKeyOffset = motionKeyOffsets[ms];
-
-            for (size_t i = 0; i < mesh.mVertexCount; i++) {
-                scene_rdl2::math::Vec3fa vtx = *reinterpret_cast<const scene_rdl2::math::Vec3fa*>(&vertices[offset + stride * i]);
-                gpuVertices[motionKeyOffset + i] = {vtx.x, vtx.y, vtx.z};
-            }
-        }
-
-        if (gpuMesh->mVertices.allocAndUpload(gpuVertices) != cudaSuccess) {
-            mFailed = true;
-            mWhyFailed = "There was a problem uploading the vertices to the GPU";
-            return;
-        }
         if (gpuMesh->mIndices.allocAndUpload(gpuIndices) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the indices to the GPU";
@@ -644,20 +606,11 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
             return;
         }
-
-        gpuMesh->mVerticesPtrs[0] = gpuMesh->mVertices.deviceptr();
-        gpuMesh->mVerticesPtrs[1] = gpuMesh->mVertices.deviceptr() + motionKeyOffsets[1] * sizeof(float3);
-
     } else if (vertsPerFace == 4) {
         // convert quads to tris
         gpuMesh->mWasQuads = true;
         gpuMesh->mNumVertices = mesh.mVertexCount;
         gpuMesh->mNumFaces = mesh.mFaceCount * 2;
-
-        // See above for reason this code exists:
-        const std::array<size_t, 2> motionKeyOffsets = {0, enableMotionBlur ? scene_rdl2::util::alignUp<size_t>(mesh.mVertexCount, 4) : 0};
-        const size_t gpuVerticesSize = motionKeyOffsets[1] + mesh.mVertexCount;
-        std::vector<float3> gpuVertices(gpuVerticesSize);
 
         std::vector<unsigned int> gpuIndices(mesh.mFaceCount * 6);
         const unsigned int* indices = reinterpret_cast<const unsigned int*>(mesh.mIndexBufferDesc.mData);
@@ -682,26 +635,6 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             gpuIndices[i * 6 + 5] = idx1;
         }
 
-        for (size_t ms = 0; ms < mbSamples; ms++) {
-            // Because the offset and stride members of mVertexBufferDesc are in bytes, we want to perform pointer
-            // arithmetic on pointers to char (or anything byte sized).
-            const char* vertices = reinterpret_cast<const char*>(mesh.mVertexBufferDesc[ms].mData);
-
-            const unsigned int offset = mesh.mVertexBufferDesc[ms].mOffset;
-            const unsigned int stride = mesh.mVertexBufferDesc[ms].mStride;
-            const size_t motionKeyOffset = motionKeyOffsets[ms];
-
-            for (size_t i = 0; i < mesh.mVertexCount; i++) {
-                scene_rdl2::math::Vec3fa vtx = *reinterpret_cast<const scene_rdl2::math::Vec3fa*>(&vertices[offset + stride * i]);
-                gpuVertices[motionKeyOffset + i] = {vtx.x, vtx.y, vtx.z};
-            }
-        }
-
-        if (gpuMesh->mVertices.allocAndUpload(gpuVertices) != cudaSuccess) {
-            mFailed = true;
-            mWhyFailed = "There was a problem uploading the vertices to the GPU";
-            return;
-        }
         if (gpuMesh->mIndices.allocAndUpload(gpuIndices) != cudaSuccess) {
             mFailed = true;
             mWhyFailed = "There was a problem uploading the indices to the GPU";
@@ -712,9 +645,33 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
             mWhyFailed = "There was a problem uploading the assignment IDs to the GPU";
             return;
         }
+    }
 
-        gpuMesh->mVerticesPtrs[0] = gpuMesh->mVertices.deviceptr();
-        gpuMesh->mVerticesPtrs[1] = gpuMesh->mVertices.deviceptr() + motionKeyOffsets[1] * sizeof(float3);
+    for (size_t ms = 0; ms < mbSamples; ms++) {
+        // Because the offset and stride members of mVertexBufferDesc are in bytes, we want to perform pointer
+        // arithmetic on pointers to char (or anything byte sized).
+        const char* vertices = reinterpret_cast<const char*>(mesh.mVertexBufferDesc[ms].mData);
+
+        const unsigned int offset = mesh.mVertexBufferDesc[ms].mOffset;
+        const unsigned int stride = mesh.mVertexBufferDesc[ms].mStride;
+
+        std::vector<float3> gpuVertices(mesh.mVertexCount);
+
+        for (size_t i = 0; i < mesh.mVertexCount; i++) {
+            scene_rdl2::math::Vec3fa vtx =
+                *reinterpret_cast<const scene_rdl2::math::Vec3fa*>(&vertices[offset + stride * i]);
+            gpuVertices[i] = { vtx.x, vtx.y, vtx.z };
+        }
+
+        if (gpuMesh->mVertices[ms].allocAndUpload(gpuVertices) != cudaSuccess) {
+            mFailed = true;
+            mWhyFailed = "There was a problem uploading the vertices to the GPU";
+            return;
+        }
+    }
+
+    for (size_t ms = 0; ms < mbSamples; ms++) {
+        gpuMesh->mVerticesPtrs[ms] = gpuMesh->mVertices[ms].deviceptr();
     }
 }
 

@@ -73,6 +73,14 @@ float lerpf(const float v1, const float v2, const float t)
 }
 
 inline __host__ __device__
+float3 lerp(const float3& v1, const float3& v2, const float t)
+{
+    return {(1.f - t) * v1.x + t * v2.x,
+            (1.f - t) * v1.y + t * v2.y,
+            (1.f - t) * v1.z + t * v2.z};
+}
+
+inline __host__ __device__
 float4 lerp(const float4& v1, const float4& v2, const float t)
 {
     return {(1.f - t) * v1.x + t * v2.x,

@@ -106,6 +106,7 @@ bool
 createTrianglesGAS(CUstream cudaStream,
                    OptixDeviceContext optixContext,
                    const std::vector<OptixGPUTriMesh*>& triMeshes,
+                   unsigned int numMotionBlurSamples,
                    OptixTraversableHandle* accel,
                    OptixGPUBuffer<char>* accelBuf,
                    std::string* errorMsg);
