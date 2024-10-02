@@ -86,6 +86,14 @@ struct EnvLight
     ENV_LIGHT_MEMBERS;
 };
 
+struct PortalLight
+{
+    LIGHT_MEMBERS;
+    LOCAL_PARAM_LIGHT_MEMBERS;
+    RECT_LIGHT_MEMBERS;
+    PORTAL_LIGHT_MEMBERS;
+};
+
 struct RectLight
 {
     LIGHT_MEMBERS;

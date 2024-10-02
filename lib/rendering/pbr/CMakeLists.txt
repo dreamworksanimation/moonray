@@ -59,6 +59,7 @@ set(sources02
         light/LightTreeUtil.ispc
         light/LightUtil.ispc
         light/MeshLight.ispc
+        light/PortalLight.ispc
         light/RectLight.ispc
         light/SphereLight.ispc
         light/SpotLight.ispc)
@@ -358,6 +359,7 @@ target_sources(${component}
         light/LightTreeUtil.cc
         light/LightUtil.cc
         light/MeshLight.cc
+        light/PortalLight.cc
         light/RectLight.cc
         light/SphereLight.cc
         light/SpotLight.cc

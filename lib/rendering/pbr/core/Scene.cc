@@ -22,6 +22,7 @@
 #include <moonray/rendering/pbr/light/DiskLight.h>
 #include <moonray/rendering/pbr/light/EnvLight.h>
 #include <moonray/rendering/pbr/light/MeshLight.h>
+#include <moonray/rendering/pbr/light/PortalLight.h>
 #include <moonray/rendering/pbr/light/RectLight.h>
 #include <moonray/rendering/pbr/light/SphereLight.h>
 #include <moonray/rendering/pbr/light/SpotLight.h>
@@ -609,6 +610,8 @@ Scene::createLightFromRdlLight(const rdl2::Light* rdlLight)
         light = new DiskLight(rdlLight);
     } else if (className == "EnvLight") {
         light = new EnvLight(rdlLight);
+    } else if (className == "PortalLight") {
+        light = new PortalLight(rdlLight);
     } else if (className == "RectLight") {
         light = new RectLight(rdlLight);
     } else if (className == "SphereLight") {
@@ -623,6 +626,61 @@ Scene::createLightFromRdlLight(const rdl2::Light* rdlLight)
         MNRY_ASSERT(!"Unknown light type.");
     }
     return light;
+}
+
+// Create all runtime lights and create mapping from corresponding rdl2 lights.
+void Scene::populateLightList(size_t lightCount, size_t lightSetCount, std::set<const rdl2::Light *> rdlLights)
+{
+    mLightList.reserve(lightCount);
+
+    mLightSetActiveList.reset(new bool[lightCount * lightSetCount]);
+    memset(mLightSetActiveList.get(), 0, sizeof(bool) * lightCount * lightSetCount);
+
+    for (const rdl2::Light* rdlLight : rdlLights) {
+        std::unique_ptr<Light> light(createLightFromRdlLight(rdlLight));
+        if (light) {
+            // Update the light (transformation, attributes, texture)
+            // update() can return false for a number of reasons, including the
+            // rdlLight being switched off, and the light's isBlack(radiance)
+            // evaluating to true. We should not include these lights in the
+            // scene's light list.
+
+            if (light->update(getWorld2Render())) {
+
+                // Generate the mesh for the mesh light
+                const std::string &className = rdlLight->getSceneClass().getName();
+                // Ensure the light knows its own index for stats
+                light->setSceneIndex(mLightList.size());
+
+                if (className == "MeshLight") {
+                    generateMeshLightGeometry(light.get());
+                }
+                if (light->isOn()) {
+                    std::hash<std::string> name_hash;
+                    light->setHash(name_hash(rdlLight->getName()));
+                    mLightList.push_back(light.release());
+                    mRdlLightToLightMap[rdlLight] = mLightList.size() - 1;
+                }
+            }
+        }
+    }
+
+    // Find portal light(s) and add pointer to their associated pbr light
+    for (Light* pbrLight : mLightList) {
+        if (pbrLight->getRdlLight()->getSceneClass().getName() == "PortalLight") {
+            PortalLight* portalLight = dynamic_cast<PortalLight*>(pbrLight);
+            MNRY_ASSERT(portalLight);
+            
+            for (Light* potentialRefLight : mLightList) {
+                // Find if the rdlLight we linked to the portal light is the same as the 
+                // potentialRefLight's rdlLight. If so, we've found the 
+                // pbr light that we want to use the portal light on. 
+                if (potentialRefLight->getRdlLight() == portalLight->getRefRdlLight()) {
+                    portalLight->setRefLight(potentialRefLight);
+                }
+            }
+        }
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -667,42 +725,8 @@ Scene::updateLightList()
         lightSetMap[*it] = lightSetIndex++;
     }
 
-    // Create all runtime lights and create mapping from corresponding rdl2
-    // lights.
     size_t lightCount = rdlLights.size();
-    mLightList.reserve(lightCount);
-
-    mLightSetActiveList.reset(new bool[lightCount * lightSetCount]);
-    memset(mLightSetActiveList.get(), 0, sizeof(bool) * lightCount * lightSetCount);
-
-    for (const rdl2::Light* rdlLight : rdlLights) {
-        std::unique_ptr<Light> light(createLightFromRdlLight(rdlLight));
-        if (light) {
-            // Update the light (transformation, attributes, texture)
-            // update() can return false for a number of reasons, including the
-            // rdlLight being switched off, and the light's isBlack(radiance)
-            // evaluating to true. We should not include these lights in the
-            // scene's light list.
-
-            if (light->update(getWorld2Render())) {
-
-                // Generate the mesh for the mesh light
-                const std::string &className = rdlLight->getSceneClass().getName();
-                // Ensure the light knows its own index for stats
-                light->setSceneIndex(mLightList.size());
-
-                if (className == "MeshLight") {
-                    generateMeshLightGeometry(light.get());
-                }
-                if (light->isOn()) {
-                    std::hash<std::string> name_hash;
-                    light->setHash(name_hash(rdlLight->getName()));
-                    mLightList.push_back(light.release());
-                    mRdlLightToLightMap[rdlLight] = mLightList.size() - 1;
-                }
-            }
-        }
-    }
+    populateLightList(lightCount, lightSetCount, rdlLights);
 
     // Hookup newly created lights to the relevant light sets.
     for (const rdl2::LightSet* const rdlLightSet : rdlLightSets) {

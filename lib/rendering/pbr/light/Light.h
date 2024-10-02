@@ -60,7 +60,7 @@ public:
 
 
     /// Is this light active.
-    bool isOn() const { return mOn; }
+    virtual bool isOn() const { return mOn; }
 
     /// Is this light two-sided
     bool isTwoSided() const { return mSidedness == LIGHT_SIDEDNESS_2_SIDED; }
@@ -260,6 +260,8 @@ public:
     /// Get/set the light's index in the scene's light list
     uint32_t getSceneIndex() const { return mSceneIndex; }
     void setSceneIndex(uint32_t sceneIndex) { mSceneIndex = sceneIndex; }
+
+    virtual void turnOnPortal() { mHasPortal = true; }
 
 protected:
 

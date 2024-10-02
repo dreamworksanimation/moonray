@@ -316,6 +316,7 @@ private:
 
     /// Rebuild Light list if any Lightsets have changed (called during preFrame())
     void updateLightList();
+    void populateLightList(size_t lightCount,  size_t lightSetCount, std::set<const scene_rdl2::rdl2::Light *> rdlLights);
     void clearLightList();
 
     // Generate the geometry for the mesh light if the mesh light needs to be updated (called during preFrame())

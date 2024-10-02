@@ -121,7 +121,8 @@ EnvLight_canIlluminate(const uniform Light * uniform li, const varying Vec3f &p,
 {
     const uniform EnvLight * uniform light = (const uniform EnvLight * uniform)li;
     MNRY_ASSERT(li->mOn);
-    return true;
+    // Only illuminate if we are not using a PortalLight
+    return !li->mHasPortal;
 }
 
 varying bool

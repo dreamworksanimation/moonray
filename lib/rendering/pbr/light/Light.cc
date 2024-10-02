@@ -56,7 +56,8 @@ Light::Light(const scene_rdl2::rdl2::Light* rdlLight) :
     mTextureFilter(TEXTURE_FILTER_NEAREST),
     mClearRadius(0.f),
     mClearRadiusFalloffDistance(0.f),
-    mClearRadiusInterpolation(0)
+    mClearRadiusInterpolation(0),
+    mHasPortal(false)
 {
     MNRY_ASSERT(rdlLight);
 }

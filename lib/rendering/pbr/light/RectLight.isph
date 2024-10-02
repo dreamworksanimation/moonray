@@ -1,0 +1,48 @@
+// Copyright 2024 DreamWorks Animation LLC
+// SPDX-License-Identifier: Apache-2.0
+
+#pragma once
+
+#include "Light.isph"
+
+static void
+RectLight_computeCorners(const uniform RectLight * uniform light, varying Vec3f * uniform corners, varying float time);
+
+//----------------------------------------------------------------------------
+
+static varying float
+planeDistance(const uniform RectLight * uniform light, const varying Vec3f &p, varying float time);
+
+// Get region of overlap between RectLight and square region of influence.
+// The square is centered at localP and has a side length 2 * localLength. 
+// We want to get the center of the rectangular bound and its width and height.
+// Returns true if the region overlaps with the light.
+bool
+RectLight_getOverlapBounds(const uniform RectLight * uniform light, const varying Vec2f& localP, 
+        varying float localLength, varying Vec2f& center, varying float& width, varying float& height);
+
+varying bool
+RectLight_canIlluminate(const uniform Light * uniform li,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        varying float radius, const uniform LightFilterList * uniform lightFilterList);
+
+varying bool
+RectLight_intersect(const uniform Light * uniform li,
+        const varying Vec3f &p, const varying Vec3f& cullingNormal,
+        const varying Vec3f &wi, varying float time,
+        varying float maxDistance, varying LightIntersection &isect);
+
+varying bool
+RectLight_sample(const uniform Light * uniform li,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time, const varying Vec3f &r,
+        varying Vec3f &wi, varying LightIntersection &isect, varying float rayDirFootprint);
+
+varying Color
+RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
+        varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
+        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf);
+
+uniform float RectLight_getThetaO(const uniform Light * uniform li);
+uniform float RectLight_getThetaE(const uniform Light * uniform li);
