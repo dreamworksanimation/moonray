@@ -211,23 +211,23 @@ Fishtum::projectPoint(const Vec3f &v) const
     float y = v.y;
     float z = v.z;
     float l = length(v);
-    float r = sqrt(x*x + y*y);
+    float r = scene_rdl2::math::sqrt(x*x + y*y);
     float costheta = -z/l;
     float sintheta =  r/l;
     float cosphi = r ? x/r : 1.0f;
     float sinphi = r ? y/r : 0.0f;
-    float theta = atan2(r, -z);
+    float theta = scene_rdl2::math::atan2(r, -z);
     float R;
 
     switch (mMapping) {
     case MAPPING_STEREOGRAPHIC:
-        R = tan(0.5f * theta);
+        R = scene_rdl2::math::tan(0.5f * theta);
         break;
     case MAPPING_EQUIDISTANT:
         R = theta * sTwoOverPi;
         break;
     case MAPPING_EQUISOLID_ANGLE:
-        R = sqrt(2.0f) * sin(0.5f * theta);
+        R = scene_rdl2::math::sqrt(2.0f) * scene_rdl2::math::sin(0.5f * theta);
         break;
     case MAPPING_ORTHOGRAPHIC:
         R = sintheta;
@@ -280,21 +280,21 @@ Fishtum::screenSpaceDerivative(const Vec3f &v) const
     float y = v.y;
     float z = v.z;
     float l = length(v);
-    float r = sqrt(x*x + y*y);
+    float r = scene_rdl2::math::sqrt(x*x + y*y);
     float costheta = -z/l;
     float sintheta =  r/l;
-    float theta = atan2(r, -z);
+    float theta = scene_rdl2::math::atan2(r, -z);
     float R;
 
     switch (mMapping) {
     case MAPPING_STEREOGRAPHIC:
-        R = tan(0.5f * theta);
+        R = scene_rdl2::math::tan(0.5f * theta);
         break;
     case MAPPING_EQUIDISTANT:
         R = theta * sTwoOverPi;
         break;
     case MAPPING_EQUISOLID_ANGLE:
-        R = sqrt(1.0f - costheta);
+        R = scene_rdl2::math::sqrt(1.0f - costheta);
         break;
     case MAPPING_ORTHOGRAPHIC:
         R = sintheta;
