@@ -264,6 +264,9 @@ QuadMesh::postIntersect(mcrt_common::ThreadLocalState& tls,
         } else {
             N = Ng;
         }
+        if (mIsOrientationReversed) {
+            N *= -1.0f;
+        }
         if (isMotionBlurOn()) {
             float t = ray.time;
             const Vec3f& p10 = mVertices(isecId1, 0);
