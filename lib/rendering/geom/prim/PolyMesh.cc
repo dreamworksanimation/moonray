@@ -151,13 +151,6 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams, TessellationS
         tessellationParams.mFastGeomUpdate, tessellationParams.mIsBaking,
         tessellationParams.mWorld2Render);
 
-    // reverse normals reverses orientation and negates normals
-    if (mIsNormalReversed ^ mIsOrientationReversed) {
-        size_t faceVertexCount = mIsTessellated ?
-            sQuadVertexCount : baseFaceVertexCount;
-        reverseOrientation(faceVertexCount, mIndices, mAttributes);
-    }
-
     if (mIsNormalReversed) mAttributes->negateNormal();
 
     // For the baked volume shader grid, we want to set the transform
@@ -933,6 +926,13 @@ PolyMesh::initAttributesAndDisplace(const scene_rdl2::rdl2::Layer *pRdlLayer,
                                          {StandardAttributes::sdPds, Vec3Type::VECTOR},
                                          {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
 
+    // reverse normals reverses orientation and negates normals
+    if (mIsNormalReversed ^ mIsOrientationReversed) {
+        size_t faceVertexCount = mIsTessellated ?
+            sQuadVertexCount : varyingsCount;
+        reverseOrientation(faceVertexCount, mIndices, mAttributes);
+    }
+
     if (calculateSmoothNormal) {
         setupRecomputeVertexNormals(!realtimeMode);
     }
@@ -1039,9 +1039,6 @@ PolyMesh::displaceMesh(const scene_rdl2::rdl2::Layer* pRdlLayer,
                 // value as fallback
                 if (!scene_rdl2::math::isFinite(normal)) {
                     normal = Vec3f(0, 0, 1);
-                }
-                if (mIsOrientationReversed) {
-                    normal *= -1.0f;
                 }
                 Vec3f dpdst[2];
                 if (!computeTrianglePartialDerivatives(
