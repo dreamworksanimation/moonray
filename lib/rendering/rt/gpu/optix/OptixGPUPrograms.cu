@@ -1161,8 +1161,8 @@ void __intersection__sphere()
 
     const HitGroupData* data = (HitGroupData*)optixGetSbtDataPointer();
 
-    const float3 rayOrigin = data->sphere.mP2L.transformPoint(optixGetObjectRayOrigin());
-    const float3 rayDir = data->sphere.mP2L.transformVector(optixGetObjectRayDirection());
+    const float3 org = data->sphere.mP2L.transformPoint(optixGetObjectRayOrigin());
+    const float3 dir = data->sphere.mP2L.transformVector(optixGetObjectRayDirection());
     const float rayTnear = optixGetRayTmin();
     const float rayTfar = optixGetRayTmax();
 
@@ -1170,18 +1170,24 @@ void __intersection__sphere()
     const bool isNormalReversed = data->mIsNormalReversed;
     const float radius = data->sphere.mRadius;
 
-    // compute quadratic sphere coefficients
-    const float A = dot(rayDir, rayDir);
-    const float B = dot(rayOrigin, rayDir);
-    // Note all the 0.5 and 2 and 4 terms can (and have) been removed as they cancel
-    const float C = dot(rayOrigin, rayOrigin) - radius * radius;
-    // solve quadratic equation for t values
-    const float D = B * B - A * C;
-    if (D < 0.0f) {
+    // Compute quadratic sphere coefficients.
+    // Note: we eliminate some multiplies by halving B relative to the pbrt treatment,
+    // so that the equation we're solving is now A*t^2 + 2*B*t + C = 0.
+    // Also, calcs for C and D are deferred till after testing for real roots.
+    float A = dot(dir, dir);
+    float B = dot(org, dir);
+    // More precise discriminant calculation to replace D = B * B - A * C;
+    // see PBRT4 section 6.8.3 for details.
+    float3 v = org - (B / A) * dir;
+    float vlen = length(v);
+    // This tests if the discriminant D is negative, without actually calculating it
+    if (radius < vlen) {
         return;
     }
-    const float rootDiscrim = sqrtf(D);
-    float q = (B < 0.0f ? rootDiscrim : -rootDiscrim) - B;
+    float C = dot(org, org) - radius * radius;
+    float D = A * (radius + vlen) * (radius - vlen);
+    float rootDiscrim = sqrtf(D);
+    float q = B < 0.0f ? rootDiscrim - B : -rootDiscrim - B;
     float t0 = q / A;
     float t1 = C / q;
     if (t0 > t1) {
@@ -1199,7 +1205,9 @@ void __intersection__sphere()
         }
     }
     // compute hit position and phi
-    float3 pHit = rayOrigin + tHit * rayDir;
+    float3 pHit = org + tHit * dir;
+    // Refine sphere intersection point (PBRT4)
+    pHit = pHit * (radius / length(pHit));
     if (pHit.x == 0.0f && pHit.y == 0.0f) {
         pHit.x = 1e-5f * radius;
     }
@@ -1219,7 +1227,9 @@ void __intersection__sphere()
             return;
         }
         tHit = t1;
-        pHit = rayOrigin + tHit * rayDir;
+        pHit = org + tHit * dir;
+        // Refine sphere intersection point (PBRT4)
+        pHit = pHit * (radius / length(pHit));
         if (pHit.x == 0.0f && pHit.y == 0.0f) {
             pHit.x = 1e-5f * radius;
         }

@@ -203,18 +203,24 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
             RTCRayN_dir_z(rays, N, index)));
         float& rayTnear = RTCRayN_tnear(rays, N, index);
         float& rayTfar = RTCRayN_tfar(rays, N, index);
-        // compute quadratic sphere coefficients
-        const float A = dot(dir, dir);
-        const float B = 2.0f * dot(org, dir);
-        const float C = dot(org, org) - scene_rdl2::math::sqr(radius);
-        // solve quadratic equation for t values
-        const float D = B * B - 4.0f * A * C;
-        if (D < 0.0f) {
+        // Compute quadratic sphere coefficients.
+        // Note: we eliminate some multiplies by halving B relative to the pbrt treatment,
+        // so that the equation we're solving is now A*t^2 + 2*B*t + C = 0.
+        // Also, calcs for C and D are deferred till after testing for real roots.
+        float A = dot(dir, dir);
+        float B = dot(org, dir);
+        // More precise discriminant calculation to replace D = B * B - A * C;
+        // see PBRT4 section 6.8.3 for details.
+        Vec3f v = org - (B / A) * dir;
+        float vlen = v.length();
+        // This tests if the discriminant D is negative, without actually calculating it
+        if (radius < vlen) {
             continue;
         }
-        const float rootDiscrim = scene_rdl2::math::sqrt(D);
-        float q = B < 0.0f ?
-            -0.5f * (B - rootDiscrim) : -0.5f * (B + rootDiscrim);
+        float C = dot(org, org) - scene_rdl2::math::sqr(radius);
+        float D = A * (radius + vlen) * (radius - vlen);
+        float rootDiscrim = scene_rdl2::math::sqrt(D);
+        float q = B < 0.0f ? rootDiscrim - B : -rootDiscrim - B;
         float t0 = q / A;
         float t1 = C / q;
         if (t0 > t1) {
@@ -233,6 +239,8 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
         }
         // compute hit position and phi
         Vec3f pHit = org + tHit * dir;
+        // Refine sphere intersection point (PBRT4)
+        pHit *= radius / pHit.length();
         if (pHit.x == 0.0f && pHit.y == 0.0f) {
             pHit.x = 1e-5f * radius;
         }
@@ -253,6 +261,8 @@ intersectFunc(const RTCIntersectFunctionNArguments* args)
             }
             tHit = t1;
             pHit = org + tHit * dir;
+            // Refine sphere intersection point (PBRT4)
+            pHit *= radius / pHit.length();
             if (pHit.x == 0.0f && pHit.y == 0.0f) {
                 pHit.x = 1e-5f * radius;
             }
@@ -314,18 +324,24 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
             RTCRayN_dir_z(rays, N, index)));
         float& rayTnear = RTCRayN_tnear(rays, N, index);
         float& rayTfar = RTCRayN_tfar(rays, N, index);
-        // compute quadratic sphere coefficients
-        const float A = dot(dir, dir);
-        const float B = 2.0f * dot(org, dir);
-        const float C = dot(org, org) - scene_rdl2::math::sqr(radius);
-        // solve quadratic equation for t values
-        const float D = B * B - 4.0f * A * C;
-        if (D < 0.0f) {
+        // Compute quadratic sphere coefficients.
+        // Note: we eliminate some multiplies by halving B relative to the pbrt treatment,
+        // so that the equation we're solving is now A*t^2 + 2*B*t + C = 0.
+        // Also, calcs for C and D are deferred till after testing for real roots.
+        float A = dot(dir, dir);
+        float B = dot(org, dir);
+        // More precise discriminant calculation to replace D = B * B - A * C;
+        // see PBRT4 section 6.8.3 for details.
+        Vec3f v = org - (B / A) * dir;
+        float vlen = v.length();
+        // This tests if the discriminant D is negative, without actually calculating it
+        if (radius < vlen) {
             continue;
         }
-        const float rootDiscrim = scene_rdl2::math::sqrt(D);
-        float q = B < 0.0f ?
-            -0.5f * (B - rootDiscrim) : -0.5f * (B + rootDiscrim);
+        float C = dot(org, org) - scene_rdl2::math::sqr(radius);
+        float D = A * (radius + vlen) * (radius - vlen);
+        float rootDiscrim = scene_rdl2::math::sqrt(D);
+        float q = B < 0.0f ? rootDiscrim - B : -rootDiscrim - B;
         float t0 = q / A;
         float t1 = C / q;
         if (t0 > t1) {
@@ -344,6 +360,8 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
         }
         // compute hit position and phi
         Vec3f pHit = org + tHit * dir;
+        // Refine sphere intersection point (PBRT4)
+        pHit *= radius / pHit.length();
         if (pHit.x == 0.0f && pHit.y == 0.0f) {
             pHit.x = 1e-5f * radius;
         }
@@ -364,6 +382,8 @@ occludedFunc(const RTCOccludedFunctionNArguments* args)
             }
             tHit = t1;
             pHit = org + tHit * dir;
+            // Refine sphere intersection point (PBRT4)
+            pHit *= radius / pHit.length();
             if (pHit.x == 0.0f && pHit.y == 0.0f) {
                 pHit.x = 1e-5f * radius;
             }
