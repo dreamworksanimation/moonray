@@ -4,6 +4,7 @@
 
 #include "CylinderLight.h"
 #include <moonray/rendering/pbr/core/Distribution.h>
+#include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 
 #include <moonray/rendering/pbr/light/CylinderLight_ispc_stubs.h>
@@ -107,7 +108,7 @@ CylinderLight::update(const Mat4d& world2render)
 
 bool
 CylinderLight::canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time, float radius,
-    const LightFilterList* lightFilterList) const
+    const LightFilterList* lightFilterList, const PathVertex* pv) const
 {
     MNRY_ASSERT(mOn);
 
@@ -117,7 +118,7 @@ CylinderLight::canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::
             { getPosition(time),
               xformLocal2RenderScale(lightRadius, time),
               p, getXformRender2Local(time, lightFilterList->needsLightXform()),
-              radius, time
+              radius, time, pv
             });
     }
 
@@ -383,7 +384,7 @@ CylinderLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r
 
 Color
 CylinderLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, const LightFilterRandomValues& filterR,
-        float time, const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList,
+        float time, const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv,
         float rayDirFootprint, float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -397,10 +398,10 @@ CylinderLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const V
     }
 
     if (lightFilterList) {
-        evalLightFilterList(lightFilterList, 
+        evalLightFilterList(lightFilterList,
                             { tls, &isect, getPosition(time),
                               getDirection(time), p,
-                              filterR, time,
+                              filterR, time, pv,
                               getXformRender2Local(time, lightFilterList->needsLightXform()),
                               wi
                             },

@@ -12,6 +12,7 @@
 
 
 struct Arena;
+struct PathVertex;
 
 
 //----------------------------------------------------------------------------
@@ -203,20 +204,22 @@ void LightSetSampler_sampleIntersectAndEval(
         uniform ShadingTLState * uniform tls,
         const uniform Light * uniform light,
         const uniform LightFilterList * uniform lightFilterList,
-        const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying LightFilterRandomValues &filterR, 
+        const varying PathVertex* uniform pv,
+        const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying LightFilterRandomValues &filterR,
         varying float time,
         const varying Vec3f &r, varying LightSample &sample, varying float rayDirFootprint);
 
 inline void LightSetSampler_intersectAndEval(
         const varying LightSetSampler * uniform lSampler,
         uniform PbrTLState * uniform pbrTls,
-        uniform ShadingTLState * uniform tls, const varying Vec3f &P, 
-        const varying Vec3f &N, varying const Vec3f &wi, const varying LightFilterRandomValues &filterR, 
-        varying float time, uniform bool fromCamera, varying bool includeRayTerminationLights, 
+        uniform ShadingTLState * uniform tls, const varying Vec3f &P,
+        const varying Vec3f &N, varying const Vec3f &wi, const varying LightFilterRandomValues &filterR,
+        varying float time, const varying PathVertex* uniform pv,
+        uniform bool fromCamera, varying bool includeRayTerminationLights,
         varying IntegratorSample1D &samples, varying int depth,
         const varying int visibilityMask, varying LightContribution &lCo, varying float rayDirFootprint)
 {
-    LightSet_intersectAndEval(pbrTls, lSampler->mLightSet, tls, P, N, wi, filterR, time, fromCamera,
+    LightSet_intersectAndEval(pbrTls, lSampler->mLightSet, tls, P, N, wi, filterR, time, pv, fromCamera,
                               includeRayTerminationLights, samples, depth, visibilityMask, lCo, rayDirFootprint);
 }
 

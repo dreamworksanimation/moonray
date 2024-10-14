@@ -3,6 +3,8 @@
 
 
 #include "Light.isph"
+
+#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 
 #include <scene_rdl2/common/platform/IspcUtil.isph>
@@ -56,7 +58,8 @@ local2uv(const uniform CylinderLight * uniform light, const varying Vec3f &pos)
 varying bool
 CylinderLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList)
+        varying float radius, const uniform LightFilterList * uniform lightFilterList,
+        const varying PathVertex * uniform pv)
 {
     const uniform CylinderLight * uniform light = (const uniform CylinderLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -64,6 +67,7 @@ CylinderLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
+        cid.pv = pv;
         cid.lightPosition = Light_getPosition(li, time);
         cid.lightRadius = max(light->mLocalHalfHeight * 2, light->mLocalRadius);
         cid.shadingPointPosition = p;
@@ -191,10 +195,10 @@ CylinderLight_sample(const uniform Light * uniform li,
 
 varying Color
 CylinderLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
-        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR,
         varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
-        varying float * uniform pdf)
+        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
+        varying float rayDirFootprint, varying float * uniform pdf)
 {
     const uniform CylinderLight * uniform light = (const uniform CylinderLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -216,13 +220,14 @@ CylinderLight_eval(const uniform Light * uniform li, uniform ShadingTLState * un
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
+        evalData.pv = pv;
         evalData.shadingPointPosition = p;
         evalData.randVar = filterR;
         evalData.time = time;
         evalData.lightRender2LocalXform = LocalParamLight_getXformRender2Local(
             lpl, time, LightFilterList_getNeedsLightXform(lightFilterList));
         evalData.wi = wi;
-        
+
         LightFilterList_eval(lightFilterList, evalData, &radiance);
     }
 

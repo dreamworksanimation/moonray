@@ -3,6 +3,7 @@
 
 
 #include "LightFilter.isph"
+#include <scene_rdl2/common/math/ispc/Color.isph>
 #include <scene_rdl2/common/platform/IspcUtil.isph>
 
 //----------------------------------------------------------------------------
@@ -15,7 +16,6 @@ IntensityLightFilter_hudValidation(uniform bool verbose)
     INTENSITY_LIGHT_FILTER_VALIDATION;
 }
 
-
 //----------------------------------------------------------------------------
 
 varying bool
@@ -23,6 +23,10 @@ IntensityLightFilter_canIlluminate(const uniform LightFilter * uniform lif,
         const varying CanIlluminateData &data)
 {
     const uniform IntensityLightFilter * uniform lightfilter = (const uniform IntensityLightFilter * uniform)lif;
+
+    if (!doesLightPathSelectionMatch((uniform LightPathSelection)lightfilter->mLightPathSelection, data.pv)) {
+        return true;
+    }
 
     return !isBlack(lightfilter->mRadianceMod);
 }
@@ -33,6 +37,11 @@ IntensityLightFilter_eval(const uniform LightFilter * uniform lif,
         varying Color * uniform filterValue)
 {
     const uniform IntensityLightFilter * uniform lightfilter = (const uniform IntensityLightFilter * uniform)lif;
+
+    if (!doesLightPathSelectionMatch((uniform LightPathSelection)lightfilter->mLightPathSelection, data.pv)) {
+        *filterValue = sWhite;
+        return;
+    }
 
     *filterValue = lightfilter->mRadianceMod;
 }
@@ -45,7 +54,6 @@ IntensityLightFilter_init(uniform IntensityLightFilter * uniform lightfilter)
     LightFilter_init((uniform LightFilter * uniform)lightfilter,
             IntensityLightFilter_canIlluminate, IntensityLightFilter_eval);
 }
-
 
 //----------------------------------------------------------------------------
 

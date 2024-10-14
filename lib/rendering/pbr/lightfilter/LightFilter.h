@@ -12,6 +12,7 @@
 
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/lightfilter/LightFilterList_ispc_stubs.h>
+#include <moonray/rendering/pbr/core/RayState.h>
 
 #include <scene_rdl2/scene/rdl2/LightFilter.h>
 #include <scene_rdl2/common/math/Color.h>
@@ -47,7 +48,7 @@ public:
     LightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter) :
         mCanIlluminateFn(nullptr),
         mEvalFn(nullptr),
-        mRdlLightFilter(rdlLightFilter){}
+        mRdlLightFilter(rdlLightFilter) {}
 
     virtual ~LightFilter() {}
 
@@ -68,6 +69,7 @@ public:
         scene_rdl2::math::Xform3f lightRender2LocalXform;
         float shadingPointRadius;
         float time;
+        const PathVertex* pv;
     };
 
     struct EvalData
@@ -79,6 +81,7 @@ public:
         scene_rdl2::math::Vec3f shadingPointPosition;
         LightFilterRandomValues randVar;
         float time;
+        const PathVertex* pv;
         scene_rdl2::math::Xform3f lightRender2LocalXform;
         scene_rdl2::math::Vec3f wi;   // direction of incoming light
     };
@@ -89,7 +92,6 @@ public:
     virtual bool needsSamples() const { return false; }
 
 protected:
-
     LIGHT_FILTER_MEMBERS;
 
 private:
@@ -162,6 +164,38 @@ inline void evalLightFilterList(const LightFilterList* lightFilterList,
         MNRY_ASSERT(lightFilter);
         radiance *= lightFilter->eval(data);
     }
+}
+
+// This is a utility function for any LightFilters that support
+// limiting their effect to certain light paths (currently only
+// IntensityLightFilter does this).
+inline bool doesLightPathSelectionMatch(LightPathSelection lightPathSelection,
+                                        const PathVertex* pv)
+{
+    if (pv == nullptr) {
+        return true;
+    }
+
+    switch (lightPathSelection) {
+    case LIGHTPATHSELECTION_ALL_PATHS:
+        return true;
+    case LIGHTPATHSELECTION_ALL_INDIRECT:
+        return (pv->diffuseDepth + pv->glossyDepth + pv->mirrorDepth > 0);
+    case LIGHTPATHSELECTION_ALL_INDIRECT_FIRST_BOUNCE:
+        return (pv->diffuseDepth + pv->glossyDepth + pv->mirrorDepth == 1);
+    case LIGHTPATHSELECTION_INDIRECT_DIFFUSE:
+        return (pv->diffuseDepth > 0);
+    case LIGHTPATHSELECTION_INDIRECT_DIFFUSE_FIRST_BOUNCE:
+        return (pv->diffuseDepth == 1);
+    case LIGHTPATHSELECTION_INDIRECT_SPECULAR:
+        return (pv->glossyDepth + pv->mirrorDepth > 0);
+    case LIGHTPATHSELECTION_INDIRECT_SPECULAR_FIRST_BOUNCE:
+        return (pv->glossyDepth + pv->mirrorDepth == 1);
+    default:
+        MNRY_ASSERT(0);
+        return false;
+    }
+    return false;
 }
 
 } //namespace pbr

@@ -129,10 +129,10 @@ scene_rdl2::math::Color
 PathIntegrator::estimateInScatteringSourceTerm(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         const scene_rdl2::math::Vec3f& scatterPoint, const Light* light, int assignmentId,
         const VolumePhase& phaseFunction, const scene_rdl2::math::Vec3f& ul, const LightFilterRandomValues& ulFilter,
-        const Subpixel &sp, unsigned sequenceID, float scaleFactor) const
+        const Subpixel &sp, const PathVertex* pv, unsigned sequenceID, float scaleFactor) const
 {
     const LightFilterList* lightFilterList = pbrTls->mFs->mScene->getLightFilterList(assignmentId, light);
-    if (!light->canIlluminate(scatterPoint, nullptr, ray.getTime(), /* radius = */ 0.f, lightFilterList)) {
+    if (!light->canIlluminate(scatterPoint, nullptr, ray.getTime(), /* radius = */ 0.f, lightFilterList, pv)) {
         return scene_rdl2::math::Color(0.0f);
     }
     scene_rdl2::math::Color Ls(0.0f);
@@ -143,7 +143,7 @@ PathIntegrator::estimateInScatteringSourceTerm(pbr::TLState *pbrTls, const mcrt_
         float pdfLight;
         // TODO: replace the 0.0f with a proper footprint value? (We currently have no RayDifferential available)
         scene_rdl2::math::Color Li = light->eval(pbrTls->mTopLevelTls,
-            lWi, scatterPoint, ulFilter, ray.getTime(), lIsect, false, lightFilterList, 0.0f, &pdfLight);
+            lWi, scatterPoint, ulFilter, ray.getTime(), lIsect, false, lightFilterList, nullptr, 0.0f, &pdfLight);
         if (!isSampleInvalid(Li, pdfLight) && scene_rdl2::math::isfinite(pdfLight)) {
             mcrt_common::Ray shadowRay(scatterPoint, lWi, 0,
                 sHitEpsilonEnd * lIsect.distance,
@@ -174,7 +174,8 @@ PathIntegrator::equiAngularVolumeScattering(pbr::TLState *pbrTls,
         float D, float thetaA, float thetaB, float offset,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, unsigned& sequenceID, bool doMIS) const
+        const Subpixel &sp, const PathVertex* pv,
+        unsigned& sequenceID, bool doMIS) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
 
@@ -217,7 +218,7 @@ PathIntegrator::equiAngularVolumeScattering(pbr::TLState *pbrTls,
         }
     }
     scene_rdl2::math::Color Ls = estimateInScatteringSourceTerm(pbrTls, ray, scatterPoint,
-        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, sequenceID);
+        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, pv, sequenceID);
     return misWeight * vp.mSigmaS * trScatter * Ls / pdfTe;
 }
 
@@ -228,7 +229,7 @@ PathIntegrator::distanceVolumeScattering(pbr::TLState *pbrTls,
         float D, float thetaA, float thetaB, float offset,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, unsigned& sequenceID, bool doMIS,
+        const Subpixel &sp, const PathVertex* pv, unsigned& sequenceID, bool doMIS,
         float& deepTd, scene_rdl2::math::Color& radiance, scene_rdl2::math::Color& transmittance) const
 {
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_VOL_INTEGRATION);
@@ -272,7 +273,7 @@ PathIntegrator::distanceVolumeScattering(pbr::TLState *pbrTls,
         }
     }
     scene_rdl2::math::Color Ls = estimateInScatteringSourceTerm(pbrTls, ray, scatterPoint,
-        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, sequenceID);
+        light, vp.mAssignmentId, VolumePhase(vp.mG), ul, ulFilter, sp, pv, sequenceID);
 
     // For deep volume support, we need to extract the t distance, radiance,
     //  and transmittance.
@@ -353,7 +354,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                         equiAngularVolumeScattering(
                         pbrTls, ray, lightIndex, ue, uel, uelFilter, D,
                         thetaA, thetaB, offset, volumeProperties,
-                        densityDistribution, sp, sequenceID, true);
+                        densityDistribution, sp, &pv, sequenceID, true);
                     // we always do distance sampling so set doMIS to true
                     LDirect += contribution;
                 }
@@ -372,7 +373,7 @@ PathIntegrator::integrateVolumeScattering(pbr::TLState *pbrTls, const mcrt_commo
                     distanceVolumeScattering(
                     pbrTls, ray, lightIndex, ud, udl, udlFilter, D,
                     thetaA, thetaB, offset, volumeProperties,
-                    densityDistribution, sp, sequenceID, doEquiAngular,
+                    densityDistribution, sp, &pv, sequenceID, doEquiAngular,
                     td, radiance, transmittance);
                 LDirect += contribution;
 
@@ -1184,7 +1185,7 @@ PathIntegrator::approximateVolumeMultipleScattering(pbr::TLState *pbrTls,
 
                 scene_rdl2::math::Color scatteringSourceTerm = estimateInScatteringSourceTerm(
                     pbrTls, scatterRay, scatterPoint, light, assignmentId,
-                    phase, usl, uslFilter, sp, sequenceID, ai);
+                    phase, usl, uslFilter, sp, &pv, sequenceID, ai);
 
                 scene_rdl2::math::Color contribution = invN * throughput * bi *
                     scatteringSourceTerm;

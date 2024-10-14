@@ -3,6 +3,7 @@
 
 
 #include "Light.isph"
+#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 #include <moonray/rendering/pbr/light/LightUtil.isph>
 
@@ -40,7 +41,8 @@ SpotLight_computeCorners(const uniform SpotLight * uniform light,
 varying bool
 SpotLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList)
+        varying float radius, const uniform LightFilterList * uniform lightFilterList,
+        const varying PathVertex * uniform pv)
 {
     const uniform SpotLight * uniform light = (const uniform SpotLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -73,6 +75,7 @@ SpotLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
+        cid.pv = pv;
         cid.lightPosition = Light_getPosition(li, time);
         cid.lightRadius = LocalParamLight_xformLocal2RenderScale(lpl, max(light->mLensRadius, light->mLensRadiusY), 
             time);
@@ -300,8 +303,8 @@ varying Color
 SpotLight_eval_uniform(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
         const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, varying float time,
         const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
-        varying float * uniform pdf)
+        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
+        varying float rayDirFootprint, varying float * uniform pdf)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform SpotLight * uniform light = (const uniform SpotLight * uniform)li;
@@ -312,7 +315,7 @@ SpotLight_eval_uniform(const uniform Light * uniform li, uniform ShadingTLState 
     Color radiance = light->mDistribution ? ImageDistribution_eval(light->mDistribution,
                                                 isect.uv.x, isect.uv.y, 0, light->mTextureFilter)
                                           : sWhite;
-    
+
     // Apply spotlight falloff function at intersection with focal plane
     Vec2f normalizedFocalCoords;
     normalizedFocalCoords.x = 2.0f * isect.uv.x - 1.0f;
@@ -337,6 +340,7 @@ SpotLight_eval_uniform(const uniform Light * uniform li, uniform ShadingTLState 
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
+        evalData.pv = pv;
         evalData.shadingPointPosition = p;
         evalData.randVar = filterR;
         evalData.time = time;

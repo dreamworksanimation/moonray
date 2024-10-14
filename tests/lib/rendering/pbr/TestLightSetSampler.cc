@@ -93,7 +93,7 @@ TestLightSetSampler::testLightSetRadiance(const LightSet &lightSet,
                     LightFilterRandomValues filterR = {scene_rdl2::math::Vec2f(0.f, 0.f),
                                                        scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)};
                     lSampler.sampleAndEval(tls, light, nullptr /*LightFilterList*/, p, &n, filterR, 0.f,
-                        r, lsmp, 0.0f);
+                        nullptr /*PathVertex*/, r, lsmp, 0.0f);
                     if (lsmp.isValid()) {
 
                         // Compute reflected radiance from white lambertian brdf,

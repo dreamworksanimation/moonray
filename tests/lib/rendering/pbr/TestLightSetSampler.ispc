@@ -21,10 +21,10 @@ testLightSetRadiance(
         uniform bool normalCulling,
         uniform Color &result)
 {
-    Vec3f pv = p;
-    Vec3f nv = n;
+    Vec3f p_varying = p;
+    Vec3f n_varying = n;
 
-    varying Vec3f cullingNormal = nv;
+    varying Vec3f cullingNormal = n_varying;
     if (!normalCulling) {
         setInvalidCullingNormal(&cullingNormal);
     }
@@ -33,7 +33,7 @@ testLightSetRadiance(
                                  * (range.mColEnd - range.mColBegin);
     LightSetSampler lSampler;
     Bsdf bsdf;
-    LightSetSampler_init(&lSampler, arena, lightSet, &bsdf, pv, sampleCount);
+    LightSetSampler_init(&lSampler, arena, lightSet, &bsdf, p_varying, sampleCount);
 
     double red = 0.0;
     double green = 0.0;
@@ -47,7 +47,7 @@ testLightSetRadiance(
 
         // TODO / FIXME: this assumes a uniform sample count per light, an
         // assumption that will be broken when the LightSetSampler uses
-        // an adaptive number of samples based on pv. See LightSetSampler_init()
+        // an adaptive number of samples based on p_varying. See LightSetSampler_init()
         // for details.
         for (uniform uint32_t y=range.mRowBegin; y < range.mRowEnd; y++) {
             foreach (x = range.mColBegin ... range.mColEnd) {
@@ -58,13 +58,15 @@ testLightSetRadiance(
 
                 LightSample lsmp;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                LightSetSampler_sampleIntersectAndEval(&lSampler, nullptr, light, lightFilterList, pv, cullingNormal, 
+                LightSetSampler_sampleIntersectAndEval(&lSampler, /* ShadingTLState = */ nullptr, light, lightFilterList,
+                        /* PathVertex = */ nullptr,
+                        p_varying, cullingNormal,
                         filterR, 0.f, r, lsmp, 0.0f);
                 if (LightSample_isValid(&lsmp)) {
 
                     // Compute reflected radiance from white lambertian brdf,
                     // accounting for the cosine term in the rendering eqn
-                    float cosTheta = dot(lsmp.wi, nv);
+                    float cosTheta = dot(lsmp.wi, n_varying);
                     Color radiance = lsmp.Li * (sOneOverPi * clamp(cosTheta, 0.0f, 1.0f) / lsmp.pdf);
 
                     // Accumulate

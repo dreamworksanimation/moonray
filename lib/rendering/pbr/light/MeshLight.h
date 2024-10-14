@@ -33,6 +33,8 @@ namespace shading {
 
 namespace pbr {
 
+class PathVertex;
+
 //----------------------------------------------------------------------------
 // See "Importance Sampling of Many Lights with Adaptive Tree
 // Splitting" by Alejandro Conty Estevez and Christopher Kulla (2017)
@@ -68,7 +70,7 @@ public:
 
     /// Intersection and sampling API
     virtual bool canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time, float radius,
-            const LightFilterList* lightFilterList) const override;
+            const LightFilterList* lightFilterList, const PathVertex* pv) const override;
     virtual bool isBounded() const override;
     virtual bool isDistant() const override;
     virtual bool isEnv() const override;
@@ -78,11 +80,11 @@ public:
     virtual bool sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3f *n, float time, const scene_rdl2::math::Vec3f& r,
             scene_rdl2::math::Vec3f &wi, LightIntersection &isect, float rayDirFootprint) const override;
     virtual scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR,
-            float time, const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList,
+            float time, const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv,
             float rayDirFootprint, float *pdf = nullptr) const override;
     virtual scene_rdl2::math::Vec3f getEquiAngularPivot(const scene_rdl2::math::Vec3f& r, float time) const override;
 
-    // A value of -1 for both indicates that this type of light 
+    // A value of -1 for both indicates that this type of light
     // should always be sampled (i.e. not included in the light sampling BVH)
     float getThetaO() const override { return -1.f; }
     float getThetaE() const override { return -1.f; }

@@ -7,6 +7,8 @@
 #include <moonray/rendering/pbr/lightfilter/IntensityLightFilter_ispc_stubs.h>
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
 
+#include <scene_rdl2/common/math/Color.h>
+
 namespace moonray {
 namespace pbr{
 
@@ -18,12 +20,14 @@ scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> IntensityLightFilter::sI
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> IntensityLightFilter::sExposureKey;
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Rgb> IntensityLightFilter::sColorKey;
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> IntensityLightFilter::sInvertKey;
+scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int> IntensityLightFilter::sLightPathSelectionKey;
 
 HUD_VALIDATOR(IntensityLightFilter);
 
 IntensityLightFilter::IntensityLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter) :
                                            LightFilter(rdlLightFilter),
-                                           mRadianceMod(1.0f)
+                                           mRadianceMod(1.0f),
+                                           mLightPathSelection(LIGHTPATHSELECTION_ALL_PATHS)
 {
     if (mRdlLightFilter) {
         initAttributeKeys(mRdlLightFilter->getSceneClass());
@@ -47,6 +51,7 @@ IntensityLightFilter::initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc)
     sExposureKey = sc.getAttributeKey<scene_rdl2::rdl2::Float>("exposure");
     sColorKey = sc.getAttributeKey<scene_rdl2::rdl2::Rgb>("color");
     sInvertKey = sc.getAttributeKey<scene_rdl2::rdl2::Bool>("invert");
+    sLightPathSelectionKey = sc.getAttributeKey<scene_rdl2::rdl2::Int>("light_path_selection");
 
     MOONRAY_FINISH_NON_THREADSAFE_STATIC_WRITE
 }
@@ -63,6 +68,7 @@ IntensityLightFilter::update(const LightFilterMap& /*lightFilters*/,
     float exposure = mRdlLightFilter->get<scene_rdl2::rdl2::Float>(sExposureKey);
     math::Color color = mRdlLightFilter->get<scene_rdl2::rdl2::Rgb>(sColorKey);
     bool invert = mRdlLightFilter->get<scene_rdl2::rdl2::Bool>(sInvertKey);
+    mLightPathSelection = mRdlLightFilter->get<scene_rdl2::rdl2::Int>(sLightPathSelectionKey);
 
     mRadianceMod = intensity * color * powf(2.0f, exposure);
     if (invert) {
@@ -81,6 +87,10 @@ IntensityLightFilter::update(const LightFilterMap& /*lightFilters*/,
 bool
 IntensityLightFilter::canIlluminate(const CanIlluminateData &data) const
 {
+    if (!doesLightPathSelectionMatch(static_cast<LightPathSelection>(mLightPathSelection), data.pv)) {
+        return true;
+    }
+
     return !math::isBlack(mRadianceMod);
 }
 
@@ -88,6 +98,10 @@ IntensityLightFilter::canIlluminate(const CanIlluminateData &data) const
 Color
 IntensityLightFilter::eval(const EvalData& data) const
 {
+    if (!doesLightPathSelectionMatch(static_cast<LightPathSelection>(mLightPathSelection), data.pv)) {
+        return sWhite;
+    }
+
     return mRadianceMod;
 }
 

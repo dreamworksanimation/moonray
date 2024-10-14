@@ -8,6 +8,7 @@
 #include "LightSet.h"
 
 #include <moonray/rendering/bvh/shading/Intersection.h>
+#include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/light/LightUtil_ispc_stubs.h>
 #include <moonray/rendering/shading/bsdf/Bsdf.h>
 #include <moonray/rendering/shading/bssrdf/Bssrdf.h>
@@ -33,12 +34,13 @@ FalloffCurve::hudValidation(bool verbose)
 }
 
 
-void 
+void
 computeActiveLights(scene_rdl2::alloc::Arena *arena,
                     const Scene *scene,
                     const shading::Intersection &isect,
                     const scene_rdl2::math::Vec3f *normal,
                     const shading::Bsdf &bsdf,
+                    const PathVertex * const pv,
                     float rayTime,
                     LightSet &lightSet,
                     bool &hasRayTerminatorLights)
@@ -86,7 +88,7 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
             // there may be chance the fist hit can't be lit by the light but
             // the random walk end point can
             if (hasVolumeSubsurface ||
-                light->canIlluminate(pos, normal, rayTime, radius, (*lightFilterLists)[i])) {
+                light->canIlluminate(pos, normal, rayTime, radius, (*lightFilterLists)[i], pv)) {
                 lightIdMap[i] = activeLightCount;
                 activeLightId[activeLightCount++] = i;
                 hasRayTerminatorLights |= light->getIsRayTerminator();

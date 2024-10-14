@@ -24,7 +24,8 @@ class IntensityLightFilter : public LightFilter
 public:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);
 
-    IntensityLightFilter() : mRadianceMod(1.0f) {}
+    IntensityLightFilter() :
+        mRadianceMod(1.0f) {}
     IntensityLightFilter(const scene_rdl2::rdl2::LightFilter* rdlLightFilter);
 
     virtual ~IntensityLightFilter() override {}
@@ -46,8 +47,9 @@ private:
     static bool sAttributeKeyInitialized;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sIntensityKey;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sExposureKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Rgb> sColorKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool> sInvertKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Rgb>   sColorKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>  sInvertKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>   sLightPathSelectionKey;
 };
 
 } // namespace pbr

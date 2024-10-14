@@ -4,6 +4,7 @@
 
 #include "SphereLight.h"
 #include <moonray/rendering/pbr/core/Distribution.h>
+#include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 
 #include <moonray/rendering/pbr/light/SphereLight_ispc_stubs.h>
@@ -156,7 +157,7 @@ SphereLight::update(const Mat4d& world2render)
 
 bool
 SphereLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radius,
-    const LightFilterList* lightFilterList) const
+    const LightFilterList* lightFilterList, const PathVertex* pv) const
 {
     MNRY_ASSERT(mOn);
 
@@ -185,7 +186,7 @@ SphereLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radi
         return canIlluminateLightFilterList(lightFilterList,
             { getPosition(time), mRadius, p,
               getXformRender2Local(time, lightFilterList->needsLightXform()),
-              radius, time
+              radius, time, pv
             });
     }
 
@@ -416,7 +417,7 @@ SphereLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
 
 Color
 SphereLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, const LightFilterRandomValues& filterR, float time,
-        const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, float rayDirFootprint,
+        const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint,
         float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -429,10 +430,10 @@ SphereLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec
     }
 
     if (lightFilterList) {
-        evalLightFilterList(lightFilterList, 
+        evalLightFilterList(lightFilterList,
                             { tls, &isect, getPosition(time),
                               getDirection(time), p,
-                              filterR, time,
+                              filterR, time, pv,
                               getXformRender2Local(time, lightFilterList->needsLightXform()),
                               wi
                             },

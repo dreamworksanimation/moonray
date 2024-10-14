@@ -3,6 +3,7 @@
 
 #include "LightSet.h"
 
+#include <moonray/rendering/pbr/core//RayState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 #include "Light.h"
 #include "LightUtil.h"
@@ -69,9 +70,9 @@ LightSet::intersect(const Vec3f &P, const Vec3f *N, const Vec3f &wi, float time,
 
 void
 LightSet::intersectAndEval(mcrt_common::ThreadLocalState *tls, const Vec3f &P, const Vec3f *N,
-        const Vec3f &wi, const LightFilterRandomValues& filterR, float time, bool fromCamera, bool includeRayTerminationLights,
-        IntegratorSample1D &samples, int depth, int visibilityMask, LightContribution &lCo,
-        float rayDirFootprint) const
+        const Vec3f &wi, const LightFilterRandomValues& filterR, float time, const PathVertex *pv,
+        bool fromCamera, bool includeRayTerminationLights, IntegratorSample1D &samples, int depth,
+        int visibilityMask, LightContribution &lCo, float rayDirFootprint) const
 {
     // Initialize contribution
     lCo.isInvalid = true;
@@ -102,7 +103,7 @@ LightSet::intersectAndEval(mcrt_common::ThreadLocalState *tls, const Vec3f &P, c
     lCo.distance = isect.distance;
 
     // Evaluate the intersected light Li and pdf
-    lCo.Li = light->eval(tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, rayDirFootprint, &lCo.pdf);
+    lCo.Li = light->eval(tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint, &lCo.pdf);
     lCo.isInvalid = isSampleInvalid(lCo.Li, lCo.pdf);
 
     // Radiance has to be scaled by number of lights hit because we're only sampling one

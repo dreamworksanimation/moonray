@@ -28,6 +28,8 @@ namespace ispc {
 namespace moonray {
 namespace pbr {
 
+class PathVertex;
+
 // Infinity, but not quite so we can distinguish from no light hit
 static const float sInfiniteLightDistance = scene_rdl2::math::sMaxValue - 1e32f;
 static const float sEnvLightDistance = sInfiniteLightDistance * 0.9f;
@@ -40,7 +42,7 @@ static const float sDistantLightDistance = sInfiniteLightDistance * 0.8f;
 /// @class Light Light.h <pbr/Light.h>
 /// @brief Base class that defines the light interface. All lights are assumed
 ///  to be area lights. All lights operate in render space.
-/// 
+///
 class Light
 {
     friend class LightTester;
@@ -118,7 +120,7 @@ public:
     /// can be illuminated by this light (this is necessary so the culling
     /// calculations are accurate with sub-surface scattering).
     virtual bool canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time,
-            float radius, const LightFilterList* lightFilterList) const = 0;
+            float radius, const LightFilterList* lightFilterList, const PathVertex* pv) const = 0;
 
     /// Compute an approximation to the total power for this light, so integrators
     /// can spend more samples towards lights that contribute more.
@@ -197,7 +199,8 @@ public:
     virtual scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi,
                                          const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR,
                                          float time, const LightIntersection &isect, bool fromCamera,
-                                         const LightFilterList *lightFilterList, float rayDirFootprint,
+                                         const LightFilterList *lightFilterList,
+                                         const PathVertex *pv, float rayDirFootprint,
                                          float *pdf = nullptr) const = 0;
 
     /// Query a position from light that will be used as pivot point for
