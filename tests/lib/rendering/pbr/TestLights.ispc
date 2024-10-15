@@ -45,7 +45,7 @@ testLightRadiance(const uniform Vec3f &p, const uniform Vec3f &n,
 
                 float pdf;                
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                Color radiance = Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                Color radiance = Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, 0.0f, &pdf);
 
                 if (pdf != 0.0f  &&  !isBlack(radiance)) {
 
@@ -105,7 +105,7 @@ testLightPdf(const uniform Vec3f &p, const uniform Vec3f &n,
 
                 float pdf;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, 0.0f, &pdf);
 
                 if (pdf != 0.0f) {
                     MNRY_ASSERT(isnormal(pdf));
@@ -173,7 +173,7 @@ testLightCanIlluminate(const uniform Light * uniform light,
 
                 float pdf;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                Color radiance = Light_eval(light, nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                Color radiance = Light_eval(light, nullptr, wi, p, filterR, 0.f, isect, false, nullptr, 0.0f, &pdf);
 
                 if (pdf != 0.0f  &&  !isBlack(radiance)) {
                     radiance = radiance * (clamp(dot(wi, n), 0.0f, 1.0f) / pdf);
@@ -187,7 +187,7 @@ testLightCanIlluminate(const uniform Light * uniform light,
         // If we have some light contribution, we'd better make sure thec
         // light doesn't cull itself from this situation
         if (gotContribution) {
-            if (!Light_canIlluminate(light, p, n, 0.f, 0.f, nullptr /*LightFilterList*/, nullptr /*PathVertex*/)) {
+            if (!Light_canIlluminate(light, p, n, 0.f, 0.f, nullptr)) {
                 success = false;
             }
         }

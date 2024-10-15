@@ -24,8 +24,7 @@ RectLight_getOverlapBounds(const uniform RectLight * uniform light, const varyin
 varying bool
 RectLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList,
-        const varying PathVertex * uniform pv);
+        varying float radius, const uniform LightFilterList * uniform lightFilterList);
 
 varying bool
 RectLight_intersect(const uniform Light * uniform li,
@@ -42,8 +41,8 @@ varying Color
 RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
         const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
         varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf);
+        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf);
 
 uniform float RectLight_getThetaO(const uniform Light * uniform li);
 uniform float RectLight_getThetaE(const uniform Light * uniform li);

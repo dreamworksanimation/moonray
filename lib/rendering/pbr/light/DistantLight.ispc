@@ -4,7 +4,6 @@
 
 #include "Light.isph"
 
-#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/shading/ispc/Util.isph>
 #include <scene_rdl2/common/platform/IspcUtil.isph>
 
@@ -59,8 +58,7 @@ DistantLight_globalToLocalXform(const uniform DistantLight * uniform light,
 varying bool
 DistantLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList,
-        const varying PathVertex * uniform pv)
+        varying float radius, const uniform LightFilterList * uniform lightFilterList)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform DistantLight * uniform light = (const uniform DistantLight * uniform)li;
@@ -73,7 +71,6 @@ DistantLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
-        cid.pv = pv;
         cid.lightPosition = Light_getPosition(li, time);
         cid.lightRadius = sMaxValue;
         cid.shadingPointPosition = p;
@@ -136,10 +133,10 @@ DistantLight_sample(const uniform Light * uniform li,
 
 varying Color
 DistantLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
-        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
         varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf)
+        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf)
 {
     const uniform DistantLight * uniform light = (const uniform DistantLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -154,9 +151,8 @@ DistantLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uni
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
-        evalData.pv = pv;
         evalData.shadingPointPosition = p;
-        evalData.randVar = filterR;
+        evalData.randVar = filterR; 
         evalData.time = time;
         evalData.lightRender2LocalXform = DistantLight_globalToLocalXform(
             light, time, LightFilterList_getNeedsLightXform(lightFilterList));

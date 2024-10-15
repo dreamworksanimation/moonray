@@ -28,7 +28,6 @@ namespace moonray {
 
 namespace pbr {
 
-class PathVertex;
 
 //----------------------------------------------------------------------------
 
@@ -130,7 +129,7 @@ public:
     void sampleAndEval(mcrt_common::ThreadLocalState* tls,
             const Light* light, const LightFilterList *lightFilterList,
             const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, const LightFilterRandomValues& filterR,
-            float time, const PathVertex* pv, const scene_rdl2::math::Vec3f& r, LightSample &sample, float rayDirFootprint) const;
+            float time, const scene_rdl2::math::Vec3f& r, LightSample &sample, float rayDirFootprint) const;
 
     finline const shading::Bsdf &getBsdf() const { return *mBsdf; }
 

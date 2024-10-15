@@ -4,7 +4,6 @@
 
 #include "Light.isph"
 #include "RectLight.isph"
-#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 
 #include <scene_rdl2/common/math/ispc/asA.isph>
@@ -22,39 +21,39 @@ PortalLight_hudValidation(uniform bool verbose)
 }
 
 varying Color
-PortalLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls, const varying Vec3f &wi,
+PortalLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls, const varying Vec3f &wi, 
                  const varying Vec3f &p, const varying LightFilterRandomValues& filterR, varying float time,
-                 const varying LightIntersection &isect, uniform bool fromCamera,
-                 const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-                 varying float rayDirFootprint, varying float * uniform pdf)
+                 const varying LightIntersection &isect, uniform bool fromCamera, 
+                 const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+                 varying float * uniform pdf)
 {
     const uniform PortalLight * uniform light = (const uniform PortalLight * uniform)li;
     const uniform Light * uniform refLight = (const uniform Light * uniform)light->mRefLight;
 
     MNRY_ASSERT(refLight && li->mOn);
-
+    
     Color radiance = sBlack;
-
+   
     // ------- Eval reference light -----------
     Vec3f n;
     LightIntersection refIsect;
     // Find the intersection of wi (sampled from the portal) with the associated light
     Light_intersect(refLight, p, n, wi, time, sEnvLightDistance, refIsect);
     // Evaluate the light at the found intersection
-    radiance = Light_eval(refLight, tls, wi, p, filterR, time, refIsect, fromCamera,
-                          lightFilterList, pv, rayDirFootprint, nullptr);
+    radiance = Light_eval(refLight, tls, wi, p, filterR, time, refIsect, fromCamera, 
+                          lightFilterList, rayDirFootprint, nullptr);
 
     // -------- Eval portal -- any radiance will be a multiplier on reference light's radiance -----------
-    radiance = radiance * RectLight_eval(li, tls, wi, p, filterR, time, isect, fromCamera,
-                                         lightFilterList, pv, rayDirFootprint, pdf);
+    radiance = radiance * RectLight_eval(li, tls, wi, p, filterR, time, isect, fromCamera, 
+                                         lightFilterList, rayDirFootprint, pdf);
 
     return radiance;
 }
 
 //----------------------------------------------------------------------------
 
-// The PortalLight mostly behaves like a RectLight, except for its eval function, which
-// finds radiance from its reference light, mRefLight.
+// The PortalLight mostly behaves like a RectLight, except for its eval function, which 
+// finds radiance from its reference light, mRefLight. 
 export void
 PortalLight_init(uniform PortalLight * uniform light)
 {

@@ -78,11 +78,10 @@ LightSet_intersectAndEval(uniform PbrTLState * uniform pbrTls,
                           const uniform LightSet * uniform lightSet,
                           uniform ShadingTLState * uniform tls,
                           const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying Vec3f &wi,
-                          const varying LightFilterRandomValues &filterR, varying float time,
-                          const varying PathVertex * uniform pv,
-                          uniform bool fromCamera, varying bool includeRayTerminationLights,
-                          varying IntegratorSample1D &samples, varying int depth,
-                          varying int visibilityMask, varying LightContribution &lCo, varying float rayDirFootprint)
+                          const varying LightFilterRandomValues &filterR, varying float time, uniform bool fromCamera,
+                          varying bool includeRayTerminationLights, varying IntegratorSample1D &samples,
+                          varying int depth, varying int visibilityMask, varying LightContribution &lCo,
+                          varying float rayDirFootprint)
 {
     // Initialize contribution
     lCo.isInvalid = true;
@@ -114,7 +113,7 @@ LightSet_intersectAndEval(uniform PbrTLState * uniform pbrTls,
     lCo.distance = isect.distance;
 
     // Evaluate the intersected light Li and pdf
-    lCo.Li = Light_eval(light, tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint,
+    lCo.Li = Light_eval(light, tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, rayDirFootprint,
                         &lCo.pdf);
     lCo.isInvalid = isSampleInvalid(lCo.Li, lCo.pdf);
 

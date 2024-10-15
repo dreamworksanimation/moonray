@@ -3,7 +3,6 @@
 
 
 #include "MeshLight.h"
-#include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
@@ -539,7 +538,7 @@ MeshLight::reset() {
 
 bool
 MeshLight::canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time, float radius,
-    const LightFilterList* lightFilterList, const PathVertex* pv) const
+    const LightFilterList* lightFilterList) const
 {
     MNRY_ASSERT(mOn);
     // TODO: Consider a bounding solid angle
@@ -550,7 +549,7 @@ MeshLight::canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math
             { xformPointLocal2Render(mBVH[0].getCenter(), time),
               xformLocal2RenderScale(lightRadius, time),
               p, getXformRender2Local(time, lightFilterList->needsLightXform()),
-              radius, time, pv
+              radius, time
             });
     }
 
@@ -1761,7 +1760,7 @@ MeshLight::sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3
 
 scene_rdl2::math::Color
 MeshLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time,
-    const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint,
+    const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, float rayDirFootprint,
     float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -1772,7 +1771,7 @@ MeshLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3
         evalLightFilterList(lightFilterList,
                             { tls, &isect, getPosition(time),
                               getDirection(time), p,
-                              filterR, time, pv,
+                              filterR, time,
                               getXformRender2Local(time, lightFilterList->needsLightXform()),
                               wi
                             },

@@ -251,7 +251,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
                 // to compute the sum of all contributing lights, but we're stochastically sampling just one.
                 varying Color lightContribution = pv.pathThroughput * numHits *
                     Light_eval(hitLight, shadingTls, Ray_getDirection(ray), origin, lightFilterR, Ray_getTime(ray),
-                               hitLightIsect, true, nullptr /*LightFilterList*/, nullptr /*PathVertex*/, Ray_getDirFootprint(ray));
+                               hitLightIsect, true, nullptr, Ray_getDirFootprint(ray));
                 radiance = radiance + lightContribution;
 
                 // LPE
@@ -427,7 +427,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
         // Gather up all lights that can affect the intersection point/normal.
         uniform LightSet activeLightSet;
         uniform bool hasRayTerminatorLights;
-        computeActiveLights(arena, lightSet, getP(isect), cullingNormal, bsdf, &pv, ray.time,
+        computeActiveLights(arena, lightSet, getP(isect), cullingNormal, bsdf, ray.time,
                             &activeLightSet, hasRayTerminatorLights);
 
         //---------------------------------------------------------------------

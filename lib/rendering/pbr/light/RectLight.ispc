@@ -3,7 +3,6 @@
 
 
 #include "Light.isph"
-#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 
 #include <scene_rdl2/common/math/ispc/asA.isph>
@@ -88,8 +87,7 @@ RectLight_getOverlapBounds(const uniform RectLight * uniform light, const varyin
 varying bool
 RectLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList,
-        const varying PathVertex * uniform pv)
+        varying float radius, const uniform LightFilterList * uniform lightFilterList)
 {
     const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -127,7 +125,6 @@ RectLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
-        cid.pv = pv;
         cid.lightPosition = Light_getPosition(li, time);
         cid.lightRadius = LocalParamLight_xformLocal2RenderScale(lpl, sqrt(light->mWidth * light->mWidth +
             light->mHeight * light->mHeight) / 2, time);
@@ -309,8 +306,8 @@ varying Color
 RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
         const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, varying float time,
         const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf)
+        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
+        varying float * uniform pdf)
 {
     const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -318,7 +315,7 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
     MNRY_ASSERT(li->mOn);
 
     Color radiance = light->mRadiance;
-
+    
     if (light->mSpread < 1.f) {
         // modify radiance as if it were physically blocked by an eggcrate light filter.
         Vec3f localWi = LocalParamLight_xformVectorRender2LocalRot(lpl, wi, time);
@@ -339,9 +336,8 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
-        evalData.pv = pv;
         evalData.shadingPointPosition = p;
-        evalData.randVar = filterR;
+        evalData.randVar = filterR; 
         evalData.time = time;
         evalData.lightRender2LocalXform = LocalParamLight_getXformRender2Local(
             lpl, time, LightFilterList_getNeedsLightXform(lightFilterList));

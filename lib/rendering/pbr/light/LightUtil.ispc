@@ -5,7 +5,6 @@
 #include "LightUtil.isph"
 #include "LightSet.isph"
 #include <moonray/rendering/pbr/core/PbrTLState.isph>
-#include <moonray/rendering/pbr/core/RayState.isph>
 
 #include <moonray/rendering/shading/ispc/bsdf/Bsdf.isph>
 #include <moonray/rendering/shading/ispc/bssrdf/Bssrdf.isph>
@@ -45,7 +44,6 @@ computeActiveLights(uniform Arena * uniform arena,
                     const varying Vec3f &pos,
                     const varying Vec3f &normal,
                     const varying Bsdf * uniform bsdf,
-                    const varying PathVertex * uniform pv,
                     varying float rayTime,
                     uniform LightSet * uniform lightSet,
                     uniform bool &hasRayTerminatorLights)
@@ -83,7 +81,7 @@ computeActiveLights(uniform Arena * uniform arena,
             const uniform LightFilterList * uniform lightFilterList = LightSet_getLightFilterList(lightList, i);
 
             // light culling is done in here
-            if (any(Light_canIlluminate(light, pos, normal, rayTime, radius, lightFilterList, pv))) {
+            if (any(Light_canIlluminate(light, pos, normal, rayTime, radius, lightFilterList))) {
                 lightIdMap[i] = activeLightCount;
                 activeLightIds[activeLightCount++] = i;
                 hasRayTerminatorLights |= Light_getIsRayTerminator(light);

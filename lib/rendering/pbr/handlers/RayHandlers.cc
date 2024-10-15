@@ -548,7 +548,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                             scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
                         radiance = rs->mPathVertex.pathThroughput *
                             hitLight->eval(tls, rs->mRay.getDirection(), rs->mRay.getOrigin(),
-                                           lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr, nullptr,
+                                           lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr,
                                            rs->mRay.getDirFootprint()) * numHits;
                         // attenuate based on volume transmittance
                         if (rs->mVolHit) radiance *= (rs->mVolTr * rs->mVolTh);

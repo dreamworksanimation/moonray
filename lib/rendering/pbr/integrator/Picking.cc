@@ -115,12 +115,12 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
     // Evaluate the radiance of all visible lights in camera
     for (size_t i = 0; i < hitLights.size(); ++i) {
         const Light *hitLight = hitLights[i];
-
+        
         LightFilterRandomValues lightFilterR = {
-            scene_rdl2::math::Vec2f(0.f, 0.f),
-            scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
-        scene_rdl2::math::Color contribution = hitLight->eval(tls, ray.getDirection(), ray.getOrigin(),
-            lightFilterR, ray.getTime(), hitLightIsects[i], true, nullptr, nullptr, ray.getDirFootprint());
+            scene_rdl2::math::Vec2f(0.f, 0.f), 
+            scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays        
+        scene_rdl2::math::Color contribution = hitLight->eval(tls, ray.getDirection(), ray.getOrigin(), 
+            lightFilterR, ray.getTime(), hitLightIsects[i], true, nullptr, ray.getDirFootprint());
         shading::LightContrib lightContrib(hitLight->getRdlLight(), scene_rdl2::math::luminance(contribution));
         lightContributions.push_back(lightContrib);
     }
@@ -177,8 +177,8 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
     // Get the lights contributing to this pixel
     LightSet lightSet;
     bool hasRayTerminatorLights;
-    computeActiveLights(&tls->mArena, scene, isect, normalPtr, bsdf, /* PathVertex = */ nullptr,
-            /* rayTime = */ 0.f, lightSet, hasRayTerminatorLights);
+    computeActiveLights(&tls->mArena, scene, isect, normalPtr, bsdf, /* rayTime = */ 0.f,
+        lightSet, hasRayTerminatorLights);
 
     // Populate the array with the light and contribution data to be returned.
     int count = lightSet.getLightCount();
@@ -213,10 +213,10 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
             // Evaluate and sum up contribution
             float pdfLight;
             LightFilterRandomValues lightFilterR = {
-                scene_rdl2::math::Vec2f(0.f, 0.f),
+                scene_rdl2::math::Vec2f(0.f, 0.f), 
                 scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
             scene_rdl2::math::Color Li = light->eval(tls, wi, isect.getP(), lightFilterR, ray.getTime(), sampleIsect,
-                false, lightFilterList, nullptr, ray.getDirFootprint(), &pdfLight);
+                false, lightFilterList, ray.getDirFootprint(), &pdfLight);
             if (pdfLight == 0.f) {
                 continue;
             }

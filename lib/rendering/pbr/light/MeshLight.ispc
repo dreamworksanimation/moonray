@@ -3,7 +3,6 @@
 
 
 #include "MeshLight.isph"
-#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 #include <moonray/rendering/shading/ispc/Shading.isph>
 
@@ -112,8 +111,7 @@ MeshLight_canIlluminate(const uniform Light * uniform li,
                         const varying Vec3f &cullingNormal,
                         varying float time,
                         varying float radius,
-                        const uniform LightFilterList * uniform lightFilterList,
-                        const varying PathVertex * uniform pv)
+                        const uniform LightFilterList * uniform lightFilterList)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform MeshLight * uniform light = (const uniform MeshLight * uniform)li;
@@ -121,7 +119,6 @@ MeshLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
-        cid.pv = pv;
         cid.lightPosition = LocalParamLight_xformPointLocal2Render(lpl, Node_getCenter(light->mBVHPtr[0]), time);
         float lightRadius = length(light->mBVHPtr[0].mBbox.upper - light->mBVHPtr[0].mBbox.lower) / 2;
         cid.lightRadius = LocalParamLight_xformLocal2RenderScale(lpl, lightRadius, time);
@@ -534,7 +531,6 @@ MeshLight_eval(const uniform Light * uniform li,
                const varying LightIntersection &isect,
                uniform bool fromCamera,
                const uniform LightFilterList * uniform lightFilterList,
-               const varying PathVertex * uniform pv,
                varying float rayDirFootprint,
                varying float * uniform pdf)
 {
@@ -551,7 +547,6 @@ MeshLight_eval(const uniform Light * uniform li,
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
-        evalData.pv = pv;
         evalData.shadingPointPosition = p;
         evalData.randVar = filterR;
         evalData.time = time;

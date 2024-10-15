@@ -511,7 +511,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             scene_rdl2::math::Color lightContribution = pv.pathThroughput * numHits *
                 hitLight->eval(pbrTls->mTopLevelTls,
                     ray.getDirection(), ray.getOrigin(), lightFilterR,
-                    ray.getTime(), hitLightIsect, true, nullptr, nullptr, ray.getDirFootprint());
+                    ray.getTime(), hitLightIsect, true, nullptr, ray.getDirFootprint());
             radiance += lightContribution;
 
             checkForNan(radiance, "Camera visible lights", sp, pv, ray, isect);
@@ -921,7 +921,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Gather up all lights which can affect the intersection point/normal.
     LightSet activeLightSet;
     bool hasRayTerminatorLights;
-    computeActiveLights(arena, scene, isect, normalPtr, *bsdf, &pv, ray.getTime(),
+    computeActiveLights(arena, scene, isect, normalPtr, *bsdf, ray.getTime(),
         activeLightSet, hasRayTerminatorLights);
 
     // Setup a slice, which handles selecting the lobe types and setup

@@ -4,7 +4,6 @@
 
 #include "EnvLight.h"
 #include <moonray/rendering/pbr/core/Distribution.h>
-#include <moonray/rendering/pbr/core/RayState.h>
 
 #include <moonray/rendering/pbr/light/EnvLight_ispc_stubs.h>
 #include <moonray/rendering/shading/Util.h>
@@ -297,7 +296,7 @@ EnvLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
 
 Color
 EnvLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, const LightFilterRandomValues& filterR, float time,
-        const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint,
+        const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, float rayDirFootprint,
         float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -313,7 +312,7 @@ EnvLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f 
         evalLightFilterList(lightFilterList,
                             { tls, &isect, getPosition(time),
                               getDirection(time), p,
-                              filterR, time, pv,
+                              filterR, time,
                               globalToLocalXform(time, lightFilterList->needsLightXform()),
                               wi
                             },

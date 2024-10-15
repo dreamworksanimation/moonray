@@ -27,8 +27,8 @@ namespace pbr {
 /// In situations where a light (like an EnvLight) is mostly occluded by geometry (e.g. a room with a window),
 /// we can use a PortalLight to focus sampling toward a particular region, preventing us from taking occluded samples.
 /// This PortalLight behaves like a RectLight, except that, for evaluation, it allows the ray to continue on to
-/// the light behind it (mRefLight) and uses the radiance from that intersection point. The color, exposure, and
-/// intensity on the PortalLight act as multipliers to the radiance we get from the reference light, mRefLight.
+/// the light behind it (mRefLight) and uses the radiance from that intersection point. The color, exposure, and 
+/// intensity on the PortalLight act as multipliers to the radiance we get from the reference light, mRefLight. 
 
 class PortalLight : public RectLight
 {
@@ -47,22 +47,22 @@ public:
     const scene_rdl2::rdl2::Light* getRefRdlLight() const { return mRefRdlLight; }
 
     /// Is this light (and the referenced light) active?
-    bool isOn() const override {
+    virtual bool isOn() const override {     
         return mRdlLight->get(scene_rdl2::rdl2::Light::sOnKey) && mRefRdlLight->get(scene_rdl2::rdl2::Light::sOnKey);
     }
 
-    /// Set the portal's reference light and indicate to that light that
+    /// Set the portal's reference light and indicate to that light that 
     /// it will be using portal light sampling instead
-    void setRefLight(Light* refLight) {
+    void setRefLight(Light* refLight) { 
         refLight->turnOnPortal();
-        mRefLight = refLight;
+        mRefLight = refLight; 
     }
 
-    bool update(const scene_rdl2::math::Mat4d& world2render) override;
-    scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi,
-            const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time,
-            const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList,
-            const PathVertex *pv, float rayDirFootprint, float *pdf = nullptr) const override;
+    virtual bool update(const scene_rdl2::math::Mat4d& world2render) override;
+    virtual scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, 
+            const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time, 
+            const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, 
+            float rayDirFootprint, float *pdf = nullptr) const override;
 
 private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);

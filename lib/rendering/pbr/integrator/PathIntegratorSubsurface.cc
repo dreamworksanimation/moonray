@@ -196,7 +196,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             // Evaluate the light sample and pdf
             float lightPdf;
             scene_rdl2::math::Color Li = light->eval(pbrTls->mTopLevelTls, wi, P, lightFilterSample,
-                parentRay.getTime(), lightIsect, false, lightFilterList, &pv, parentRay.getDirFootprint(), &lightPdf);
+                parentRay.getTime(), lightIsect, false, lightFilterList, parentRay.getDirFootprint(), &lightPdf);
 
             if (isSampleInvalid(Li, lightPdf)) {
                 continue;
@@ -419,7 +419,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             // We multiply by numLightsHit because we're stochastically sampling
             // just one, thus computing an average
             Li = hitLight->eval(pbrTls->mTopLevelTls, wi, P, bsdfLightFilterSample,
-                parentRay.getTime(), lightIsect, false, hitLightFilterList, &pv, parentRay.getDirFootprint(), &lightPdf) *
+                parentRay.getTime(), lightIsect, false, hitLightFilterList, parentRay.getDirFootprint(), &lightPdf) *
                 (float)numLightsHit;
             if (isSampleInvalid(Li, lightPdf)) {
                 doDirect = false;

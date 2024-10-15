@@ -15,7 +15,6 @@ struct Arena;
 struct Bsdf;
 struct LightFilterList;
 struct LightSet;
-struct PathVertex;
 struct PbrTLState;
 
 //----------------------------------------------------------------------------
@@ -262,7 +261,6 @@ void computeActiveLights(uniform Arena * uniform arena,
                          const varying Vec3f &pos,
                          const varying Vec3f &normal,
                          const varying Bsdf * uniform bsdf,
-                         const varying PathVertex * uniform pv,
                          varying float rayTime,
                          // outputs
                          uniform LightSet * uniform lightSet,

@@ -3,7 +3,6 @@
 
 
 #include "Light.isph"
-#include <moonray/rendering/pbr/core/RayState.isph>
 #include <moonray/rendering/pbr/core/Util.isph>
 
 #include <scene_rdl2/common/platform/IspcUtil.isph>
@@ -108,8 +107,7 @@ lightIsInsideSpread(const varying Vec3f& localP, const varying float localLength
 varying bool
 DiskLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
-        varying float radius, const uniform LightFilterList * uniform lightFilterList,
-        const varying PathVertex * uniform pv)
+        varying float radius, const uniform LightFilterList * uniform lightFilterList)
 {
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform)li;
     const uniform DiskLight * uniform light = (const uniform DiskLight * uniform)li;
@@ -162,7 +160,6 @@ DiskLight_canIlluminate(const uniform Light * uniform li,
 
     if (lightFilterList) {
         CanIlluminateData cid;
-        cid.pv = pv;
         cid.lightPosition = Light_getPosition(li, time);
         cid.lightRadius = LocalParamLight_xformLocal2RenderScale(lpl, 1.0f, time);
         cid.shadingPointPosition = p;
@@ -379,10 +376,9 @@ DiskLight_sample(const uniform Light * uniform li,
 
 varying Color
 DiskLight_eval(const uniform Light * uniform li, uniform ShadingTLState * uniform tls,
-        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR,
+        const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
         varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
-        const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint,
+        const uniform LightFilterList * uniform lightFilterList, varying float rayDirFootprint,
         varying float * uniform pdf)
 {
     const uniform DiskLight * uniform light = (const uniform DiskLight * uniform)li;
@@ -391,11 +387,11 @@ DiskLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
     MNRY_ASSERT(light->mOn);
 
     Color radiance = light->mRadiance;
-
+    
     if (light->mSpread < 1.f) {
         // modify radiance as if it were physically blocked by an eggcrate light filter.
         Vec3f localWi = LocalParamLight_xformVectorRender2LocalRot(lpl, wi, time);
-        radiance = radiance * max(1.f - abs(localWi.x / (localWi.z * light->mTanSpreadTheta)), 0.f) *
+        radiance = radiance * max(1.f - abs(localWi.x / (localWi.z * light->mTanSpreadTheta)), 0.f) * 
                               max(1.f - abs(localWi.y / (localWi.z * light->mTanSpreadTheta)), 0.f);
     }
 
@@ -412,9 +408,8 @@ DiskLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
         evalData.isect = &isect;
         evalData.lightPosition = Light_getPosition(li, time);
         evalData.lightDirection = Light_getDirection(li, time);
-        evalData.pv = pv;
         evalData.shadingPointPosition = p;
-        evalData.randVar = filterR;
+        evalData.randVar = filterR; 
         evalData.time = time;
         evalData.lightRender2LocalXform = LocalParamLight_getXformRender2Local(
             lpl, time, LightFilterList_getNeedsLightXform(lightFilterList));
