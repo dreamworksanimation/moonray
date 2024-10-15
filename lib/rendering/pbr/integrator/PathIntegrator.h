@@ -411,7 +411,7 @@ private:
             float D, float thetaA, float thetaB, float offset,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, unsigned& sequenceID, bool doMIS) const;
+            const Subpixel &sp, const PathVertex* pv, unsigned& sequenceID, bool doMIS) const;
 
     scene_rdl2::math::Color distanceVolumeScattering(pbr::TLState *pbrTls,
             const mcrt_common::Ray& ray, int lightIndex,
@@ -419,7 +419,7 @@ private:
             float D, float thetaA, float thetaB, float offset,
             const VolumeProperties* volumeProperties,
             const GuideDistribution1D& densityDistribution,
-            const Subpixel &sp, unsigned& sequenceID, bool doMIS,
+            const Subpixel &sp, const PathVertex* pv, unsigned& sequenceID, bool doMIS,
             float& td, scene_rdl2::math::Color& radiance, scene_rdl2::math::Color& transmittance) const;
 
     scene_rdl2::math::Color approximateVolumeMultipleScattering(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
@@ -434,7 +434,7 @@ private:
             const scene_rdl2::math::Vec3f& scatterPoint, const Light* light, int assignmentId,
             const VolumePhase& phaseFunction,
             const scene_rdl2::math::Vec3f& ul, const LightFilterRandomValues& ulFilter,
-            const Subpixel &sp, unsigned sequenceID,
+            const Subpixel &sp, const PathVertex* pv, unsigned sequenceID,
             float scaleFactor = 1.0f) const;
 
     scene_rdl2::math::Color transmittanceSubinterval(pbr::TLState *pbrTls,

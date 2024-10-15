@@ -51,6 +51,7 @@ class Scene;
 class Light;
 typedef std::vector<Light *> LightPtrList;
 class LightFilterList;
+class PathVertex;
 typedef std::vector<LightFilterList *> LightFilterLists;
 typedef std::vector<std::unique_ptr<LightFilterList>> LightFilterListsUniquePtrs;
 
@@ -324,6 +325,7 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
                     const shading::Intersection &isect,
                     const scene_rdl2::math::Vec3f *normal,
                     const shading::Bsdf &bsdf,
+                    const PathVertex *pv,
                     float rayTime,
                     // outputs
                     LightSet &lightSet,

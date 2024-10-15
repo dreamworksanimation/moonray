@@ -156,7 +156,7 @@ drawBsdfSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * un
 
             LightFilterRandomValues lightFilterSample;
             if (lightFilterNeedsSamples) {
-                getSample(lightFilterSamples, &lightFilterSample.r2.x, pv.nonMirrorDepth, *pbrTls->mFs);            
+                getSample(lightFilterSamples, &lightFilterSample.r2.x, pv.nonMirrorDepth, *pbrTls->mFs);
                 getSample(lightFilterSamples3D, &lightFilterSample.r3.x, pv.nonMirrorDepth, *pbrTls->mFs);
             }
 
@@ -177,7 +177,7 @@ drawBsdfSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * un
             // there is. The distance is set to infinity if there is no light or
             // to sInfiniteLightDistance if there is an InfiniteAreaLight.
             LightSetSampler_intersectAndEval(&lSampler, pbrTls, shadingTls, P, cullingNormal, bsmp[s].wi,
-                                             lightFilterSample, time, false, includeRayTerminationLights,
+                                             lightFilterSample, time, &pv, false, includeRayTerminationLights,
                                              lightChoiceSamples, pv.nonMirrorDepth, lobeMask, lCo, rayDirFootprint);
 
             integrateBsdfSample(bSampler, lobeIndex,
@@ -437,12 +437,12 @@ drawLightSamples(uniform PbrTLState * uniform pbrTls, uniform ShadingTLState * u
             getSample(lightFilterSamples3D, &lightFilterSample.r3.x, pv.nonMirrorDepth, *pbrTls->mFs);
         }
 
-        LightSetSampler_sampleIntersectAndEval(&lSampler, shadingTls, light, lightFilterList,
+        LightSetSampler_sampleIntersectAndEval(&lSampler, shadingTls, light, lightFilterList, &pv,
                 P, cullingNormal, lightFilterSample, time, lightSample, currSamp, rayDirFootprint);
         if (LightSample_isInvalid(&(currSamp))) {
             // These samples occur on the shadow terminator -- they are invalid because they face
             // away from the point (dot(n, wi) < epsilon). They should count as "misses" in the visibility aov.
-            accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler, 
+            accumVisibilityAovsOccluded(pbrTls, bSampler, lSampler,
                                         pv, rs->mSubpixel.mPixel, rs->mDeepDataHandle,
                                         light, 1);
             continue;

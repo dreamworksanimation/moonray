@@ -28,6 +28,7 @@ namespace moonray {
 namespace pbr {
 
 class LightAccelerator;
+class PathVertex;
 
 //----------------------------------------------------------------------------
 
@@ -103,7 +104,7 @@ public:
     // LightSet intersected by the ray. Fills up the LightContribution structure with the
     // results. The random samples must first be initialized with a call to initSamples().
     void intersectAndEval(mcrt_common::ThreadLocalState *shadingTls, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
-            const scene_rdl2::math::Vec3f &wi, const LightFilterRandomValues& filterR, float time, bool fromCamera,
+            const scene_rdl2::math::Vec3f &wi, const LightFilterRandomValues& filterR, float time, const PathVertex *pv, bool fromCamera,
             bool includeRayTerminationLights, IntegratorSample1D &samples, int depth,  int visibilityMask,
             LightContribution &lCo, float rayDirFootprint) const;
 

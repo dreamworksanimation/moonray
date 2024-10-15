@@ -8,6 +8,7 @@
 
 
 #include "LightSetSampler.h"
+#include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 
 #include <scene_rdl2/render/util/Arena.h>
@@ -67,8 +68,9 @@ LightSetSampler::~LightSetSampler()
 void
 LightSetSampler::sampleAndEval(mcrt_common::ThreadLocalState* tls,
         const Light* light, const LightFilterList* lightFilterList,
-        const Vec3f &P, const Vec3f *N, const LightFilterRandomValues& filterR, float time,
-        const Vec3f& r, LightSample &sample, float rayDirFootprint) const
+        const Vec3f &P, const Vec3f *N, const LightFilterRandomValues& filterR,
+        float time, const PathVertex* pv, const Vec3f& r, LightSample &sample,
+        float rayDirFootprint) const
 {
     // Draw a sample from light
     LightIntersection isect;
@@ -79,7 +81,7 @@ LightSetSampler::sampleAndEval(mcrt_common::ThreadLocalState* tls,
     sample.distance = isect.distance;
 
     // Evaluate light sample
-    sample.Li = light->eval(tls, sample.wi, P, filterR, time, isect, false, lightFilterList, rayDirFootprint,
+    sample.Li = light->eval(tls, sample.wi, P, filterR, time, isect, false, lightFilterList, pv, rayDirFootprint,
                             &sample.pdf);
     if (isSampleInvalid(sample.Li, sample.pdf)) {
         sample.setInvalid();

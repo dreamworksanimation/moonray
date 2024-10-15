@@ -32,7 +32,7 @@ scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>           PortalLight::sSi
 
 HUD_VALIDATOR(PortalLight);
 
-PortalLight::PortalLight(const scene_rdl2::rdl2::Light* rdlLight) 
+PortalLight::PortalLight(const scene_rdl2::rdl2::Light* rdlLight)
     : mRefLight(nullptr), mRefRdlLight(nullptr), RectLight(rdlLight)
 {
     initAttributeKeys(rdlLight->getSceneClass());
@@ -48,31 +48,31 @@ bool PortalLight::update(const Mat4d& world2render)
 
     scene_rdl2::rdl2::SceneObject* refLightSO = mRdlLight->get<scene_rdl2::rdl2::SceneObject*>(sRefLight);
 
-    if (!refLightSO) return false; 
+    if (!refLightSO) return false;
     mRefRdlLight = refLightSO->asA<scene_rdl2::rdl2::Light>();
 
     return isOn();
 }
 
-Color PortalLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, 
-            const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time, 
-            const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, 
-            float rayDirFootprint, float *pdf) const
+Color PortalLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi,
+            const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time,
+            const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList,
+            const PathVertex *pv, float rayDirFootprint, float *pdf) const
 {
     MNRY_ASSERT(mRefLight && mOn);
     Color radiance;
-   
+
     // ------- Eval reference light -----------
     LightIntersection refIsect;
     // Find the intersection of wi (sampled from the portal) with the associated light
     mRefLight->intersect(p, nullptr, wi, time, sEnvLightDistance, refIsect);
     // Evaluate the light at the found intersection
-    radiance = mRefLight->eval(tls, wi, p, filterR, time, refIsect, fromCamera, 
-                               lightFilterList, rayDirFootprint, nullptr);
+    radiance = mRefLight->eval(tls, wi, p, filterR, time, refIsect, fromCamera,
+                               lightFilterList, pv, rayDirFootprint, nullptr);
 
     // -------- Eval portal -- any radiance will be a multiplier on env light radiance -----------
-    radiance *= RectLight::eval(tls, wi, p, filterR, time, isect, fromCamera, 
-                                lightFilterList, rayDirFootprint, pdf);
+    radiance *= RectLight::eval(tls, wi, p, filterR, time, isect, fromCamera,
+                                lightFilterList, pv, rayDirFootprint, pdf);
 
     return radiance;
 }

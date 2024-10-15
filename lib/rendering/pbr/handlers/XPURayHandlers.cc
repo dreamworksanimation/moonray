@@ -554,11 +554,11 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                         // stochastically sampling just one.
 
                         LightFilterRandomValues lightFilterR = {
-                            scene_rdl2::math::Vec2f(0.f, 0.f), 
+                            scene_rdl2::math::Vec2f(0.f, 0.f),
                             scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
                         radiance = rs->mPathVertex.pathThroughput *
                             hitLight->eval(tls, rs->mRay.getDirection(), rs->mRay.getOrigin(),
-                                           lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr,
+                                           lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr, nullptr,
                                            rs->mRay.getDirFootprint()) * numHits;
                         // attenuate based on volume transmittance
                         if (rs->mVolHit) radiance *= (rs->mVolTr * rs->mVolTh);

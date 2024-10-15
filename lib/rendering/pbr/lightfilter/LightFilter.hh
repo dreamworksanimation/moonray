@@ -17,6 +17,16 @@
 #define LIGHTFILTER_MB_ROTATION    (1 << 1) // filter has blurred rotational change
 #define LIGHTFILTER_MB_SCALE       (1 << 2) // filter has blurred scale change
 
+enum LightPathSelection {
+    LIGHTPATHSELECTION_ALL_PATHS,
+    LIGHTPATHSELECTION_ALL_INDIRECT,
+    LIGHTPATHSELECTION_ALL_INDIRECT_FIRST_BOUNCE,
+    LIGHTPATHSELECTION_INDIRECT_DIFFUSE,
+    LIGHTPATHSELECTION_INDIRECT_DIFFUSE_FIRST_BOUNCE,
+    LIGHTPATHSELECTION_INDIRECT_SPECULAR,
+    LIGHTPATHSELECTION_INDIRECT_SPECULAR_FIRST_BOUNCE,
+};
+
 #define SIZEOF_STD_VECTOR           24
 
 #define LIGHT_FILTER_MEMBERS                                                  \
@@ -439,11 +449,13 @@ enum BarnDoorEdge
 // mRadianceMod   Modifies light radiance
 
 #define INTENSITY_LIGHT_FILTER_MEMBERS                                        \
-    HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, Color), mRadianceMod)
+    HUD_MEMBER(HUD_NAMESPACE(scene_rdl2::math, Color), mRadianceMod);         \
+    HUD_MEMBER(int, mLightPathSelection)
 
 #define INTENSITY_LIGHT_FILTER_VALIDATION                                     \
     HUD_BEGIN_VALIDATION(IntensityLightFilter);                               \
     HUD_VALIDATE(IntensityLightFilter, mRadianceMod);                         \
+    HUD_VALIDATE(IntensityLightFilter, mLightPathSelection);                  \
     HUD_END_VALIDATION
 
 //----------------------------------------------------------------------------
