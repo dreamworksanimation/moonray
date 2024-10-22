@@ -17,4 +17,4 @@ jobs:
         with:
           pipe_config: 'pre-release'
           rez_config: 'rez-2'
-          pipe_args: 'custom_release_packages_path=${{ github.event.inputs.testmappath }}'
+          pipe_args: 'custom_release_packages_path=${{ github.event.inputs.testmappath }} release_version=niner'
