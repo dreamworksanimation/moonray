@@ -564,7 +564,14 @@ protected:
 
             // Interpolate transformation matrices if 2 were supplied
             if (numXforms == 2) {
-                p2r = scene_rdl2::math::Xform3f(scene_rdl2::math::lerp(prim2render[0], prim2render[1], t));
+                if (motionBlurParams.getSlerpXforms()) {
+                    scene_rdl2::math::XformComponent3f p2rA, p2rB;
+                    scene_rdl2::math::decompose(prim2render[0], p2rA);
+                    scene_rdl2::math::decompose(prim2render[1], p2rB);
+                    p2r = scene_rdl2::math::slerp(p2rA, p2rB, t).combined();
+                } else {
+                    p2r = scene_rdl2::math::Xform3f(scene_rdl2::math::lerp(prim2render[0], prim2render[1], t));
+                }
             }
  
             applyTransformationToSingleTimeStep(vertices, p2r, j);

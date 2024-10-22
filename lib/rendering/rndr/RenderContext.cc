@@ -3084,6 +3084,9 @@ RenderContext::getMotionBlurParams(bool bake) const
     auto sceneVarsMotionSteps =
         mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sMotionSteps);
 
+    bool slerpXforms =
+        mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sSlerpXforms);
+
     bool isMotionBlurOn = mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sEnableMotionBlur);
 
     // Get the motion steps. We need these both when motion blur is on and off
@@ -3121,7 +3124,7 @@ RenderContext::getMotionBlurParams(bool bake) const
 
     float fps = mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sFpsKey);
 
-    return geom::MotionBlurParams(motionSteps, shutterOpen, shutterClose, isMotionBlurOn, fps);
+    return geom::MotionBlurParams(motionSteps, shutterOpen, shutterClose, isMotionBlurOn, fps, slerpXforms);
 }
 
 void

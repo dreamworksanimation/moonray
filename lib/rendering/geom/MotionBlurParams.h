@@ -18,12 +18,14 @@ public:
 
     MotionBlurParams(const std::vector<float>& motionSteps,
             float shutterOpen, float shutterClose,
-            bool isMotionBlurOn, float fps):
+            bool isMotionBlurOn, float fps,
+            bool slerpXforms=false):
         mMotionSteps(motionSteps),
         mShutterOpen(shutterOpen),
         mShutterClose(shutterClose),
         mIsMotionBlurOn(isMotionBlurOn),
-        mInvFps(1.f / fps)
+        mInvFps(1.f / fps),
+        mSlerpXforms(slerpXforms)
     {
         // calculate the delta fraction of shutter open/close time in
         // motionSteps duration. For example: if first motion step is -1
@@ -48,6 +50,7 @@ public:
             // We have an animation, interpolate/extrapolate to shutter open/close
             float m0 = mMotionSteps[0];
             float m1 = mMotionSteps[1];
+
             if (!scene_rdl2::math::isEqual(m0, m1)) {
                 mShutterOpenDelta  = (mShutterOpen  - m0) / (m1 - m0);
                 mShutterCloseDelta = (mShutterClose - m0) / (m1 - m0);
@@ -87,7 +90,10 @@ public:
 
     float getInvFps() const { return mInvFps; }
 
+    bool getSlerpXforms() const { return mSlerpXforms; }
+
     bool isMotionBlurOn() const { return mIsMotionBlurOn; }
+
 
 private:
     std::vector<float> mMotionSteps;
@@ -99,6 +105,7 @@ private:
     bool  mIsMotionBlurOn;
     float mT0, mT1, mDt;
     float mInvFps;
+    bool mSlerpXforms;
 };
 
 } // namespace geom
