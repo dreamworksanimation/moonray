@@ -214,13 +214,11 @@ protected:
         MNRY_ASSERT(numRays);
 
 #ifdef __APPLE__
-        int maxThreads = 64;
+        constexpr int maxThreads = 64;
 #else
-        // This is an imperfect heuristic, but the idea is that occlusion ray
-        // processing should be no more than 25% of the total work, so thus
-        // if more than 25% of the threads are idle waiting on the GPU, then the
-        // GPU is overloaded and we shouldn't give the GPU any more work.
-        int maxThreads = std::max(mNumCPUThreads / 4, (unsigned int)1);
+        // Epirically-determined maximum number of threads that can be waiting on the GPU.
+        // Might want to make this configurable.
+        constexpr int maxThreads = 5;
 #endif
 
         if ((mNumThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {

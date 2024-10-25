@@ -270,8 +270,9 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                 rs->mRay.instID = geomID;
             }
 
+#if 0 // debugging code
             // Validate the GPU intersection results against CPU Embree
-            if (true) {
+            {
                 const rt::EmbreeAccelerator *embreeAccel = fs.mEmbreeAccel;
                 embreeAccel->intersect(rsCPU.mRay);
 
@@ -336,6 +337,7 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                     }
                 }
             }
+#endif
         }
     }
 

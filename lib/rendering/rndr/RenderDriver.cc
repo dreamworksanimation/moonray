@@ -2137,18 +2137,20 @@ RenderDriver::createXPUQueues(const rt::GPUAccelerator* gpuAccel)
 {
     unsigned numCPUThreads = mcrt_common::getNumTBBThreads();
 
-    // This queue size was determined empirically through performance testing.
-    const unsigned cpuThreadQueueSize = 65536; // number of rays
     uint32_t rayHandlerFlags = 0;
 
     mXPURayQueue = new pbr::XPURayQueue(numCPUThreads,
-                                        /* cpuThreadQueueSize, */ 1024, // 1024 for now as we're not yet using the GPU
+#ifndef __APPLE__ // Doesn't support regular rays yet
+                                        16384, // Empirically determined
+#else
+                                        1024,
+#endif
                                         pbr::rayBundleHandler,
                                         pbr::xpuRayBundleHandler,
                                         (void *)((uint64_t)rayHandlerFlags));
 
     mXPUOcclusionRayQueue = new pbr::XPUOcclusionRayQueue(numCPUThreads,
-                                                          cpuThreadQueueSize,
+                                                          32768, // Empirically determined
                                                           gpuAccel,
                                                           pbr::occlusionQueryBundleHandler,
                                                           pbr::xpuOcclusionQueryBundleHandler,

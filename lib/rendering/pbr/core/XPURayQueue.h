@@ -178,14 +178,13 @@ protected:
         // Call handler. The entries are only valid for the duration of this call.
         // Other threads may also call this handler simultaneously with different entries.
 
-        // This is an imperfect heuristic, but the idea is that ray
-        // processing should be no more than 25% of the total work, so thus
-        // if more than 25% of the threads are idle waiting on the GPU, then the
-        // GPU is overloaded and we shouldn't give the GPU any more work.
-        //int maxThreads = std::max(mNumCPUThreads / 4, (unsigned int)1);
+#ifndef __APPLE__ // Doesn't support regular rays yet
 
-        //if ((mNumThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
-        if (false) { // temp disable while this is still in development
+        // Epirically-determined maximum number of threads that can be waiting on the GPU.
+        // Might want to make this configurable.
+        constexpr int maxThreads = 5;
+
+        if ((mNumThreadsUsingGPU.load() < maxThreads) && numRays > 1024) {
             // There are an acceptable number of threads using the GPU, so we
             // can go ahead.
 
@@ -201,7 +200,7 @@ protected:
                 RayState* rs = entries[i];
                 // Optix doesn't access these values from the cpu ray directly, so we copy the
                 // values here into a GPU-accessible buffer
-#ifndef __APPLE__
+//#ifndef __APPLE__
                 gpuRays[i].mOriginX = rs->mRay.org.x;
                 gpuRays[i].mOriginY = rs->mRay.org.y;
                 gpuRays[i].mOriginZ = rs->mRay.org.z;
@@ -211,7 +210,7 @@ protected:
                 gpuRays[i].mMinT = rs->mRay.tnear;
                 gpuRays[i].mMaxT = rs->mRay.tfar;
                 gpuRays[i].mTime = rs->mRay.time;
-#endif
+//#endif
                 gpuRays[i].mMask = rs->mRay.mask;
                 gpuRays[i].mShadowReceiverId = 0; // unused for regular rays
                 gpuRays[i].mLightId = 0; // unused for regular rays
@@ -226,7 +225,9 @@ protected:
             MNRY_ASSERT(tls->mHandlerStackDepth > 0);
             --tls->mHandlerStackDepth;
 
-        } else {
+        } else
+#endif // __APPLE__
+        {
             // There's too many threads using the GPU, and we would need to wait
             // too long.  Process these rays on the CPU instead.
             ++tls->mHandlerStackDepth;
