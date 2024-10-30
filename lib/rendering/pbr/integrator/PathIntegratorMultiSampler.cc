@@ -425,7 +425,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
 
         // hair lobe type is a special case that often requires more bounces.
         const bool hairLobe = lobe->getIsHair();
-        const bool doIndirect = lobe->matchesFlags(indirectFlags)
+              bool doIndirect = lobe->matchesFlags(indirectFlags)
                                 || (hairLobe && (parentPv.hairDepth < mMaxHairDepth));
         const bool diffuseLobe = lobe->matchesFlags(shading::BsdfLobe::ALL_DIFFUSE);
         const bool glossyLobe = lobe->matchesFlags(shading::BsdfLobe::ALL_GLOSSY);
@@ -441,7 +441,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 continue;
             }
 
-            // If this sample hit a light, compute direct lighting contribution only
+            // If this sample hit a light, compute direct lighting contribution
             if (bsmp[s].didHitLight()) {
                 addDirectVisibleBsdfLobeSampleContribution(pbrTls, sp, parentPv, bSampler,
                     lobeIndex, doIndirect, bsmp[s], parentRay, rayEpsilon, shadowRayEpsilon,
@@ -535,7 +535,7 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
             // the volume attenuation along this ray to the first hit (or infinity)
             VolumeTransmittance vtIndirect;
             ++sequenceID;
-            bool hitVolume;
+            bool hitVolume = false;
 
             // refractive cryptomatte PART B
 

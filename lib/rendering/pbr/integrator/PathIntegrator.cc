@@ -158,7 +158,8 @@ PathIntegrator::PathIntegrator() :
     mVolumePhaseAttenuationFactor(1.0f),
     mVolumeOverlapMode(VolumeOverlapMode::SUM),
     mEnableSSS(true),
-    mEnableShadowing(true)
+    mEnableShadowing(true),
+    mVolumeIndirectSamples(0)
 {
 }
 
@@ -208,9 +209,10 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
     const scene_rdl2::rdl2::SceneContext *sc = scene->getRdlSceneContext();
     const scene_rdl2::rdl2::SceneVariables &vars = sc->getSceneVariables();
 
-    mResolution           = vars.get(scene_rdl2::rdl2::SceneVariables::sResKey);
-    mEnableSSS            = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableSSS);
-    mEnableShadowing      = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableShadowing);
+    mResolution            = vars.get(scene_rdl2::rdl2::SceneVariables::sResKey);
+    mEnableSSS             = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableSSS);
+    mEnableShadowing       = vars.get(scene_rdl2::rdl2::SceneVariables::sEnableShadowing);
+    mVolumeIndirectSamples = vars.get(scene_rdl2::rdl2::SceneVariables::sVolumeIndirectSamples);
 
     // Create attr keys for the deep IDs so we can retrieve the IDs from the
     //  primitive attributes during integration.
@@ -362,6 +364,12 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         bool ignoreVolumes, bool &hitVolume) const
 {
     CHECK_CANCELLATION(pbrTls, return NONE);
+
+    // TODO: proper depth control when recursing here from computeRadianceVolume().
+    // Here we use a temporary mechanism for limiting it to a single level of recursion,
+    // i.e. we pass in 'true' to hitVolume (which previously wasn't used to pass
+    // anything in - only out).
+    bool wasFromAVolume = hitVolume;
 
     // Turn off profiling integrator profiling for the first part of this
     // function. It's turned back on later.
@@ -706,7 +714,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         // Fire continued ray and add in its radiance
         VolumeTransmittance vtPresence;
         unsigned presenceSequenceID = sequenceID;
-        bool presenceHitVolume;
+        bool presenceHitVolume = false;
         computeRadianceRecurse(pbrTls, presenceRay, sp, newPv, lobe,
             presenceRadiance, presenceTransparency, vtPresence,
             presenceSequenceID, aovs, nullptr, nullptr, newCryptomatteParamsPtr, nullptr, 
@@ -888,7 +896,9 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Note: hair lobes are also glossy lobes. So the max depth for hair lobes
     // would be max(mMaxGlossyDepth, mMaxHairDepth)
     shading::BsdfLobe::Type indirectFlags = shading::BsdfLobe::NONE;
-    bool doIndirect = (mBsdfSamples > 0 && ray.getDepth() < mMaxDepth);
+    bool doIndirect = mBsdfSamples > 0            &&
+                      ray.getDepth() < mMaxDepth  &&
+                      !wasFromAVolume;
     if (doIndirect) {
         setFlag(indirectFlags, (pv.diffuseDepth < mMaxDiffuseDepth  ?
                 shading::BsdfLobe::DIFFUSE  :  shading::BsdfLobe::NONE));
@@ -991,25 +1001,22 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         unsigned px, py;
         uint32ToPixelLocation(sp.mPixel, &px, &py);
 
-    if (pv.pathPixelWeight > 0.01f) {
-        // We divide by pathPixelWeight to compute Cryptomatte beauty.  This can cause fireflies if
-        // the value is small, so we clamp at 0.01.
-
-        float presenceInv = pv.pathPixelWeight == 0.f ? 0.f : (1.f / pv.pathPixelWeight);
-        scene_rdl2::math::Color cryptoBeauty = radiance - presenceRadiance;
-        cryptoBeauty *= presenceInv;
-
-        cryptomatteParamsPtr->mCryptomatteBuffer->addSampleScalar(px, py, cryptomatteParamsPtr->mId,
-                                                                          pv.pathPixelWeight,
-                                                                          cryptomatteParamsPtr->mPosition,
-                                                                          cryptomatteParamsPtr->mP0,
-                                                                          cryptomatteParamsPtr->mNormal,
-                                                                          scene_rdl2::math::Color4(cryptoBeauty),
-                                                                          cryptomatteParamsPtr->mRefP,
-                                                                          cryptomatteParamsPtr->mRefN,
-                                                                          cryptomatteParamsPtr->mUV,
-                                                                          pv.presenceDepth,
-                                                                          moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
+        if (pv.pathPixelWeight > 0.01f) {
+            // We divide by pathPixelWeight to compute Cryptomatte beauty.  This can cause fireflies if
+            // the value is small, so we clamp at 0.01.
+            scene_rdl2::math::Color cryptoBeauty = (radiance - presenceRadiance) * (1.f / pv.pathPixelWeight);
+        
+            cryptomatteParamsPtr->mCryptomatteBuffer->addSampleScalar(px, py, cryptomatteParamsPtr->mId,
+                                                                              pv.pathPixelWeight,
+                                                                              cryptomatteParamsPtr->mPosition,
+                                                                              cryptomatteParamsPtr->mP0,
+                                                                              cryptomatteParamsPtr->mNormal,
+                                                                              scene_rdl2::math::Color4(cryptoBeauty),
+                                                                              cryptomatteParamsPtr->mRefP,
+                                                                              cryptomatteParamsPtr->mRefN,
+                                                                              cryptomatteParamsPtr->mUV,
+                                                                              pv.presenceDepth,
+                                                                              moonray::pbr::CRYPTOMATTE_TYPE_REGULAR);
         }
     } else if (cryptomatteParamsPtr) {
         // if non-presence path, we still need to record radiance
@@ -1301,6 +1308,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
             scene_rdl2::math::Color hsRadiance;
             float hsTransparency;
             float *hsAovs = aovParams.mDeepAovs;
+            hitVolume = false;
             computeRadianceRecurse(pbrTls, hsRay, hsSp, hsPv, nullptr, hsRadiance,
                                    hsTransparency, vt, hsSequenceID, hsAovs, depth,
                                    &deepParams, cryptomatteParamsPtr, refractCryptomatteParamsPtr, 
@@ -1340,7 +1348,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
 
         // not deep render
         float transparency;
-        bool hitVolume;
+        bool hitVolume = false;
         computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, radiance,
             transparency, vt, sequenceID, aovs, depth, nullptr, cryptomatteParamsPtr,
             refractCryptomatteParamsPtr, false, hitVolume);

@@ -38,7 +38,7 @@
     HUD_MEMBER(float, mResolution);                        \
     HUD_MEMBER(bool, mEnableSSS);                          \
     HUD_MEMBER(bool, mEnableShadowing);                    \
-    HUD_MEMBER(int, mPad0);                                \
+    HUD_MEMBER(int, mVolumeIndirectSamples);               \
     HUD_CPP_MEMBER(std::vector<int>, mDeepIDAttrIdxs, 24); \
     HUD_MEMBER(int, mCryptoUVAttrIdx);                     \
     HUD_MEMBER(int, mPad1);                                \
@@ -77,7 +77,7 @@
     HUD_VALIDATE(PathIntegrator, mResolution);                     \
     HUD_VALIDATE(PathIntegrator, mEnableSSS);                      \
     HUD_VALIDATE(PathIntegrator, mEnableShadowing);                \
-    HUD_VALIDATE(PathIntegrator, mPad0);                           \
+    HUD_VALIDATE(PathIntegrator, mVolumeIndirectSamples);          \
     HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
     HUD_VALIDATE(PathIntegrator, mCryptoUVAttrIdx);                \
     HUD_VALIDATE(PathIntegrator, mPad1);                           \

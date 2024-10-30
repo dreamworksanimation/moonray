@@ -461,7 +461,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             scene_rdl2::math::Color contribution;
             float transparency;
             ++sequenceID;
-            bool hitVolume;
+            bool hitVolume = false;
 
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
                     pbrTls, ray, sp, nextPv, &lobe,

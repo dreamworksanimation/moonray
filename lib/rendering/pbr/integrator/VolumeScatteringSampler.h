@@ -150,6 +150,12 @@ public:
         mDistanceLightFilterSamples3D.getSample(&ulFilter.r3[0], mNonMirrorDepth);
     }
 
+    void getDistanceSample(float& ut, scene_rdl2::math::Vec3f& ul) const
+    {
+        ut = mDistanceSamples.getSample(mNonMirrorDepth);
+        mDistanceLightSamples.getSample(&ul[0], mNonMirrorDepth);
+    }
+
     bool hasEquiAngularSamples() const
     {
         return mDoEquiAngular;
