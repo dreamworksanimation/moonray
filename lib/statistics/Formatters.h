@@ -410,9 +410,22 @@ public:
 
     const char* getAutoUnit() const
     {
-        std::string s(mBytesPerSec.getAutoUnit());
-        s += "/s";
-        return s.c_str();
+        std::string bytesPerSecUnit(mBytesPerSec.getAutoUnit());
+        if (bytesPerSecUnit.compare("EB") == 0) {
+            return "EB/s";
+        } else if (bytesPerSecUnit.compare("PB") == 0) {
+            return "PB/s";
+        } else if (bytesPerSecUnit.compare("TB") == 0) {
+            return "TB/s";
+        } else if (bytesPerSecUnit.compare("GB") == 0) {
+            return "GB/s";
+        } else if (bytesPerSecUnit.compare("MB") == 0) {
+            return "MB/s";
+        } else if (bytesPerSecUnit.compare("KB") == 0) {
+            return "KB/s";
+        } else {
+            return "B/s";
+        }
     }
 
     double autoConvert() const
