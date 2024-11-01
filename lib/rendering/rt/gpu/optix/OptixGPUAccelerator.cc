@@ -531,12 +531,6 @@ OptixGPUBVHBuilder::createPolyMesh(const geom::internal::Mesh& geomMesh)
         }
     }
 
-    bool hasVolumeAssignment = geomMesh.hasVolumeAssignment(mLayer);
-    if (hasVolumeAssignment) {
-        // ignore volume bounding geometry
-        return;
-    }
-
     OptixGPUTriMesh* gpuMesh = new OptixGPUTriMesh();
     gpuMesh->mName = geomMesh.getName();
     gpuMesh->mInputFlags = 0;
