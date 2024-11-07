@@ -9,12 +9,9 @@ on:
         type: string
 
 jobs:
-  create_testmap:
-    runs-on: [self-hosted, rez]
-    steps:
-      - name: Launch Action
-        uses: CM/cm-actions/pipeline_trigger@main
-        with:
-          pipe_config: 'pre-release'
-          rez_config: 'rez-2'
-          pipe_args: 'custom_release_packages_path=${{ github.event.inputs.testmappath }} release_version=niner'
+ call_workflow:
+    uses: dwanim/.github/.github/workflows/Harmony_CICD.yml@master
+    with:
+      pipe_config: 'pre-release'
+      rez_config: 'rez-2'
+      pipe_args: 'custom_release_packages_path=${{ github.event.inputs.testmappath }} release_version=niner'

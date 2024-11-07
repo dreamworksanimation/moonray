@@ -24,10 +24,10 @@ jobs:
           echo "FILENAME=LastTrigger_$(basename ${{ github.repository }})" >> ${GITHUB_ENV}
           echo "MESSAGE=A push to the main branch of the $(basename ${{ github.repository }}) repo.  A RaTS test run should start in the next 5 minutes." >> ${GITHUB_ENV}
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          repository: arras/RaTSTrigger  
-          token: ${{ secrets.BART_GA_PAT }}
+          repository: dwanim/RaTSTrigger
+          token: ${{ secrets.BART_TOKEN }}
       - name: Update File
         run: echo $(date) > ${FILENAME}
       - name: Commit and Push         

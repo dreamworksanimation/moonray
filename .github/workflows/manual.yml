@@ -4,11 +4,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  manual_package_release:
-    runs-on: [self-hosted, rez]
-    steps:
-      - name: Launch Action
-        uses: CM/cm-actions/pipeline_trigger@main
-        with:
-          pipe_config: 'release'
-          rez_config: 'rez-2'
+  call_workflow:
+    uses: dwanim/.github/.github/workflows/Harmony_CICD.yml@master
+    with:
+      pipe_config: 'release'
+      rez_config: 'rez-2'
