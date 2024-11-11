@@ -618,9 +618,14 @@ inline uniform float MeshLight_getThetaE(const uniform Light * uniform li) { ret
 export void
 MeshLight_init(uniform MeshLight * uniform light, uniform bool uniformSampling)
 {
-    Light_init((uniform Light * uniform)light, MeshLight_canIlluminate,
-        MeshLight_intersect, MeshLight_sample, MeshLight_eval,
-        MeshLight_getThetaO, MeshLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_MESH,
+               MeshLight_canIlluminate,
+               MeshLight_intersect,
+               MeshLight_sample,
+               MeshLight_eval,
+               MeshLight_getThetaO,
+               MeshLight_getThetaE);
 }
 
 

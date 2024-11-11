@@ -39,6 +39,7 @@ class PathVertex;
 class RectLight : public LocalParamLight
 {
     friend class RectLightTester;
+    friend class PortalLight;
 
 public:
     /// Constructor / Destructor
@@ -55,6 +56,8 @@ public:
     virtual bool update(const scene_rdl2::math::Mat4d& world2render) override;
 
     /// Intersection and sampling API
+    bool canIlluminateHelper(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time, float radius,
+            const LightFilterList* lightFilterList, const PathVertex* pv) const;
     virtual bool canIlluminate(const scene_rdl2::math::Vec3f p, const scene_rdl2::math::Vec3f *n, float time, float radius,
             const LightFilterList* lightFilterList, const PathVertex* pv) const override;
     virtual bool isBounded() const override;

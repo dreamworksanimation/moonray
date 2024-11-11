@@ -667,10 +667,8 @@ void Scene::populateLightList(size_t lightCount, size_t lightSetCount, std::set<
 
     // Find portal light(s) and add pointer to their associated pbr light
     for (Light* pbrLight : mLightList) {
-        if (pbrLight->getRdlLight()->getSceneClass().getName() == "PortalLight") {
-            PortalLight* portalLight = dynamic_cast<PortalLight*>(pbrLight);
-            MNRY_ASSERT(portalLight);
-            
+        PortalLight* portalLight = dynamic_cast<PortalLight*>(pbrLight);
+        if (portalLight != nullptr) {
             for (Light* potentialRefLight : mLightList) {
                 // Find if the rdlLight we linked to the portal light is the same as the 
                 // potentialRefLight's rdlLight. If so, we've found the 

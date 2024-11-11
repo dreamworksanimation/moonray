@@ -153,6 +153,7 @@ typedef uniform float (* uniform LightGetThetaEFn)(const uniform Light * uniform
 
 inline void
 Light_init(uniform Light * uniform light,
+        uniform LightType type,
         LightCanIlluminateFn canIlluminateFn,
         LightIntersectFn intersectFn,
         LightSampleFn sampleFn,
@@ -160,6 +161,7 @@ Light_init(uniform Light * uniform light,
         LightGetThetaOFn getThetaOFn,
         LightGetThetaEFn getThetaEFn)
 {
+    light->mType = (uniform int8_t)type;
     light->mCanIlluminateFn = (intptr_t)canIlluminateFn;
     light->mIntersectFn = (intptr_t)intersectFn;
     light->mSampleFn = (intptr_t)sampleFn;
@@ -198,6 +200,12 @@ inline varying bool
 Light_getIsRayTerminator(const uniform Light * varying light)
 {
     return light->mIsRayTerminator;
+}
+
+inline uniform bool
+Light_hasPortal(const uniform Light * uniform light)
+{
+    return light->mHasPortal;
 }
 
 /// See Light.hh for details

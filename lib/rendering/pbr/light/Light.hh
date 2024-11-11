@@ -6,6 +6,21 @@
 
 #include <scene_rdl2/common/platform/HybridUniformData.hh>
 
+
+enum LightType
+{
+    LIGHT_TYPE_CYLINDER = 0,
+    LIGHT_TYPE_DISK,
+    LIGHT_TYPE_DISTANT,
+    LIGHT_TYPE_ENV,
+    LIGHT_TYPE_MESH,
+    LIGHT_TYPE_PORTAL,
+    LIGHT_TYPE_RECT,
+    LIGHT_TYPE_SPHERE,
+    LIGHT_TYPE_SPOT,
+};
+
+
 // values for Light::mMb
 #define LIGHT_MB_NONE        (0)      // light has no blurred motion
 #define LIGHT_MB_TRANSLATION (1 << 0) // light has blurred translational change
@@ -47,6 +62,8 @@ enum LightSidednessType
                                                                             \
     /* Backpointer to the rdl2 light */                                     \
     HUD_CPP_PTR(const scene_rdl2::rdl2::Light *, mRdlLight);                \
+                                                                            \
+    HUD_MEMBER(int8_t, mType);                                              \
                                                                             \
     /* Set to false if the "on" attribute was set to false or there was */  \
     /* a problem updating the light. */                                     \
@@ -123,6 +140,7 @@ enum LightSidednessType
     HUD_VALIDATE(Light, mEvalFn);                       \
     HUD_VALIDATE(Light, mRdlLight);                     \
     HUD_VALIDATE(Light, mOn);                           \
+    HUD_VALIDATE(Light, mType);                         \
     HUD_VALIDATE(Light, mIsVisibleInCamera);            \
     HUD_VALIDATE(Light, mIsOpaqueInAlpha);              \
     HUD_VALIDATE(Light, mMb);                           \

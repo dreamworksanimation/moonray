@@ -217,19 +217,13 @@ RectLight::update(const Mat4d& world2render)
 
 //----------------------------------------------------------------------------
 
+// Helper function called by both RectLight and PortalLight.
+// TODO: rewrite this; it isn't great. We don't need to compute 4 separate distances.
 bool
-RectLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radius,
+RectLight::canIlluminateHelper(const Vec3f p, const Vec3f *n, float time, float radius,
     const LightFilterList* lightFilterList, const PathVertex* pv) const
 {
-    MNRY_ASSERT(mOn);
-
-    // Cull points which are completely on the backside of the light, taking sidedness into account
-    const float threshold = sEpsilon - radius;
-    if ((mSidedness != LightSidednessType::LIGHT_SIDEDNESS_2_SIDED) && (planeDistance(p, time) < threshold)) {
-        return false;
-    }
-
-    // Cull lights which are completely on the backside of the point.
+    // Cull the light if it's completely on the backside of the point.
     if (n) {
         Plane pl(p, *n);
         float d0, d1, d2, d3;
@@ -246,6 +240,7 @@ RectLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radius
             d2 = pl.getDistance(corners[2]);
             d3 = pl.getDistance(corners[3]);
         }
+        const float threshold = sEpsilon - radius;
         bool canIllum = d0 > threshold || d1 > threshold ||
                         d2 > threshold || d3 > threshold;
         if (!canIllum) return false;
@@ -261,6 +256,21 @@ RectLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radius
     }
 
     return true;
+}
+
+bool
+RectLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float radius,
+    const LightFilterList* lightFilterList, const PathVertex* pv) const
+{
+    MNRY_ASSERT(mOn);
+
+    // Cull points which are completely on the backside of the light, taking sidedness into account
+    const float threshold = sEpsilon - radius;
+    if ((mSidedness != LightSidednessType::LIGHT_SIDEDNESS_2_SIDED) && (planeDistance(p, time) < threshold)) {
+        return false;
+    }
+
+    return canIlluminateHelper(p, n, time, radius, lightFilterList, pv);
 }
 
 bool

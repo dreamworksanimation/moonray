@@ -85,8 +85,10 @@ RectLight_getOverlapBounds(const uniform RectLight * uniform light, const varyin
     return true;
 }
 
+// Helper function called by both RectLight and PortalLight.
+// TODO: rewrite this; it isn't great. We don't need to compute 4 separate distances.
 varying bool
-RectLight_canIlluminate(const uniform Light * uniform li,
+RectLight_canIlluminateHelper(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
         varying float radius, const uniform LightFilterList * uniform lightFilterList,
         const varying PathVertex * uniform pv)
@@ -94,15 +96,7 @@ RectLight_canIlluminate(const uniform Light * uniform li,
     const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
 
-    MNRY_ASSERT(li->mOn);
-
-    // Cull points which are completely on the backside of the light, taking sidedness into account
-    const float threshold = sEpsilon - radius;
-    if ((light->mSidedness != LIGHT_SIDEDNESS_2_SIDED) && (planeDistance(light, p, time) < threshold)) {
-        return false;
-    }
-
-    // Cull lights which are completely on the backside of the point.
+    // Cull the light if it's completely on the backside of the point.
     if (isValidCullingNormal(cullingNormal)) {
         Plane pl;
         Plane_init(&pl, p, cullingNormal);
@@ -120,6 +114,7 @@ RectLight_canIlluminate(const uniform Light * uniform li,
             d2 = Plane_getDistance(&pl, corners[2]);
             d3 = Plane_getDistance(&pl, corners[3]);
         }
+        const float threshold = sEpsilon - radius;
         bool canIllum = d0 > threshold || d1 > threshold ||
                         d2 > threshold || d3 > threshold;
         if (!canIllum) return false;
@@ -140,6 +135,25 @@ RectLight_canIlluminate(const uniform Light * uniform li,
     }
 
     return true;
+}
+
+varying bool
+RectLight_canIlluminate(const uniform Light * uniform li,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        varying float radius, const uniform LightFilterList * uniform lightFilterList,
+        const varying PathVertex * uniform pv)
+{
+    const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
+
+    MNRY_ASSERT(li->mOn);
+
+    // Cull points which are completely on the backside of the light, taking sidedness into account
+    const float threshold = sEpsilon - radius;
+    if ((light->mSidedness != LIGHT_SIDEDNESS_2_SIDED) && (planeDistance(light, p, time) < threshold)) {
+        return false;
+    }
+
+    return RectLight_canIlluminateHelper(li, p, cullingNormal, time, radius, lightFilterList, pv);
 }
 
 varying bool
@@ -379,9 +393,14 @@ uniform float RectLight_getThetaE(const uniform Light * uniform li) { return sPi
 export void
 RectLight_init(uniform RectLight * uniform light, uniform bool uniformSampling)
 {
-    Light_init((uniform Light * uniform)light, RectLight_canIlluminate,
-                RectLight_intersect, RectLight_sample, RectLight_eval,
-                RectLight_getThetaO, RectLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_RECT,
+               RectLight_canIlluminate,
+               RectLight_intersect,
+               RectLight_sample,
+               RectLight_eval,
+               RectLight_getThetaO,
+               RectLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

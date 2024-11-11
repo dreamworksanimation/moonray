@@ -57,6 +57,11 @@ LightSet_intersect(uniform PbrTLState * uniform pbrTls, const uniform LightSet *
             continue;
         }
 
+        if (Light_hasPortal(light)) {
+            // skip light if it has a portal assigned
+            continue;
+        }
+
         if (Light_intersect(light, P, cullingNormal, wi, time, maxDistance, currentIsect)) {
             numHits++;
 

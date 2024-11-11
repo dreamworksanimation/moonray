@@ -266,6 +266,8 @@ public:
 
     virtual void turnOnPortal() { mHasPortal = true; }
 
+    bool hasPortal() const { return mHasPortal; }
+
 protected:
 
     /// Derived classes should call this method in their update() function.

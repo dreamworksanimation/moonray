@@ -214,6 +214,9 @@ DistantLight::canIlluminate(const Vec3f p, const Vec3f *n, float time, float rad
 {
     MNRY_ASSERT(mOn);
 
+    // Don't illuminate as a regular light if referenced by a portal
+    if (mHasPortal) return false;
+
     if (n && dot(-(*n), getDirection(time)) < mCullThreshold) {
         return false;
     }

@@ -250,9 +250,14 @@ inline uniform float CylinderLight_getThetaE(const uniform Light * uniform li) {
 export void
 CylinderLight_init(uniform CylinderLight * uniform light)
 {
-    Light_init((uniform Light * uniform)light, CylinderLight_canIlluminate,
-            CylinderLight_intersect, CylinderLight_sample, CylinderLight_eval,
-            CylinderLight_getThetaO, CylinderLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_CYLINDER,
+               CylinderLight_canIlluminate,
+               CylinderLight_intersect,
+               CylinderLight_sample,
+               CylinderLight_eval,
+               CylinderLight_getThetaO,
+               CylinderLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

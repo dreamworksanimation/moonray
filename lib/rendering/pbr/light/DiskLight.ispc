@@ -453,9 +453,14 @@ inline uniform float DiskLight_getThetaE(const uniform Light * uniform li) { ret
 export void
 DiskLight_init(uniform DiskLight * uniform light)
 {
-    Light_init((uniform Light * uniform)light, DiskLight_canIlluminate,
-                DiskLight_intersect, DiskLight_sample, DiskLight_eval,
-                DiskLight_getThetaO, DiskLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_DISK,
+               DiskLight_canIlluminate,
+               DiskLight_intersect,
+               DiskLight_sample,
+               DiskLight_eval,
+               DiskLight_getThetaO,
+               DiskLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

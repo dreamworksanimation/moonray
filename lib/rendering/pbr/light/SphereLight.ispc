@@ -394,9 +394,14 @@ inline uniform float SphereLight_getThetaE(const uniform Light * uniform li) { r
 export void
 SphereLight_init(uniform SphereLight * uniform light, uniform bool uniformSampling)
 {
-    Light_init((uniform Light * uniform)light, SphereLight_canIlluminate,
-                SphereLight_intersect, SphereLight_sample, SphereLight_eval,
-                SphereLight_getThetaO, SphereLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_SPHERE,
+               SphereLight_canIlluminate,
+               SphereLight_intersect,
+               SphereLight_sample,
+               SphereLight_eval,
+               SphereLight_getThetaO,
+               SphereLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

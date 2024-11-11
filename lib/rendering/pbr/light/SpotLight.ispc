@@ -383,9 +383,14 @@ inline uniform float SpotLight_getThetaE(const uniform Light * uniform li) {
 export void
 SpotLight_init(uniform SpotLight * uniform light)
 {
-    Light_init((uniform Light * uniform)light, SpotLight_canIlluminate,
-                SpotLight_intersect, SpotLight_sample_uniform, SpotLight_eval_uniform,
-                SpotLight_getThetaO, SpotLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_SPOT,
+               SpotLight_canIlluminate,
+               SpotLight_intersect,
+               SpotLight_sample_uniform,
+               SpotLight_eval_uniform,
+               SpotLight_getThetaO,
+               SpotLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

@@ -268,9 +268,14 @@ inline uniform float EnvLight_getThetaE(const uniform Light * uniform li) { retu
 export void
 EnvLight_init(uniform EnvLight * uniform light)
 {
-    Light_init((uniform Light * uniform)light, EnvLight_canIlluminate,
-                EnvLight_intersect, EnvLight_sample, EnvLight_eval,
-                EnvLight_getThetaO, EnvLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_ENV,
+               EnvLight_canIlluminate,
+               EnvLight_intersect,
+               EnvLight_sample,
+               EnvLight_eval,
+               EnvLight_getThetaO,
+               EnvLight_getThetaE);
 }
 
 //----------------------------------------------------------------------------

@@ -22,6 +22,12 @@ RectLight_getOverlapBounds(const uniform RectLight * uniform light, const varyin
         varying float localLength, varying Vec2f& center, varying float& width, varying float& height);
 
 varying bool
+RectLight_canIlluminateHelper(const uniform Light * uniform li,
+        const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
+        varying float radius, const uniform LightFilterList * uniform lightFilterList,
+        const varying PathVertex * uniform pv);
+
+varying bool
 RectLight_canIlluminate(const uniform Light * uniform li,
         const varying Vec3f &p, const varying Vec3f &cullingNormal, varying float time,
         varying float radius, const uniform LightFilterList * uniform lightFilterList,

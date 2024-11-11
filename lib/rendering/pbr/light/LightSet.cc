@@ -54,6 +54,11 @@ LightSet::intersect(const Vec3f &P, const Vec3f *N, const Vec3f &wi, float time,
             continue;
         }
 
+        if (light->hasPortal()) {
+            // skip light if it has a portal assigned
+            continue;
+        }
+
         if (light->intersect(P, N, wi, time, maxDistance, currentIsect)) {
             numHits++;
             if (chooseThisLight(samples, depth, numHits)) {

@@ -67,6 +67,9 @@ DistantLight_canIlluminate(const uniform Light * uniform li,
 
     MNRY_ASSERT(li->mOn);
 
+    // Don't illuminate as a regular light if referenced by a portal
+    if (li->mHasPortal) return false;
+
     if (isValidCullingNormal(cullingNormal) && dot(neg(cullingNormal), Light_getDirection(li, time)) < light->mCullThreshold) {
         return false;
     }
@@ -183,9 +186,14 @@ DistantLight_init(uniform DistantLight * uniform light, uniform bool uniformSamp
 {
     MNRY_ASSERT(!uniformSampling);
 
-    Light_init((uniform Light * uniform)light, DistantLight_canIlluminate,
-            DistantLight_intersect, DistantLight_sample, DistantLight_eval,
-            DistantLight_getThetaO, DistantLight_getThetaE);
+    Light_init((uniform Light * uniform)light,
+               LIGHT_TYPE_DISTANT,
+               DistantLight_canIlluminate,
+               DistantLight_intersect,
+               DistantLight_sample,
+               DistantLight_eval,
+               DistantLight_getThetaO,
+               DistantLight_getThetaE);
 }
 
 
