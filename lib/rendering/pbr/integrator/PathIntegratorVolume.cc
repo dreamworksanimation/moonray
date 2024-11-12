@@ -150,7 +150,10 @@ PathIntegrator::estimateInScatteringSourceTermDirect(pbr::TLState *pbrTls, const
                 ray.getTime(), ray.getDepth() + 1);
             float presence = 0.0f;
             if (!isRayOccluded(pbrTls, light, shadowRay,
-                sHitEpsilonStart, 0.f /* shadow ray epsilon */, presence, assignmentId, true)) {
+                               sHitEpsilonStart, 0.f /* shadow ray epsilon */,
+                               sp, sequenceID,
+                               scene_rdl2::math::Color(1.f, 1.f, 1.f), // path throughput
+                               presence, assignmentId, true /* isVolume */)) {
                 // shadowRay can be modified in occlusion query
                 mcrt_common::Ray trRay(scatterPoint, lWi, 0,
                     sHitEpsilonEnd * lIsect.distance,

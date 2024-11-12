@@ -875,6 +875,7 @@ RenderStats::logSceneVariables(const scene_rdl2::rdl2::SceneVariables &vars, std
     ssTable.emplace_back("Max volume depth", vars.get(scene_rdl2::rdl2::SceneVariables::sMaxVolumeDepth));
     ssTable.emplace_back("Max presence depth", vars.get(scene_rdl2::rdl2::SceneVariables::sMaxPresenceDepth));
     ssTable.emplace_back("Presence threshold", vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceThreshold));
+    ssTable.emplace_back("Presence quality", saturate(vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceQuality)));
     ssTable.emplace_back("Transparency threshold", vars.get(scene_rdl2::rdl2::SceneVariables::sTransparencyThreshold));
     ssTable.emplace_back("Max subsurface per path", vars.get(scene_rdl2::rdl2::SceneVariables::sMaxSubsurfacePerPath));
     ssTable.emplace_back("Russian roulette threshold", vars.get(scene_rdl2::rdl2::SceneVariables::sRussianRouletteThreshold));

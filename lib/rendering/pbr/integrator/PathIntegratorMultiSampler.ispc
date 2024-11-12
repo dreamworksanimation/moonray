@@ -113,6 +113,7 @@ prepareOcclusionTestRays(
               varying BundledOcclRay *  uniform dstPresenceShadowRays,
               uniform uint32_t *        uniform dstPresenceShadowsRayIndices,
               uniform uint32_t &                numPresenceShadowsRays,
+        const varying float                     presenceQuality,
               varying OcclTestType &            occlTestType,
               const varying Intersection &      isect)
 {
@@ -157,11 +158,15 @@ prepareOcclusionTestRays(
 
     int32_t assignmentId = isect.mLayerAssignmentId;
 
+    // pass in light for shadow linking purpose
+    b->mLight = light;
     if (light->mPresenceShadows) {
         // These members are for presence shadows
         b->mRayEpsilon = rayEpsilon;
-        // pass in light for shadow linking purpose
-        b->mLight = light;
+        // Check PathVertex.pathThroughput to decide if stochastic presence can be used
+        if (luminance(rayState.mPathVertex.pathThroughput) < (1.0f - presenceQuality)) {
+            b->mFlags |= STOCHASTIC_PRESENCE;
+        }
         numPresenceShadowsRays += fillOcclRay(pbrTls,
             dstPresenceShadowRays,
             &dstPresenceShadowsRayIndices[numPresenceShadowsRays],
@@ -170,8 +175,6 @@ prepareOcclusionTestRays(
             rayEpsilon, maxT,
             tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId);
     } else {
-        // pass in light for shadow linking purpose
-        b->mLight = light;
         numOcclRays += fillOcclRay(pbrTls,
             dstOcclRays,
             &dstOcclRayIndices[numOcclRays],
@@ -259,7 +262,7 @@ addDirectVisibleBsdfLobeSampleContributionBundled( const uniform PathIntegrator 
         rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->tDirect, currSamp->distance, bundledOcclRayData,
         srcOcclRayIndices, dstOcclRays, dstOcclRayIndices, numOcclRays,
         presenceShadowsRays, dstPresenceShadowsRayIndices,
-        numPresenceShadowsRays, occlTestType, isect);
+        numPresenceShadowsRays, this->mPresenceQuality, occlTestType, isect);
 }
 
 
@@ -318,6 +321,7 @@ void addDirectVisibleLightSampleContributionsBundled(       uniform PbrTLState *
                                                             varying BundledOcclRay * uniform presenceShadowsRays,
                                                             uniform uint32_t *       uniform dstPresenceShadowsRayIndices,
                                                             uniform uint32_t &               numPresenceShadowsRays,
+                                                      const varying float                    presenceQuality,
                                                       const varying Intersection &           isect,
                                                       const uniform Light *          uniform light,
                                                             uniform int &                    lightSamplesSoFar)
@@ -406,7 +410,7 @@ void addDirectVisibleLightSampleContributionsBundled(       uniform PbrTLState *
                 &dstOcclRays[lightSamplesSoFar], dstOcclRayIndices,
                 numOcclRays,
                 &presenceShadowsRays[lightSamplesSoFar], dstPresenceShadowsRayIndices,
-                numPresenceShadowsRays, occlTestType, isect);
+                numPresenceShadowsRays, presenceQuality, occlTestType, isect);
         }
 
         // TODO: Ray debugging.
@@ -493,7 +497,7 @@ sampleAndAddDirectLightContributionsBundled( const uniform PathIntegrator * unif
         // ---------------- Trace shadow rays and add any light sample contributions -----------------------------------
         addDirectVisibleLightSampleContributionsBundled(pbrTls, lSampler, lsmp, parentRay, rayEpsilon, shadowRayEpsilon,
                 sp, pv, rayState, srcRayIndices, dstOcclRays, dstOcclRayIndices, numOcclRays, presenceShadowsRays,
-                dstPresenceShadowsRayIndices, numPresenceShadowsRays, isect, light, lightSamplesSoFar);
+                dstPresenceShadowsRayIndices, numPresenceShadowsRays, this->mPresenceQuality, isect, light, lightSamplesSoFar);
     }
 
     // tldr; Add inactive lights to the visibility aov

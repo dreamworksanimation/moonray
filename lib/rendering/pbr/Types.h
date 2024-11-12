@@ -88,14 +88,6 @@ struct FrameState
     static uint32_t hudValidation(bool verbose) { FRAME_STATE_VALIDATION; }
 };
 
-enum BundledOcclRayDataFlags
-{
-    // As a future potential optimization, we could save a pointer de-reference
-    //  if we stored these flags in the upper bits of BundledOcclRay::mDataPtrIdx.
-    LPE = 1 << 0,
-    LIGHT_SAMPLE = 1 << 1
-};
-
 struct BundledOcclRayData
 {
     BUNDLED_OCCL_RAY_DATA_MEMBERS;

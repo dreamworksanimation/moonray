@@ -77,7 +77,7 @@ PathIntegrator::addDirectVisibleBsdfLobeSampleContribution(pbr::TLState *pbrTls,
         }
     } else {
         int32_t assignmentId = isect.getLayerAssignmentId();
-        isOccluded = isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId);
+        isOccluded = isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, sp, sequenceID, pv.pathThroughput, presence, assignmentId);
     }
     if (!isOccluded) {
         // We can't reuse shadowRay because it can be modified in occlusion query
@@ -185,7 +185,7 @@ void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrT
         const FrameState &fs = *pbrTls->mFs;
         const bool hasUnoccludedFlag = fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded);
         int32_t assignmentId = isect.getLayerAssignmentId();
-        if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId)) {
+        if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, sp, sequenceID, pv.pathThroughput, presence, assignmentId)) {
             // Calculate clear radius falloff
             // only do extra calculations if clear radius falloff enabled
             if (light->getClearRadiusFalloffDistance() != 0.f && 

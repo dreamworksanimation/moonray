@@ -15,6 +15,16 @@ enum OcclTestType
     FORCE_NOT_OCCLUDED
 };
 
+enum BundledOcclRayDataFlags
+{
+    // As a future potential optimization, we could save a pointer de-reference
+    //  if we stored these flags in the upper bits of BundledOcclRay::mDataPtrIdx.
+    LPE                     = 1 << 0,
+    LIGHT_SAMPLE            = 1 << 1,
+    STOCHASTIC_PRESENCE     = 1 << 2    // indicates that the path throughput is low enough to use stochastic presence
+};
+
+
 //
 // BundledOcclRay:
 //
@@ -265,6 +275,7 @@ enum OcclTestType
     HUD_MEMBER(uint32_t, mInitialSeed);                                     \
     HUD_MEMBER(int, mMaxPresenceDepth);                                     \
     HUD_MEMBER(float, mPresenceThreshold);                                  \
+    HUD_MEMBER(float, mPresenceQuality);                                    \
     HUD_PTR(const float *, mSamples1D);                                     \
     HUD_PTR(const Sample2D *, mSamples2D);                                  \
     HUD_MEMBER(HUD_NAMESPACE(shading, ShadowTerminatorFix), mShadowTerminatorFix);  \
@@ -291,6 +302,7 @@ enum OcclTestType
     HUD_VALIDATE(FrameState, mInitialSeed);                     \
     HUD_VALIDATE(FrameState, mMaxPresenceDepth);                \
     HUD_VALIDATE(FrameState, mPresenceThreshold);               \
+    HUD_VALIDATE(FrameState, mPresenceQuality);                 \
     HUD_VALIDATE(FrameState, mSamples1D);                       \
     HUD_VALIDATE(FrameState, mSamples2D);                       \
     HUD_VALIDATE(FrameState, mShadowTerminatorFix);             \

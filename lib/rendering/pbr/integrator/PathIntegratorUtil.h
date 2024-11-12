@@ -282,6 +282,8 @@ void accumulateRayPresence(pbr::TLState *pbrTls,
                            const mcrt_common::Ray& shadowRay,
                            float rayEpsilon,
                            int maxDepth,
+                           unsigned pixel, int subpixelIndex, unsigned sequenceID,
+                           bool allowStochasticPresence,
                            float& totalPresence);
 
 void scatterAndScale(const scene_rdl2::math::Vec3f &dNdx, const scene_rdl2::math::Vec3f &dNdy,

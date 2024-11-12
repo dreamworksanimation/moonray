@@ -229,7 +229,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             Ray shadowRay(P, wi, rayEpsilon, tfar, time, rayDepth);
             float presence = 0.0f;
             int32_t assignmentId = isect.getLayerAssignmentId();
-            if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId)) {
+            if (isRayOccluded(pbrTls, light, shadowRay, rayEpsilon, shadowRayEpsilon, sp, sequenceID, pt, presence, assignmentId)) {
                 // LPE
                 if (aovs) {
                     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
@@ -483,7 +483,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             Ray shadowRay(P, wi, rayEpsilon, tfar, time, rayDepth);
             const bool hasUnoccludedFlag = fs.mAovSchema->hasLpePrefixFlags(AovSchema::sLpePrefixUnoccluded);
             int32_t assignmentId = isect.getLayerAssignmentId();
-            if (isRayOccluded(pbrTls, hitLight, shadowRay, rayEpsilon, shadowRayEpsilon, presence, assignmentId)) {
+            if (isRayOccluded(pbrTls, hitLight, shadowRay, rayEpsilon, shadowRayEpsilon, sp, sequenceID, pt, presence, assignmentId)) {
                 // LPE
                 if (aovs) {
                     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);

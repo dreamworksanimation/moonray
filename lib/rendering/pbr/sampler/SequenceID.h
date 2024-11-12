@@ -34,7 +34,9 @@ enum class SequenceType : utype
     NextEventEstimation,
     IndirectLighting,
     LightFilter,
-    LightFilter3D
+    LightFilter3D,
+    Presence,
+    PresenceShadows
 };
 
 // Normally, I would be all about type-safety. However, the only purpose for this class' existence is to supply

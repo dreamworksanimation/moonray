@@ -639,8 +639,10 @@ void
 accumulateRayPresence(pbr::TLState *pbrTls,
                       const Light* light,
                       const mcrt_common::Ray& shadowRay,
-                      float rayEpsilon,
-                      int maxDepth,
+                      const float rayEpsilon,
+                      const int maxDepth,
+                      const unsigned pixel, const int subpixelIndex, const unsigned sequenceID,
+                      const bool allowStochasticPresence,
                       float& totalPresence)
 {
     // Used for presence shadows in scalar and vectorized mode.
@@ -677,7 +679,25 @@ accumulateRayPresence(pbr::TLState *pbrTls,
             const scene_rdl2::rdl2::Material* material = isect.getMaterial()->asA<scene_rdl2::rdl2::Material>();
             MNRY_ASSERT(material != nullptr);
             float presence = shading::presence(material, shadingTls, shading::State(&isect));
-            totalPresence += (1.0f - totalPresence) * presence;
+
+            if (allowStochasticPresence) {
+                SequenceIDIntegrator sid( pixel,
+                                          subpixelIndex,
+                                          SequenceType::PresenceShadows,
+                                          sequenceID,
+                                          currentShadowRay.getDepth() );
+                IntegratorSample1D prSamples(sid);
+                float prSample;
+
+                prSamples.getSample(&prSample, currentShadowRay.getDepth());
+                if (prSample < presence) {
+                    // this presence is considered one and therefore totalPresence is also one
+                    totalPresence = 1.0f;
+                    return;
+                } // else this presence is considered zero therefore totalPresence is unchanged
+            } else {
+                totalPresence += (1.0f - totalPresence) * presence;
+            }
         }
 
         if (currentShadowRay.getDepth() < maxDepth && totalPresence < pbrTls->mFs->mPresenceThreshold) {

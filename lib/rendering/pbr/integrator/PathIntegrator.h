@@ -97,6 +97,7 @@ struct PathIntegratorParams
     int mIntegratorMaxSubsurfacePerPath;
     float mIntegratorTransparencyThreshold;
     float mIntegratorPresenceThreshold;
+    float mIntegratorPresenceQuality;
     float mIntegratorRussianRouletteThreshold;
     float mSampleClampingValue;
     int mSampleClampingDepth;
@@ -520,8 +521,10 @@ private:
     // receiverId is set to -1 in the general case because we only need to pass a valid Id when there is
     // shadow-linking information present. skipOcclusionFilter() makes use of this value to suppress occusion
     // of a specified shadow receiver by the specified shadow caster in the shadow-linking info.
-    bool isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_common::Ray& shadowRay, float rayEpsilon,
-                       float shadowRayEpsilon, float& presence, int receiverId, bool isVolume = false) const;
+    bool isRayOccluded(TLState *pbrTls, const Light* light, mcrt_common::Ray& shadowRay,
+                       float rayEpsilon, float shadowRayEpsilon,
+                       const Subpixel &sp, unsigned sequenceID, const scene_rdl2::math::Color& throughput,
+                       float& presence, int receiverId, bool isVolume = false) const;
 
     PATH_INTEGRATOR_MEMBERS;
 };

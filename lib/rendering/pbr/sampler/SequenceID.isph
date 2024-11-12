@@ -38,7 +38,9 @@ enum SequenceType
     SequenceTypeNextEventEstimation,
     SequenceTypeIndirectLighting,
     SequenceTypeLightFilter,
-    SequenceTypeLightFilter3D
+    SequenceTypeLightFilter3D,
+    SequenceTypePresence,
+    SequenceTypePresenceShadows
 };
 
 // Sometimes when we sample, we don't know how many samples we will eventually take. If we permute 4 elements at a time,

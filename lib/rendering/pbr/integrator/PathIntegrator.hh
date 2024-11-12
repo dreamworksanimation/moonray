@@ -22,6 +22,7 @@
     HUD_MEMBER(int, mMaxSubsurfacePerPath);                \
     HUD_MEMBER(float, mTransparencyThreshold);             \
     HUD_MEMBER(float, mPresenceThreshold);                 \
+    HUD_MEMBER(float, mPresenceQuality);                   \
     HUD_MEMBER(float, mRussianRouletteThreshold);          \
     HUD_MEMBER(float, mInvRussianRouletteThreshold);       \
     HUD_MEMBER(float, mSampleClampingValue);               \
@@ -38,12 +39,15 @@
     HUD_MEMBER(float, mResolution);                        \
     HUD_MEMBER(bool, mEnableSSS);                          \
     HUD_MEMBER(bool, mEnableShadowing);                    \
+    HUD_MEMBER(bool, mPad0);                               \
+    HUD_MEMBER(bool, mPad1);                               \
     HUD_MEMBER(int, mVolumeIndirectSamples);               \
+    HUD_MEMBER(int, mPad2);                                \
     HUD_CPP_MEMBER(std::vector<int>, mDeepIDAttrIdxs, 24); \
     HUD_MEMBER(int, mCryptoUVAttrIdx);                     \
-    HUD_MEMBER(int, mPad1);                                \
+    HUD_MEMBER(int, mPad3);                                \
     HUD_CPP_MEMBER(PathGuide, mPathGuide, 8)
-                
+
 
 #define PATH_INTEGRATOR_VALIDATION                                 \
     HUD_BEGIN_VALIDATION(PathIntegrator);                          \
@@ -61,6 +65,7 @@
     HUD_VALIDATE(PathIntegrator, mMaxSubsurfacePerPath);           \
     HUD_VALIDATE(PathIntegrator, mTransparencyThreshold);          \
     HUD_VALIDATE(PathIntegrator, mPresenceThreshold);              \
+    HUD_VALIDATE(PathIntegrator, mPresenceQuality);                \
     HUD_VALIDATE(PathIntegrator, mRussianRouletteThreshold);       \
     HUD_VALIDATE(PathIntegrator, mInvRussianRouletteThreshold);    \
     HUD_VALIDATE(PathIntegrator, mSampleClampingValue);            \
@@ -77,10 +82,14 @@
     HUD_VALIDATE(PathIntegrator, mResolution);                     \
     HUD_VALIDATE(PathIntegrator, mEnableSSS);                      \
     HUD_VALIDATE(PathIntegrator, mEnableShadowing);                \
+    HUD_VALIDATE(PathIntegrator, mPad0);                           \
+    HUD_VALIDATE(PathIntegrator, mPad1);                           \
     HUD_VALIDATE(PathIntegrator, mVolumeIndirectSamples);          \
+    HUD_VALIDATE(PathIntegrator, mPad2);                           \
     HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
     HUD_VALIDATE(PathIntegrator, mCryptoUVAttrIdx);                \
-    HUD_VALIDATE(PathIntegrator, mPad1);                           \
+    HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
+    HUD_VALIDATE(PathIntegrator, mPad3);                           \
     HUD_VALIDATE(PathIntegrator, mPathGuide);                      \
     HUD_END_VALIDATION
 

@@ -427,8 +427,27 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
             rs->mAOSIsect = &isectMemory[sortedEntries[i].mIsectIdx];
             rs->mRayStateIdx = sortedEntries[i].mRsIdx;
             rayStates[i] = rs;
+
             presences[i] = shading::presence(&material, shadingTls,
                                              shading::State((shading::Intersection *)(rs->mAOSIsect)));
+
+            // Check to see if we can use stochastic presence method
+            if (luminance(rs->mPathVertex.pathThroughput) < (1.0f - fs.mPresenceQuality)) {
+                SequenceIDIntegrator sidPresence(rs->mSubpixel.mPixel,
+                                                 rs->mSubpixel.mSubpixelIndex,
+                                                 SequenceType::Presence,
+                                                 rs->mSequenceID,
+                                                 rs->mPathVertex.presenceDepth);
+                IntegratorSample1D prSamples(sidPresence);
+                float prSample;
+                prSamples.getSample(&prSample, rs->mPathVertex.presenceDepth);
+                if (prSample < presences[i]) {
+                    presences[i] = 1.f;
+                } else {
+                    presences[i] = 0.f;
+                }
+            }
+
             // Some NPR materials that want to allow for completely arbitrary shading normals
             // can request that the integrator does not perform any light culling based on the
             // normal. In those cases, we also want to prevent our call to adaptNormal() in the

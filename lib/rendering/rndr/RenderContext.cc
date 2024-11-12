@@ -2076,6 +2076,7 @@ RenderContext::updatePbrState(const FrameState &fs)
     integratorParams.mIntegratorMaxSubsurfacePerPath           = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxSubsurfacePerPath);
     integratorParams.mIntegratorTransparencyThreshold          = vars.get(scene_rdl2::rdl2::SceneVariables::sTransparencyThreshold);
     integratorParams.mIntegratorPresenceThreshold              = vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceThreshold);
+    integratorParams.mIntegratorPresenceQuality                = saturate(vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceQuality));
     integratorParams.mIntegratorRussianRouletteThreshold       = vars.get(scene_rdl2::rdl2::SceneVariables::sRussianRouletteThreshold);
     integratorParams.mSampleClampingValue                      = vars.get(scene_rdl2::rdl2::SceneVariables::sSampleClampingValue);
     integratorParams.mSampleClampingDepth                      = vars.get(scene_rdl2::rdl2::SceneVariables::sSampleClampingDepth);
@@ -2963,6 +2964,7 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime) const
     // the presence shadow handler in vectorized mode need to access this value
     fs->mMaxPresenceDepth = vars.get(scene_rdl2::rdl2::SceneVariables::sMaxPresenceDepth);
     fs->mPresenceThreshold = vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceThreshold);
+    fs->mPresenceQuality = saturate(vars.get(scene_rdl2::rdl2::SceneVariables::sPresenceQuality));
 
     fs->mShadowTerminatorFix = static_cast<shading::ShadowTerminatorFix>
         (vars.get(scene_rdl2::rdl2::SceneVariables::sShadowTerminatorFix));

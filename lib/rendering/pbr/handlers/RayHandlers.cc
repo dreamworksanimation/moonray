@@ -245,11 +245,14 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
             occlRay.mMinT, occlRay.mMaxT, occlRay.mTime, occlRay.mDepth);
 
         float presence = 0.0f;
+        const bool allowStochasticPresence = (b->mFlags & BundledOcclRayDataFlags::STOCHASTIC_PRESENCE);
         accumulateRayPresence(pbrTls,
                               b->mLight,
                               shadowRay,
                               b->mRayEpsilon,
                               fs.mMaxPresenceDepth,
+                              occlRay.mPixel, occlRay.mSubpixelIndex, occlRay.mSequenceID,
+                              allowStochasticPresence,
                               presence);
 
         // At this point, we know that the ray is not occluded, but we still need to

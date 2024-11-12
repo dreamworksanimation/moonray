@@ -144,6 +144,7 @@ PathIntegrator::PathIntegrator() :
     mMaxSubsurfacePerPath(0),
     mTransparencyThreshold(1.f),
     mPresenceThreshold(0.999f),
+    mPresenceQuality(0.75f),
     mRussianRouletteThreshold(0.f),
     mInvRussianRouletteThreshold(0.f),
     mSampleClampingValue(0.0f),
@@ -187,6 +188,7 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
     mMaxSubsurfacePerPath = params.mIntegratorMaxSubsurfacePerPath;
     mTransparencyThreshold = params.mIntegratorTransparencyThreshold;
     mPresenceThreshold = params.mIntegratorPresenceThreshold;
+    mPresenceQuality = params.mIntegratorPresenceQuality;
     mRussianRouletteThreshold = params.mIntegratorRussianRouletteThreshold;
     mInvRussianRouletteThreshold = 1.f / mRussianRouletteThreshold;
     mSampleClampingValue = params.mSampleClampingValue;
@@ -611,6 +613,23 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Presence handling code for regular rays
     // Need to continue the current ray through the partially present geometry.
     float presence = shading::presence(material, shadingTls, shading::State(&isect));
+
+    // Check to see if we can use stochastic presence method
+    if (luminance(pv.pathThroughput) < (1.0f - mPresenceQuality)) {
+        SequenceIDIntegrator sidPresence( sp.mPixel,
+                                          sp.mSubpixelIndex,
+                                          SequenceType::Presence,
+                                          sequenceID,
+                                          pv.presenceDepth ); // note presence depth
+        IntegratorSample1D prSamples(sidPresence);
+        float prSample;
+        prSamples.getSample(&prSample, pv.presenceDepth);
+        if (prSample < presence) {
+            presence = 1.f;
+        } else {
+            presence = 0.f;
+        }
+    }
 
     // Some NPR materials that want to allow for completely arbitrary shading normals
     // can request that the integrator does not perform any light culling based on the
@@ -1140,8 +1159,10 @@ PathIntegrator::initPrimaryRay(pbr::TLState *pbrTls,
 }
 
 bool
-PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_common::Ray& shadowRay, float rayEpsilon,
-                              float shadowRayEpsilon, float& presence, int receiverId, bool isVolume) const
+PathIntegrator::isRayOccluded(TLState *pbrTls, const Light* light, mcrt_common::Ray& shadowRay,
+                              float rayEpsilon, float shadowRayEpsilon,
+                              const Subpixel &sp, unsigned sequenceID, const scene_rdl2::math::Color& throughput,
+                              float& presence, int receiverId, bool isVolume) const
 {
     presence = 0.0f;
     if (!mEnableShadowing) {
@@ -1152,7 +1173,6 @@ PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_com
     // 2) minShadowDistance, which is light-based
     shadowRay.tnear = scene_rdl2::math::max(shadowRay.tnear, shadowRayEpsilon);
     shadowRay.tnear = scene_rdl2::math::max(shadowRay.tnear, light->getMinShadowDistance());
-
     // if falloff enabled, don't shorten ray -- instead, use color interpolation (more expensive)
     const float clearRadius = light->getClearRadiusFalloffDistance() > 0.f ? 0.f : light->getClearRadius();
     // shorten shadowRay length by clear radius
@@ -1165,11 +1185,15 @@ PathIntegrator::isRayOccluded(pbr::TLState *pbrTls, const Light* light, mcrt_com
     if (light->getPresenceShadows()) {
         // The presence is accumulated as the shadow ray
         // pierces surfaces on its way to the light.
+
+        const bool allowStochasticPresence = (luminance(throughput) < (1.0f - mPresenceQuality));
         accumulateRayPresence(pbrTls,
                               light,
                               shadowRay,
                               rayEpsilon,
                               mMaxPresenceDepth,
+                              sp.mPixel, sp.mSubpixelIndex, sequenceID,
+                              allowStochasticPresence,
                               presence);
         return presence > mPresenceThreshold;
     } else {
