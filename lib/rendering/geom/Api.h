@@ -322,6 +322,33 @@ bool
 addExplicitShading(const scene_rdl2::rdl2::Geometry* rdlGeometry,
                    shading::PrimitiveAttributeTable& pat);
 
+/// @brief a function that adds converts point radii to screen space.   It will read the following float primitive attributes from the points if they are available (min_distance, min_distance_radius, max_distance, max_distance_radius.   These can be either constant or vertex rate.
+/// @param geometry rdl2 Geometry to use for getting camera position and focal and also printing errors
+/// @param vertices the vertex positions used for screen space conversion
+/// @param pat primitive attribute optionally containing the modifier parameters (min_distance, min_distance_radius, max_distance, max_distance_radius)
+/// @param radiusBuffer radius values that get modified and converted to screen space
+/// @param parent2root extra matrix to transform vertices by
+void
+applyScreenSpaceRadius(const scene_rdl2::rdl2::Geometry* geometry,
+                       const Points::VertexBuffer& vertices,
+                       const shading::PrimitiveAttributeTable& pat,
+                       Points::RadiusBuffer& radiusBuffer,
+                       const moonray::shading::XformSamples& parent2root =
+                       { scene_rdl2::math::Xform3f(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f) });
+
+/// @brief a function that adds converts curve radii to screen space.   It will read the following float primitive attributes from the points if they are available (min_distance, min_distance_radius, max_distance, max_distance_radius.   These can be either constant, uniform, or vertex rate.
+/// @param geometry rdl2 Geometry to use for getting camera position and focal and also printing errors
+/// @param vertices the vertex positions used for screen space conversion.  For curves, the vertex buffer also stores the radius values in the .w component
+/// @param vertexCounts the number of vertices per curve.  Used to retrieve uniform primitive attributes
+/// @param pat primitive attribute optionally containing the modifier parameters (min_distance, min_distance_radius, max_distance, max_distance_radius)
+/// @param parent2root extra matrix to transform vertices by
+void
+applyScreenSpaceRadius(const scene_rdl2::rdl2::Geometry* geometry,
+                       Curves::VertexBuffer& vertices,
+                       const Curves::CurvesVertexCount& vertexCounts,
+                       const shading::PrimitiveAttributeTable& pat,
+                       const moonray::shading::XformSamples& parent2root =
+                       { scene_rdl2::math::Xform3f(1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f) });
 
 
 } // namespace geom

@@ -15,6 +15,7 @@ RDL2_DSO_ATTR_DECLARE
 
     rdl2::AttributeKey<rdl2::FloatVector>  attrRadius;
     rdl2::AttributeKey<rdl2::IntVector>    attrCurvesVertexCount;
+    rdl2::AttributeKey<rdl2::Bool>         attrUseScreenSpaceRadius;
 
     rdl2::AttributeKey<rdl2::StringVector> attrPartList;
     rdl2::AttributeKey<rdl2::IntVector>    attrPartIndices;
@@ -82,6 +83,12 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
         " If the number of values matches the number of vertices, the rate will be interpreted as "
         " vertex.");
     sceneClass.setGroup("Curves", attrRadius);
+
+    attrUseScreenSpaceRadius =
+        sceneClass.declareAttribute<rdl2::Bool>("use_screen_space_radius", false, { "use screen space radius" });
+    sceneClass.setMetadata(attrUseScreenSpaceRadius, "label", "use screen space radius");
+    sceneClass.setMetadata(attrUseScreenSpaceRadius, "comment", "Radius is applied in screen space");
+    sceneClass.setGroup("Points", attrUseScreenSpaceRadius);
 
     attrPartList =
         sceneClass.declareAttribute<rdl2::StringVector>("part_list", {}, { "part list" });

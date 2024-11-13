@@ -94,9 +94,8 @@ private:
 };
 
 void
-RdlCurveProcedural::generate(
-        const GenerateContext &generateContext,
-        const shading::XformSamples &parent2render)
+RdlCurveProcedural::generate(const GenerateContext &generateContext,
+                             const shading::XformSamples &parent2render)
 {
     clear();
 
@@ -416,6 +415,15 @@ RdlCurveProcedural::generate(
         !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
         return;
     }
+
+    // Apply screen space radius
+    if (rdlCurveGeometry->get(attrUseScreenSpaceRadius)) {
+        moonray::geom::applyScreenSpaceRadius(rdlGeometry,
+                                              vertices,
+                                              vertexCounts,
+                                              primitiveAttributeTable);
+    }
+
 
     // Check the validity of the curves data and
     // print out any error messages

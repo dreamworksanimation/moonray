@@ -98,9 +98,8 @@ public:
 };
 
 void
-RdlPointProcedural::generate(
-        const GenerateContext &generateContext,
-        const shading::XformSamples &parent2render)
+RdlPointProcedural::generate(const GenerateContext &generateContext,
+                             const shading::XformSamples &parent2render)
 {
     const scene_rdl2::rdl2::Geometry *rdlGeometry = generateContext.getRdlGeometry();
 
@@ -305,6 +304,14 @@ RdlPointProcedural::generate(
     if (rdlGeometry->get(attrExplicitShading) &&
         !addExplicitShading(rdlGeometry, primitiveAttributeTable)) {
         return;
+    }
+
+    // Apply screen space radius
+    if (rdlPointGeometry->get(attrUseScreenSpaceRadius)) {
+        moonray::geom::applyScreenSpaceRadius(rdlGeometry,
+                                              vertices,
+                                              primitiveAttributeTable,
+                                              radius);
     }
     
     std::unique_ptr<Points> primitive = createPoints(std::move(vertices),

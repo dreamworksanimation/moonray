@@ -16,6 +16,7 @@ RDL2_DSO_ATTR_DECLARE
     rdl2::AttributeKey<rdl2::Vec3fVector>  attrAcc;
 
     rdl2::AttributeKey<rdl2::FloatVector>  attrRadius;
+    rdl2::AttributeKey<rdl2::Bool>         attrUseScreenSpaceRadius;
 
     rdl2::AttributeKey<rdl2::StringVector> attrPartList;
     rdl2::AttributeKey<rdl2::IntVector>    attrPartIndices;
@@ -72,6 +73,13 @@ RDL2_DSO_ATTR_DEFINE(rdl2::Geometry);
     sceneClass.setMetadata(attrRadius, "label", "radius list");
     sceneClass.setMetadata(attrRadius, "comment", "List of per point radius values");
     sceneClass.setGroup("Points", attrRadius);
+
+    attrUseScreenSpaceRadius =
+        sceneClass.declareAttribute<rdl2::Bool>("use_screen_space_radius", false, { "use screen space radius" });
+    sceneClass.setMetadata(attrUseScreenSpaceRadius, "label", "use screen space radius");
+    sceneClass.setMetadata(attrUseScreenSpaceRadius, "comment", "Radius is applied in screen space");
+    sceneClass.setGroup("Points", attrUseScreenSpaceRadius);
+
     attrPartList =
         sceneClass.declareAttribute<rdl2::StringVector>("part_list", {}, { "part list" });
     sceneClass.setMetadata(attrPartList, "label", "part list");

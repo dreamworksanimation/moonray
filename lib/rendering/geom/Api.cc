@@ -808,6 +808,154 @@ addExplicitShading(const scene_rdl2::rdl2::Geometry* rdlGeometry,
     }
 }
 
+void
+getScreenSpaceRadiusAttr(const shading::TypedAttributeKey<float> key,
+                         const int numVerts,
+                         const Curves::CurvesVertexCount& vertexCounts,
+                         const shading::PrimitiveAttributeTable& pat,
+                         std::vector<float>& vals)
+{
+    vals.resize(numVerts, 1.0f);
+    if (pat.hasAttribute(key)) {
+        const shading::PrimitiveAttribute<float>& attrVals = pat.getAttribute(key, 0);
+        switch (pat.getRate(key)) {
+        case shading::AttributeRate::RATE_CONSTANT:
+            std::fill(vals.begin(), vals.end(), attrVals[0]);
+            break;
+        case shading::AttributeRate::RATE_UNIFORM:
+        {
+            size_t i = 0;
+            for (size_t c = 0; c < vertexCounts.size(); ++c) {
+                const float val = attrVals[c];
+                for (size_t v = 0; v < vertexCounts[c]; ++v) {
+                    vals[i] = val;
+                    ++i;
+                }
+            }
+            break;
+        }
+        case shading::AttributeRate::RATE_VARYING:
+        case shading::AttributeRate::RATE_VERTEX:
+            for (size_t i = 0; i < numVerts; ++i) {
+                vals[i] = attrVals[i];
+            }
+            break;
+        }
+    }
+}
+
+bool
+getCameraPositionAndFocal(const rdl2::Geometry* geometry,
+                          math::Vec3f& cameraPosition,
+                          float& cameraFocal)
+{
+    // Get camera position and focal
+    const rdl2::Camera* primaryCamera = geometry->getSceneClass().getSceneContext()->getPrimaryCamera();
+    try {
+        cameraFocal = primaryCamera->get<float>("focal");
+    } catch (const except::KeyError&) {
+        Logger::error("The camera does not have a \"focal\" parameter. Disabling screen space radius.");
+        return false;
+    }
+    const math::Mat4d m = primaryCamera->get(rdl2::Node::sNodeXformKey, rdl2::TIMESTEP_BEGIN);
+    cameraPosition = math::Vec3f(m.row3().x, m.row3().y, m.row3().z);
+    return true;
+}
+
+float
+applyScreenSpaceRadius(const math::Vec3f& position,
+                       const math::Vec3f& cameraPosition,
+                       const float cameraFocal,
+                       const float minDist,
+                       const float maxDist,
+                       const float minDistRadius,
+                       const float maxDistRadius,
+                       const float radius)
+{
+    const float distance = math::distance(position, cameraPosition);
+    const float distT = math::clamp((distance - minDist) / (maxDist - minDist), 0.0f, 1.0f);
+    const float distFactor = (minDistRadius * (1.0f - distT)) + (maxDistRadius * distT);
+    return math::max(0.f, radius * (distance / cameraFocal) * distFactor);
+}
+
+void
+applyScreenSpaceRadius(const rdl2::Geometry* geometry,
+                       const Points::VertexBuffer& vertices,
+                       const shading::PrimitiveAttributeTable& pat,
+                       Points::RadiusBuffer& radiusBuffer,
+                       const moonray::shading::XformSamples& parent2root)
+{
+    float cameraFocal;
+    math::Vec3f cameraPosition;
+    if (!getCameraPositionAndFocal(geometry, cameraPosition, cameraFocal)) {
+        return;
+    }
+
+    // Get screen space primitive attributes if they exist
+    const size_t numVerts = vertices.size();
+    std::vector<float> minDist, maxDist, minDistRadius, maxDistRadius;
+    Curves::CurvesVertexCount vertexCounts;
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMinDistance, numVerts, vertexCounts, pat, minDist);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMaxDistance, numVerts, vertexCounts, pat, maxDist);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMinDistanceRadius, numVerts, vertexCounts, pat, minDistRadius);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMaxDistanceRadius, numVerts, vertexCounts, pat, maxDistRadius);
+
+    const math::Mat4f nodeXform = math::toFloat(geometry->get(rdl2::Node::sNodeXformKey,
+                                                rdl2::TIMESTEP_BEGIN));
+
+    for (size_t i = 0; i < radiusBuffer.size(); ++i) {
+        math::Vec3f position(vertices(i, 0).x, vertices(i, 0).y, vertices(i, 0).z);
+        position = math::transformPoint(parent2root[0], position);
+        position = math::transformPoint(nodeXform, position);
+        radiusBuffer[i] = applyScreenSpaceRadius(position,
+                                                 cameraPosition,
+                                                 cameraFocal,
+                                                 minDist[i], maxDist[i],
+                                                 minDistRadius[i], maxDistRadius[i],
+                                                 radiusBuffer[i]);
+    }
+}
+
+void
+applyScreenSpaceRadius(const scene_rdl2::rdl2::Geometry* geometry,
+                       Curves::VertexBuffer& vertices,
+                       const Curves::CurvesVertexCount& vertexCounts,
+                       const shading::PrimitiveAttributeTable& pat,
+                       const moonray::shading::XformSamples& parent2root)
+{
+    float cameraFocal;
+    math::Vec3f cameraPosition;
+    if (!getCameraPositionAndFocal(geometry, cameraPosition, cameraFocal)) {
+        return;
+    }
+
+    // Get screen space primitive attributes if they exist
+    const size_t numVerts = vertices.size();
+    std::vector<float> minDist, maxDist, minDistRadius, maxDistRadius;
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMinDistance, numVerts, vertexCounts, pat, minDist);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMaxDistance, numVerts, vertexCounts, pat, maxDist);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMinDistanceRadius, numVerts, vertexCounts, pat, minDistRadius);
+    getScreenSpaceRadiusAttr(shading::StandardAttributes::sMaxDistanceRadius, numVerts, vertexCounts, pat, maxDistRadius);
+
+    const math::Mat4f nodeXform = math::toFloat(geometry->get(rdl2::Node::sNodeXformKey,
+                                                rdl2::TIMESTEP_BEGIN));
+
+    for (size_t t = 0; t < vertices.get_time_steps(); ++t) {
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            math::Vec3f position(vertices(i, t).x, vertices(i, t).y, vertices(i, t).z);
+            position = math::transformPoint(parent2root[parent2root.size() == 1 ? 0 : t], position);
+            position = math::transformPoint(nodeXform, position);
+            vertices(i, t).w = applyScreenSpaceRadius(position,
+                                                      cameraPosition,
+                                                      cameraFocal,
+                                                      minDist[i], maxDist[i],
+                                                      minDistRadius[i], maxDistRadius[i],
+                                                      vertices(i, t).w);
+        }
+    }
+}
+
+
 
 } // namespace geom
 } // namespace moonray

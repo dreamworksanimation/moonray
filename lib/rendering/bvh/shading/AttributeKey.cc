@@ -45,6 +45,12 @@ TypedAttributeKey<int> StandardAttributes::sId;
 TypedAttributeKey<bool> StandardAttributes::sReversedNormals;
 TypedAttributeKey<bool> StandardAttributes::sExplicitShading;
 
+TypedAttributeKey<float> StandardAttributes::sMinDistance;
+TypedAttributeKey<float> StandardAttributes::sMinDistanceRadius;
+TypedAttributeKey<float> StandardAttributes::sMaxDistance;
+TypedAttributeKey<float> StandardAttributes::sMaxDistanceRadius;
+std::vector<TypedAttributeKey<float>> StandardAttributes::sScreenSpaceRadiusKeys;
+
 } // namespace shading
 } // namespace rendering
 

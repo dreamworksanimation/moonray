@@ -184,6 +184,13 @@ public:
     static TypedAttributeKey<int> sId;
     static TypedAttributeKey<bool> sReversedNormals;
     static TypedAttributeKey<bool> sExplicitShading;
+
+    // Screen space radius
+    static TypedAttributeKey<float> sMinDistance;
+    static TypedAttributeKey<float> sMinDistanceRadius;
+    static TypedAttributeKey<float> sMaxDistance;
+    static TypedAttributeKey<float> sMaxDistanceRadius;
+    static std::vector<TypedAttributeKey<float>> sScreenSpaceRadiusKeys;
 };
 
 /// @class AttributeKeyHash
@@ -453,6 +460,13 @@ StandardAttributes::init()
     sReversedNormals = TypedAttributeKey<bool>("reversed_normals");
     sExplicitShading = TypedAttributeKey<bool>("explicit_shading");
     sId = TypedAttributeKey<int>("id");
+
+    sMinDistance = TypedAttributeKey<float>("min_distance");
+    sMaxDistance = TypedAttributeKey<float>("max_distance");
+    sMinDistanceRadius = TypedAttributeKey<float>("min_distance_radius");
+    sMaxDistanceRadius = TypedAttributeKey<float>("max_distance_radius");
+    sScreenSpaceRadiusKeys = { sMinDistance, sMaxDistance, sMinDistanceRadius, sMaxDistanceRadius };
+
 #pragma warning pop
 }
 
