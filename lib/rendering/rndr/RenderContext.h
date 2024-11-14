@@ -208,11 +208,13 @@ public:
     void requestStopRenderAtPassBoundary();
 
     /**
-     * Snapshots the contents of the render buffer. The passed in buffer is
+     * Snapshots the contents of the render buffer OR, if a primary AOV is specified,
+     * snapshots the contents of that aov to the output render buffer. The passed in buffer is
      * automatically resized if needed and any extrapolation and/or untiling
      * logic is handled internally.
      */
-    void snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer, bool untile, bool parallel) const;
+    void snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer, bool untile, 
+                              bool parallel, bool usePrimaryAov) const;
 
     /**
      * Snapshots the contents of the render ODD buffer only if renderOutputDriver has renderBufferOdd.
@@ -368,6 +370,7 @@ public:
      */
     void snapshotRenderOutput(scene_rdl2::fb_util::VariablePixelBuffer *buffer, int roIndx,
                               const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                              const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                               const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                               const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                               const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,

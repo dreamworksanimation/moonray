@@ -220,6 +220,7 @@ public:
     /// processing and transfers the result to buffer.
     void finishSnapshot(scene_rdl2::fb_util::VariablePixelBuffer *destBuffer, unsigned int indx,
                         const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                        const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                         const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                         const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                         const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
@@ -232,6 +233,8 @@ public:
     /// Get the RenderOutput index to use as the normal input
     /// Returns -1 if none.
     int getDenoiserNormalInput() const;
+
+    int getPrimaryAovIdx() const;
 
     /// Revert Film data from resume file (just read and NOT DO any denormalize/zeroWeight operation)
     /// Returns false if error and call getErrors() for detail.

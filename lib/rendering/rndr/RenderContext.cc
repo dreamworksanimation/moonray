@@ -1222,10 +1222,20 @@ RenderContext::getScene() const
 }
 
 void
-RenderContext::snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer, bool untile, bool parallel) const
+RenderContext::snapshotRenderBuffer(scene_rdl2::fb_util::RenderBuffer *renderBuffer, bool untile, 
+                                    bool parallel, bool usePrimaryAov) const
 {
-    // Request a snapshot from the render driver.
-    mDriver->snapshotRenderBuffer(MNRY_VERIFY(renderBuffer), untile, parallel);
+    if (!mRenderOutputDriver) {
+        mDriver->snapshotRenderBuffer(MNRY_VERIFY(renderBuffer), untile, parallel);
+    } else {
+        int primaryAovIdx = mRenderOutputDriver->getPrimaryAovIdx();
+        if (usePrimaryAov && primaryAovIdx >= 0) {
+            snapshotAovBuffer(renderBuffer, primaryAovIdx, untile, parallel);
+        } else {
+            // Request a snapshot from the render driver.
+            mDriver->snapshotRenderBuffer(MNRY_VERIFY(renderBuffer), untile, parallel);
+        }
+    }
 }
 
 void
@@ -1520,6 +1530,7 @@ RenderContext::snapshotDisplayFilterBuffers(std::vector<scene_rdl2::fb_util::Var
 void
 RenderContext::snapshotRenderOutput(scene_rdl2::fb_util::VariablePixelBuffer *buffer, int roIndx,
                                     const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                                    const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                                     const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                                     const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                                     const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
@@ -1534,7 +1545,7 @@ RenderContext::snapshotRenderOutput(scene_rdl2::fb_util::VariablePixelBuffer *bu
         mRenderOutputDriver->requiresWeightBuffer(roIndx) ||
         mRenderOutputDriver->requiresRenderBufferOdd(roIndx)) {
         mRenderOutputDriver->finishSnapshot(buffer, roIndx,
-                                            renderBuffer, heatMapBuffer, weightBuffer, renderBufferOdd,
+                                            renderBuffer, beautyBuffer, heatMapBuffer, weightBuffer, renderBufferOdd,
                                             parallel);
         return;
     }

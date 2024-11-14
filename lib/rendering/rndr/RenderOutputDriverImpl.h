@@ -167,6 +167,7 @@ public:
 
     void finishSnapshot(scene_rdl2::fb_util::VariablePixelBuffer *destBuffer, unsigned int indx,
                         const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                        const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                         const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                         const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                         const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
@@ -180,6 +181,11 @@ public:
     int getDenoiserNormalInput() const
     {
         return mDenoiserNormalInput;
+    }
+
+    int getPrimaryAovIdx() const
+    {
+        return mPrimaryAovIdx;
     }
 
     bool revertFilmData(Film &film,
@@ -257,6 +263,8 @@ private:
 
     std::string showDenoiseInfo() const;
 
+    void setPrimaryAovIdx(int primaryAovIdx) { mPrimaryAovIdx = primaryAovIdx; }
+
     //------------------------------
 
     std::vector<const Entry *>        mEntries;                 // our entry order
@@ -293,6 +301,8 @@ private:
     const RenderContext *mRenderContext;
 
     Parser mParser;
+
+    int mPrimaryAovIdx;     // aov to use as the primary output
 };
 
 } // namespace rndr

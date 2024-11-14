@@ -72,7 +72,7 @@ void
 RaasCommandLineApplication::renderOutput(rndr::RenderContext &renderContext)
 {
     scene_rdl2::fb_util::RenderBuffer outputBuffer;
-    renderContext.snapshotRenderBuffer(&outputBuffer, true, true);
+    renderContext.snapshotRenderBuffer(&outputBuffer, true, true, true);
 
     // write the main output file
     scene_rdl2::rdl2::SceneContext const &sceneContext = renderContext.getSceneContext();

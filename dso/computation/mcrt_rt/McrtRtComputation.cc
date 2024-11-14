@@ -652,7 +652,7 @@ McrtRtComputation::snapshotBuffers()
         }
     }
 
-    mRenderContext->snapshotRenderBuffer(&mRenderBuffer, untileDuringSnapshot, parallel);
+    mRenderContext->snapshotRenderBuffer(&mRenderBuffer, untileDuringSnapshot, parallel, true);
 
     // we only want to perform snapshots once when requested; always setting this to false
     // doesn't cost anything significant and avoids unnecessary additional logic

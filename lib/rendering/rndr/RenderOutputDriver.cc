@@ -212,7 +212,8 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
     mZeroWeightMask(false),
     mRevertBeautyAuxAOV(false),
     mLastTileSamples(0),
-    mRenderContext(renderContext)
+    mRenderContext(renderContext),
+    mPrimaryAovIdx(-1)
 {
     parserConfigure();
 
@@ -563,6 +564,11 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
                     mAovBuffers.push_back(aovBuffer);
 
                     schemaData.push_back(data);
+
+                    if (entry.mRenderOutput == vars.get(scene_rdl2::rdl2::SceneVariables::sPrimaryAov)) {
+                        setPrimaryAovIdx(aovBuffer);
+                    }
+
                     ++aovBuffer;
 
                     // denoiser input?
@@ -1077,6 +1083,7 @@ copyAndTransform(scene_rdl2::fb_util::PixelBuffer<DEST_PIXEL_TYPE> *destBuffer,
 void
 RenderOutputDriver::Impl::finishSnapshot(scene_rdl2::fb_util::VariablePixelBuffer *destBuffer, unsigned int indx,
                                          const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                                         const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                                          const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                                          const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                                          const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
@@ -1086,9 +1093,9 @@ RenderOutputDriver::Impl::finishSnapshot(scene_rdl2::fb_util::VariablePixelBuffe
 
     switch (mEntries[indx]->mRenderOutput->getResult()) {
     case scene_rdl2::rdl2::RenderOutput::RESULT_BEAUTY:
-        // extract RGB from RenderBuffer
-        initializeDestBuffer(destBuffer, renderBuffer, scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3);
-        copyAndTransform(&destBuffer->getFloat3Buffer(), renderBuffer,
+        // extract RGB from the beauty RenderBuffer
+        initializeDestBuffer(destBuffer, beautyBuffer, scene_rdl2::fb_util::VariablePixelBuffer::FLOAT3);
+        copyAndTransform(&destBuffer->getFloat3Buffer(), beautyBuffer,
                          [](scene_rdl2::math::Vec3f &dst, const scene_rdl2::fb_util::RenderColor &src) {
                              dst.x = src.x;
                              dst.y = src.y;
@@ -2202,13 +2209,14 @@ RenderOutputDriver::loggingErrorAndInfo(ImageWriteCache *cache) const
 void
 RenderOutputDriver::finishSnapshot(scene_rdl2::fb_util::VariablePixelBuffer *destBuffer, unsigned int indx,
                                    const scene_rdl2::fb_util::RenderBuffer *renderBuffer,
+                                   const scene_rdl2::fb_util::RenderBuffer *beautyBuffer,
                                    const scene_rdl2::fb_util::HeatMapBuffer *heatMapBuffer,
                                    const scene_rdl2::fb_util::FloatBuffer *weightBuffer,
                                    const scene_rdl2::fb_util::RenderBuffer *renderBufferOdd,
                                    bool parallel) const
 {
     return mImpl->finishSnapshot(destBuffer, indx,
-                                 renderBuffer, heatMapBuffer, weightBuffer, renderBufferOdd,
+                                 renderBuffer, beautyBuffer, heatMapBuffer, weightBuffer, renderBufferOdd,
                                  parallel);
 }
 
@@ -2222,6 +2230,12 @@ int
 RenderOutputDriver::getDenoiserNormalInput() const
 {
     return mImpl->getDenoiserNormalInput();
+}
+
+int
+RenderOutputDriver::getPrimaryAovIdx() const
+{
+    return mImpl->getPrimaryAovIdx();
 }
 
 bool
