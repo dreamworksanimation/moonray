@@ -202,13 +202,7 @@ void CryptomatteBuffer::outputFragments(unsigned x, unsigned y,
 
     for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
 
-        if (cryptoType == CRYPTOMATTE_TYPE_REFLECTED && !ro.getCryptomatteRecordReflected()) {
-            // Don't output the reflected cryptomatte channels to the render output if it doesn't
-            // want them.
-            continue;
-        }
-
-        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteRecordRefracted()) {
+        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteEnableRefract()) {
             // Don't output the refracted cryptomatte channels to the render output if it doesn't
             // want them.
             continue;
@@ -373,11 +367,9 @@ void CryptomatteBuffer::addFragments(unsigned x, unsigned y,
 
     for (int cryptoType = 0; cryptoType < NUM_CRYPTOMATTE_TYPES; cryptoType++) {
 
-        if (cryptoType == CRYPTOMATTE_TYPE_REFLECTED && !ro.getCryptomatteRecordReflected()) {
-            continue;
-        }
-
-        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteRecordRefracted()) {
+        if (cryptoType == CRYPTOMATTE_TYPE_REFRACTED && !ro.getCryptomatteEnableRefract()) {
+            // Don't input the refracted cryptomatte channels to the render output if it doesn't
+            // want them.
             continue;
         }
 
@@ -448,7 +440,6 @@ void CryptomatteBuffer::printAllPixelEntries() const
     for (size_t py = 0; py < mHeight; py++) {
         for (size_t px = 0; px < mWidth; px++) {
             printFragments(px, py, CRYPTOMATTE_TYPE_REGULAR);
-            printFragments(px, py, CRYPTOMATTE_TYPE_REFLECTED);
             printFragments(px, py, CRYPTOMATTE_TYPE_REFRACTED);
         }
     }

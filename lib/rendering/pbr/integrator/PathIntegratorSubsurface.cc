@@ -466,7 +466,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
                     pbrTls, ray, sp, nextPv, &lobe,
                     contribution, transparency, vt,
-                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, nullptr, false, hitVolume);
+                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, false, hitVolume);
             if (indirectRadianceType != NONE) {
                 // Accumulate radiance, but only accumulate indirect or direct
                 // contribution
