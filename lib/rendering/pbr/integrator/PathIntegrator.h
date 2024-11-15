@@ -339,14 +339,16 @@ private:
             const shading::Intersection& isect, const float* lightSelectionPdfs) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
-            const Subpixel &sp, 
+            const Subpixel &sp,
             const PathVertex &parentPv, const BsdfSampler &bSampler,
             const BsdfSample *bsmp, const mcrt_common::RayDifferential &parentRay,
             float rayEpsilon, float shadowRayEpsilon,
             const shading::Intersection &isect, shading::BsdfLobe::Type indirectFlags,
             const scene_rdl2::rdl2::Material* newPriorityList[4], int newPriorityListCount[4],
             scene_rdl2::math::Color &radiance, unsigned &sequenceID,
-            float *aovs, CryptomatteParams *refractCryptomatteParams) const;
+            float *aovs,
+            CryptomatteParams *reflectedCryptomatteParams,
+            CryptomatteParams *refractedCryptomatteParams) const;
 
     // compute volume emission line integral along the ray
     scene_rdl2::math::Color computeEmissiveVolumeIntegral(pbr::TLState *pbrTls, mcrt_common::Ray& ray,
@@ -367,7 +369,9 @@ private:
             bool doIndirect, shading::BsdfLobe::Type indirectFlags, const scene_rdl2::rdl2::Material *newPriorityList[4],
             int newPriorityListCount[4], const LightSet &activeLightSet, const scene_rdl2::math::Vec3f *cullingNormal,
             float rayEpsilon, float shadowRayEpsilon, const scene_rdl2::math::Color &ssAov, unsigned &sequenceID,
-            float *aovs, CryptomatteParams *refractCryptomatteParams) const;
+            float *aovs,
+            CryptomatteParams *reflectedCryptomatteParams,
+            CryptomatteParams *refractedCryptomatteParams) const;
 
     // compute the emission contribution from volumes emitting energy
     // (something like fire and explosion) toward intersection point
@@ -485,7 +489,8 @@ private:
             scene_rdl2::math::Color &radiance, float &transparency, VolumeTransmittance& vt,
             unsigned &sequenceID, float *aovs, float *depth,
             DeepParams* deepParams, CryptomatteParams *cryptomatteParams,
-            CryptomatteParams *refractCryptomatteParams,
+            CryptomatteParams *reflectedCryptomatteParams,
+            CryptomatteParams *refractedCryptomatteParams,
             bool ignoreVolumes, bool &hitVolume) const;
 
     scene_rdl2::math::Color computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,

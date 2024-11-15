@@ -548,8 +548,21 @@ RenderOutputDriver::Impl::readSubImageOneEntry(OiioReader& reader,
                         uvData[pbr::CRYPTOMATTE_TYPE_REGULAR]                  = pix + reader.getPixChanOffset("CryptoUV00.R");
                         resumeRenderSupportData[pbr::CRYPTOMATTE_TYPE_REGULAR] = pix + reader.getPixChanOffset("CryptoS00.R");
 
+                        // also need the offsets to reflected cryptomatte data, if present
+                        if (ro->getCryptomatteRecordReflected()) {
+                            idAndCoverageData[pbr::CRYPTOMATTE_TYPE_REFLECTED] = pix + reader.getPixChanOffset("CryptomatteReflect00.R");
+                            positionData[pbr::CRYPTOMATTE_TYPE_REFLECTED]      = pix + reader.getPixChanOffset("CryptoReflectP00.R");
+                            p0Data[pbr::CRYPTOMATTE_TYPE_REFLECTED]            = pix + reader.getPixChanOffset("CryptoReflectP000.R");
+                            normalData[pbr::CRYPTOMATTE_TYPE_REFLECTED]        = pix + reader.getPixChanOffset("CryptoReflectN00.R");
+                            beautyData[pbr::CRYPTOMATTE_TYPE_REFLECTED]        = pix + reader.getPixChanOffset("CryptoReflectB00.R");
+                            refPData[pbr::CRYPTOMATTE_TYPE_REFLECTED]          = pix + reader.getPixChanOffset("CryptoReflectRefP00.R");
+                            refNData[pbr::CRYPTOMATTE_TYPE_REFLECTED]          = pix + reader.getPixChanOffset("CryptoReflectRefN00.R");
+                            uvData[pbr::CRYPTOMATTE_TYPE_REFLECTED]            = pix + reader.getPixChanOffset("CryptoReflectUV00.R");
+                            resumeRenderSupportData[pbr::CRYPTOMATTE_TYPE_REFLECTED]
+                                                                               = pix + reader.getPixChanOffset("CryptoReflectS00.R");
+                        }
                         // also need the offsets to refracted cryptomatte data, if present
-                        if (ro->getCryptomatteEnableRefract()) {
+                        if (ro->getCryptomatteRecordRefracted()) {
                             idAndCoverageData[pbr::CRYPTOMATTE_TYPE_REFRACTED] = pix + reader.getPixChanOffset("CryptomatteRefract00.R");
                             positionData[pbr::CRYPTOMATTE_TYPE_REFRACTED]      = pix + reader.getPixChanOffset("CryptoRefractP00.R");
                             p0Data[pbr::CRYPTOMATTE_TYPE_REFRACTED]            = pix + reader.getPixChanOffset("CryptoRefractP000.R");

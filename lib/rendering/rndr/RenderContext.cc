@@ -3305,7 +3305,8 @@ RenderContext::canRunVectorized(std::string &reason) const
     // over all the render outputs once, checking for all the problem types.
     // The issues will still be reported in alphabetical order.
     bool hasDeepOutput = false;
-    bool hasRefractCrypto = false;
+    bool hasReflectedCryptomatte = false;
+    bool hasRefractedCryptomatte = false;
     const scene_rdl2::rdl2::SceneContext::RenderOutputVector &ros = mSceneContext->getAllRenderOutputs();
     for (auto roItr = ros.cbegin(); roItr != ros.cend(); ++roItr) {
         const scene_rdl2::rdl2::RenderOutput *ro = *roItr;
@@ -3314,8 +3315,12 @@ RenderContext::canRunVectorized(std::string &reason) const
                 hasDeepOutput = true;
             }
             if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE &&
-                ro->getCryptomatteEnableRefract()) {
-                hasRefractCrypto = true;
+                ro->getCryptomatteRecordReflected()) {
+                hasReflectedCryptomatte = true;
+            }
+            if (ro->getResult() == scene_rdl2::rdl2::RenderOutput::RESULT_CRYPTOMATTE &&
+                ro->getCryptomatteRecordRefracted()) {
+                hasRefractedCryptomatte = true;
             }
         }
     }
@@ -3347,9 +3352,11 @@ RenderContext::canRunVectorized(std::string &reason) const
         }
     }
 
-    // Refractive crypto: MOONRAY-5074
-    if (hasRefractCrypto) {
-        fail("refractive cryptomattes");
+    if (hasReflectedCryptomatte) {
+        fail("reflected cryptomatte");
+    }
+    if (hasRefractedCryptomatte) {
+        fail("refracted cryptomatte");
     }
 
     return result;
