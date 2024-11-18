@@ -193,10 +193,18 @@ PathIntegrator::estimateInScatteringSourceTermIndirect(pbr::TLState *pbrTls, con
     float transparency = 0.0f;
     VolumeTransmittance vt;
     bool hitVolume = true;
-    computeRadianceRecurse(pbrTls, rayIndirect, sp, pv, nullptr, Ls, transparency, vt,
-            sequenceID, nullptr, nullptr, nullptr, nullptr, nullptr, true, hitVolume);
+    computeRadianceRecurse(pbrTls, rayIndirect, sp, pv,
+            /* lobe = */ nullptr,
+            Ls, transparency, vt, sequenceID,
+            /* aovs = */ nullptr,
+            /* depth = */ nullptr,
+            /* deepParams = */ nullptr,
+            /* cryptoParams = */ nullptr,
+            /* reflectedCryptoParams = */ nullptr,
+            /* refractedCryptoParams = */ nullptr,
+            true, hitVolume);
 
-    // Calling tranmsittance() here gives the desired energy match with the direct lighting code. 
+    // Calling tranmsittance() here gives the desired energy match with the direct lighting code.
     // Using vt.transmittance() seems to give _almost_ the same result, but is _much_ faster.
     // Since indirect illumunation on volumes is only a first-term approximation at present, here
     // we favour speed. But it would still be beneficial to understand why there's a difference
