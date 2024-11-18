@@ -416,8 +416,9 @@ SphereLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
 
 
 Color
-SphereLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, const LightFilterRandomValues& filterR, float time,
-        const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint,
+SphereLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, 
+        const LightFilterRandomValues& filterR, float time, const LightIntersection &isect, bool fromCamera, 
+        const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint, float *visibility, 
         float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -437,7 +438,8 @@ SphereLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec
                               getXformRender2Local(time, lightFilterList->needsLightXform()),
                               wi
                             },
-                            radiance);
+                            radiance,
+                            visibility);
         }
 
     // To evaluate the pdf, we need information about which sampling scheme was used (or, in the case of the

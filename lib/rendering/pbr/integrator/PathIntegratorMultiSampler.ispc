@@ -36,7 +36,8 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
              const varying RayState &                rayState,
                    varying uint32_t                  dataPtrHandle,
                    varying OcclTestType              occlTestType,
-             const varying int32_t                   assignmentId)
+             const varying int32_t                   assignmentId,
+                   varying float                     lsmpVisibility)
 {
     uniform uint32_t numNewEntries = 0;
 
@@ -65,7 +66,8 @@ fillOcclRay(       uniform PbrTLState *      uniform pbrTls,
                             rayState.mCryptoRefN,
                             rayState.mCryptoUV,
                             occlTestType,
-                            assignmentId);
+                            assignmentId,
+                            lsmpVisibility);
         PbrTLState_acquireDeepData(pbrTls, dst->mDeepDataHandle);
         PbrTLState_acquireCryptomatteData(pbrTls, dst->mCryptomatteDataHandle);
 
@@ -115,7 +117,8 @@ prepareOcclusionTestRays(
               uniform uint32_t &                numPresenceShadowsRays,
         const varying float                     presenceQuality,
               varying OcclTestType &            occlTestType,
-              const varying Intersection &      isect)
+              const varying Intersection &      isect,
+              varying float lsmpVisibility)
 {
     // Presence handling code for direct lighting
     // The shadow ray will be submitted to its own
@@ -173,7 +176,7 @@ prepareOcclusionTestRays(
             srcRayIndices,
             parentRay, wi,
             rayEpsilon, maxT,
-            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId);
+            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId, lsmpVisibility);
     } else {
         numOcclRays += fillOcclRay(pbrTls,
             dstOcclRays,
@@ -181,7 +184,7 @@ prepareOcclusionTestRays(
             srcRayIndices,
             parentRay, wi,
             rayEpsilon, maxT,
-            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId);
+            tDirect, rayState, bundledOcclRayData, occlTestType, assignmentId, lsmpVisibility);
     }
 }
 
@@ -262,7 +265,7 @@ addDirectVisibleBsdfLobeSampleContributionBundled( const uniform PathIntegrator 
         rayEpsilon, shadowRayEpsilon, currSamp->wi, currSamp->tDirect, currSamp->distance, bundledOcclRayData,
         srcOcclRayIndices, dstOcclRays, dstOcclRayIndices, numOcclRays,
         presenceShadowsRays, dstPresenceShadowsRayIndices,
-        numPresenceShadowsRays, this->mPresenceQuality, occlTestType, isect);
+        numPresenceShadowsRays, this->mPresenceQuality, occlTestType, isect, 1.0);
 }
 
 
@@ -410,7 +413,7 @@ void addDirectVisibleLightSampleContributionsBundled(       uniform PbrTLState *
                 &dstOcclRays[lightSamplesSoFar], dstOcclRayIndices,
                 numOcclRays,
                 &presenceShadowsRays[lightSamplesSoFar], dstPresenceShadowsRayIndices,
-                numPresenceShadowsRays, presenceQuality, occlTestType, isect);
+                numPresenceShadowsRays, presenceQuality, occlTestType, isect, currSamp->visibility);
         }
 
         // TODO: Ray debugging.

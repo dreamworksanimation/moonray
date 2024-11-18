@@ -251,7 +251,8 @@ integrateBundled( const uniform PathIntegrator * uniform this,
                 // to compute the sum of all contributing lights, but we're stochastically sampling just one.
                 varying Color lightContribution = pv.pathThroughput * numHits *
                     Light_eval(hitLight, shadingTls, Ray_getDirection(ray), origin, lightFilterR, Ray_getTime(ray),
-                               hitLightIsect, true, nullptr /*LightFilterList*/, nullptr /*PathVertex*/, Ray_getDirFootprint(ray));
+                               hitLightIsect, true, nullptr /*LightFilterList*/, nullptr /*PathVertex*/, 
+                               Ray_getDirFootprint(ray), nullptr, nullptr);
                 radiance = radiance + lightContribution;
 
                 // LPE

@@ -536,6 +536,7 @@ MeshLight_eval(const uniform Light * uniform li,
                const uniform LightFilterList * uniform lightFilterList,
                const varying PathVertex * uniform pv,
                varying float rayDirFootprint,
+               varying float * uniform visibility,
                varying float * uniform pdf)
 {
     const uniform MeshLight * uniform light = (const uniform MeshLight * uniform)li;
@@ -559,7 +560,7 @@ MeshLight_eval(const uniform Light * uniform li,
             lpl, time, LightFilterList_getNeedsLightXform(lightFilterList));
         evalData.wi = wi;
 
-        LightFilterList_eval(lightFilterList, evalData, &radiance);
+        LightFilterList_eval(lightFilterList, evalData, visibility, &radiance);
     }
 
     if (pdf) {

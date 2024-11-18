@@ -122,7 +122,7 @@ public:
             LightFilterRandomValues filterR = {scene_rdl2::math::Vec2f(0.f, 0.f), scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)};
             if (getLight()->intersect(isect.mIllumPoint, nullptr, isect.mWi, 0.f, isect.mDistance + 1.f, lightIsect)) {
                 result = getLight()->eval(nullptr, isect.mWi, isect.mIllumPoint, filterR, 0.f, lightIsect, false,
-                                          nullptr, nullptr,  0.0f);
+                                          nullptr, nullptr,  0.0f, nullptr, nullptr);
             }
         }
 

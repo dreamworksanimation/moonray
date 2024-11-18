@@ -146,7 +146,7 @@ typedef varying Color (* uniform LightEvalFn)(
         varying float time, const varying LightIntersection &isect,
         uniform bool fromCamera, const uniform LightFilterList * uniform lightFilterList,
         const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf);
+        varying float rayDirFootprint, varying float * uniform visibility, varying float * uniform pdf);
 
 typedef uniform float (* uniform LightGetThetaOFn)(const uniform Light * uniform);
 typedef uniform float (* uniform LightGetThetaEFn)(const uniform Light * uniform);
@@ -505,11 +505,12 @@ Light_eval(const uniform Light * uniform light, uniform ShadingTLState * uniform
         varying float time, const varying LightIntersection &isect,
         uniform bool fromCamera, const uniform LightFilterList * uniform lightFilterList,
         const varying PathVertex * uniform pv, varying float rayDirFootprint,
-        varying float * uniform pdf = nullptr)
+        varying float * uniform visibility, varying float * uniform pdf = nullptr)
 {
     MNRY_ASSERT(light->mEvalFn != 0);
     LightEvalFn evalFn = (LightEvalFn)light->mEvalFn;
-    return evalFn(light, tls, wi, p, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint, pdf);
+    return evalFn(light, tls, wi, p, filterR, time, isect, fromCamera, lightFilterList, pv, 
+                  rayDirFootprint, visibility, pdf);
 }
 
 inline varying Color
@@ -518,7 +519,7 @@ Light_eval(const uniform Light * varying light, uniform ShadingTLState * uniform
         varying float time, const varying LightIntersection &isect,
         uniform bool fromCamera, const uniform LightFilterList * varying lightFilterList,
         const varying PathVertex * uniform pv, varying float rayDirFootprint,
-        varying float * uniform pdf = nullptr)
+        varying float * uniform visibility, varying float * uniform pdf = nullptr)
 {
     Color result;
     foreach_unique(l in light) {
@@ -535,7 +536,7 @@ Light_eval(const uniform Light * varying light, uniform ShadingTLState * uniform
         uniform int lane = count_trailing_zeros(lanemask());
         const uniform LightFilterList * uniform lfl =
             (const uniform LightFilterList * uniform) extract((intptr_t) lightFilterList, lane);
-        result = evalFn(l, tls, wi, p, filterR, time, isect, fromCamera, lfl, pv, rayDirFootprint, pdf);
+        result = evalFn(l, tls, wi, p, filterR, time, isect, fromCamera, lfl, pv, rayDirFootprint, visibility, pdf);
     }
 
     return result;

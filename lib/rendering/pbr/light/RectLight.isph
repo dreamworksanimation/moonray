@@ -49,7 +49,7 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
         const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, 
         varying float time, const varying LightIntersection &isect, uniform bool fromCamera,
         const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf);
+        varying float rayDirFootprint, varying float * uniform visibility, varying float * uniform pdf);
 
 uniform float RectLight_getThetaO(const uniform Light * uniform li);
 uniform float RectLight_getThetaE(const uniform Light * uniform li);

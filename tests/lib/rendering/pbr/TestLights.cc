@@ -142,7 +142,7 @@ testLightRadiance(const Vec3f &p, const Vec3f &n, const LightTester *lightTester
                     float pdf;
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
 
-                    Color radiance = light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                    Color radiance = light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, nullptr, &pdf);
 
                     if (pdf != 0.f && !isBlack(radiance)) {
 
@@ -352,7 +352,7 @@ testLightPDF(const Vec3f &p, const Vec3f &n, const LightTester *lightTester,
 
                     float pdf;
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
-                    light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                    light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, nullptr, &pdf);
 
                     if (pdf != 0.f) {
                         MNRY_ASSERT(scene_rdl2::math::isnormal(pdf));
@@ -554,7 +554,7 @@ testLightCanIlluminate(const Vec3f &, const Vec3f &, const LightTester *lightTes
 
                     float pdf;
                     LightFilterRandomValues filterR = {Vec2f(0.f, 0.f), Vec3f(0.f, 0.f, 0.f)};
-                    Color radiance = light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                    Color radiance = light->eval(nullptr, wi, p, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, nullptr, &pdf);
 
                     if (pdf != 0.0f  &&  !isBlack(radiance)) {
                         radiance = radiance / pdf * clamp(dot(wi, n));

@@ -288,7 +288,7 @@ void PathIntegrator::addDirectVisibleLightSampleContributions(pbr::TLState* pbrT
                     // Update visibility aov only for the first bounce
                     if (addVisibility && parentRay.getDepth() == 0) {
                         if (aovAccumVisibilityAovs(pbrTls, aovSchema, lightAovs, 
-                            scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence), 1.0f),
+                            scene_rdl2::math::Vec2f(reduceTransparency(tr) * (1 - presence) * lsmp[i].visibility, 1.0f),
                             lpeStateId, aovs)) {
                             // add visibility aov at most once per shadow ray
                             addVisibility = false;

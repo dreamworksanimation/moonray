@@ -155,14 +155,17 @@ inline bool canIlluminateLightFilterList(const LightFilterList* lightFilterList,
 
 inline void evalLightFilterList(const LightFilterList* lightFilterList,
                                 const LightFilter::EvalData& data,
-                                scene_rdl2::math::Color& radiance)
+                                scene_rdl2::math::Color& radiance,
+                                float* visibility)
 {
     MNRY_ASSERT(lightFilterList);
     size_t lightFilterCount = lightFilterList->getLightFilterCount();
     for (size_t i = 0; i < lightFilterCount; ++i) {
         const LightFilter *lightFilter = lightFilterList->getLightFilter(i);
         MNRY_ASSERT(lightFilter);
-        radiance *= lightFilter->eval(data);
+        scene_rdl2::math::Color lightFilterRadiance = lightFilter->eval(data);
+        radiance *= lightFilterRadiance;
+        if (visibility) { *visibility *= luminance(lightFilterRadiance); }
     }
 }
 

@@ -64,6 +64,8 @@ LightSetSampler_sampleIntersectAndEval(
         const varying Vec3f &P, const varying Vec3f &cullingNormal, const varying LightFilterRandomValues &filterR, 
         varying float time, const varying Vec3f &r, varying LightSample &sample, varying float rayDirFootprint)
 {
+    sample.visibility = 1.0;
+
     // Draw a sample from light
     LightIntersection isect;
     // TODO: We compute the pdf in there but don't return it. Instead we compute
@@ -79,7 +81,7 @@ LightSetSampler_sampleIntersectAndEval(
 
     // Evaluate light sample
     sample.Li = Light_eval(light, tls, sample.wi, P, filterR, time, isect, false, lightFilterList, pv, rayDirFootprint,
-                           &sample.pdf);
+                           &sample.visibility, &sample.pdf);
     if (isSampleInvalid(sample.Li, sample.pdf)) {
         LightSample_setInvalid(&sample);
     }

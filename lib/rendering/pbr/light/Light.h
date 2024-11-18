@@ -201,7 +201,7 @@ public:
                                          float time, const LightIntersection &isect, bool fromCamera,
                                          const LightFilterList *lightFilterList,
                                          const PathVertex *pv, float rayDirFootprint,
-                                         float *pdf = nullptr) const = 0;
+                                         float *visibility, float *pdf) const = 0;
 
     /// Query a position from light that will be used as pivot point for
     /// equi-angular sampling (part of volume scattering integration)

@@ -104,7 +104,7 @@ PortalLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unif
                  const varying Vec3f &p, const varying LightFilterRandomValues& filterR, varying float time,
                  const varying LightIntersection &isect, uniform bool fromCamera,
                  const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-                 varying float rayDirFootprint, varying float * uniform pdf)
+                 varying float rayDirFootprint, varying float * uniform visibility, varying float * uniform pdf)
 {
     const uniform PortalLight * uniform light = (const uniform PortalLight * uniform)li;
     const uniform Light * uniform refLight = (const uniform Light * uniform)light->mRefLight;
@@ -125,7 +125,7 @@ PortalLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unif
     // Evaluate reference light
     // TODO: Support the ref light's lightfilterlist?
     Color radiance = Light_eval(refLight, tls, wi, p, filterR, time, isect, fromCamera,
-                                nullptr, pv, rayDirFootprint, pdfRef);
+                                nullptr, pv, rayDirFootprint, visibility, pdfRef);
 
     // If the ref light is an env light, we'll compute the pdf here in the rect light eval call
     // because the env light was sampled using the rectangle
@@ -133,7 +133,7 @@ PortalLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unif
 
     // Evaluate portal rect light
     radiance = radiance * RectLight_eval(li, tls, wi, p, filterR, time, isectRect, fromCamera,
-                                         lightFilterList, pv, rayDirFootprint, pdfRect);
+                                         lightFilterList, pv, rayDirFootprint, visibility, pdfRect);
     return radiance;
 }
 

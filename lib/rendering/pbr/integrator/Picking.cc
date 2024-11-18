@@ -120,7 +120,7 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
             scene_rdl2::math::Vec2f(0.f, 0.f),
             scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
         scene_rdl2::math::Color contribution = hitLight->eval(tls, ray.getDirection(), ray.getOrigin(),
-            lightFilterR, ray.getTime(), hitLightIsects[i], true, nullptr, nullptr, ray.getDirFootprint());
+            lightFilterR, ray.getTime(), hitLightIsects[i], true, nullptr, nullptr, ray.getDirFootprint(), nullptr, nullptr);
         shading::LightContrib lightContrib(hitLight->getRdlLight(), scene_rdl2::math::luminance(contribution));
         lightContributions.push_back(lightContrib);
     }
@@ -216,7 +216,7 @@ computeLightContributions(mcrt_common::ThreadLocalState *tls, const Scene* scene
                 scene_rdl2::math::Vec2f(0.f, 0.f),
                 scene_rdl2::math::Vec3f(0.f, 0.f, 0.f)}; // light filters don't apply to camera rays
             scene_rdl2::math::Color Li = light->eval(tls, wi, isect.getP(), lightFilterR, ray.getTime(), sampleIsect,
-                false, lightFilterList, nullptr, ray.getDirFootprint(), &pdfLight);
+                false, lightFilterList, nullptr, ray.getDirFootprint(), nullptr, &pdfLight);
             if (pdfLight == 0.f) {
                 continue;
             }

@@ -77,7 +77,8 @@ void BundledOcclRay_init(varying BundledOcclRay * uniform this,
                          const varying Vec3f &cryptoRefN,
                          const varying Vec2f &cryptoUV,
                          varying uint32_t occlTestType,
-                         const varying int32_t shadowReceiverId);
+                         const varying int32_t shadowReceiverId,
+                         varying float lsmpVisibility);
 
 struct BundledRadiance
 {

@@ -57,7 +57,8 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
                     const varying Vec3f &cryptoRefN,
                     const varying Vec2f &cryptoUV,
                     varying uint32_t occlTestType,
-                    const varying int32_t shadowReceiverId)
+                    const varying int32_t shadowReceiverId,
+                    varying float lsmpVisibility)
 {
     this->mOrigin = origin;
     this->mDir = dir;
@@ -79,6 +80,7 @@ BundledOcclRay_init(varying BundledOcclRay * uniform this,
     this->mCryptoUV = cryptoUV;
     this->mOcclTestType = occlTestType;
     this->mShadowReceiverId = shadowReceiverId;
+    this->mLsmpVisibility = lsmpVisibility;
 }
 
 

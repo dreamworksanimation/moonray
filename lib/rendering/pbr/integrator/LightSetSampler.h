@@ -46,6 +46,7 @@ struct LightSample {
     float misPdf;
     scene_rdl2::math::Color Li;
     scene_rdl2::math::Color t;
+    float visibility;
 
     LightSampleLPE lp;
 

@@ -108,7 +108,7 @@ LightSet::intersectAndEval(mcrt_common::ThreadLocalState *tls, const Vec3f &P, c
     lCo.distance = isect.distance;
 
     // Evaluate the intersected light Li and pdf
-    lCo.Li = light->eval(tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint, &lCo.pdf);
+    lCo.Li = light->eval(tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint, nullptr, &lCo.pdf);
     lCo.isInvalid = isSampleInvalid(lCo.Li, lCo.pdf);
 
     // Radiance has to be scaled by number of lights hit because we're only sampling one

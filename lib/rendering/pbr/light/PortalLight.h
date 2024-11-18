@@ -69,7 +69,7 @@ public:
     virtual scene_rdl2::math::Color eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, 
             const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time, 
             const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, 
-            const PathVertex *pv, float rayDirFootprint, float *pdf = nullptr) const override;
+            const PathVertex *pv, float rayDirFootprint, float *visibility, float *pdf) const override;
 
 private:
     void initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc);

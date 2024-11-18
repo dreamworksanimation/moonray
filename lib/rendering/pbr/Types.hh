@@ -30,9 +30,9 @@ enum BundledOcclRayDataFlags
 //
 
 #if __APPLE__
-#define BUNDLED_OCCL_RAY_MEMBERS_PAD (60+64) /*Alignment: 128, Total size: 132, Padded size: 256*/
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD (60+60) /*Alignment: 128, Total size: 136, Padded size: 256*/
 #else
-#define BUNDLED_OCCL_RAY_MEMBERS_PAD  60 /*Alignment: 64, Total size: 132, Padded size: 192*/
+#define BUNDLED_OCCL_RAY_MEMBERS_PAD  56 /*Alignment: 64, Total size: 136, Padded size: 192*/
 #endif
 
 #define BUNDLED_OCCL_RAY_MEMBERS                                    /*  size  */\
@@ -56,6 +56,7 @@ enum BundledOcclRayDataFlags
     HUD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec2f), mCryptoUV);  /*  124   */\
     HVD_MEMBER(uint32_t, mOcclTestType);                            /*  128   */\
     HVD_MEMBER(int32_t,  mShadowReceiverId);                        /*  132   */\
+    HVD_MEMBER(float, mLsmpVisibility);                             /*  136   */\
     HVD_ISPC_PAD(mIspcPad, BUNDLED_OCCL_RAY_MEMBERS_PAD)
 
 #define BUNDLED_OCCL_RAY_VALIDATION(vlen)                   \
@@ -80,6 +81,7 @@ enum BundledOcclRayDataFlags
     HUD_VALIDATE(BundledOcclRay, mCryptoUV);                \
     HVD_VALIDATE(BundledOcclRay, mOcclTestType);            \
     HVD_VALIDATE(BundledOcclRay, mShadowReceiverId);        \
+    HVD_VALIDATE(BundledOcclRay, mLsmpVisibility);          \
     HVD_END_VALIDATION
 
 #define BUNDLED_OCCL_RAY_DATA_MEMBERS                                   \

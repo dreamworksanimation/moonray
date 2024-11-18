@@ -120,7 +120,7 @@ LightSet_intersectAndEval(uniform PbrTLState * uniform pbrTls,
 
     // Evaluate the intersected light Li and pdf
     lCo.Li = Light_eval(light, tls, wi, P, filterR, time, isect, fromCamera, lightFilterList, pv, rayDirFootprint,
-                        &lCo.pdf);
+                        nullptr, &lCo.pdf);
     lCo.isInvalid = isSampleInvalid(lCo.Li, lCo.pdf);
 
     // Radiance has to be scaled by number of lights hit because we're only sampling one

@@ -98,7 +98,7 @@ areSingleRaysOccluded(pbr::TLState *pbrTls, unsigned numEntries, BundledOcclRay 
                 const int numItems = pbrTls->getNumListItems(occlRay.mDataPtrHandle);
                 accumLightAovs(pbrTls, occlRay, fs, numItems, scene_rdl2::math::sWhite, &tr,
                                AovSchema::sLpePrefixUnoccluded);
-                accumVisibilityAovs(pbrTls, occlRay, fs, numItems, reduceTransparency(tr));
+                accumVisibilityAovs(pbrTls, occlRay, fs, numItems, reduceTransparency(tr) * occlRay.mLsmpVisibility);
             }
         } else {
             // LPE: visibility aovs when we don't hit light
@@ -285,7 +285,8 @@ computePresenceShadowsQueriesBundled(pbr::TLState *pbrTls, unsigned int numEntri
             accumLightAovs(pbrTls, occlRay, fs, numItems, scene_rdl2::math::sWhite, &occlusionValue,
                            AovSchema::sLpePrefixUnoccluded);
 
-            accumVisibilityAovs(pbrTls, occlRay, fs, numItems, reduceTransparency(occlusionValue));
+            accumVisibilityAovs(pbrTls, occlRay, fs, numItems, 
+                                reduceTransparency(occlusionValue) * occlRay.mLsmpVisibility);
         }
 
         // we are responsible for freeing data memory
@@ -552,7 +553,7 @@ rayBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
                         radiance = rs->mPathVertex.pathThroughput *
                             hitLight->eval(tls, rs->mRay.getDirection(), rs->mRay.getOrigin(),
                                            lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr, nullptr,
-                                           rs->mRay.getDirFootprint()) * numHits;
+                                           rs->mRay.getDirFootprint(), nullptr, nullptr) * numHits;
                         // attenuate based on volume transmittance
                         if (rs->mVolHit) radiance *= (rs->mVolTr * rs->mVolTh);
 

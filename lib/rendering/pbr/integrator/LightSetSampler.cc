@@ -72,6 +72,8 @@ LightSetSampler::sampleAndEval(mcrt_common::ThreadLocalState* tls,
         float time, const PathVertex* pv, const Vec3f& r, LightSample &sample,
         float rayDirFootprint) const
 {
+    sample.visibility = 1.0f;
+
     // Draw a sample from light
     LightIntersection isect;
     if (!light->sample(P, N, time, r, sample.wi, isect, rayDirFootprint)) {
@@ -82,7 +84,7 @@ LightSetSampler::sampleAndEval(mcrt_common::ThreadLocalState* tls,
 
     // Evaluate light sample
     sample.Li = light->eval(tls, sample.wi, P, filterR, time, isect, false, lightFilterList, pv, rayDirFootprint,
-                            &sample.pdf);
+                            &sample.visibility, &sample.pdf);
     if (isSampleInvalid(sample.Li, sample.pdf)) {
         sample.setInvalid();
     }

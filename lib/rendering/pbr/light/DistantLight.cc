@@ -293,7 +293,7 @@ DistantLight::sample(const Vec3f &p, const Vec3f *n, float time, const Vec3f& r,
 Color
 DistantLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Vec3f &p, const LightFilterRandomValues& filterR,
         float time, const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv,
-        float rayDirFootprint, float *pdf) const
+        float rayDirFootprint, float *visibility, float *pdf) const
 {
     MNRY_ASSERT(mOn);
 
@@ -307,7 +307,8 @@ DistantLight::eval(mcrt_common::ThreadLocalState* tls, const Vec3f &wi, const Ve
                               globalToLocalXform(time, lightFilterList->needsLightXform()),
                               wi
                             },
-                            radiance);
+                            radiance,
+                            visibility);
         }
 
     if (pdf) {

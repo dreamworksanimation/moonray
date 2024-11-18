@@ -562,7 +562,7 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
                         radiance = rs->mPathVertex.pathThroughput *
                             hitLight->eval(tls, rs->mRay.getDirection(), rs->mRay.getOrigin(),
                                            lightFilterR, rs->mRay.getTime(), hitLightIsect, true, nullptr, nullptr,
-                                           rs->mRay.getDirFootprint()) * numHits;
+                                           rs->mRay.getDirFootprint(), nullptr, nullptr) * numHits;
                         // attenuate based on volume transmittance
                         if (rs->mVolHit) radiance *= (rs->mVolTr * rs->mVolTh);
 

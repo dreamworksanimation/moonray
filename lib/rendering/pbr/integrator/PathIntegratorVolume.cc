@@ -143,7 +143,7 @@ PathIntegrator::estimateInScatteringSourceTermDirect(pbr::TLState *pbrTls, const
         float pdfLight;
         // TODO: replace the 0.0f with a proper footprint value? (We currently have no RayDifferential available)
         scene_rdl2::math::Color Li = light->eval(pbrTls->mTopLevelTls,
-            lWi, scatterPoint, ulFilter, ray.getTime(), lIsect, false, lightFilterList, nullptr, 0.0f, &pdfLight);
+            lWi, scatterPoint, ulFilter, ray.getTime(), lIsect, false, lightFilterList, nullptr, 0.0f, nullptr, &pdfLight);
         if (!isSampleInvalid(Li, pdfLight) && scene_rdl2::math::isfinite(pdfLight)) {
             mcrt_common::Ray shadowRay(scatterPoint, lWi, 0,
                 sHitEpsilonEnd * lIsect.distance,

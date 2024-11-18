@@ -114,7 +114,7 @@ bool PortalLight::sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::mat
 Color PortalLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi,
             const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time,
             const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList,
-            const PathVertex *pv, float rayDirFootprint, float *pdf) const
+            const PathVertex *pv, float rayDirFootprint, float *visibility, float *pdf) const
 {
     MNRY_ASSERT(mOn && mRefLight && (mRefLight->isEnv() || mRefLight->isDistant()));
 
@@ -130,7 +130,7 @@ Color PortalLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::ma
     // Evaluate reference light
     // TODO: Support the ref light's lightfilterlist?
     Color radiance = mRefLight->eval(tls, wi, p, filterR, time, isect, fromCamera,
-                                     nullptr, pv, rayDirFootprint, pdfRef);
+                                     nullptr, pv, rayDirFootprint, visibility, pdfRef);
 
     // If the ref light is an env light, we'll compute the pdf here in the rect light eval call
     // because the env light was sampled using the rectangle
@@ -138,7 +138,7 @@ Color PortalLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::ma
 
     // Evaluate portal rect light
     radiance *= RectLight::eval(tls, wi, p, filterR, time, isectRect, fromCamera,
-                                    lightFilterList, pv, rayDirFootprint, pdfRect);
+                                    lightFilterList, pv, rayDirFootprint, visibility, pdfRect);
     return radiance;
 }
 

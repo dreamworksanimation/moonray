@@ -324,7 +324,7 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
         const varying Vec3f &wi, const varying Vec3f &p, const varying LightFilterRandomValues& filterR, varying float time,
         const varying LightIntersection &isect, uniform bool fromCamera,
         const uniform LightFilterList * uniform lightFilterList, const varying PathVertex * uniform pv,
-        varying float rayDirFootprint, varying float * uniform pdf)
+        varying float rayDirFootprint, varying float * uniform visibility, varying float * uniform pdf)
 {
     const uniform RectLight * uniform light = (const uniform RectLight * uniform)li;
     const uniform LocalParamLight * uniform lpl = (const uniform LocalParamLight * uniform) li;
@@ -361,7 +361,7 @@ RectLight_eval(const uniform Light * uniform li, uniform ShadingTLState * unifor
             lpl, time, LightFilterList_getNeedsLightXform(lightFilterList));
         evalData.wi = wi;
 
-        LightFilterList_eval(lightFilterList, evalData, &radiance);
+        LightFilterList_eval(lightFilterList, evalData, visibility, &radiance);
     }
 
     if (pdf) {

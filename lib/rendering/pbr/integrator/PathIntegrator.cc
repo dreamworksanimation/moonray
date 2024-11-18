@@ -521,7 +521,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             scene_rdl2::math::Color lightContribution = pv.pathThroughput * numHits *
                 hitLight->eval(pbrTls->mTopLevelTls,
                     ray.getDirection(), ray.getOrigin(), lightFilterR,
-                    ray.getTime(), hitLightIsect, true, nullptr, nullptr, ray.getDirFootprint());
+                    ray.getTime(), hitLightIsect, true, nullptr, nullptr, ray.getDirFootprint(), nullptr, nullptr);
             radiance += lightContribution;
 
             checkForNan(radiance, "Camera visible lights", sp, pv, ray, isect);

@@ -1760,8 +1760,9 @@ MeshLight::sample(const scene_rdl2::math::Vec3f &p, const scene_rdl2::math::Vec3
 }
 
 scene_rdl2::math::Color
-MeshLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, const scene_rdl2::math::Vec3f &p, const LightFilterRandomValues& filterR, float time,
-    const LightIntersection &isect, bool fromCamera, const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint,
+MeshLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3f &wi, const scene_rdl2::math::Vec3f &p, 
+    const LightFilterRandomValues& filterR, float time, const LightIntersection &isect, bool fromCamera, 
+    const LightFilterList *lightFilterList, const PathVertex *pv, float rayDirFootprint, float *visibility, 
     float *pdf) const
 {
     MNRY_ASSERT(mOn);
@@ -1776,7 +1777,8 @@ MeshLight::eval(mcrt_common::ThreadLocalState* tls, const scene_rdl2::math::Vec3
                               getXformRender2Local(time, lightFilterList->needsLightXform()),
                               wi
                             },
-                            radiance);
+                            radiance,
+                            visibility);
     }
 
     if (pdf) {

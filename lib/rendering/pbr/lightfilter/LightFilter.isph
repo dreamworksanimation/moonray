@@ -239,6 +239,7 @@ LightFilterList_canIlluminate(const uniform LightFilterList * uniform lfl,
 inline void
 LightFilterList_eval(const uniform LightFilterList * uniform lfl,
                      varying EvalData& data,
+                     varying float * uniform visibility,
                      varying Color * uniform radiance)
 {
     MNRY_ASSERT(lfl);
@@ -249,6 +250,7 @@ LightFilterList_eval(const uniform LightFilterList * uniform lfl,
         Color filterValue;
         LightFilter_eval(lightFilter, data, &filterValue);
         *radiance = *radiance * filterValue;
+        if (visibility) { *visibility = *visibility * luminance(filterValue); }
     }
 }
 

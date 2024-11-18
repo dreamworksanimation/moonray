@@ -45,7 +45,8 @@ testLightRadiance(const uniform Vec3f &p, const uniform Vec3f &n,
 
                 float pdf;                
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                Color radiance = Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                Color radiance = Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, 
+                                            false, nullptr, nullptr, 0.0f, nullptr, &pdf);
 
                 if (pdf != 0.0f  &&  !isBlack(radiance)) {
 
@@ -105,7 +106,7 @@ testLightPdf(const uniform Vec3f &p, const uniform Vec3f &n,
 
                 float pdf;
                 LightFilterRandomValues filterR = {Vec2f_ctor(0.f, 0.f), Vec3f_ctor(0.f, 0.f, 0.f)};
-                Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, &pdf);
+                Light_eval(light, nullptr, wi, pv, filterR, 0.f, isect, false, nullptr, nullptr, 0.0f, nullptr, &pdf);
 
                 if (pdf != 0.0f) {
                     MNRY_ASSERT(isnormal(pdf));
