@@ -15,8 +15,8 @@ pipeline-configurations:
     test:
       enabled: true
       cmd:
-      - rez-test _packagename_ variant7
       - rez-test _packagename_ variant8
+      - rez-test _packagename_ variant1
       - rez-test _packagename_ variant9
       - rez-test _packagename_ variant10
       - rez-test _packagename_ variant11

@@ -33,15 +33,18 @@ help = ('For assistance, '
 
 variants = [
     ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2023.1', 'gcc-11.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
+    ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
     ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2023.1', 'gcc-11.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2023.1', 'clang-17.0.6.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
 #    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2023.1', 'clang-17.0.6.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
+    
     ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
     ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
+    
     ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
-    ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
+    # ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
     ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2021.0', 'clang-13', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
     ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.8.x.2'],
     ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.8.x.2'],
