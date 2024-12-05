@@ -50,11 +50,20 @@ RenderContextConsoleDriver::parserConfigure(Parser &parser)
                    }
                    return true;
                });
+    parser.opt("shmFbOutput", "...command...", "shmFbOutput command (only works moonray_gui)",
+               [&](Arg& arg) {
+                   if (getShmFbOutput()) {
+                       return getShmFbOutput()->getParser().main(arg.childArg());
+                   } else {
+                       return arg.msg("ShmFbOutput is empty\n");
+                   }
+               });
 }
 
 //==========================================================================================
 
 RenderContextConsoleDriver::RenderContextConsoleDriverShPtr gRenderContextConsoleDriver;
+std::shared_ptr<scene_rdl2::grid_util::ShmFbOutput> gShmFbOutput;
 
 // static function    
 void
@@ -72,6 +81,20 @@ RenderContextConsoleDriver::RenderContextConsoleDriverShPtr
 RenderContextConsoleDriver::get()
 {
     return gRenderContextConsoleDriver;
+}
+
+// static function
+void
+RenderContextConsoleDriver::setShmFbOutput(std::shared_ptr<scene_rdl2::grid_util::ShmFbOutput> shmFbOutput)
+{
+    gShmFbOutput = shmFbOutput;
+}
+
+// static function
+RenderContextConsoleDriver::ShmFbOutputShPtr
+RenderContextConsoleDriver::getShmFbOutput()
+{
+    return gShmFbOutput;
 }
 
 } // namespace rndr

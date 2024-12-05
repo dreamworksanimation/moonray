@@ -6,6 +6,7 @@
 #pragma once
 
 #include <scene_rdl2/common/grid_util/DebugConsoleDriver.h>
+#include <scene_rdl2/common/grid_util/ShmFbOutput.h>
 
 namespace moonray {
 namespace rndr {
@@ -28,6 +29,7 @@ class RenderContextConsoleDriver : public scene_rdl2::grid_util::DebugConsoleDri
 {
 public:
     using RenderContextConsoleDriverShPtr = std::shared_ptr<RenderContextConsoleDriver>;
+    using ShmFbOutputShPtr = std::shared_ptr<scene_rdl2::grid_util::ShmFbOutput>;
 
     // Negative port number disables debug console features and never constructs
     // RenderContextConsoleDriver internally (In this case, get() return nullptr).
@@ -35,6 +37,7 @@ public:
     // Usually you specify the port number which you want to use.
     static void init(int port);
     static RenderContextConsoleDriverShPtr get();
+    static void setShmFbOutput(ShmFbOutputShPtr shmFbOutput);
     
     RenderContextConsoleDriver() :
         DebugConsoleDriver(),
@@ -47,6 +50,8 @@ public:
 private:
     using Parser = scene_rdl2::grid_util::Parser;
     using Arg = scene_rdl2::grid_util::Arg;
+
+    static ShmFbOutputShPtr getShmFbOutput();
 
     void parserConfigure(Parser &parser) override;
 

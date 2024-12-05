@@ -70,6 +70,7 @@ set_property(TARGET ${component}
     PROPERTY PUBLIC_HEADER
         PixelBufferUtils.h
         RenderContext.h
+	RenderContextConsoleDriver.h
         RenderPrepExecTracker.h
         RenderProgressEstimation.h
         RenderOptions.h
