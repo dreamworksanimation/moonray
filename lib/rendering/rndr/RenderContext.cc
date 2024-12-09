@@ -1952,17 +1952,28 @@ RenderContext::renderPrep(bool allowUnsupportedXPUFeatures)
     mRenderPrepTimingStats->recTimeEnd(RenderPrepTimingStats::RenderPrepTag::WHOLE);
 
     // Update XPU
-    if (mExecutionMode == mcrt_common::ExecutionMode::XPU &&
-        (geomChangeFlag == rt::ChangeFlag::ALL ||
-         (geomChangeFlag == rt::ChangeFlag::UPDATE && !mLayer->getChangedOrDeformedGeometries().empty()))) {
+    if (mExecutionMode == mcrt_common::ExecutionMode::XPU) {
         // Any update to the scene causes render prep to re-run which resets mExecutionMode.
-        // Thus we must recreate the GPU accelerator to sync up with any scene changes and to
-        // fall back properly if there is a problem.  E.g. what if we were running in XPU mode and
-        // then a delta was applied that contained something incompatible with XPU?
-        mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
-        if (mGeometryManager->getGPUAccelerator() == nullptr) {
-            // fall back to vector mode
-            mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
+        if (geomChangeFlag == rt::ChangeFlag::ALL ||
+            (geomChangeFlag == rt::ChangeFlag::UPDATE && !mLayer->getChangedOrDeformedGeometries().empty())) {
+            // We must recreate the GPU accelerator to sync up with any scene changes and to
+            // fall back properly if there is a problem.  E.g. what if we were running in XPU mode and
+            // then a delta was applied that contained something incompatible with XPU?
+            mGeometryManager->updateGPUAccelerator(allowUnsupportedXPUFeatures, getNumTBBThreads(), mLayer);
+            if (mGeometryManager->getGPUAccelerator() == nullptr) {
+                // fall back to vector mode
+                mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
+            }
+        } else {
+            // No geometry was updated thus we can reuse the GPU accelerator from the previous frame,
+            // if it exists.  It might not exist because we might have previously fallen back to vector mode
+            // in the above code.
+            if (mGeometryManager->getGPUAccelerator() == nullptr) {
+                // fall back to vector mode
+                mExecutionMode = mcrt_common::ExecutionMode::VECTORIZED;
+                mRenderStats->logString("---------- Setting up GPU ----------------------------------");
+                mRenderStats->logString("GPU Accelerator not initialized, falling back to CPU vector mode");
+            }
         }
     }
     mRenderStats->mBuildGPUAcceleratorTime =
