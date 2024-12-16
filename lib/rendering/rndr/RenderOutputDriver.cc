@@ -448,36 +448,47 @@ RenderOutputDriver::Impl::Impl(const RenderContext *renderContext) :
         }
     }
 
-    //
-    // Create checkpoint related outfile path if it doesn't already exist
-    //
-    for (size_t i = 0; i < mFiles.size(); ++i){
-        if (!scene_rdl2::util::writeTest(mFiles[i].mName, true)){
-            throw std::runtime_error(std::string("Could not write to output file: ") + mFiles[i].mName);
-        }
-        if (mCheckpointRenderActive){
-            if (!mFiles[i].mCheckpointName.empty()) {
-                if (!scene_rdl2::util::writeTest(mFiles[i].mCheckpointName, true)){
-                    throw std::runtime_error(std::string("Could not access checkpoint file: ") +
-                                             mFiles[i].mCheckpointName);
-                }
-            }
-            if (!mFiles[i].mCheckpointMultiVersionName.empty()) {
-                if (!scene_rdl2::util::writeTest(mFiles[i].mCheckpointMultiVersionName, true)) {
-                    throw std::runtime_error(std::string("Could not access checkpoint multi-version file:") +
-                                             mFiles[i].mCheckpointMultiVersionName);
-                }
-            }
-        }
-    }
+    if (renderContext->isBackendComputation()) {
+        // We skip the preliminary output file permission check if moonray process is backend computation.
+        // Basically, the backend computation mode does not output images to the disk and we don't need
+        // output permission check as well. Skipping permission checks might reduce the risk related to
+        // process ownership and file permission issues especially under hdMoonray context.
+        scene_rdl2::logging::Logger::info("Backend computation detected. Output file permission check disabled");
 
-    //
-    // check temporary directory and create it it doesn't exist
-    //
-    std::string testFile = vars.getTmpDir() + "/__TMPDIR_ACCESS_TEST__";
-    if (!scene_rdl2::util::writeTest(testFile, true)) {
-        throw std::runtime_error(std::string("Could not access temporary directory:") +
-                                 vars.getTmpDir());
+    } else {
+        scene_rdl2::logging::Logger::info("Enabled output file permission check");
+
+        //
+        // Create checkpoint related outfile path if it doesn't already exist
+        //
+        for (size_t i = 0; i < mFiles.size(); ++i){
+            if (!scene_rdl2::util::writeTest(mFiles[i].mName, true)){
+                throw std::runtime_error(std::string("Could not write to output file: ") + mFiles[i].mName);
+            }
+            if (mCheckpointRenderActive){
+                if (!mFiles[i].mCheckpointName.empty()) {
+                    if (!scene_rdl2::util::writeTest(mFiles[i].mCheckpointName, true)){
+                        throw std::runtime_error(std::string("Could not access checkpoint file: ") +
+                                                 mFiles[i].mCheckpointName);
+                    }
+                }
+                if (!mFiles[i].mCheckpointMultiVersionName.empty()) {
+                    if (!scene_rdl2::util::writeTest(mFiles[i].mCheckpointMultiVersionName, true)) {
+                        throw std::runtime_error(std::string("Could not access checkpoint multi-version file:") +
+                                                 mFiles[i].mCheckpointMultiVersionName);
+                    }
+                }
+            }
+        }
+
+        //
+        // check temporary directory and create it it doesn't exist
+        //
+        std::string testFile = vars.getTmpDir() + "/__TMPDIR_ACCESS_TEST__";
+        if (!scene_rdl2::util::writeTest(testFile, true)) {
+            throw std::runtime_error(std::string("Could not access temporary directory:") +
+                                     vars.getTmpDir());
+        }
     }
 
     if (resumeRenderActive) {

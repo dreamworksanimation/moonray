@@ -1184,6 +1184,19 @@ RenderContext::getCurrentFrame() const
     return mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sFrameKey);
 }
 
+bool
+RenderContext::isBackendComputation() const
+//
+// This API detects moonray process as back-end computation or a regular standalone moonray process.
+//
+{
+    // This is a heuristic solution to detect moonray is executed as backend computation or regular
+    // process. We don't execute the command line option parsing when the backend computation mode
+    // The internal command line data string is created if command line parsing APIs are used.
+    // So we use this data for detection.
+    return mOptions.getCommandLine().empty();
+}
+
 scene_rdl2::math::HalfOpenViewport
 RenderContext::getRezedRegionWindow() const
 {

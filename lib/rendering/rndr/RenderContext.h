@@ -460,6 +460,8 @@ public:
     FastRenderMode getFastRenderMode() const    { return mOptions.getFastRenderMode(); }
     void setFastRenderMode(FastRenderMode mode) { mOptions.setFastRenderMode(mode); }
 
+    bool isBackendComputation() const; // detects whether moonray is backend computation or not
+
     scene_rdl2::math::HalfOpenViewport getRezedRegionWindow() const;
     scene_rdl2::math::HalfOpenViewport getRezedApertureWindow() const;
     scene_rdl2::math::HalfOpenViewport getRezedSubViewport() const;
