@@ -1005,7 +1005,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
     scene_rdl2::alloc::Arena *arena = pbrTls->mArena;
     SCOPED_MEM(arena);
 
-    RayState *baseRayState = indexToRayState(0);
+    RayState* baseRayState = pbrTls->getBaseRayState();
 
     shading::Bsdf bsdf;
 
@@ -1155,7 +1155,7 @@ CPP_addRayQueueEntries(pbr::TLState *pbrTls, const RayStatev *rayStatesv,
     }
 
     for (unsigned i = 0; i < numRayStates; ++i) {
-        MNRY_ASSERT(isValid(rayStates[i]));
+        MNRY_ASSERT(isRayStateValid(pbrTls, rayStates[i]));
     }
 
     pbrTls->addRayQueueEntries(numRayStates, rayStates);
@@ -1331,8 +1331,7 @@ CPP_computeRadianceEmissiveRegionsBundled(const PathIntegrator *pathIntegrator,
 
     pbrTls->stopIspcAccumulator();
 
-    RayState *baseRayState = indexToRayState(0);
-
+    RayState* baseRayState = pbrTls->getBaseRayState();
     for (unsigned i = 0; i < VLEN; ++i) {
         // Don't compute emissive region radiance for invalid lanes
         if (!isActive(lanemask, i)) {
@@ -1363,8 +1362,7 @@ CPP_applyVolumeTransmittance(const PathIntegrator *pathIntegrator,
 
     pbrTls->stopIspcAccumulator();
 
-    RayState *baseRayState = indexToRayState(0);
-
+    RayState* baseRayState = pbrTls->getBaseRayState();
     for (unsigned i = 0; i < VLEN; ++i) {
         // Don't apply volume transmittance for invalid lanes
         if (!isActive(lanemask, i)) {

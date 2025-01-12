@@ -1,7 +1,7 @@
 // Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
 #pragma once
+
 #include "ProfileAccumulatorHandles.h"
 #include "ThreadLocalState.hh"
 #include "Types.h"
@@ -44,13 +44,6 @@ struct TLSInitParams
 
     // Authoritative, pass in 0 to let the system decide.
     unsigned        mDesiredNumTBBThreads;
-
-    std::shared_ptr<std::string> mCpuAffinityDef; // CPU-Affinity definition
-    std::shared_ptr<std::string> mSocketAffinityDef; // Socket-Affinity definition
-    bool mEnableMcrtCpuAffinity {true};
-    std::shared_ptr<std::vector<unsigned>> mAffinityCpuIdTbl; // cpuId table for CPU-Affinity mask
-
-    scene_rdl2::alloc::ArenaBlockPool *mArenaBlockPool;
 
     // This is the total number of RayState objects allocated per thread.
     // In actual fact, we allocate mPerThreadRayStatePoolSize * numThreads
@@ -303,4 +296,3 @@ getExclusiveAccumulators(mcrt_common::ThreadLocalState *tls)
 }
 
 } // namespace moonray
-

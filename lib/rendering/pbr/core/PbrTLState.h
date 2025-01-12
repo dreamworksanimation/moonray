@@ -1,8 +1,5 @@
 // Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include "PbrTLState.hh"
@@ -73,12 +70,14 @@ public:
     // To reset those, call resetPools() separately.
     virtual void        reset() override;
 
-    static size_t       getCL1PoolSize();
+    static size_t       getCL1PoolSize(); // byte
 
     // RayState management.
     RayState **         allocRayStates(unsigned numRayStates);
     void                freeRayStates(unsigned numRayStates, RayState **rayStates);
-    static size_t       getRayStatePoolSize();
+    static size_t       getRayStatePoolSize(); // byte
+
+    inline RayState* getBaseRayState() const { return reinterpret_cast<RayState*>(mRayStatePool.getEntryMemory()); }
 
     uint32_t acquireDeepData(uint32_t deepDataHandle);
     void releaseDeepData(uint32_t deepDataHandle);
@@ -92,9 +91,9 @@ public:
     // Max numItems is 16
     // Max itemSize is 64 bytes
     uint32_t           allocList(unsigned itemSize, unsigned numItems);
-    void               freeList(uint32_t listPtr);
-    unsigned           getNumListItems(uint32_t listPtr);
-    void *             getListItem(uint32_t listPtr, unsigned item);
+    void               freeList(uint32_t listHandle);
+    unsigned           getNumListItems(uint32_t listHandle);
+    void *             getListItem(uint32_t listHandle, unsigned item);
 
     // Verify that the RayState pool and memory pools
     // have no outstanding allocations.
@@ -176,11 +175,6 @@ public:
     PBR_TL_STATE_MEMBERS;
 
 private:
-    template <typename QueueType>
-    finline void addFilmQueueEntries(unsigned numEntries,
-                                     typename QueueType::EntryType *entries,
-                                     QueueType *queue);
-
     template <typename ResType, typename PoolType>
     finline void poolAlloc(const char * const typeName,
                            PoolType &pool,
@@ -188,6 +182,10 @@ private:
                            ResType **entries,
                            OverlappedAccType accumStall,
                            std::atomic<unsigned> &numFailedAlloc);
+
+    inline void* handleToCL1Ptr(uint32_t handle) const;
+    inline uint32_t cl1PtrToHandle(const void* bytes, const unsigned numItems) const;
+    inline bool isValidCL1Addr(const CacheLine1* ptr, const CacheLine1* baseCL1) const;
 
     DISALLOW_COPY_OR_ASSIGNMENT(TLState);
 };
@@ -238,10 +236,6 @@ finline void forEachTLS(Body const &body)
 // Not thread safe. This takes care of reseting the
 // ray state and memory pool allocators
 void resetPools();
-
-// Helpers for converting between a 4 byte and an 8 byte reference to a RayState.
-shading::RayStateIndex rayStateToIndex(const RayState *rs);
-RayState *indexToRayState(shading::RayStateIndex index);
 
 // Value returned when allocList fails
 const uint32_t nullHandle = PBR_TL_STATE_NULL_HANDLE;

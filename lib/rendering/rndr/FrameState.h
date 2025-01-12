@@ -28,8 +28,6 @@ class RenderOutputDriver;
 struct FrameState : public pbr::FrameState
 {
     unsigned                mNumRenderThreads;
-    bool                    mEnableMcrtCpuAffinity {true};
-    std::shared_ptr<std::vector<unsigned>> mAffinityCpuIdTbl; // cpuId table for CPU-Affinity control
     unsigned                mNumRenderNodes;
     unsigned                mRenderNodeIdx;
     unsigned                mTileSchedulerType; // TileScheduler::Type

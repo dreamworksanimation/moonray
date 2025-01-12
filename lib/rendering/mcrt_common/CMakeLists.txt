@@ -48,6 +48,7 @@ endif()
 get_target_property(ISPC_TARGET_OBJECTS ${objLib} TARGET_OBJECTS)
 target_sources(${component}
     PRIVATE
+	AffinityManager.cc
         Frustum.cc
         ProfileAccumulator.cc
         ProfileAccumulatorHandles.cc
@@ -61,6 +62,7 @@ target_sources(${component}
 
 set_property(TARGET ${component}
     PROPERTY PUBLIC_HEADER
+        AffinityManager.h
         ExecutionMode.h
         Frustum.h
         ThreadLocalState.hh

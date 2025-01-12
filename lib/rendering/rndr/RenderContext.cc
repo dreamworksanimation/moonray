@@ -33,6 +33,7 @@
 #include <moonray/rendering/bvh/shading/AttributeKey.h>
 #include <moonray/rendering/bvh/shading/Intersection.h>
 #include <moonray/rendering/bvh/shading/ThreadLocalObjectState.h>
+#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/camera/Camera.h>
 #include <moonray/rendering/pbr/core/Aov.h>
@@ -71,6 +72,7 @@
 #include <malloc.h>
 #endif
 #include <memory>
+#include <thread>
 #include <string>
 #include <vector>
 
@@ -171,13 +173,22 @@ initGlobalDriver(const RenderOptions &initOptions)
     // Setup ProcKeeper
     ProcKeeper::init();
 
-    // Ref counted block pool. Should get picked up deep inside the
-    // initRenderDriver call before this method returns.
-    scene_rdl2::util::Ref<scene_rdl2::alloc::ArenaBlockPool> arenaBlockPool =
-            scene_rdl2::util::alignedMallocCtorArgs<scene_rdl2::alloc::ArenaBlockPool>(CACHE_LINE_SIZE);
+    // We do initialize AffinityManager here and precompute all information regarding
+    // CPU-affinity and Memory-affinity. This information will be accessed during
+    // the setup of the memory manager.
+    unsigned desiredNumThreads = initOptions.getThreads();
+    if (desiredNumThreads == 0) { // just in case
+        desiredNumThreads = std::thread::hardware_concurrency();
+    }
+    mcrt_common::AffinityManager::init(desiredNumThreads,
+                                       initOptions.getAutoAffinityDef(),
+                                       initOptions.getCpuAffinityDef(),
+                                       initOptions.getSocketAffinityDef(),
+                                       initOptions.getMemAffinityDef());
+    // std::cerr << mcrt_common::AffinityManager::get()->show() << '\n'; // useful debug message
+
     // Create init params and give it a raw ref to the block pool
     mcrt_common::TLSInitParams initParams;
-    initParams.mArenaBlockPool = arenaBlockPool.get();
 
     // have RenderOptions set up the rest of the params
     bool realtimeRender = (initOptions.getRenderMode() == rndr::RenderMode::REALTIME)? true: false;
@@ -2673,7 +2684,7 @@ RenderContext::reportVectorMemory()
     // Shade queues - (of SortedRayState), one per Material
     size_t shadeQueuesBytes = mcrt_common::getTLSInitParams().mShadeQueueSize *
                               sizeof(shading::ShadeQueue::EntryType) *
-                              shading::Material::getAllShadeQueues().size();
+                              shading::Material::getAllShadeQueuesCount();
 
     // TODO: these pools also seem to be created in scalar mode, but aren't used.
 
@@ -2899,8 +2910,6 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime) const
     // From rndr::FrameState.
     //
     fs->mNumRenderThreads = MNRY_VERIFY(getNumTBBThreads());
-    fs->mEnableMcrtCpuAffinity = getTLSInitParams().mEnableMcrtCpuAffinity;
-    fs->mAffinityCpuIdTbl = getTLSInitParams().mAffinityCpuIdTbl; // set cpuId table for CPU-Affinity control
 
     int machineId = vars.get(scene_rdl2::rdl2::SceneVariables::sMachineId);
     int numMachines = vars.get(scene_rdl2::rdl2::SceneVariables::sNumMachines);

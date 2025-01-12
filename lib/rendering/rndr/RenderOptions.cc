@@ -1,9 +1,8 @@
 // Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-
 #include "RenderOptions.h"
 
+#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 
 #include <scene_rdl2/common/except/exceptions.h>
@@ -206,10 +205,20 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         mSocketAffinityDef = values[0];
     }
 
-    validFlags.push_back("-cpuAffinity");
-    if (args.getFlagValues("-cpuAffinity", 1, values) >= 0) {
+    validFlags.push_back("-cpu_affinity");
+    if (args.getFlagValues("-cpu_affinity", 1, values) >= 0) {
         mCpuAffinityDef = values[0];
         mSocketAffinityDef = "";
+    }
+
+    validFlags.push_back("-mem_affinity");
+    if (args.getFlagValues("-mem_affinity", 1, values) >= 0) {
+        mMemAffinityDef = values[0];
+    }
+
+    validFlags.push_back("-auto_affinity");
+    if (args.getFlagValues("-auto_affinity", 1, values) >= 0) {
+        mAutoAffinityDef = values[0];
     }
 
     validFlags.push_back("-dso_path");
@@ -538,16 +547,25 @@ RenderOptions::getUsageMessage(const std::string& programName, bool guiMode)
 "    -threads n\n"
 "        Number of threads to use (all by default).\n"
 "\n"
-"    -cpuAffinity cpuIdDef\n"
-"        set CPU affinity definition. \"-1\" disables CPU affinity control.\n"
+"    -cpu_affinity cpuIdDef\n"
+"        set CPU affinity definition. \"-1\" disables CPU affinity control. \"all\" uses all CPUs\n"
 "        cpuIdDef example : 0,1,2     => 0 1 2\n"
 "                           0-2,4,6-9 => 0,1,2,4,6,7,8,9\n"
 "                           -1        => disable CPU affinity (default)\n"
+"                           all       => use all CPUs of the host\n"
 "\n"
-"    -socketAffinity socketIdDef\n"
-"        set Socket affinity definition\n"
-"        socketIdDef example : 0\n"
+"    -socket_affinity socketIdDef\n"
+"        set Socket affinity definition. \"all\" uses all Sockets\n"
+"        socketIdDef example : 0          => 0\n"
 "                              0,1 or 0-1 => 0 1\n"
+"                              all        => use all Sockets of the hosts\n"
+"\n"
+"    -mem_affinity on|off\n"
+"        set Memory affinity control. Default is off.\n"
+"\n"
+"    -auto_affinity on|off\n"
+"        set Auto affinity control mode. Default is on.\n"
+"        This automatically sets CPU and Memory affinity based on the user-specified thread total.\n" 
 "\n"
 "    -size 1920 1080\n"
 "        Canonical image width and height (in pixels).\n"
@@ -799,14 +817,9 @@ RenderOptions::setupTLSInitParams(mcrt_common::TLSInitParams *params, bool realt
     scene_rdl2::logging::Logger::info("Setting mShadingWorkloadChunkSize to ", mShadingWorkloadChunkSize);
     scene_rdl2::logging::Logger::info("Setting mPresenceShadowsQueueSize to ", params->mPresenceShadowsQueueSize);
 
-    params->mDesiredNumTBBThreads = getThreads();
-
-    if (!mCpuAffinityDef.empty()) {
-        params->mCpuAffinityDef = std::make_shared<std::string>(mCpuAffinityDef);
-    }
-    if (!mSocketAffinityDef.empty()) {
-        params->mSocketAffinityDef = std::make_shared<std::string>(mSocketAffinityDef);
-    }
+    MNRY_ASSERT(mcrt_common::AffinityManager::get());
+    MNRY_ASSERT(mcrt_common::AffinityManager::get()->getCpu());
+    params->mDesiredNumTBBThreads = mcrt_common::AffinityManager::get()->getCpu()->getNumThreads();
 }
 
 std::string
@@ -910,6 +923,10 @@ RenderOptions::show() const
     ostr << "RenderOptions {\n"
          << "  mSceneContext:0x" << std::hex << (uintptr_t)mSceneContext << std::dec << '\n'
          << "  mThreads:" << mThreads << '\n'
+         << "  mCpuAffinityDef:" << mCpuAffinityDef << '\n'
+         << "  mSocketAffinityDef:" << mSocketAffinityDef << '\n'
+         << "  mMemAffinityDef:" << mMemAffinityDef << '\n'
+         << "  mAutoAffinityDef:" << mAutoAffinityDef << '\n'
          << "  mRenderMode:" << showRenderMode(mRenderMode) << '\n'
          << "  mFastMode:" << showFastMode(mFastMode) << '\n'
          << "  mGeneratePixelInfo:" << showBool(mGeneratePixelInfo) << '\n'

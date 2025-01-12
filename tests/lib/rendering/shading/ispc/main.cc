@@ -22,14 +22,9 @@ main(int argc, char* argv[])
     using namespace moonray;
     using namespace moonray::shading::unittest;
 
-    // Create arena block pool which is shared between all threads.
-    scene_rdl2::util::Ref<scene_rdl2::alloc::ArenaBlockPool> arenaBlockPool =
-        scene_rdl2::util::alignedMallocCtorArgs<scene_rdl2::alloc::ArenaBlockPool>(CACHE_LINE_SIZE);
-
     // Initialize TLS shared by all tests.
     mcrt_common::TLSInitParams initParams;
     initParams.mUnitTests = true;
-    initParams.mArenaBlockPool = arenaBlockPool.get();
     initParams.initShadingTls = shading::TLState::allocTls;
     initParams.initTLSTextureSupport = shading::initTexturingSupport;
     initParams.mDesiredNumTBBThreads = 1;
