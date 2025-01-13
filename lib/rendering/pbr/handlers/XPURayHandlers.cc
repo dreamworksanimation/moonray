@@ -239,7 +239,7 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
             RayState *rs = rayStates[i];
             RayState rsCPU = *rs; // copy for validation below
 
-            MNRY_ASSERT(isRayStateValid(pbrTls, rs));
+            MNRY_ASSERT(isValid(rs));
             rs->mRay.tfar = isects[i].mTFar;
             rs->mRay.Ng.x = isects[i].mNgX;
             rs->mRay.Ng.y = isects[i].mNgY;
@@ -392,7 +392,7 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
     unsigned numRayStatesToFree = 0;
     RayState **rayStatesToFree = arena->allocArray<RayState *>(numEntries);
 
-    RayState* baseRayState = pbrTls->getBaseRayState();
+    RayState *baseRayState = indexToRayState(0);
     const scene_rdl2::rdl2::Layer *layer = fs.mLayer;
 
     for (unsigned i = 0; i < numEntries; ++i) {
@@ -688,7 +688,6 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
     uint8_t *memBookmark = arena->getPtr();
 
     SortedEntry *currEntry = sortedEntries + numMisses;
-    unsigned numaNodeId = tls->mArena.getNumaNodeId();
     while (currEntry != endEntry) {
 
         const uint32_t currBundledMatId = MNRY_VERIFY(currEntry->mSortKey);
@@ -715,7 +714,7 @@ xpuRayBundleHandler(mcrt_common::ThreadLocalState *tls,
         }
 
         // Submit to destination queue.
-        shading::ShadeQueue *shadeQueue = MNRY_VERIFY(currEntry->mMaterial->getShadeQueue(numaNodeId));
+        shading::ShadeQueue *shadeQueue = MNRY_VERIFY(currEntry->mMaterial->getShadeQueue());
         shadeQueue->addEntries(tls, numShadeEntries, shadeEntries, arena);
 
         CHECK_CANCELLATION(pbrTls, return);

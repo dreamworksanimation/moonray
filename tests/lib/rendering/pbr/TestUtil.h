@@ -627,8 +627,13 @@ generateWeightedFlakeColors(uint32_t size, ColorArray& colors)
 inline void
 setupThreadLocalData()
 {
+    // Create arena block pool which is shared between all threads.
+    scene_rdl2::util::Ref<scene_rdl2::alloc::ArenaBlockPool> arenaBlockPool =
+        scene_rdl2::util::alignedMallocCtorArgs<scene_rdl2::alloc::ArenaBlockPool>(CACHE_LINE_SIZE);
+
     mcrt_common::TLSInitParams initParams;
     initParams.mUnitTests = true;
+    initParams.mArenaBlockPool = arenaBlockPool.get();
     initParams.initPbrTls = pbr::TLState::allocTls;
 
     mcrt_common::initTLS(initParams);

@@ -16,9 +16,9 @@ namespace pbr {
 class TestLightTree : public CppUnit::TestFixture
 {
     CPPUNIT_TEST_SUITE(TestLightTree);
-#if 1
+
     CPPUNIT_TEST(testCone);
-#endif
+
     CPPUNIT_TEST_SUITE_END();
 
 public:

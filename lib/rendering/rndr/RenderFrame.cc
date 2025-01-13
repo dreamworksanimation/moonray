@@ -69,7 +69,7 @@ verifyNoBundledLeaks(const FrameState &fs)
             }
         });
 
-        MNRY_ASSERT(shading::Material::areAllShadeQueuesEmptyAllNumaNode());
+        MNRY_ASSERT(shading::Material::areAllShadeQueuesEmpty());
     }
 
     return true;

@@ -108,7 +108,6 @@ target_link_libraries(${component}
         SceneRdl2::common_grid_util
         SceneRdl2::common_math
         SceneRdl2::scene_rdl2
-	SceneRdl2::render_cache
         SceneRdl2::render_util
         ${PROJECT_NAME}::common_mcrt_util
         ${PROJECT_NAME}::common_mcrt_macros

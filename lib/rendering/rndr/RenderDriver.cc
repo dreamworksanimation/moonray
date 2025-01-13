@@ -17,7 +17,6 @@
 #include <moonray/rendering/bvh/shading/ShadingTLState.h>
 #include <moonray/rendering/geom/prim/GeomTLState.h>
 #include <moonray/rendering/geom/prim/Statistics.h>
-#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <moonray/rendering/pbr/core/Aov.h>
 #include <moonray/rendering/pbr/core/DebugRay.h>
 #include <moonray/rendering/pbr/handlers/XPURayHandlers.h>
@@ -25,6 +24,11 @@
 #include <scene_rdl2/common/fb_util/VariablePixelBuffer.h>
 
 #include <scene_rdl2/render/util/Memory.h>
+
+#ifndef PLATFORM_APPLE
+#include <scene_rdl2/render/util/CpuSocketUtil.h>
+#include <scene_rdl2/render/util/ProcCpuAffinity.h>
+#endif
 
 #include <random>
 
@@ -550,6 +554,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 
     // Setup TLS parameters.
     TLSInitParams tlsInitParams = initParams;
+    MNRY_ASSERT(tlsInitParams.mArenaBlockPool);
 
     setProcCpuAffinity(tlsInitParams);
 
@@ -576,7 +581,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 
     mFilm = alignedMallocCtor<Film>(CACHE_LINE_SIZE);
 
-    if (mRenderThreadState.get() == RenderThreadState::UNINITIALIZED) {
+    if (mRenderThreadState.get() == UNINITIALIZED) {
         MNRY_ASSERT(!mRenderThread.joinable());
 
         // TLS initialization happens on the renderThread.
@@ -587,7 +592,7 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 
     // We must wait for the render thread to get initialized before much of this
     // class becomes functional.
-    while (mRenderThreadState.get() == RenderThreadState::UNINITIALIZED) {
+    while (mRenderThreadState.get() == UNINITIALIZED) {
         mcrt_common::threadSleep();
     }
 }
@@ -595,49 +600,130 @@ RenderDriver::RenderDriver(const TLSInitParams &initParams) :
 void
 RenderDriver::setProcCpuAffinity(TLSInitParams& tlsInitParams)
 {
-    MNRY_ASSERT(mcrt_common::AffinityManager::get());
-    MNRY_ASSERT(mcrt_common::AffinityManager::get()->getCpu());
-    std::shared_ptr<mcrt_common::CpuAffinityManager> cpuAff = mcrt_common::AffinityManager::get()->getCpu();
+#ifndef PLATFORM_APPLE
+    mEnableRenderPrepCpuAffinity = false;
+    tlsInitParams.mEnableMcrtCpuAffinity = true; // default is MCRT CPU-Affinity = ON
 
-    Logger::info(cpuAff->getRenderPrepMessage());
-    if (isatty(STDOUT_FILENO)) std::cerr << cpuAff->getRenderPrepMessage() << '\n';
-
-    if (cpuAff->getEnableRenderPrepCpuAffinity()) {
-        // We do CPU affinity control
-        std::string msg;
-        if (!cpuAff->doRenderPrepCpuAffinity(msg)) {
-            Logger::error(msg);
+    scene_rdl2::CpuSocketUtil::CpuIdTbl cpuIdTbl;
+    std::ostringstream ostr;
+    std::string errMsg;
+    if (tlsInitParams.mCpuAffinityDef && !tlsInitParams.mCpuAffinityDef->empty()) {
+        if ((*tlsInitParams.mCpuAffinityDef) == "-1") {
+            // We will try to apply CPU-Affinity control for MCRT threads even if no CPU-Affinity control
+            // for renderPrep. However, if the user sets "-1" (= explicitly disables CPU-Affinity),
+            // we disable CPU-Affinity control regarding both renderPrep and MCRT threads.
+            ostr << "RenderPrep CPU-affinity control disabled";
+            cpuIdTbl.clear();
+            tlsInitParams.mEnableMcrtCpuAffinity = false; // disalbe MCRT CPU-Affinity
         } else {
-            Logger::info(msg); // show CPU-Affinity control result
+            //
+            // pick CpuAffinity info
+            //
+            if (!scene_rdl2::CpuSocketUtil::cpuIdDefToCpuIdTbl((*tlsInitParams.mCpuAffinityDef),
+                                                               cpuIdTbl, errMsg)) {
+                ostr << "CPU-affinity definition failed. " << errMsg
+                     << " RenderPrep CPU-affinity control skipped";
+                cpuIdTbl.clear();
+            } else {
+                if (!cpuIdTbl.size()) {
+                    ostr << "CPU-affinity definition is empty. RenderPrep CPU-affinity control skipped";
+                } else {
+                    ostr << scene_rdl2::CpuSocketUtil::showCpuIdTbl("RenderPrep CPU-affinity cpuIdTbl",
+                                                                    cpuIdTbl);
+                }
+            }
         }
-        if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
+    } else if (tlsInitParams.mSocketAffinityDef && !tlsInitParams.mSocketAffinityDef->empty()) {
+        //
+        // pick SocketAffinity info
+        //
+        try {
+            scene_rdl2::CpuSocketUtil cpuSocketUtil;
+            if (!cpuSocketUtil.socketIdDefToCpuIdTbl((*tlsInitParams.mSocketAffinityDef), cpuIdTbl, errMsg)) {
+                ostr << "Socket-affinity definition failed. " << errMsg 
+                     << " RenderPrep CPU-affinity control skipped.";
+                cpuIdTbl.clear();
+            } else {
+                if (!cpuIdTbl.size()) {
+                    ostr << "Socket-affinity definition is empty. RenderPrep CPU-affinity control skipped";
+                } else {
+                    ostr << "RenderPrep Socket-affinity " << (*tlsInitParams.mSocketAffinityDef)
+                         << scene_rdl2::CpuSocketUtil::showCpuIdTbl(" cpuIdTbl", cpuIdTbl);
+                    mSocketAffinityDefStr = (*tlsInitParams.mSocketAffinityDef); // save info for info dump
+                }
+            }
+        }
+        catch (scene_rdl2::except::RuntimeError& e) {
+            ostr << "Socket-affinity processing failed. RenderPrep CPU-affinity control skipped. " << e.what();
+            cpuIdTbl.clear();
+        }
+    } else {
+        return; // no CPU-affinity control for renderPrep
     }
+
+    Logger::info(ostr.str());
+    if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
+
+    if (cpuIdTbl.empty()) {
+        return; // no CPU-affinity definition
+    }
+
+    //
+    // Set process based CPU affinity
+    //
+    try {
+        scene_rdl2::ProcCpuAffinity procCpuAffinity;
+        for (auto cpuId : cpuIdTbl) { procCpuAffinity.set(cpuId); }
+        std::string msg;
+        if (!procCpuAffinity.bindAffinity(msg)) {
+            std::ostringstream ostr;
+            ostr << "RenderPrep Bind CPU-affinity failed. " << msg
+                 << " RenderPrep CPU-affinity control skipped";
+            Logger::error(ostr.str());
+            if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
+        } else {
+            int numThreads = std::min(static_cast<unsigned>(cpuIdTbl.size()),
+                                      std::thread::hardware_concurrency());
+            tlsInitParams.mDesiredNumTBBThreads = numThreads; // update total threads
+            tlsInitParams.mAffinityCpuIdTbl = std::make_shared<std::vector<unsigned>>(cpuIdTbl);
+            mCpuAffinityCpuIdTbl = cpuIdTbl; // save for info display
+            mEnableRenderPrepCpuAffinity = true; // save for info display
+
+            Logger::info("RenderPrep " + msg); // show CPU-Affinity control result
+            if (isatty(STDOUT_FILENO)) std::cerr << "RenderPrep " << msg << '\n';
+        }
+    }
+    catch (scene_rdl2::except::RuntimeError& e) {
+        ostr << "RenderPrep ProcCpuAffinity() failed. " << e.what()
+             << " RenderPrep CPU-affinity control skipped";
+        Logger::error(ostr.str());
+        if (isatty(STDOUT_FILENO)) std::cerr << ostr.str() << '\n';
+    }
+#endif // end ifndef PLATFORM_APPLE
 }
 
 RenderDriver::~RenderDriver()
 {
     stopFrame();
 
-    MNRY_ASSERT(mRenderThreadState.get() == RenderThreadState::UNINITIALIZED ||
-                mRenderThreadState.get() == RenderThreadState::READY_TO_RENDER);
+    MNRY_ASSERT(mRenderThreadState.get() == UNINITIALIZED ||
+               mRenderThreadState.get() == READY_TO_RENDER);
 
     // We could probably do acquire/release memory semantics here, but we're in the destructor. Who cares about
     // efficiency?
-    mRenderThreadState.set(mRenderThreadState.get(), RenderThreadState::KILL_RENDER_THREAD);
+    mRenderThreadState.set(mRenderThreadState.get(), KILL_RENDER_THREAD);
     if (mRenderThread.joinable()) {
         mRenderThread.join();
     }
 
-    MNRY_ASSERT(mRenderThreadState.get() == RenderThreadState::UNINITIALIZED ||
-                mRenderThreadState.get() == RenderThreadState::DEAD);
+    MNRY_ASSERT(mRenderThreadState.get() == UNINITIALIZED || mRenderThreadState.get() == DEAD);
 
     saveRealtimeStats();
 
     alignedFreeDtor(mFilm);
 
     RenderThreadState state = mRenderThreadState.get();
-    MNRY_ASSERT_REQUIRE(state == RenderThreadState::UNINITIALIZED ||
-                        state == RenderThreadState::DEAD);
+    MNRY_ASSERT_REQUIRE(state == UNINITIALIZED || state == DEAD);
 
     freeXPUQueues();
 
@@ -673,7 +759,7 @@ RenderDriver::getTiles() const
 void
 RenderDriver::startFrame(const FrameState &fs)
 {
-    MNRY_ASSERT(mRenderThreadState.get() == RenderThreadState::READY_TO_RENDER);
+    MNRY_ASSERT(mRenderThreadState.get() == READY_TO_RENDER);
 
     //
     // Update RenderDriver state:
@@ -929,7 +1015,7 @@ RenderDriver::startFrame(const FrameState &fs)
     mCachedDisplayFilterCount = mFs.mDisplayFilterCount;
 
     // Kick off the frame.
-    mRenderThreadState.set(RenderThreadState::READY_TO_RENDER, RenderThreadState::REQUEST_RENDER, std::memory_order_release);
+    mRenderThreadState.set(READY_TO_RENDER, REQUEST_RENDER, std::memory_order_release);
 }
 
 #ifdef MULTI_MACHINE_TILE_SCHEDULE_RANDOM_SHIFT
@@ -1018,9 +1104,9 @@ RenderDriver::setupMultiMachineTileScheduler(unsigned pixW, unsigned pixH)
 void
 RenderDriver::requestStop()
 {
-    MNRY_ASSERT(mRenderThreadState.get() == RenderThreadState::REQUEST_RENDER ||
-                mRenderThreadState.get() == RenderThreadState::RENDERING ||
-                mRenderThreadState.get() == RenderThreadState::RENDERING_DONE);
+    MNRY_ASSERT(mRenderThreadState.get() == REQUEST_RENDER ||
+               mRenderThreadState.get() == RENDERING ||
+               mRenderThreadState.get() == RENDERING_DONE);
 
     mFrameEndTime = scene_rdl2::util::getSeconds();
     requestStopAsyncSignalSafe();
@@ -1044,17 +1130,17 @@ RenderDriver::requestStopAtFrameReadyForDisplay()
 void
 RenderDriver::stopFrame()
 {
-    if (mRenderThreadState.get() != RenderThreadState::REQUEST_RENDER &&
-        mRenderThreadState.get() != RenderThreadState::RENDERING &&
-        mRenderThreadState.get() != RenderThreadState::RENDERING_DONE) {
+    if (mRenderThreadState.get() != REQUEST_RENDER &&
+        mRenderThreadState.get() != RENDERING &&
+        mRenderThreadState.get() != RENDERING_DONE) {
         return;
     }
 
-    mFrameEndTime = scene_rdl2::util::getSeconds(); 
+    mFrameEndTime = scene_rdl2::util::getSeconds();
     gCancelFlag.set(true);
 
     // Wait on the cancellation to propagate.
-    mRenderThreadState.wait(RenderThreadState::RENDERING_DONE);
+    mRenderThreadState.wait(RENDERING_DONE);
 
     MNRY_ASSERT(mMcrtStartTime > 0.0);
     MNRY_ASSERT(mMcrtDuration > 0.0);
@@ -1062,7 +1148,7 @@ RenderDriver::stopFrame()
     // cppcheck-suppress memsetClassFloat // floating point memset to 0 is fine
     memset(&mFs, 0, sizeof(FrameState));
 
-    mRenderThreadState.set(RenderThreadState::RENDERING_DONE, RenderThreadState::READY_TO_RENDER, std::memory_order_release);
+    mRenderThreadState.set(RENDERING_DONE, READY_TO_RENDER, std::memory_order_release);
 }
 
 float
@@ -2311,20 +2397,20 @@ RenderDriver::renderThread(RenderDriver *driver,
     // TLS initialization.
     initTLS(initParams);
 
-    driver->mRenderThreadState.set(RenderThreadState::UNINITIALIZED, RenderThreadState::READY_TO_RENDER);
+    driver->mRenderThreadState.set(UNINITIALIZED, READY_TO_RENDER);
 
     bool quit = false;
     while (!quit) {
         RenderThreadState state = driver->mRenderThreadState.get();
 
         switch(state) {
-        case RenderThreadState::UNINITIALIZED:
-        case RenderThreadState::READY_TO_RENDER:
+        case UNINITIALIZED:
+        case READY_TO_RENDER:
             mcrt_common::threadSleep();
             break;
 
-        case RenderThreadState::REQUEST_RENDER:
-            driver->mRenderThreadState.set(RenderThreadState::REQUEST_RENDER, RenderThreadState::RENDERING, std::memory_order_acquire);
+        case REQUEST_RENDER:
+            driver->mRenderThreadState.set(REQUEST_RENDER, RENDERING, std::memory_order_acquire);
 
             // Turn on scoped accumulator style profiling.
             setAccumulatorActiveState(true);
@@ -2336,18 +2422,18 @@ RenderDriver::renderThread(RenderDriver *driver,
             // Turn off scoped accumulator profiling until we start rendering again.
             setAccumulatorActiveState(false);
 
-            driver->mRenderThreadState.set(RenderThreadState::RENDERING, RenderThreadState::RENDERING_DONE, std::memory_order_release);
+            driver->mRenderThreadState.set(RENDERING, RENDERING_DONE, std::memory_order_release);
             break;
 
-        case RenderThreadState::RENDERING_DONE:
+        case RENDERING_DONE:
             mcrt_common::threadYield();
             break;
 
-        case RenderThreadState::KILL_RENDER_THREAD:
+        case KILL_RENDER_THREAD:
             // This is a sub-tbb scheduler init, we still have the main one to
             // clean up later, which happens in the RenderDriver destructor.
             scheduler.terminate();
-            driver->mRenderThreadState.set(RenderThreadState::KILL_RENDER_THREAD, RenderThreadState::DEAD);
+            driver->mRenderThreadState.set(KILL_RENDER_THREAD, DEAD);
             quit = true;
             break;
 
@@ -2449,6 +2535,39 @@ RenderDriver::showMultiMachineCheckpointMainLoopInfo() const
          << "  mMultiMachineGlobalProgressFraction:" << mMultiMachineGlobalProgressFraction << '\n'
          << "}";
     return ostr.str();
+}
+
+void
+RenderDriver::setupCpuAffinityLogInfo(std::vector<std::string>& titleTbl,
+                                      std::vector<std::string>& msgTbl) const
+{
+#ifndef PLATFORM_APPLE
+    titleTbl.push_back("RenderPrep CPU-affinity");
+    if (mEnableRenderPrepCpuAffinity) {
+        if (mSocketAffinityDefStr.empty()) {
+            // -cpuAffinity
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl("cpuId", mCpuAffinityCpuIdTbl));
+        } else {
+            // -socketAffinity
+            std::ostringstream ostr;
+            ostr << "socketId " << mSocketAffinityDefStr << " cpuId";
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl(ostr.str(), mCpuAffinityCpuIdTbl));
+        }
+    } else {
+        msgTbl.push_back("disabled");
+    }
+
+    titleTbl.push_back("MCRT CPU-affinity");
+    if (mEnableMcrtCpuAffinity) {
+        if (mEnableMcrtCpuAffinityAll) {
+            msgTbl.push_back("all");
+        } else {
+            msgTbl.push_back(scene_rdl2::CpuSocketUtil::showCpuIdTbl("cpuId", mCpuAffinityCpuIdTbl));
+        }
+    } else {
+        msgTbl.push_back("disabled");
+    }
+#endif // end ifndef PLATFORM_APPLE
 }
 
 //------------------------------------------------------------------------------------------

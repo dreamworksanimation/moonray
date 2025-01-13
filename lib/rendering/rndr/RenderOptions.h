@@ -1,7 +1,8 @@
 // Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-#pragma once
 
+
+#pragma once
 #ifndef RENDEROPTIONS_H
 #define RENDEROPTIONS_H
 
@@ -242,8 +243,6 @@ public:
 
     const std::string& getCpuAffinityDef() const { return mCpuAffinityDef; }
     const std::string& getSocketAffinityDef() const { return mSocketAffinityDef; }
-    const std::string& getMemAffinityDef() const { return mMemAffinityDef; }
-    const std::string& getAutoAffinityDef() const { return mAutoAffinityDef; }
 
 private:
 
@@ -258,8 +257,6 @@ private:
     uint32_t mThreads;
     std::string mCpuAffinityDef {"-1"}; // "-1" is disable CPU-Affinity control
     std::string mSocketAffinityDef;
-    std::string mMemAffinityDef; // default is empty string
-    std::string mAutoAffinityDef {"on"}; 
     RenderMode mRenderMode;
     FastRenderMode mFastMode;
     bool mGeneratePixelInfo;    // Generally controlled by the application.
