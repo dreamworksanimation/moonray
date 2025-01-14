@@ -120,7 +120,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     ext->retrieveDeferredEntries(tls, arena, numEntries, entries);
 
     // Convert array of SortedRayState objects to RayState pointers in-place.
-    RayState **rayStates = decodeRayStatesInPlace(numEntries, entries);
+    RayState **rayStates = decodeRayStatesInPlace(pbrTls, numEntries, entries);
     MNRY_ASSERT(isRayStateListValid(pbrTls, numEntries, rayStates));
 
     const FrameState &fs = *pbrTls->mFs;
@@ -131,7 +131,7 @@ void shadeBundleHandler(mcrt_common::ThreadLocalState *tls, unsigned numEntries,
     const scene_rdl2::rdl2::Layer *layer = fs.mLayer;
     const Scene *scene = fs.mScene;
     const scene_rdl2::rdl2::Material &material = *ext->getOwner().asA<scene_rdl2::rdl2::Material>();
-    RayState *baseRayState = indexToRayState(0);
+    RayState* baseRayState = pbrTls->getBaseRayState();
     shading::TLState *shadingTls = MNRY_VERIFY(tls->mShadingTls.get());
 
     // Allocate temp working memory buffers (automatically freed when we exit this function).

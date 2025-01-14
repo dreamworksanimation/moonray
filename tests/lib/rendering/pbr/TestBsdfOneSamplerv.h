@@ -21,6 +21,7 @@ public:
     void tearDown();
 
     CPPUNIT_TEST_SUITE(TestBsdfOneSamplerv);
+#if 1
     CPPUNIT_TEST(testLambert);
 
     CPPUNIT_TEST(testCookTorrance);
@@ -50,6 +51,7 @@ public:
     CPPUNIT_TEST(testTwoLobes);
     CPPUNIT_TEST(testThreeLobes);
     CPPUNIT_TEST(testStochasticFlakes);
+#endif
     CPPUNIT_TEST_SUITE_END();
 
     void testLambert();

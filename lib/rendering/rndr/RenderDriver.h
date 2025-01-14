@@ -465,9 +465,6 @@ public:
 
     void pushRenderPrepTime(const float sec) { mRenderPrepTime.set(sec); }
 
-    void setupCpuAffinityLogInfo(std::vector<std::string>& titleTable,
-                                 std::vector<std::string>& msgTable) const;
-
     Parser& getParser() { return mParser; }
 
 private:
@@ -479,7 +476,7 @@ private:
 
     void setProcCpuAffinity(mcrt_common::TLSInitParams& tlsInitParams);
 
-    enum RenderThreadState
+    enum class RenderThreadState : int
     {
         UNINITIALIZED,          // set from main thread
         READY_TO_RENDER,        // set from main thread
@@ -767,7 +764,7 @@ private:
     {
     public:
         RenderThreadStateManager() noexcept
-        : mRenderThreadState(UNINITIALIZED)
+        : mRenderThreadState(RenderThreadState::UNINITIALIZED)
         {
         }
 
@@ -864,13 +861,6 @@ private:
     bool mCheckpointEstimationStage; // condition flag to indicate checkpoint render estimation stage
     scene_rdl2::grid_util::FloatValueTracker mRenderPrepTime; // statistical info for debug
     scene_rdl2::grid_util::FloatValueTracker mCheckpointEstimationTime; // statistical info for debug
-
-    // CPU/Socket affinity results for info display
-    bool mEnableRenderPrepCpuAffinity {false};
-    std::string mSocketAffinityDefStr;
-    std::vector<unsigned> mCpuAffinityCpuIdTbl;
-    bool mEnableMcrtCpuAffinity {false};
-    bool mEnableMcrtCpuAffinityAll {false};
 
     Parser mParser;
     Parser mParserInitFrameControl;

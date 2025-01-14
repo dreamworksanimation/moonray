@@ -15,6 +15,7 @@
 #include <moonray/common/time/Timer.h>
 #include <moonray/rendering/geom/Procedural.h>
 #include <moonray/rendering/geom/prim/Statistics.h>
+#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/core/Scene.h>
@@ -460,6 +461,9 @@ RenderStats::logHardwareConfiguration(const RenderOptions& options, const scene_
         table.emplace_back("CPU-Affinity", options.getCpuAffinityDef());
     } else if (!options.getSocketAffinityDef().empty()) {
         table.emplace_back("Socket-Affinity", options.getSocketAffinityDef());
+    }
+    if (!options.getMemAffinityDef().empty()) {
+        table.emplace_back("Mem-Affinity", options.getMemAffinityDef());
     }
 
     if (getLogAthena()) {
@@ -1923,15 +1927,15 @@ RenderStats::logRenderingStats(const pbr::Statistics& pbrStats,
 
     if (getLogAthena()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mAthenaStream, OutputFormat::athenaCSV);
-        logCpuAffinityStats(mAthenaStream, OutputFormat::athenaCSV);
+        logAffinityStats(mAthenaStream, OutputFormat::athenaCSV);
     }
     if (getLogCsv()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mCSVStream, OutputFormat::fileCSV);
-        logCpuAffinityStats(mCSVStream, OutputFormat::fileCSV);
+        logAffinityStats(mCSVStream, OutputFormat::fileCSV);
     }
     if (getLogInfo()) {
         logRenderingStats(pbrStats, executionMode, vars, processTime, mInfoStream, OutputFormat::human);
-        logCpuAffinityStats(mInfoStream, OutputFormat::human);
+        logAffinityStats(mInfoStream, OutputFormat::human);
     } else {
         const std::string prepend = getPrependString();
         StatsTable<2> renderTimeTable("Time");
@@ -2064,25 +2068,25 @@ RenderStats::logMcrtProgress(float elapsedMcrtTime, float pctComplete)
 }
 
 void
-RenderStats::logCpuAffinityStats(std::ostream& outs, OutputFormat format)
+RenderStats::logAffinityStats(std::ostream& outs, OutputFormat format)
 {
     const bool csvStream = format == OutputFormat::athenaCSV || format == OutputFormat::fileCSV;
 
     std::vector<std::string> titleTbl;
     std::vector<std::string> msgTbl;
 
-    rndr::getRenderDriver()->setupCpuAffinityLogInfo(titleTbl, msgTbl);
+    mcrt_common::AffinityManager::get()->setupLogInfo(titleTbl, msgTbl);
 
-    StatsTable<2> cpuAffinityStatsTbl("CPU Affinity");
+    StatsTable<2> affinityStatsTbl("Affinity");
     for (size_t i = 0; i < titleTbl.size(); ++i) {
-        cpuAffinityStatsTbl.emplace_back(titleTbl[i], msgTbl[i]);
+        affinityStatsTbl.emplace_back(titleTbl[i], msgTbl[i]);
     }
 
     if (csvStream) {
-        writeEqualityCSVTable(outs, cpuAffinityStatsTbl, format == OutputFormat::athenaCSV);
+        writeEqualityCSVTable(outs, affinityStatsTbl, format == OutputFormat::athenaCSV);
     } else {
         const std::string prepend = getPrependString();
-        writeEqualityInfoTable(outs, prepend, cpuAffinityStatsTbl);
+        writeEqualityInfoTable(outs, prepend, affinityStatsTbl);
     }
 }
 

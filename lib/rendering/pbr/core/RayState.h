@@ -8,6 +8,7 @@
 #include "RayState.hh"
 
 #include <moonray/rendering/mcrt_common/Ray.h>
+#include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/shading/Types.h>
 
 namespace moonray {
@@ -61,39 +62,32 @@ struct CACHE_ALIGN RayStatev
 
 MNRY_STATIC_ASSERT(sizeof(RayState) * VLEN == sizeof(RayStatev));
 
-// Helpers for converting between a 4 byte and an 8 byte reference to a RayState.
-shading::RayStateIndex rayStateToIndex(const RayState *rs);
-RayState *indexToRayState(shading::RayStateIndex index);
-unsigned getRayStatePoolSize();
-
 inline bool
-isValid(const RayState *rs)
+isRayStateValid(const pbr::TLState* tls, const RayState *rs)
 {
-    MNRY_ASSERT(rs);
-    MNRY_ASSERT(rayStateToIndex(rs) < getRayStatePoolSize());
+    auto checkMain = [](unsigned rayStatePoolSize,
+                        const RayState* baseRayState,
+                        const RayState* rs) {
+        return (rs && baseRayState && (baseRayState <= rs && rs < baseRayState + rayStatePoolSize));
+    };
+
+    MNRY_ASSERT(checkMain(tls->mRayStatePool.getActualPoolSize(), tls->getBaseRayState(), rs));
     MNRY_ASSERT(rs->mRay.isValid());
     // TODO: add various validation criteria here...
     return true;
 }
 
 // Verify data is valid.
-bool isRayStateListValid(pbr::TLState *tls, unsigned numEntries, RayState **entries);
-
-inline void
-encodeRayStateInPlace(RayState **rs, uint32_t sortKey)
-{
-    shading::SortedRayState *srs = reinterpret_cast<shading::SortedRayState *>(rs);
-    srs->mRsIdx = rayStateToIndex(*rs);
-    srs->mSortKey = sortKey;
-}
+bool isRayStateListValid(const pbr::TLState* tls, const unsigned numEntries, RayState** entries);
 
 inline RayState **
-decodeRayStatesInPlace(unsigned numEntries, shading::SortedRayState *srcDst)
+decodeRayStatesInPlace(const pbr::TLState* pbrTls, const unsigned numEntries, shading::SortedRayState* srcDst)
 {
-    RayState **dst = reinterpret_cast<RayState **>(srcDst);
+    RayState* baseRayState = pbrTls->getBaseRayState();
+    RayState** dst = reinterpret_cast<RayState**>(srcDst);
 
     for (unsigned i = 0; i < numEntries; ++i) {
-        dst[i] = indexToRayState(srcDst[i].mRsIdx);
+        dst[i] = baseRayState + srcDst[i].mRsIdx;
     }
 
     return dst;

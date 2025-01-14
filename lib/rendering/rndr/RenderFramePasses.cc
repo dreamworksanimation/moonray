@@ -11,14 +11,15 @@
 #include <moonray/rendering/pbr/core/Scene.h>
 
 #include "RenderDriver.h"
-#include "RenderContext.h"
 #include "AdaptiveRenderTilesTable.h"
 #include "DisplayFilterDriver.h"
 #include "PixSampleRuntimeVerify.h"
+#include "RenderContext.h"
 
 #include <moonray/rendering/rndr/adaptive/ActivePixelMask.h>
 
 #include <moonray/rendering/bvh/shading/ShadingTLState.h>
+#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <moonray/rendering/mcrt_common/Clock.h>
 #include <moonray/rendering/mcrt_common/ThreadLocalState.h>
 #include <moonray/rendering/pbr/camera/Camera.h>
@@ -28,9 +29,6 @@
 #include <moonray/rendering/pbr/sampler/PixelScramble.h>
 
 #include <scene_rdl2/common/math/Color.h>
-#ifndef PLATFORM_APPLE
-#include <scene_rdl2/render/util/CpuSocketUtil.h>
-#endif
 #include <scene_rdl2/render/util/ThreadPoolExecutor.h>
 
 #ifdef RUNTIME_VERIFY_PIX_SAMPLE_COUNT // See RuntimeVerify.h
@@ -52,6 +50,9 @@
 
 // Debug message display for adaptive sampling stage rendering
 //#define PRINT_DEBUG_MESSAGE_ADAPTIVE_STAGE
+
+// Debug message display RayState info for vector mode 
+//#define DEBUG_MSG_VECTOR_RAYSTATE
 
 // Enable debugSamplesRecArray logic (record/playback all computeRadiance() result for beauty AOV)
 // In order to activate debugSamplesRecArray mode, you should check Film.cc and
@@ -80,7 +81,7 @@ verifyNoOutstandingWork(const FrameState &fs)
         pbr::forEachTLS([&](pbr::TLState *tls) {
             MNRY_ASSERT(tls->areAllLocalQueuesEmpty());
         });
-        MNRY_ASSERT(shading::Material::areAllShadeQueuesEmpty());
+        MNRY_ASSERT(shading::Material::areAllShadeQueuesEmptyAllNumaNode());
     }
 
     return true;
@@ -111,52 +112,54 @@ RenderDriver::renderPasses(RenderDriver *driver, const FrameState &fs,
     bool stopAtPassBoundary = false;
 
 #   ifndef FORCE_SINGLE_THREADED_RENDERING
+
 #   ifdef TBB_MCRT_THREADPOOL
+    //
+    // TBB threadpool
+    //
     tbb::task_group taskGroup;
     std::string msg = "TBB MCRT thread pool";
     scene_rdl2::logging::Logger::info(msg);
 #   else // moonray MCRT threadpool
+    //
+    // Moonray MCRT threadpool
+    //
+    MNRY_ASSERT(mcrt_common::AffinityManager::get());
+    MNRY_ASSERT(mcrt_common::AffinityManager::get()->getCpu());
+    std::shared_ptr<mcrt_common::CpuAffinityManager> cpuAff = mcrt_common::AffinityManager::get()->getCpu();
+    
     auto calcCpuIdSequential = [&](size_t threadId) -> size_t { return threadId; };
-    auto calcCpuIdByTbl = [&](size_t threadId) -> size_t { return (*fs.mAffinityCpuIdTbl)[threadId]; };
+    auto calcCpuIdByTbl = [&](size_t threadId) -> size_t { return (cpuAff->getAffinityCpuIdTbl())[threadId]; };
     scene_rdl2::ThreadPoolExecutor::CalcCpuIdFunc calcCpuIdFunc = nullptr;
 
-    std::ostringstream ostr;
-    ostr << "MOONRAY MCRT thread pool";
-#   ifndef PLATFORM_APPLE
-    if (fs.mEnableMcrtCpuAffinity) {
-        driver->mEnableMcrtCpuAffinity = true;
-        if (fs.mNumRenderThreads == std::thread::hardware_concurrency()) {
+    if (cpuAff->getEnableMcrtCpuAffinity()) {
+        if (cpuAff->getEnableMcrtCpuAffinityAll()) {
             // We want to use all cores. We activate CPU-affinity control and
             // all MCRT threads are individually attached to the core.
             calcCpuIdFunc = calcCpuIdSequential;
-            driver->mEnableMcrtCpuAffinityAll = true;
-            ostr << " : MCRT-CPU-affinity enabled : All";
-        } else if (fs.mAffinityCpuIdTbl && !fs.mAffinityCpuIdTbl->empty()) {
+        } else {
             // We have {CPU,Socket}-Affinity setup.
             calcCpuIdFunc = calcCpuIdByTbl;
-            driver->mEnableMcrtCpuAffinityAll = false;
-            ostr << " : MCRT-CPU-affinity enabled"
-                 << " : " << scene_rdl2::CpuSocketUtil::showCpuIdTbl("CPU-Tbl", *fs.mAffinityCpuIdTbl)
-                 << " numRenderThreads:" << fs.mNumRenderThreads;
         }
-    } else {
-        driver->mEnableMcrtCpuAffinity = false;
-        ostr << " : MCRT-CPU-affinity disabled";
     }
-    std::string msg = ostr.str();
     {
-        static bool displayCpuAffinityMessage = false;
-        if (!displayCpuAffinityMessage) {
+        static bool displayAffinityMessage = false;
+        if (!displayAffinityMessage) {
+            std::ostringstream ostr;
+            ostr << "MOONRAY MCRT thread pool {\n"
+                 << "  " << cpuAff->getMcrtMessage() << '\n'
+                 << "  " << mcrt_common::AffinityManager::get()->getMem()->getMcrtMessage() << '\n'
+                 << "}";
+            std::string msg = ostr.str(); 
+
             scene_rdl2::logging::Logger::info(msg);
             if (isatty(STDOUT_FILENO)) std::cerr << msg << '\n';
-            displayCpuAffinityMessage = true;
+
+            displayAffinityMessage = true;
         }
     }
     scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, calcCpuIdFunc);
-#   else // is PLATFORM_APPLE
-    scene_rdl2::ThreadPoolExecutor taskGroup(fs.mNumRenderThreads, nullptr);
-#   endif // end ifndef PLATFORM_APPLE
-#   endif // end else TBB_MCRT_THREADPOOL
+#   endif // end of Non TBB_MCRT_THREADPOOL
 #   endif // end ifndef FORCE_SINGLE_THREADED_RENDERING
 
     // This counter verifies that we don't leave this function until all threads
@@ -1237,6 +1240,20 @@ RenderDriver::renderPixelVectorSamples(pbr::TLState *pbrTls,
             rs->mCryptomatteDataHandle = pbr::nullHandle;
         }
     }
+
+#ifdef DEBUG_MSG_VECTOR_RAYSTATE
+    { // debug message
+        static bool outMessage = false;
+        if (!outMessage) {
+            std::cerr << ">> RenderFramePasses.cc renderPixelVectorSamples() {\n"
+                      << "  CACHE_LINE_SIZE:" << CACHE_LINE_SIZE << '\n'
+                      << "  sizeof(pbr::RayState):" << sizeof(pbr::RayState) << '\n'
+                      << "  numSamples:" << numSamples << '\n'
+                      << "}\n";
+            outMessage = true;
+        }
+    } // debug message-end
+#endif // end DEBUG_MSG
 
     // invalid ray states will not be queued, we need to keep
     // a list of these and free them in bulk.

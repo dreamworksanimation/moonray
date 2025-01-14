@@ -7,10 +7,13 @@
 #include "ProfileAccumulatorHandles.h"
 #include <moonray/common/mcrt_macros/moonray_static_check.h>
 #include <moonray/common/time/Ticker.h>
+#include <moonray/rendering/mcrt_common/AffinityManager.h>
 #include <scene_rdl2/render/logging/logging.h>
 #include <scene_rdl2/render/util/Memory.h>
 #include <tbb/enumerable_thread_specific.h>
 #include <tbb/task_scheduler_init.h>
+
+#include <thread>
 
 // There are on average 3 entries added to the profiler stack for each single
 // entry on the handler stack. This heuristic is used to compute the
@@ -188,13 +191,15 @@ ThreadLocalState::ThreadLocalState(uint32_t threadIdx, bool okToAllocBundledReso
     mHandlerStackDepth(0),
     mThreadIdx(threadIdx)
 {
-    mArena.init(MNRY_VERIFY(gPrivate.mInitParams.mArenaBlockPool));
-    mPixelArena.init(MNRY_VERIFY(gPrivate.mInitParams.mArenaBlockPool));
+    scene_rdl2::alloc::ArenaBlockPool* arenaBlockPool =
+        mcrt_common::AffinityManager::get()->getMem()->getMemoryNodeByThreadId(mThreadIdx)->getArenaBlockPool();
+
+    mArena.init(MNRY_VERIFY(arenaBlockPool));
+    mPixelArena.init(MNRY_VERIFY(arenaBlockPool));
 
     //
     // Create always:
     //
-
     if (gPrivate.mInitParams.initShadingTls) {
         mShadingTls = gPrivate.mInitParams.initShadingTls(this, gPrivate.mInitParams,
                                                           okToAllocBundledResources);
@@ -276,6 +281,13 @@ initTLS(const TLSInitParams &initParams)
         return;
     }
 
+    if (!mcrt_common::AffinityManager::get()) { 
+        // If AffinityManager is not initialized yet, we initialize here with the option of
+        // full core with no CPU/Mem affinity control.
+        // This is typically happened at UnitTest execution.
+        mcrt_common::AffinityManager::init(std::thread::hardware_concurrency(), "", "", "", "");
+    }
+
     MNRY_ASSERT_REQUIRE(!gPrivate.mRenderPhaseOfFrame);
 
     MOONRAY_START_THREADSAFE_STATIC_WRITE;
@@ -296,7 +308,6 @@ initTLS(const TLSInitParams &initParams)
     //
     // Preallocate all render TLS objects.
     //
-
     unsigned numThreads = getNumTBBThreads();
 
     gPrivate.mTLSList = reinterpret_cast<ThreadLocalState *>
