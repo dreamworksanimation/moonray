@@ -1,4 +1,4 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -217,7 +217,7 @@ private:
                               const scene_rdl2::math::HalfOpenViewport& region) const;
     static void addOiioImageSpec(const ImageWriteCacheImageSpec* imgSpec,
                                  std::vector<OIIO::ImageSpec>& specs);
-    bool updateHashImageSpecOrg(const File& f,
+    void updateHashImageSpecOrg(const File& f,
                                 const scene_rdl2::math::HalfOpenViewport& aperture,
                                 const scene_rdl2::math::HalfOpenViewport& region) const;
     static OIIO::TypeDesc getChannelFormat(const scene_rdl2::rdl2::RenderOutput* ro);

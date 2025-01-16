@@ -1,4 +1,4 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
@@ -20,13 +20,6 @@
 // See PRECISE_HASH_COMPARE directive (RenderOutputWriter.cc) for more detail.
 // This directive should commented out for release version.
 //#define RUNTIME_VERIFY_HASH
-
-namespace {
-
-#define FILEPOSMSG __FILE__ << " line:" << __LINE__ << " func:" << __FUNCTION__
-#define RUNTIME_WARNING_MSG(msg) std::cerr << "RUNTIME_WARNING: " << FILEPOSMSG << " error:" << msg << '\n'
-    
-} // namespace
 
 namespace moonray {
 namespace rndr {
@@ -109,16 +102,8 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
     std::vector<std::string> &errors = (cache)? cache->getErrors(): mErrors;
     std::vector<std::string> &infos = (cache)? cache->getInfos(): mInfos;
 
-    scene_rdl2::grid_util::Sha1Gen *sha1GenPtr = nullptr;
-    if (hashOut) {
-        try {
-            sha1GenPtr = new scene_rdl2::grid_util::Sha1Gen;
-        }
-        catch (std::string& err) {
-            sha1GenPtr = nullptr;
-            RUNTIME_WARNING_MSG("new scene_rdl2::grid_util::Sha1Gen failed. error:" + err);
-        }
-    }
+    scene_rdl2::grid_util::Sha1Gen sha1Gen;
+    scene_rdl2::grid_util::Sha1Gen *sha1GenPtr = (hashOut) ? &sha1Gen : nullptr;
 
     if (cache) cache->timeStart();
 
@@ -218,13 +203,7 @@ RenderOutputDriver::Impl::write(const bool checkpointOutput,
     }
 
     if (hashOut) {
-        try {
-            *hashOut = sha1GenPtr->finalize();
-        }
-        catch (std::string& err) {
-            scene_rdl2::grid_util::Sha1Util::init(*hashOut);
-            RUNTIME_WARNING_MSG("sha1Gen::finalize() failed. error:" + err);
-        }
+        *hashOut = sha1GenPtr->finalize();
     }
 }
 

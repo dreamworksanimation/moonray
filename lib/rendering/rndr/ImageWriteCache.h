@@ -1,4 +1,4 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
@@ -114,7 +114,7 @@ public:
 
     void setupOIIOSpecs(const CallBackSetup &callBack) const;
 
-    bool updateHash(scene_rdl2::grid_util::Sha1Gen& sha1Gen) const;
+    void updateHash(scene_rdl2::grid_util::Sha1Gen &sha1Gen) const;
 
     size_t memSizeByte() const;
 
@@ -188,7 +188,7 @@ public:
     const std::vector<ChanFormat> &getPixChanFormat() const { return mPixChanFormat; }
     const std::vector<int> &getPixNumChan() const { return mPixNumChan; }
 
-    bool updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const;
+    void updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const;
 
     size_t memSizeByte() const;
 
@@ -233,7 +233,7 @@ public:
         return mSubImgTbl[subImgId];
     }
 
-    bool updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const;
+    void updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const;
 
     size_t memSizeByte() const;
 
@@ -260,7 +260,7 @@ public:
         return mFileTbl[fileId];
     }
 
-    bool updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const;
+    void updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const;
 
     size_t memSizeByte() const;
 

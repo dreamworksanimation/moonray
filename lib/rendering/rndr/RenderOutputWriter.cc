@@ -1,4 +1,4 @@
-// Copyright 2023-2025 DreamWorks Animation LLC
+// Copyright 2023-2024 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include "ExrUtils.h"
@@ -44,13 +44,6 @@
 // If this directive is not commented out, all the write-out data is targeted for hash computation.
 // If you get the same hash value between ENQ and DEQ, ENQ and DEQ logic is working as we expected.
 //#define PRECISE_HASH_COMPARE
-
-namespace {
-
-#define FILEPOSMSG __FILE__ << " line:" << __LINE__ << " func:" << __FUNCTION__
-#define RUNTIME_WARNING_MSG(msg) std::cerr << "RUNTIME_WARNING: " << FILEPOSMSG << " error:" << msg << '\n'
-    
-} // namespace
 
 namespace moonray {
 namespace rndr {
@@ -204,9 +197,7 @@ RenderOutputWriter::setupBuffOffsetTable()
     }
 
     if (mRunMode != ImageWriteCache::Mode::ENQ && mSha1Gen) { // STD/DEQ && mSha1Gen
-        if (!mCurrBufferSpec->updateHash(mSha1Gen)) {
-            RUNTIME_WARNING_MSG("mCurrBufferSpec->updateHash() failed");
-        }
+        mCurrBufferSpec->updateHash(mSha1Gen);
     }
 
     // useful debug message
@@ -518,9 +509,7 @@ RenderOutputWriter::setupOiioImageSetup(const std::string& filename,
     if (mRunMode != ImageWriteCache::Mode::ENQ) { // STD/DEQ
         imgOutput = OIIO::ImageOutput::create(filename.c_str());
         if (mSha1Gen) {
-            if (!mSha1Gen->updateStr("io_construct")) {
-                RUNTIME_WARNING_MSG("sha1Gen->updateStr() failed");
-            }
+            mSha1Gen->updateStr("io_construct");
         }
         if (!imgOutput) {
             mErrors.push_back(errMsg("Failed to create OIIO::ImageOutput for ", filename, tmpFileItem));
@@ -585,18 +574,14 @@ RenderOutputWriter::setupOiioImageSpecTable(const size_t fileId,
 
 #       ifdef PRECISE_HASH_COMPARE
         if (mRunMode == ImageWriteCache::Mode::DEQ && mSha1Gen) {
-            if (!imgSpec->updateHash(*mSha1Gen)) {
-                RUNTIME_WARNING_MSG("imgSpec->updateHash() failed");
-            }
+            imgSpec->updateHash(*mSha1Gen);
         }
 #       endif // end PRECISE_HASH_COMPARE
     } // loop imgId
 
 #   ifdef PRECISE_HASH_COMPARE
     if (mRunMode == ImageWriteCache::Mode::STD && mSha1Gen) {
-        if (!updateHashImageSpecOrg((*mFiles)[fileId], aperture, region)) {
-            RUNTIME_WARNING_MSG("updateHashImageSpecOrg() failed");
-        }
+        updateHashImageSpecOrg((*mFiles)[fileId], aperture, region);
     }
 #   endif // end PRECISE_HASH_COMPARE
 }
@@ -615,9 +600,7 @@ RenderOutputWriter::openFile(const std::string& filename,
     // STD/DEQ
     //
     if (mSha1Gen) {
-        if (!mSha1Gen->updateStr("io->open()")) {
-            RUNTIME_WARNING_MSG("sha1Gen->updateStr() failed");
-        }
+        mSha1Gen->updateStr("io->open()");
     }
             
     if (!mSha1Gen || mRunMode == ImageWriteCache::Mode::DEQ) {
@@ -665,9 +648,7 @@ RenderOutputWriter::fillBufferAndWrite(const size_t fileId,
         if (subImgId > 0) {
             if (mRunMode != ImageWriteCache::Mode::ENQ) { // STD/DEQ
                 if (mSha1Gen) {
-                    if (!mSha1Gen->updateStr("io->open()")) {
-                        RUNTIME_WARNING_MSG("sha1Gen->updateStr() failed");
-                    }
+                    mSha1Gen->updateStr("io->open()");
                 }
 
                 if (!mSha1Gen || mRunMode == ImageWriteCache::Mode::DEQ) {
@@ -721,9 +702,7 @@ RenderOutputWriter::closeFile(const std::string& filename,
     // STD/DEQ
     //
     if (mSha1Gen) {
-        if (!mSha1Gen->updateStr("io->close()")) {
-            RUNTIME_WARNING_MSG("sha1Gen->updateStr() failed");
-        }
+        mSha1Gen->updateStr("io->close()");
     }
 
     if (!mSha1Gen || mRunMode == ImageWriteCache::Mode::DEQ) {
@@ -893,13 +872,11 @@ RenderOutputWriter::addOiioImageSpec(const ImageWriteCacheImageSpec* imgSpec,
          });
 }
 
-bool
+void
 RenderOutputWriter::updateHashImageSpecOrg(const File& file,
                                            const scene_rdl2::math::HalfOpenViewport& aperture,
                                            const scene_rdl2::math::HalfOpenViewport& region) const
 {
-    if (mSha1Gen->isError()) return false; // early exit
-
     int specs_x = region.min().x;
     int specs_y = aperture.max().y - region.max().y; // flip y coordinate relative to display window
     int specs_full_x = aperture.min().x;
@@ -925,11 +902,11 @@ RenderOutputWriter::updateHashImageSpecOrg(const File& file,
             numChans += nc;
         }
 
-        if (!mSha1Gen->updateInt2(mWidth, mHeight)) return false;
-        if (!mSha1Gen->update<int>(numChans)) return false;
-        if (!mSha1Gen->updateInt2(specs_x, specs_y)) return false;
-        if (!mSha1Gen->updateInt2(specs_full_x, specs_full_y)) return false;
-        if (!mSha1Gen->updateInt2(specs_full_width, specs_full_height)) return false;
+        mSha1Gen->updateInt2(mWidth, mHeight);
+        mSha1Gen->update<int>(numChans);
+        mSha1Gen->updateInt2(specs_x, specs_y);
+        mSha1Gen->updateInt2(specs_full_x, specs_full_y);
+        mSha1Gen->updateInt2(specs_full_width, specs_full_height);
 
         for (size_t id = 0; id < chanFormats.size(); ++id) {
             using ChannelFormat = scene_rdl2::rdl2::RenderOutput::ChannelFormat;
@@ -937,18 +914,18 @@ RenderOutputWriter::updateHashImageSpecOrg(const File& file,
             if (chanFormats[id] == OIIO::TypeDesc::HALF) {
                 chanFormat = ChannelFormat::CHANNEL_FORMAT_HALF;
             }
-            if (!mSha1Gen->update<ChannelFormat>(chanFormat)) return false;
+            mSha1Gen->update<ChannelFormat>(chanFormat);
         }
 
-        if (!mSha1Gen->updateStrVec(chanNames)) return false;
+        mSha1Gen->updateStrVec(chanNames);
         if (!img.mName.empty()) {
-            if (!mSha1Gen->updateStr(img.mName)) return false;
+            mSha1Gen->updateStr(img.mName);
         }
         std::string compression = getCompressionStr(img.mEntries[0].mRenderOutput);
-        if (!mSha1Gen->updateStr(compression)) return false;
+        mSha1Gen->updateStr(compression);
         if (compression == "dwaa" || compression == "dwab") {
             float level = std::max(0.0f, img.mEntries[0].mRenderOutput->getCompressionLevel());
-            if (!mSha1Gen->update<float>(level)) return false;
+            mSha1Gen->update<float>(level);
         }
 
         // add metadata to image spec
@@ -957,10 +934,10 @@ RenderOutputWriter::updateHashImageSpecOrg(const File& file,
             const scene_rdl2::rdl2::SceneObject *metadata = e.mRenderOutput->getExrHeaderAttributes();
             if (metadata) {
                 const scene_rdl2::rdl2::Metadata *currMetaData = metadata->asA<scene_rdl2::rdl2::Metadata>();
-                if (!mSha1Gen->updateStrVec(currMetaData->getAttributeNames())) return false;
-                if (!mSha1Gen->updateStrVec(currMetaData->getAttributeTypes())) return false;
-                if (!mSha1Gen->updateStrVec(currMetaData->getAttributeValues())) return false;
-                if (!mSha1Gen->updateStr(currMetaData->getName())) return false;
+                mSha1Gen->updateStrVec(currMetaData->getAttributeNames());
+                mSha1Gen->updateStrVec(currMetaData->getAttributeTypes());
+                mSha1Gen->updateStrVec(currMetaData->getAttributeValues());
+                mSha1Gen->updateStr(currMetaData->getName());
                 break;
             }
         }
@@ -969,12 +946,10 @@ RenderOutputWriter::updateHashImageSpecOrg(const File& file,
         std::vector<std::string> metadata = (*mCallBackCheckpointResumeMetadata)(mCheckpointTileSampleTotals);
         if (!metadata.empty()) {
             for (size_t i = 0; i < metadata.size(); i += 3) {
-                if (!mSha1Gen->updateStr3(metadata[i], metadata[i+1], metadata[i+2])) return false;
+                mSha1Gen->updateStr3(metadata[i], metadata[i+1], metadata[i+2]);
             }
         }
     } // loop file.mImages
-
-    return true;
 }
 
 // static function
@@ -1030,9 +1005,7 @@ RenderOutputWriter::subImageFillBufferAndWrite(const size_t fileId,
         if (mCache) mCache->timeRecImage(1); // record Image timing into position id = 1
 
         if (mSha1Gen) {
-            if (!mSha1Gen->updateStr("buffer.write()")) {
-                RUNTIME_WARNING_MSG("sha1Gen->updateStr() failed");
-            }
+            mSha1Gen->updateStr("buffer.write()");
         }
         if (!mSha1Gen || mRunMode == ImageWriteCache::Mode::DEQ) {
             if (mCache) mCache->timeStartBuffWrite();
@@ -1190,14 +1163,10 @@ RenderOutputWriter::fillPixBufferStd(const size_t fileId,
             bool halfFloatMode =
                 (e.mRenderOutput->getChannelFormat() == scene_rdl2::rdl2::RenderOutput::CHANNEL_FORMAT_HALF);
             for (int i = 0; i < numChan; ++i) {
-                bool flag = true;
                 if (halfFloatMode) {
-                    flag = mSha1Gen->update<unsigned short>(precisionAdjustH(ftoh(fPtr[i])));
+                    mSha1Gen->update<unsigned short>(precisionAdjustH(ftoh(fPtr[i])));
                 } else {
-                    flag = mSha1Gen->update<float>(precisionAdjustF(fPtr[i]));
-                }
-                if (!flag) {
-                    RUNTIME_WARNING_MSG("sha1Gen->update() failed");
+                    mSha1Gen->update<float>(precisionAdjustF(fPtr[i]));
                 }
             }
         }
@@ -1446,9 +1415,7 @@ RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
 
                 if (mSha1Gen) {
                     for (int i = 0; i < numChan; ++i) {
-                        if (!mSha1Gen->update<unsigned short>(precisionAdjustH(hPtr[i]))) {
-                            RUNTIME_WARNING_MSG("sha1Gen->update() failed. chanFormat::HALF");
-                        }
+                        mSha1Gen->update<unsigned short>(precisionAdjustH(hPtr[i]));
                     }
                 }
             }
@@ -1464,9 +1431,7 @@ RenderOutputWriter::fillPixBufferDeq(const size_t fileId,
 
                 if (mSha1Gen) {
                     for (int i = 0; i < numChan; ++i) {
-                        if (!mSha1Gen->update<float>(precisionAdjustF(fPtr[i]))) {
-                            RUNTIME_WARNING_MSG("sha1Gen->update() failed. chanFormat::FULL");
-                        }
+                        mSha1Gen->update<float>(precisionAdjustF(fPtr[i]));
                     }
                 }
             }
