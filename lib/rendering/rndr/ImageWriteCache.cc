@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include <scene_rdl2/render/util/AtomicFloat.h> // Needs to be included before any OpenImageIO file
@@ -116,40 +116,43 @@ ImageWriteCacheImageSpec::setupOIIOSpecs(const CallBackSetup &callBack) const
              mResumeAttr);
 }
 
-void
-ImageWriteCacheImageSpec::updateHash(scene_rdl2::grid_util::Sha1Gen &sha1Gen) const
+bool
+ImageWriteCacheImageSpec::updateHash(scene_rdl2::grid_util::Sha1Gen& sha1Gen) const
 {
-    sha1Gen.updateInt2(mWidth, mHeight);
-    sha1Gen.update<int>(mTotalNumChans);
-    sha1Gen.updateInt2(mSpecX, mSpecY);
-    sha1Gen.updateInt2(mSpecFullX, mSpecFullY);
-    sha1Gen.updateInt2(mSpecFullWidth, mSpecFullHeight);
+    if (sha1Gen.isError()) return false; // early exit
+
+    if (!sha1Gen.updateInt2(mWidth, mHeight)) return false;
+    if (!sha1Gen.update<int>(mTotalNumChans)) return false;
+    if (!sha1Gen.updateInt2(mSpecX, mSpecY)) return false;
+    if (!sha1Gen.updateInt2(mSpecFullX, mSpecFullY)) return false;
+    if (!sha1Gen.updateInt2(mSpecFullWidth, mSpecFullHeight)) return false;
 
     for (size_t i = 0; i < mChanFormat.size(); ++i) {
-        sha1Gen.update<ChannelFormat>(mChanFormat[i]);
+        if (!sha1Gen.update<ChannelFormat>(mChanFormat[i])) return false;
     }
-    sha1Gen.updateStrVec(mChanNames);
+    if (!sha1Gen.updateStrVec(mChanNames)) return false;
     if (!mName.empty()) {
-        sha1Gen.updateStr(mName);
+        if (!sha1Gen.updateStr(mName)) return false;
     }
-    sha1Gen.updateStr(mCompression);
+    if (!sha1Gen.updateStr(mCompression)) return false;
     if (isCompressionDwa()) {
-        sha1Gen.update<float>(mLevel);
+        if (!sha1Gen.update<float>(mLevel)) return false;
     }
 
     if (!mAttrNames.empty()) {
-        sha1Gen.updateStrVec(mAttrNames);
-        sha1Gen.updateStrVec(mAttrTypes);
-        sha1Gen.updateStrVec(mAttrValues);
-        sha1Gen.updateStr(mMetaDataName);
+        if (!sha1Gen.updateStrVec(mAttrNames)) return false;
+        if (!sha1Gen.updateStrVec(mAttrTypes)) return false;
+        if (!sha1Gen.updateStrVec(mAttrValues)) return false;
+        if (!sha1Gen.updateStr(mMetaDataName)) return false;
     }
     if (!mResumeAttr.empty()) {
         for (size_t i = 0; i < mResumeAttr.size(); i += 3) {
-            sha1Gen.updateStr3(mResumeAttr[i],
-                               mResumeAttr[i+1],
-                               mResumeAttr[i+2]);
+            if (!sha1Gen.updateStr3(mResumeAttr[i],
+                                    mResumeAttr[i+1],
+                                    mResumeAttr[i+2])) return false;
         }
     }
+    return true;
 }
 
 size_t
@@ -278,31 +281,34 @@ ImageWriteCacheBufferSpecSubImage::setup(const ImageWriteCacheBufferSpecSubImage
     }
 }
 
-void
-ImageWriteCacheBufferSpecSubImage::updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const
+bool
+ImageWriteCacheBufferSpecSubImage::updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const
 {
-    if (!sha1Gen) return;
+    if (!sha1Gen) return true;
 
-    sha1Gen->updateStr(mName);
+    if (sha1Gen->isError()) return false; // early exit
 
-    sha1Gen->update<size_t>(mImgSpecId);
+    if (!sha1Gen->updateStr(mName)) return false;
 
-    sha1Gen->update<size_t>(mAovBuffOffset);
-    sha1Gen->update<size_t>(mDisplayFilterBuffOffset);
-    sha1Gen->update<size_t>(mAovBuffSize);
-    sha1Gen->update<size_t>(mDisplayFilterBuffSize);
+    if (!sha1Gen->update<size_t>(mImgSpecId)) return false;
+
+    if (!sha1Gen->update<size_t>(mAovBuffOffset)) return false;
+    if (!sha1Gen->update<size_t>(mDisplayFilterBuffOffset)) return false;
+    if (!sha1Gen->update<size_t>(mAovBuffSize)) return false;
+    if (!sha1Gen->update<size_t>(mDisplayFilterBuffSize)) return false;
     
-    sha1Gen->update<size_t>(mPixCacheFullOffset);
-    sha1Gen->update<size_t>(mPixCacheHalfOffset);
-    sha1Gen->update<size_t>(mPixCacheFullSize);
-    sha1Gen->update<size_t>(mPixCacheHalfSize);
+    if (!sha1Gen->update<size_t>(mPixCacheFullOffset)) return false;
+    if (!sha1Gen->update<size_t>(mPixCacheHalfOffset)) return false;
+    if (!sha1Gen->update<size_t>(mPixCacheFullSize)) return false;
+    if (!sha1Gen->update<size_t>(mPixCacheHalfSize)) return false;
 
     for (const auto &itr: mPixChanFormat) {
-        sha1Gen->update<ChanFormat>(itr);
+        if (!sha1Gen->update<ChanFormat>(itr)) return false;
     }
     for (const auto &itr: mPixNumChan) {
-        sha1Gen->update<int>(itr);
+        if (!sha1Gen->update<int>(itr)) return false;
     }
+    return true;
 }
 
 size_t
@@ -359,14 +365,17 @@ ImageWriteCacheBufferSpecSubImage::showChanFormat(const ChanFormat &format)
     }
 }
 
-void
-ImageWriteCacheBufferSpecFile::updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const
+bool
+ImageWriteCacheBufferSpecFile::updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const
 {
-    if (!sha1Gen) return;
+    if (!sha1Gen) return true;
+
+    if (sha1Gen->isError()) return false; // early exit
 
     for (const auto &itr: mSubImgTbl) {
-        itr.updateHash(sha1Gen);
+        if (!itr.updateHash(sha1Gen)) return false;
     }
+    return true;
 }
 
 size_t
@@ -394,14 +403,17 @@ ImageWriteCacheBufferSpecFile::show() const
     return ostr.str();
 }
 
-void
-ImageWriteCacheBufferSpec::updateHash(scene_rdl2::grid_util::Sha1Gen *sha1Gen) const
+bool
+ImageWriteCacheBufferSpec::updateHash(scene_rdl2::grid_util::Sha1Gen* sha1Gen) const
 {
-    if (!sha1Gen) return;
+    if (!sha1Gen) return true;
+
+    if (sha1Gen->isError()) return false; // early exit
 
     for (const auto &itr: mFileTbl) {
-        itr.updateHash(sha1Gen);
+        if (!itr.updateHash(sha1Gen)) return false;
     }
+    return true;
 }
 
 size_t
