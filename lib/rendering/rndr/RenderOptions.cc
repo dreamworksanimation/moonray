@@ -199,8 +199,8 @@ RenderOptions::parseFromCommandLine(int argc, char* argv[])
         setThreads(stringToUnsignedLong(values[0]));
     }
 
-    validFlags.push_back("-socketAffinity");
-    if (args.getFlagValues("-socketAffinity", 1, values) >= 0) {
+    validFlags.push_back("-socket_affinity");
+    if (args.getFlagValues("-socket_affinity", 1, values) >= 0) {
         mCpuAffinityDef = "";
         mSocketAffinityDef = values[0];
     }
@@ -551,7 +551,7 @@ RenderOptions::getUsageMessage(const std::string& programName, bool guiMode)
 "        set CPU affinity definition. \"-1\" disables CPU affinity control. \"all\" uses all CPUs\n"
 "        cpuIdDef example : 0,1,2     => 0 1 2\n"
 "                           0-2,4,6-9 => 0,1,2,4,6,7,8,9\n"
-"                           -1        => disable CPU affinity (default)\n"
+"                           -1        => disable CPU affinity\n"
 "                           all       => use all CPUs of the host\n"
 "\n"
 "    -socket_affinity socketIdDef\n"
