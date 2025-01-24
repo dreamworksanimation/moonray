@@ -702,6 +702,8 @@ AffinityManager::AffinityManager(const unsigned desiredNumThreads,
     , mCpuManager {std::make_shared<CpuAffinityManager>(desiredNumThreads, cpuAffinityDef, socketAffinityDef)}
 {
     mMemManager->init(getCpu());
+
+    parserConfigure();
 }
 
 // static function    
@@ -868,6 +870,14 @@ AffinityManager::calcAutoAffinityOptions(const unsigned desiredNumThreads,
     // MOONRAY-5367 (Record MoonRay affinity status into shared memory to share this info with other MoonRay)
 }
 #endif // end of Not PLATFORM_APPLE
+
+void
+AffinityManager::parserConfigure()
+{
+    mParser.description("AffinityManager command");
+    mParser.opt("show", "", "show current information",
+                [&](Arg& arg) { return arg.msg(show() + '\n'); });
+}
 
 } // namespace mcrt_common
 } // namespace moonray

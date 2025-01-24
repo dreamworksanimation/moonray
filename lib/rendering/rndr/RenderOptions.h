@@ -240,6 +240,10 @@ public:
 
     Parser& getParser() { return mParser; }
 
+    void setCpuAffinityDef(const std::string& def) { mCpuAffinityDef = def; }
+    void setSocketAffinityDef(const std::string& def) { mSocketAffinityDef = def; }
+    void setMemAffinityDef(const std::string& def) { mMemAffinityDef = def; }
+    void setAutoAffinityDef(const std::string& def) { mAutoAffinityDef = def; }
     const std::string& getCpuAffinityDef() const { return mCpuAffinityDef; }
     const std::string& getSocketAffinityDef() const { return mSocketAffinityDef; }
     const std::string& getMemAffinityDef() const { return mMemAffinityDef; }

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
+#include <scene_rdl2/common/grid_util/Arg.h>
+#include <scene_rdl2/common/grid_util/Parser.h>
 #include <scene_rdl2/render/util/Arena.h>
 #ifndef PLATFORM_APPLE
 #include <scene_rdl2/render/util/NumaUtil.h>
@@ -205,6 +207,9 @@ class AffinityManager
 //
 {
 public:
+    using Arg = scene_rdl2::grid_util::Arg;
+    using Parser = scene_rdl2::grid_util::Parser; 
+
     AffinityManager(const unsigned desiredNumThreads,
                     const std::string& cpuAffinityDef,
                     const std::string& socketAffinityDef,
@@ -227,13 +232,19 @@ public:
 
     static std::string showTbl(const std::string& msg, const std::vector<unsigned>& tbl);
 
+    Parser& getParser() { return mParser; }
+
 private:
     static void calcAutoAffinityOptions(const unsigned desiredNumThreads,
                                         std::string& cpuAffinityDef,
                                         std::string& memAffinityDef);
 
+    void parserConfigure();
+
     std::shared_ptr<MemoryAffinityManager> mMemManager;
     std::shared_ptr<CpuAffinityManager> mCpuManager;
+
+    Parser mParser;
 };
 
 } // namespace mcrt_common

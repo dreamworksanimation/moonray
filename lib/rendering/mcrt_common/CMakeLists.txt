@@ -85,6 +85,7 @@ target_link_libraries(${component}
         ${PROJECT_NAME}::common_time
         ${PROJECT_NAME}::deepfile
         ${OPENEXRUTIL}
+        SceneRdl2::common_grid_util
         SceneRdl2::common_math
         SceneRdl2::common_platform
         SceneRdl2::render_logging
