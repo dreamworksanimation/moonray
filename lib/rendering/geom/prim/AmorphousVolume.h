@@ -79,12 +79,9 @@ protected:
             const std::vector<int>& volumeIds,
             const scene_rdl2::rdl2::Geometry* rdlGeometry = nullptr)
         {
-            if (!scatterParams.extinctionGrid() ||
-                scatterParams.extinctionGrid()->empty())
-            {
+            if (!scatterParams.extinctionGrid() || scatterParams.extinctionGrid()->empty()) {
                 if (rdlGeometry) {
-                    rdlGeometry->error("An extinction"
-                        " (AKA opacity or shadowing) volume is required.");
+                    rdlGeometry->warn("An extinction (AKA opacity or shadowing) volume was not found.");
                 }
                 return false;
             }
@@ -112,19 +109,16 @@ protected:
             amorphous::File vdbFile(vdbFilePath);
             std::stringstream msg;
             if (!vdbFile.read(msg, densityGridName)) {
-                rdlGeometry.error(msg.str());
-                return false;
+                static const std::string sMissingMetadata = "Failed to read Amorphous metadata";
+                if (msg.str().find(sMissingMetadata) != std::string::npos) {
+                    rdlGeometry.warn(msg.str());
+                } else {
+                    rdlGeometry.error(msg.str());
+                    return false;
+                }
             }
 
             amorphous::SScatterParams& scatterParams = vdbFile.scatterParams();
-            if (!scatterParams.extinctionGrid() ||
-                scatterParams.extinctionGrid()->empty())
-            {
-                rdlGeometry.error("VDB", vdbFilePath,
-                    " contains no extinction metadata. "
-                    "Extinction (AKA opacity or shadowing) is required.");
-                return false;
-            }
 
             // downsample emission grid
             if (scatterParams.incandescenceGrid() != nullptr &&
@@ -133,7 +127,7 @@ protected:
                 scatterParams.downsampleIncand(emissionSampleRate);
             }
 
-            return initialize(scatterParams, volumeIds);
+            return initialize(scatterParams, volumeIds, &rdlGeometry);
         }
 
         scene_rdl2::math::Color extinct(mcrt_common::ThreadLocalState* tls,

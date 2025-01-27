@@ -247,7 +247,7 @@ AmorphousVolume::initialize(const scene_rdl2::rdl2::Geometry& rdlGeometry,
                              volumeIds)) {
         mUseAmorphousSampler = true;
     } else {
-        rdlGeometry.warn("fallback to default grid loading solution");
+        rdlGeometry.warn("Falling back to density grid: \"" + mVdbVolumeData->mDensityGridName + "\"");
         mUseAmorphousSampler = false;
         if (!initDensitySampler(file,
                                 grids,
