@@ -152,7 +152,7 @@ PolyMesh::tessellate(const TessellationParams& tessellationParams, TessellationS
         tessellationParams.mWorld2Render);
 
     // reverse normals reverses orientation and negates normals
-    if (mIsNormalReversed ^ mIsOrientationReversed) {
+    if (mIsNormalReversed) {
         size_t faceVertexCount = mIsTessellated ?
             sQuadVertexCount : baseFaceVertexCount;
         reverseOrientation(faceVertexCount, mIndices, mAttributes);
@@ -1039,9 +1039,6 @@ PolyMesh::displaceMesh(const scene_rdl2::rdl2::Layer* pRdlLayer,
                 // value as fallback
                 if (!scene_rdl2::math::isFinite(normal)) {
                     normal = Vec3f(0, 0, 1);
-                }
-                if (mIsOrientationReversed) {
-                    normal *= -1.0f;
                 }
                 Vec3f dpdst[2];
                 if (!computeTrianglePartialDerivatives(

@@ -79,6 +79,8 @@ public:
 
     virtual void copyInPlace(size_t src, size_t dst) = 0;
 
+    virtual void reverseElements(size_t startIdx, size_t num) = 0;
+
 protected:
     AttributeRate mRate;
 };
@@ -303,6 +305,11 @@ public:
         mList[dst] = mList[src];
     }
 
+    virtual void reverseElements(size_t startIdx, size_t num) override
+    {
+        std::reverse(mList.begin() + startIdx, mList.begin() + startIdx + num);
+    }
+
 private:
     static iterator toNonConst(const list_type& list, const_iterator citer)
     {
@@ -517,6 +524,8 @@ public:
     {
         mMap.clear();
     }
+
+    void reverseFaceVaryingAttributes(const std::vector<uint32_t>& faceVertexCount);
 
 private:
 

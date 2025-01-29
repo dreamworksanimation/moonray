@@ -2084,7 +2084,7 @@ OpenSubdivMesh::tessellate(const TessellationParams& tessellationParams, Tessell
                                          {StandardAttributes::sdPdt, Vec3Type::VECTOR}});
 
     // reverse normals reverses orientation and negates normals
-    if (mIsNormalReversed ^ mIsOrientationReversed) {
+    if (mIsNormalReversed) {
         reverseOrientation(mControlMeshData->mFaceVertexCount,
                          mControlMeshData->mIndices, mAttributes);
         if (hasTextureSt) {

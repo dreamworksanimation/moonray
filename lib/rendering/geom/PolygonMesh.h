@@ -128,12 +128,6 @@ public:
     /// get whether normals are reversed
     bool getIsNormalReversed() const;
 
-    /// set whether orientation is reversed
-    void setIsOrientationReversed(bool);
-
-    /// get whether orientation is reversed
-    bool getIsOrientationReversed() const;
-
     /// set whether the mesh automatically calculates smooth shadint normal
     void setSmoothNormal(bool smoothNormal);
 

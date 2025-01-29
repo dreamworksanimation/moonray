@@ -155,18 +155,6 @@ PolygonMesh::getIsNormalReversed() const
 }
 
 void
-PolygonMesh::setIsOrientationReversed(bool reverseOrientation)
-{
-    mImpl->mPolyMesh->setIsOrientationReversed(reverseOrientation);
-}
-
-bool
-PolygonMesh::getIsOrientationReversed() const
-{
-    return mImpl->mPolyMesh->getIsOrientationReversed();
-}
-
-void
 PolygonMesh::setSmoothNormal(bool smoothNormal)
 {
     mImpl->mPolyMesh->setSmoothNormal(smoothNormal);

@@ -153,12 +153,6 @@ public:
     /// get whether normals are reversed
     bool getIsNormalReversed() const;
 
-    /// set whether orientation is reversed
-    void setIsOrientationReversed(bool);
-
-    /// get whether orientation is reversed
-    bool getIsOrientationReversed() const;
-
     // TODO replace this function with proper VertexBuffer update mechanics
     void updateVertexData(const std::vector<float>& vertexData,
             const shading::XformSamples& prim2render);

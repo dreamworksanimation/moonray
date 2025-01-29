@@ -210,18 +210,6 @@ SubdivisionMesh::getIsNormalReversed() const
 }
 
 void
-SubdivisionMesh::setIsOrientationReversed(bool reverseOrientation)
-{
-    mImpl->mSubdMesh->setIsOrientationReversed(reverseOrientation);
-}
-
-bool
-SubdivisionMesh::getIsOrientationReversed() const
-{
-    return mImpl->mSubdMesh->getIsOrientationReversed();
-}
-
-void
 SubdivisionMesh::setCurvedMotionBlurSampleCount(int count)
 {
     mImpl->mSubdMesh->setCurvedMotionBlurSampleCount(count);

@@ -47,7 +47,7 @@ public:
     // Short-term convenience
     explicit Mesh(LayerAssignmentId&& layerAssignmentId):
         NamedPrimitive(std::move(layerAssignmentId)), mIsSingleSided(true),
-        mIsNormalReversed(false), mIsOrientationReversed(false), mIsMeshFinalized(false),
+        mIsNormalReversed(false), mIsMeshFinalized(false),
         mAdaptiveError(0.0f), mMeshResolution(1), mPrimToRender(scene_rdl2::math::one)
     {}
 
@@ -143,21 +143,6 @@ public:
     bool getIsNormalReversed() const
     {
         return mIsNormalReversed;
-    }
-
-    void setIsOrientationReversed(bool reverseOrientation)
-    {
-        if (mIsMeshFinalized) {
-            scene_rdl2::logging::Logger::warn("Mesh \'" + getName() + "\' cannot reverse "
-                         "orientation because it is already finalized.");
-            return;
-        }
-        mIsOrientationReversed = reverseOrientation;
-    }
-
-    bool getIsOrientationReversed() const
-    {
-        return mIsOrientationReversed;
     }
 
     virtual void setMeshResolution(int meshResolution)
@@ -359,7 +344,6 @@ protected:
 
     bool mIsSingleSided;
     bool mIsNormalReversed;
-    bool mIsOrientationReversed;
     bool mIsMeshFinalized;
     // criteria for stopping further tessellation (adaptive tessellation case)
     float mAdaptiveError;

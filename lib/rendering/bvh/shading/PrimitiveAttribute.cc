@@ -143,6 +143,23 @@ void PrimitiveAttributeTable::copy(PrimitiveAttributeTable& result ) const
     }
 }
 
+void PrimitiveAttributeTable::reverseFaceVaryingAttributes(const std::vector<uint32_t>& faceVertexCount)
+{
+    for (auto& kv : mMap) {
+        for (auto& attribute : kv.second) {
+            AttributeRate rate = attribute->getRate();
+            if (rate == RATE_FACE_VARYING) {
+                size_t faceCount = faceVertexCount.size();
+                size_t indexOffset = 0;
+                for (size_t i = 0; i < faceCount; i++) {
+                    attribute->reverseElements(indexOffset, faceVertexCount[i]);
+                    indexOffset += faceVertexCount[i];
+                }
+            }
+        }
+    }
+}
+
 } // namespace shading
 } // namespace moonray
 

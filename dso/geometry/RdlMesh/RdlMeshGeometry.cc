@@ -472,6 +472,19 @@ RdlMeshProcedural::createSubdMesh(
         return nullptr;
     }
 
+    bool isLeftHanded = (rdlMeshGeometry->get(attrOrientation) == ORIENTATION_LEFT_HANDED);
+    if (isLeftHanded) {
+        // Reverse the vertex ordering
+        size_t faceCount = faceVertexCount.size();
+        size_t indexOffset = 0;
+        for (size_t i = 0; i < faceCount; i++) {
+            std::reverse(indices.begin() + indexOffset, indices.begin() + indexOffset + faceVertexCount[i]);
+            indexOffset += faceVertexCount[i];
+        }
+
+        primitiveAttributeTable.reverseFaceVaryingAttributes(faceVertexCount);
+    }
+
     // build the primitive
     std::unique_ptr<SubdivisionMesh> primitive =
         createSubdivisionMesh(scheme,
@@ -534,7 +547,6 @@ RdlMeshProcedural::createSubdMesh(
     primitive->setName(sPrimitiveName);
     primitive->setIsSingleSided(singleSided);
     primitive->setIsNormalReversed(rdlMeshGeometry->getReverseNormals());
-    primitive->setIsOrientationReversed(rdlMeshGeometry->get(attrOrientation) == ORIENTATION_LEFT_HANDED);
     primitive->setModifiability(Primitive::Modifiability::DEFORMABLE);
     primitive->setParts(partCount, std::move(faceToPart));
     primitive->setCurvedMotionBlurSampleCount(rdlMeshGeometry->get(attrCurvedMotionBlurSampleCount));
@@ -640,6 +652,19 @@ RdlMeshProcedural::createPolyMesh(
         return nullptr;
     }
 
+    bool isLeftHanded = (rdlMeshGeometry->get(attrOrientation) == ORIENTATION_LEFT_HANDED);
+    if (isLeftHanded) {
+        // Reverse the vertex ordering
+        size_t faceCount = faceVertexCount.size();
+        size_t indexOffset = 0;
+        for (size_t i = 0; i < faceCount; i++) {
+            std::reverse(indices.begin() + indexOffset, indices.begin() + indexOffset + faceVertexCount[i]);
+            indexOffset += faceVertexCount[i];
+        }
+
+        primitiveAttributeTable.reverseFaceVaryingAttributes(faceVertexCount);
+    }
+
     // build the primitive
     std::unique_ptr<PolygonMesh> primitive =
         createPolygonMesh(std::move(faceVertexCount),
@@ -654,7 +679,6 @@ RdlMeshProcedural::createPolyMesh(
     primitive->setName(sPrimitiveName);
     primitive->setIsSingleSided(singleSided);
     primitive->setIsNormalReversed(rdlMeshGeometry->getReverseNormals());
-    primitive->setIsOrientationReversed(rdlMeshGeometry->get(attrOrientation) == ORIENTATION_LEFT_HANDED);
     primitive->setParts(partCount, std::move(faceToPart));
     primitive->setSmoothNormal(rdlMeshGeometry->get(attrSmoothNormal));
     primitive->setCurvedMotionBlurSampleCount(rdlMeshGeometry->get(attrCurvedMotionBlurSampleCount));
