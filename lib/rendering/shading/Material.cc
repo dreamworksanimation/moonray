@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #include "Material.h"
 
@@ -461,7 +461,6 @@ ShadeQueueListInfoManager::getAllShadeQueuesCount()
         //
         // Memory Affinity enabled
         //
-        unsigned total = 0;
         for (auto itr : mNumaNodeShadeQueueListInfoTbl) {
             total += itr->getShadeQueuesSize();
         }

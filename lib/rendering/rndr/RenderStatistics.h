@@ -1,10 +1,6 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-
 #pragma once
-
-
 
 #include "RenderOptions.h"
 #include <moonray/rendering/rndr/statistics/ArrasLogStream.h>
@@ -23,7 +19,6 @@
 #include <stdint.h>
 #include <string>
 #include <unordered_map>
-
 
 namespace moonray {
 namespace pbr {
@@ -53,7 +48,6 @@ typedef std::vector<std::pair<std::string, geom::GeometryStatistics>> GeometrySt
  * as well as resetting values.  Also provides a method to convert clock ticks
  * to seconds by sampling the number of ticks per unit of known time.
  */
-
 
 class RenderStats
 {
@@ -341,7 +335,6 @@ private:
                            mcrt_common::ExecutionMode executionMode,
                            const scene_rdl2::rdl2::SceneVariables& vars, double processTime, std::ostream& outs,
                            OutputFormat format);
-    void logAffinityStats(std::ostream& outs, OutputFormat format);
 
     moonray_stats::StatsTable<3> buildTessellationTimeStatistics(std::size_t maxEntry);
     moonray_stats::StatsTable<3> buildTessellationMemoryUsedStatistics(std::size_t maxEntry);
@@ -509,7 +502,6 @@ protected:
 std::string timeIntervalFormat (double secs, int secPrecision = 3);
 std::string memFormat (long long bytes);
 
-
 // The RenderDriver keeps track of these.
 struct RealtimeFrameStats
 {
@@ -565,7 +557,5 @@ struct RealtimeFrameStats
     unsigned    mSamplesAll;
 };
 
-
 } // namespace rndr
 } // namespace moonray
-

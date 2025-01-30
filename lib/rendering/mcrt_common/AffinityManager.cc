@@ -1,4 +1,4 @@
-// Copyright 2024 DreamWorks Animation LLC
+// Copyright 2024-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #include "AffinityManager.h"
 
@@ -229,7 +229,7 @@ MemoryAffinityManager::setupLogInfo(std::vector<std::string>& titleTbl,
                                     const std::shared_ptr<const CpuAffinityManager>& cpuAff) const
 {
     titleTbl.push_back("MCRT MEM-affinity");
-    msgTbl.push_back("disable");
+    msgTbl.push_back("disabled");
 }
 
 #else // else PLATFORM_APPLE
@@ -244,7 +244,7 @@ MemoryAffinityManager::setupLogInfo(std::vector<std::string>& titleTbl,
         std::vector<unsigned> activeNumaNodeTbl = calcActiveNumaNodeIdTbl(cpuAff);
         msgTbl.push_back(AffinityManager::showTbl("active-NUMA-node", activeNumaNodeTbl));
     } else {
-        msgTbl.push_back("disable");
+        msgTbl.push_back("disabled");
     }
 }
 
