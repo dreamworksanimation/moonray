@@ -17,7 +17,6 @@
 #include <moonray/rendering/pbr/core/RayState.h>
 #include <moonray/rendering/pbr/core/Scene.h>
 #include <moonray/rendering/pbr/core/Util.h>
-#include <moonray/rendering/pbr/core/VolumePhase.h>
 #include <moonray/rendering/pbr/light/Light.h>
 #include <moonray/rendering/pbr/light/LightSet.h>
 
@@ -1132,13 +1131,13 @@ sampleChannel(const scene_rdl2::math::Color& channelWeights,
     return chIndex;
 }
 
-// One-Sample Between PhaseFunction and Dwivedi Direction Sampling
+// One-Sample between isotropic phase function and Dwivedi direction sampling.
 // Returns a boolean for that choice, the outputcosine between chosen direction
 // and the referenceFrame normal and the output direction
 void
 sampleDirection(const scene_rdl2::math::Vec2f& uDir,
                 float backwardDirectionSample, int chIndex, float phaseSamplingWeight,
-                float wBackwardSampling, const VolumePhase& sssPhaseFunction,
+                float wBackwardSampling,
                 const Ray& sssRay, const scene_rdl2::math::Color& dwivediV0,
                 const scene_rdl2::math::ReferenceFrame& inReferenceFrame,
                 bool& choseDwivediSampling, float& outputCosine,
@@ -1150,15 +1149,19 @@ sampleDirection(const scene_rdl2::math::Vec2f& uDir,
         // re-normalize random number
         float r = uDir[0] / phaseSamplingWeight;
 
-        outputDir = sssPhaseFunction.sample(-sssRay.dir,
-                                            r,
-                                            uDir[1]);
+        // Use isotropic phase function.
+        // Note: to maintain proper distribution of directions, we must transform the direction into the
+        // provided reference frame, as was done when sampling the initial subsurface direction
+        scene_rdl2::math::Vec3f localDir = sampleSphereUniform(r, uDir[1]);
+        outputDir = inReferenceFrame.localToGlobal(localDir);
+
         // choose appropriate cosine for one-sample afterwards
         if (backwardDirectionSample < wBackwardSampling) {
-            outputCosine = dot(outputDir, inReferenceFrame.getN());
+            // go backwards along N
+            outputCosine = localDir.z;
         } else {
             // go 'forwards' along -N
-            outputCosine = -dot(outputDir, inReferenceFrame.getN());
+            outputCosine = -localDir.z;
         }
     } else {
         // choose Dwivedi Sampling
@@ -1172,9 +1175,7 @@ sampleDirection(const scene_rdl2::math::Vec2f& uDir,
         float phi = scene_rdl2::math::sTwoPi * uDir[1];
         float cosPhi, sinPhi;
         scene_rdl2::math::sincos(phi, &sinPhi, &cosPhi);
-        scene_rdl2::math::Vec3f localDir(sine * cosPhi,
-                             sine * sinPhi,
-                             outputCosine);
+        scene_rdl2::math::Vec3f localDir(sine * cosPhi, sine * sinPhi, outputCosine);
 
         if (backwardDirectionSample < wBackwardSampling) {
             // go backwards along N
@@ -1191,10 +1192,11 @@ sampleDirection(const scene_rdl2::math::Vec2f& uDir,
 float
 calculateOneSamplePDF(float NdotDir, const scene_rdl2::math::Vec3f& wo, const scene_rdl2::math::Vec3f& wi,
         const scene_rdl2::math::Color& dwivediV0, const scene_rdl2::math::Color& dwivediNormalization,
-        const VolumePhase& sssPhaseFunction, const scene_rdl2::math::Color& wChannelSampling,
+        const scene_rdl2::math::Color& wChannelSampling,
         float phaseSamplingWeight, const scene_rdl2::math::Color& pdfDistance, const scene_rdl2::math::Color& pdfDistanceDwivedi)
 {
-    const float pdfPhaseFunction = sssPhaseFunction.pdf(wo, wi);
+    const float pdfPhaseFunction = scene_rdl2::math::sOneOverFourPi;  // using isotropic phase function
+
     // dwivedi PDF
     // Ref "Improved Dwivedi Sampling" Eqn 12
     const scene_rdl2::math::Color pdfDwivedi = scene_rdl2::math::sOneOverTwoPi * dwivediNormalization /
@@ -1496,11 +1498,6 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
         }
 
         // 1+ Scatter Event
-        // For now using isotropic phase function (what Hyperion does)
-        VolumePhase sssPhaseFunction = VolumePhase(0.0f);
-        // set a maximum scattering depth in case we go into
-        // infinite random walk (due to bad geometry setup)
-        // the hardcoded number is mentioned in Pixar's memo
 
         scene_rdl2::math::Color tr;
         bool choseDwivediSampling = false;
@@ -1635,7 +1632,7 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                 org = sssRay.org + tfar * sssRay.dir;
 
                 pt *= tr*sigmaS;
-                pt *= sssPhaseFunction.eval(sssRay.dir, dir);
+                pt *= scene_rdl2::math::sOneOverFourPi; // using isotropic phase function
                 // Sample scattering direction
                 directionSamples.getSample(&uDir[0], pv.nonMirrorDepth);
 
@@ -1644,11 +1641,11 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                 dwivediDirectionSamples.getSample(&backwardDirectionSample, pv.nonMirrorDepth);
 
                 sampleDirection(uDir, backwardDirectionSample, chIndex,
-                    phaseSamplingWeight, wBackwardSampling, sssPhaseFunction,
+                    phaseSamplingWeight, wBackwardSampling,
                     sssRay, dwivediV0, inReferenceFrame, choseDwivediSampling, NdotDir, dir);
 
                 float pdfSampling = calculateOneSamplePDF(NdotDir, sssRay.dir, dir,
-                    dwivediV0, volumeSubsurface.getDwivediNormPDF(), sssPhaseFunction,
+                    dwivediV0, volumeSubsurface.getDwivediNormPDF(),
                     channelSamplingWeights, phaseSamplingWeight, pdfDistance, pdfDistanceDwivedi);
                 pt /= pdfSampling;
 
