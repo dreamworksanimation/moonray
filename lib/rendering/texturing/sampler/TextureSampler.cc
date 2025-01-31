@@ -19,6 +19,7 @@
 #include <algorithm> // min, max
 #include <cerrno>
 #include <cstring>
+#include <filesystem>
 #include <sys/stat.h>
 
 namespace {
@@ -86,6 +87,10 @@ TextureSampler::getHandle(const std::string& fileName,
 {
     MNRY_ASSERT(mTextureSystem);
     MNRY_ASSERT(perThread == mTextureSystem->get_perthread_info());
+
+    if (!std::filesystem::exists(fileName)) {
+        return nullptr;
+    }
 
     OIIO::ustring file = static_cast<OIIO::ustring>(fileName);
 

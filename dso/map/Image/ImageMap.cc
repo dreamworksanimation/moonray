@@ -162,7 +162,9 @@ ImageMap::update()
         if (needsUpdate ||
             hasChanged(attrTexture) ||
             hasChanged(attrGamma) ||
-            hasChanged(attrWrapAround)) {
+            hasChanged(attrWrapAround),
+            hasChanged(attrUseDefaultColor) ||
+            hasChanged(attrDefaultColor)) {
             std::string errorStr;
             if (!mTexture->update(get(attrTexture),
                                   static_cast<ispc::TEXTURE_GammaMode>(get(attrGamma)),
