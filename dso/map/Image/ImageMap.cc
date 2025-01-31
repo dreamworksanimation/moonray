@@ -162,7 +162,7 @@ ImageMap::update()
         if (needsUpdate ||
             hasChanged(attrTexture) ||
             hasChanged(attrGamma) ||
-            hasChanged(attrWrapAround),
+            hasChanged(attrWrapAround) ||
             hasChanged(attrUseDefaultColor) ||
             hasChanged(attrDefaultColor)) {
             std::string errorStr;
