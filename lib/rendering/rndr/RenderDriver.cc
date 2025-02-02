@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 //
@@ -729,7 +729,9 @@ RenderDriver::startFrame(const FrameState &fs)
             filmFlags |= Film::ALLOC_DEEP_BUFFER;
         }
         if (mFs.mRequiresCryptomatteBuffer) filmFlags |= Film::ALLOC_CRYPTOMATTE_BUFFER;
-        if (mFs.mRenderContext->getSceneContext().getResumableOutput()) {
+        if (mFs.mRenderContext->getSceneContext().getResumableOutput() ||
+            mFs.mRenderContext->getSceneContext().getResumeRender()) {
+            // Resume render mode automatically set RESUMABLE_OUTPUT for init Film
             filmFlags |= Film::RESUMABLE_OUTPUT;
         }
         bool cryptomatteMultiPresence = mFs.mRenderContext->getSceneContext()
