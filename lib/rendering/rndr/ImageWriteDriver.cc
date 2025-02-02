@@ -1,6 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
 #include "ImageWriteDriver.h"
 
 #include "CheckpointSigIntHandler.h"
@@ -16,6 +15,7 @@
 #include <scene_rdl2/render/util/TimeUtil.h>
 
 #include <cstdlib>              // getenv, EXIT_SUCCESS
+#include <iomanip>              // std::put_time
 #ifndef __APPLE__
 #include <malloc.h>             // malloc_trim
 #include <sys/sysinfo.h>        // sysinfo
@@ -238,6 +238,41 @@ ImageWriteDriver::conditionWaitUntilAllCompleted()
         });
 }
 
+bool
+ImageWriteDriver::openTmpDirControlFile(const float maxExpirationDeltaTimeMinutes,
+                                        const float minExpirationDeltaTimeMinutes)
+{
+    mTmpDirControlFileName = mTmpDirectory + "/DO_NOT_TMP_DIR_CLEAN";
+    mTmpDirControlFileNameTmp = mTmpDirControlFileName + ".part";
+
+    std::chrono::duration<float, std::ratio<60>> floatMaxMinutes(maxExpirationDeltaTimeMinutes);
+    std::chrono::duration<float, std::ratio<60>> floatMinMinutes(minExpirationDeltaTimeMinutes);
+    mTmpDirMaxExpirationDelta = std::chrono::duration_cast<std::chrono::seconds>(floatMaxMinutes);
+    mTmpDirMinExpirationDelta = std::chrono::duration_cast<std::chrono::seconds>(floatMinMinutes);
+
+    mTmpDirExpiration = std::chrono::system_clock::now() + mTmpDirMaxExpirationDelta;
+
+    if (!updateTmpDirControlFile()) {
+        return false;
+    }
+
+    mProtectTmpDir = true;
+    return true;
+}
+
+void
+ImageWriteDriver::cleanUpTmpDirControlFile(std::string& msg)
+{
+    msg.clear();
+    if (::unlink(mTmpDirControlFileNameTmp.c_str()) != -1) {
+        msg = mTmpDirControlFileNameTmp + " was unlinked";
+    }
+    if (::unlink(mTmpDirControlFileName.c_str()) != -1) {
+        if (!msg.empty()) msg += '\n';
+        msg += mTmpDirControlFileName + " was unlinked";
+    }
+}
+
 std::string
 ImageWriteDriver::genTmpFilename(const int fileSequenceId,
                                  const std::string& finalFilename)
@@ -366,6 +401,11 @@ ImageWriteDriver::threadMain(ImageWriteDriver* driver)
             driver->signalAction(); // never return this function
 
         } else {
+            if (driver->mProtectTmpDir) {
+                // Need to manage tmp dir for signal-based checkpointing
+                driver->manageTmpDirControlFileTimeStamp();
+            }
+
             // We should not use thread conditional wait in order to yield CPU resources.
             // If we implement CPU yield logic by thread condition variable, we have to call
             // std::condition_variable::notify_one() from a signal handler.
@@ -430,6 +470,54 @@ ImageWriteDriver::getTmpFileExtension(const std::string& finalFilename)
     size_t pos = finalFilename.rfind(".");
     if (pos == std::string::npos) return ".exr";
     return finalFilename.substr(pos);
+}
+
+bool
+ImageWriteDriver::updateTmpDirControlFile()
+{
+    auto tmpDirProtectTimePointStr = [](std::chrono::time_point<std::chrono::system_clock>& timePoint) {
+        std::time_t time = std::chrono::system_clock::to_time_t(timePoint);
+        std::ostringstream ostr;
+        // This is a time_point to string conversion for DO_NOT_TMP_CLEAN timestamp.
+        // Keep in mind. Format is defined by queue system and if you change this format, clean-up
+        // task by queue system does not work properly.
+        ostr << std::put_time(std::localtime(&time), "%Y%m%d%H%M");
+        return ostr.str();
+    };
+
+    if (mTmpDirControlFileNameTmp.empty() || mTmpDirControlFileName.empty()) {
+        return false;
+    }
+
+    std::ofstream tmpFile(mTmpDirControlFileNameTmp);
+    if (!tmpFile) return false; // Could not create file
+
+    std::string timeStampStr = tmpDirProtectTimePointStr(mTmpDirExpiration);
+
+    tmpFile << timeStampStr;
+    tmpFile.close();
+
+    if (std::rename(mTmpDirControlFileNameTmp.c_str(), mTmpDirControlFileName.c_str()) != 0) return false;
+
+    {
+        std::ostringstream ostr;
+        ostr << "TmpDirProtection expiration date:(" << timeStampStr << ')';
+        scene_rdl2::logging::Logger::info(ostr.str() + '\n');
+    }
+
+    return true;
+}
+
+bool
+ImageWriteDriver::manageTmpDirControlFileTimeStamp()
+{
+    auto currTime = std::chrono::system_clock::now();
+    auto delta = mTmpDirExpiration - currTime;
+    if (delta <= mTmpDirMinExpirationDelta) {
+        mTmpDirExpiration = currTime + mTmpDirMaxExpirationDelta;
+        return updateTmpDirControlFile();
+    }
+    return true;
 }
 
 void
@@ -498,7 +586,11 @@ ImageWriteDriver::signalAction()
         ostr << "snapshotData is empty\n";
     }
 
-    ProcKeeper::get()->closeWriteProgressFile(); // Cleanup operation regarding write action progress file
+    std::string msg;
+    ProcKeeper::get()->closeWriteProgressFile(msg); // Cleanup operation regarding write action progress file
+    if (!msg.empty()) ostr << msg << '\n';
+    cleanUpTmpDirControlFile(msg); // Cleanup operation regarding tmp directory
+    if (!msg.empty()) ostr << msg << '\n';
 
     ostr << "=====>>>>> signalAction done <<<<<=====";
     msgOut(ostr.str());

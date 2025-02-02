@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 // This file includes logic about checkpoint/resume render.
@@ -804,6 +804,14 @@ RenderDriver::progressCheckpointRenderFrame(RenderDriver *driver, const FrameSta
     fs.mRenderContext->getResumeHistoryMetaData()->setFinalizeSyncStartTime();
     ImageWriteDriver::get()->conditionWaitUntilAllCompleted(); // condition wait
     fs.mRenderContext->getResumeHistoryMetaData()->setFinalizeSyncEndTime();
+
+    // tmp directory management cleanup
+    if (ImageWriteDriver::get()->getProtectTmpDir()) {
+        // clean up for tmp directry control file if this is a signal-based checkpoint run
+        std::string msg;
+        ImageWriteDriver::get()->cleanUpTmpDirControlFile(msg);
+        if (!msg.empty()) scene_rdl2::logging::Logger::info(msg + '\n');
+    }    
 
     // mark frame as fully complete.
     driver->setFrameComplete();

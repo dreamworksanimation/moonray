@@ -1,8 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "ImageWriteCache.h"
 #include "ProcKeeper.h"
 
@@ -70,13 +67,15 @@ ProcKeeper::~ProcKeeper()
     mThreadShutdown = true; // This is the only place mThreadShutdown is set to true
 
     mRunState = RunState::START;
-    mCvRun.notify_one(); // notify to RenderContextDriver threadMain loop
+    mCvRun.notify_one(); // notify to ProcKeeper threadMain loop
 
     if (mThread.joinable()) {
         mThread.join();
     }
 
-    closeWriteProgressFile();
+    std::string msg;
+    closeWriteProgressFile(msg);
+    if (!msg.empty()) scene_rdl2::logging::Logger::info(msg);
 }
 
 bool
@@ -87,8 +86,10 @@ ProcKeeper::openWriteProgressFile()
 }
 
 bool
-ProcKeeper::closeWriteProgressFile()
+ProcKeeper::closeWriteProgressFile(std::string& msg)
 {
+    msg.clear();
+    
     if (mImageWriteProgressFd == -1) return true;
 
     if (::close(mImageWriteProgressFd) == -1) return false;
@@ -97,6 +98,9 @@ ProcKeeper::closeWriteProgressFile()
     if (::unlink(mImageWriteProgressFilename.c_str()) == -1) {
         return false;
     }
+
+    msg = mImageWriteProgressFilename + " was unlinked";
+
     return true;
 }
 
@@ -109,7 +113,7 @@ ProcKeeper::startImageWrite(const ImageWriteCache *imageWriteCache)
     mMainTaskCancel = false;
 
     mRunState = RunState::START;
-    mCvRun.notify_one(); // notify to RenderContextDriver threadMain loop
+    mCvRun.notify_one(); // notify to ProcKeeper threadMain loop
 }
 
 void
@@ -136,7 +140,7 @@ ProcKeeper::signalActionSceneContextDump()
     mSceneContextDump = true;
 
     mRunState = RunState::START;
-    mCvRun.notify_one(); // notify to RenderContextDriver threadMain loop
+    mCvRun.notify_one(); // notify to ProcKeeper threadMain loop
 }
 
 //------------------------------------------------------------------------------------------
@@ -162,6 +166,8 @@ ProcKeeper::threadMain(ProcKeeper *keeper)
     keeper->mThreadState = ThreadState::IDLE;
 
     // This code will be refactored when working regarding MOONRAY-4417.
+    // (MOONRAY-4417: Investigation of sceneContext logger for the crash of mcrt_computation.
+    // This is a crash dump of current sceneContext when crash).
     // See comment of ProcKeeper constructor comments.
     // keeper->mCvBoot.notify_one(); // notify to ProcKeeper's constructor.
 

@@ -1,12 +1,12 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
 #pragma once
 
 #include "ImageWriteCache.h"
 
 #include <atomic>
 #include <condition_variable>
+#include <chrono>
 #include <list>
 #include <memory>
 #include <mutex>
@@ -73,6 +73,16 @@ public:
     void conditionWaitUntilAllCompleted(); // called by RenderDriver::progressCheckpointRenderFrame()
 
     //------------------------------
+    //
+    // tmp directory management related
+    //
+    bool openTmpDirControlFile(const float maxExpirationDeltaTimeMinutes = 15.0f,
+                               const float minExpirationDeltaTimeMinutes = 5.0f);
+
+    bool getProtectTmpDir() const { return mProtectTmpDir; };
+    void cleanUpTmpDirControlFile(std::string& msg);
+
+    //------------------------------
 
     std::string genTmpFilename(const int fileSequenceId, const std::string& finalFilename);
 
@@ -120,6 +130,42 @@ public:
     RenderContext* mRenderContext {nullptr}; // signalAction() uses this pointer
 
     //------------------------------
+    //
+    // tmp directory management for signal-checkpointing
+    //
+    // In order to reduce the risk of generating collapse image output, we are using a 2-stage output solution
+    // as a default for all the image output from MoonRay. Under a 2-stage output solution, MoonRay creates
+    // temporary files into the tmp directory first, and copy/rename to the final destination next. This means
+    // MoonRay needs a tmp directory to output the checkpoint files.
+    // Under the signal-checkpointing, The queue system sends SIGINT to MoonRay in some situations and MoonRay
+    // starts the dumping checkpoint files as soon as receiving SIGINT. However, the default of the
+    // DreamWorksAnimation queue system behavior deletes the tmp directory when sending SIGINT to the MoonRay.
+    // (Under the queue system controlled farm job, the tmp directory is not a regular directory and is managed
+    // by the queue system. This is a DreamWorksAnimation specific environment)
+    // This is no good because MoonRay needs the tmp directory to dump the checkpoint file. To properly output
+    // the checkpoint file under signal-based checkpointing, MoonRay creates DO_NOT_TMP_CLEAN file inside the
+    // tmp directory at the beginning of the MCRT stage with the expiration timestamp on the 1st line of this
+    // file. If this file exists in the tmp directory, the queue system does not clean up the tmp directory and
+    // preserve the tmp directory files when sending the SIGINT.
+    // If MoonRay crashes during file output for an unknown reason and temporary files remain in the tmp
+    // directory, these files are eventually cleaned up by another independent cron process later based on the
+    // expiration date/time info of DO_NOT_TMP_CLEAN file.
+    // MoonRay removes this DO_NOT_TMP_CLEAN file if the process is finished the normal way or the signal
+    // handler finishes properly under signal-based checkpointing.
+    //
+    // MoonRay tries to keep the expiration timestamp of DO_NOT_TMP_CLEAN a reasonable length (like 15 minutes)
+    // but we don't know the exact rendering time before finishing rendering. So, MoonRay tries to update the
+    // expiration timestamp during the MCRT phase frequently as needed. This update operation is done by atomic
+    // file operation. As a result, DO_NOT_TMP_CLEAN has always kept a reasonable expiration timestamp.
+    //
+    bool mProtectTmpDir {false}; // Status of tmp directory protection against clean up by queue system
+    std::string mTmpDirControlFileName;
+    std::string mTmpDirControlFileNameTmp; // Initial filename before rename
+    std::chrono::seconds mTmpDirMaxExpirationDelta {0};
+    std::chrono::seconds mTmpDirMinExpirationDelta {0};
+    std::chrono::time_point<std::chrono::system_clock> mTmpDirExpiration;
+
+    //------------------------------
 
     static void threadMain(ImageWriteDriver* driver);
     ImageWriteCacheUqPtr deqImageWriteCache(); // MTsafe
@@ -127,6 +173,9 @@ public:
 
     std::string getTmpFilePrefix();
     std::string getTmpFileExtension(const std::string& finalFilename);
+
+    bool updateTmpDirControlFile();
+    bool manageTmpDirControlFileTimeStamp();
 
     void signalAction();
 

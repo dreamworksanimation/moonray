@@ -1,8 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #include "CheckpointSigIntHandler.h"
 #include "ImageWriteDriver.h"
 #include "ProcKeeper.h"
@@ -74,6 +71,19 @@ CheckpointSigIntHandler::enable()
         exit(EXIT_FAILURE);
     }
 
+    // We need tmp directory projection for signal-based checkpointing.
+    // We have to create DO_NOT_TMP_CLEAR file in the tmp directory with the proper expiration timestamp.
+    constexpr float maxDeltaTime = 15.0f; // Longest expiration duration to set for DO_NOT_TMP_CLEAR.
+                                          // (unit is minutes).
+    constexpr float minDeltaTime = 5.0f;  // Increase expiration duration if the current remaining is
+                                          // less than this value. (unit is minutes)
+    // constexpr float maxDeltaTime = 3.0f; // for test
+    // constexpr float minDeltaTime = 1.5f; // for test
+    // std::cerr << ">> CheckpointSigIntHandler.cc maxDeltaTime:" << maxDeltaTime << " minDeltaTime:" << minDeltaTime << '\n';
+    if (!ImageWriteDriver::get()->openTmpDirControlFile(maxDeltaTime, minDeltaTime)) {
+        scene_rdl2::logging::Logger::fatal("tmpDirControlFile open failed.");        
+    }
+
     if (!ProcKeeper::get()->openWriteProgressFile()) {
         scene_rdl2::logging::Logger::fatal("writeProgressFile open failed.");
     }
@@ -92,9 +102,11 @@ CheckpointSigIntHandler::disable()
         return;
     }
 
-    if (!ProcKeeper::get()->closeWriteProgressFile()) {
+    std::string msg;
+    if (!ProcKeeper::get()->closeWriteProgressFile(msg)) {
         scene_rdl2::logging::Logger::fatal("writeProgressFile close failed.");
     }
+    if (!msg.empty()) scene_rdl2::logging::Logger::info(msg + '\n');    
 
     struct sigaction newSigIntAction;
     std::memset(&newSigIntAction, 0, sizeof(newSigIntAction));

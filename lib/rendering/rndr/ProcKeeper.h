@@ -1,8 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
-//
-//
 #pragma once
 
 #include <atomic>
@@ -51,7 +48,7 @@ public:
     // write-action progress report related
     //
     bool openWriteProgressFile();
-    bool closeWriteProgressFile();
+    bool closeWriteProgressFile(std::string& msg);
 
     void startImageWrite(const ImageWriteCache *imageWriteCache);
     void finishImageWrite(); // busy wait blocking function
