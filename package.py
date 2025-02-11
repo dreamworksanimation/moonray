@@ -61,7 +61,7 @@ requires = [
     'mcrt_denoise-6.0',
     'mkl',
     'openexr',
-    'openimageio-2.3.20.0.x',
+    'openimageio-2.3.20.0.x.0.3.0.3',
     'opensubdiv-3.5.0.x.0',
     'openvdb',
     'optix-7.6.0.x',
