@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include "ResumeHistoryMetaData.h"
@@ -292,8 +292,8 @@ ResumeHistoryMetaData::toJsonExecEnvInfo() const
             str += jsonPairStr(envParam, envStr);
         }
     };
-    addEnvVal(str, "MNRY_HOST_RU");
-    addEnvVal(str, "MNRY_FULL_ID");
+    addEnvVal(str, "DWA_HOST_RU");
+    addEnvVal(str, "DWA_FULL_ID");
 
     return jsonPairObj("execEnv", str);
 }
