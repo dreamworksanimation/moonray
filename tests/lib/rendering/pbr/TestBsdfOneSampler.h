@@ -48,8 +48,8 @@ public:
     CPPUNIT_TEST(testDwaFabric);
     CPPUNIT_TEST(testKajiyaKayFabric);
 
-    CPPUNIT_TEST(testAshikminhShirley);
-    //CPPUNIT_TEST(testAshikminhShirleyFull);
+    CPPUNIT_TEST(testAshikhminShirley);
+    //CPPUNIT_TEST(testAshikhminShirleyFull);
 
     CPPUNIT_TEST(testWardCorrected);
     CPPUNIT_TEST(testWardDuer);
@@ -81,8 +81,8 @@ public:
     void testDwaFabric();
     void testKajiyaKayFabric();
 
-    void testAshikminhShirley();
-    void testAshikminhShirleyFull();
+    void testAshikhminShirley();
+    void testAshikhminShirleyFull();
 
     void testWardCorrected();
     void testWardDuer();

@@ -293,7 +293,7 @@ FabricBsdfFactory(uniform Arena * uniform arena,
 
 #pragma ignore warning(all)
 export varying Bsdf * uniform
-AshikminhShirleyBsdfFactory(uniform Arena * uniform arena,
+AshikhminShirleyBsdfFactory(uniform Arena * uniform arena,
                             const uniform ReferenceFrame * uniform frame,
                             uniform float roughness)
 {
@@ -316,7 +316,7 @@ AshikminhShirleyBsdfFactory(uniform Arena * uniform arena,
 
 #pragma ignore warning(all)
 export varying Bsdf * uniform
-AshikminhShirleyFullBsdfFactory(uniform Arena * uniform arena,
+AshikhminShirleyFullBsdfFactory(uniform Arena * uniform arena,
                                 const uniform ReferenceFrame * uniform frame,
                                 uniform float roughness)
 {
