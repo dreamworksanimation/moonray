@@ -8,6 +8,7 @@
 #include "OptixGPUShadowLinking.h"
 
 #include <cuda.h>
+#include <array>
 #include <vector>
 
 namespace moonray {

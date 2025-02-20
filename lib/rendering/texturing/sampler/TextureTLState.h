@@ -21,6 +21,7 @@
 #pragma push_macro("NORMAL")
 #undef COLOR
 #undef NORMAL
+#include <Imath/ImathVec.h>  // OIIO uses the Vector classes from Imath but defines its own version if not already defined.
 #include <OpenImageIO/version.h>
 #include <OpenImageIO/texture.h>
 #pragma pop_macro("COLOR")
