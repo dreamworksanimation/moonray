@@ -341,7 +341,6 @@ target_sources(${component}
         integrator/BsdfOneSampler.cc
         integrator/BsdfSampler.cc
         integrator/LightSetSampler.cc
-        integrator/PathGuide.cc
         integrator/PathIntegrator.cc
         integrator/PathIntegratorMultiSampler.cc
         integrator/PathIntegratorSubsurface.cc

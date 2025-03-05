@@ -390,19 +390,7 @@ integrateLightSetSample(const LightSetSampler &lSampler,
         float pdf;
         scene_rdl2::math::Color f;
         // Pdf computation needs to be kept in sync with BsdfSampler::sample()
-        // Skip path guiding on mirror lobes, because their
-        // sample direction is already precisely determined.
-        const PathGuide &pg = bSampler.getPathGuide();
-        if (pg.canSample() && !(lobe->getType() & shading::BsdfLobe::MIRROR)) {
-            const float u = pg.getPercentage();
-            const float pgPdf = pg.getPdf(P, lsmp.wi);
-            f = lobe->eval(slice, lsmp.wi, &pdf);
-            // blending pdf values seems to work well enough in practice, and
-            // allows for a potential user percentage control.
-            pdf = u * pgPdf + (1.0 - u) * pdf;
-        } else {
-            f = lobe->eval(slice, lsmp.wi, &pdf);
-        }
+        f = lobe->eval(slice, lsmp.wi, &pdf);
         if (isSampleInvalid(f, pdf)) {
             continue;
         }

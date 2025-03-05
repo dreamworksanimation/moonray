@@ -13,7 +13,6 @@
 #include "TestUtil.h"
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/pbr/integrator/BsdfSampler.h>
-#include <moonray/rendering/pbr/integrator/PathGuide.h>
 
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/shading/Util.h>
@@ -45,7 +44,6 @@ TestBsdfConsistencyTask::testBsdfSampler()
     scene_rdl2::util::Random random(randomSeed, randomStream);
     shading::Bsdf* const bsdf = inTest->bsdfFactory(arena, inTest->frame);
     BsdfSample bsmp;
-    const PathGuide pg;
     const Vec3f p(0.f);
 
     for (int sample = sampleFirst; sample != sampleLast; ++sample) {
@@ -63,7 +61,7 @@ TestBsdfConsistencyTask::testBsdfSampler()
         // test bsdf reciprocity.
         shading::BsdfSlice slice(inTest->frame.getN(), wo, false, true, ispc::SHADOW_TERMINATOR_FIX_OFF);
         BsdfSampler sampler(pbrTls->mArena, *bsdf, slice,
-                            TestBsdfSettings::sMaxSamplesPerLobe, true, pg);
+                            TestBsdfSettings::sMaxSamplesPerLobe, true);
         sampleCount += sampler.getSampleCount();
 
         for (int lobeIndex = 0; lobeIndex < sampler.getLobeCount(); ++lobeIndex) {
@@ -180,9 +178,8 @@ TestBsdfPdfIntegralTask::testBsdfSampler()
 
     scene_rdl2::util::Random random(randomSeed, randomStream);
     shading::Bsdf *bsdf = inTest->bsdfFactory(arena, inTest->frame);
-    const PathGuide pg;
     BsdfSampler sampler(pbrTls->mArena, *bsdf, *inSlice,
-                        TestBsdfSettings::sMaxSamplesPerLobe, true, pg);
+                        TestBsdfSettings::sMaxSamplesPerLobe, true);
 
     // Compute the integrated probability using uniform sampling
     float integral = 0.0f;
@@ -233,10 +230,9 @@ TestBsdfEvalIntegralTask::testBsdfSampler()
 
     scene_rdl2::util::Random random(randomSeed, randomStream);
     shading::Bsdf *bsdf = inTest->bsdfFactory(arena, inTest->frame);
-    const PathGuide pg;
     const Vec3f p(0.f);
     BsdfSampler sampler(pbrTls->mArena, *bsdf, *inSlice,
-                        TestBsdfSettings::sMaxSamplesPerLobe, true, pg);
+                        TestBsdfSettings::sMaxSamplesPerLobe, true);
     BsdfSample bsmp;
 
     const float pdfUniform = 1.0f /

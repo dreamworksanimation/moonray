@@ -232,17 +232,11 @@ PathIntegrator::update(const FrameState &fs, const PathIntegratorParams& params)
     } else {
         mCryptoUVAttrIdx = shading::StandardAttributes::sSt;
     }
-
-    // initialize path guiding
-    mPathGuide.startFrame(fs.mEmbreeAccel->getBounds(), vars);
 }
 
 void
 PathIntegrator::passReset()
 {
-    if (getEnablePathGuide()) {
-        mPathGuide.passReset();
-    }
 }
 
 //-----------------------------------------------------------------------------
@@ -1618,12 +1612,6 @@ PathIntegrator::integrateBundledv(pbr::TLState *pbrTls,
                                           &lightSet,
                                           presences);
     pbrTls->stopIspcAccumulator();
-}
-
-bool
-PathIntegrator::getEnablePathGuide() const
-{
-    return mPathGuide.isEnabled();
 }
 
 HUD_VALIDATOR(PathIntegrator);

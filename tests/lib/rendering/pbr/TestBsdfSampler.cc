@@ -13,7 +13,6 @@
 #include "TestUtil.h"
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/pbr/integrator/BsdfSampler.h>
-#include <moonray/rendering/pbr/integrator/PathGuide.h>
 
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/shading/bsdf/Bsdf.h>
@@ -60,9 +59,8 @@ runTest(TestBsdfSettings &test, int viewAnglesTheta,
         shading::Bsdf *bsdf = test.bsdfFactory(*arena, test.frame);
         shading::BsdfSlice slice(test.frame.getN(), test.frame.getN(), true, true,
             ispc::SHADOW_TERMINATOR_FIX_OFF);
-        const PathGuide pg;
         BsdfSampler sampler(pbrTls->mArena, *bsdf, slice, test.sMaxSamplesPerLobe,
-                    true, pg);
+                    true);
         sampleCount /= sampler.getSampleCount();
     }
 

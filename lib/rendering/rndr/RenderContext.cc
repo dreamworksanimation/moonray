@@ -2957,9 +2957,6 @@ RenderContext::buildFrameState(FrameState *fs, double frameStartTime) const
             // only supported to re-construct resume sampling schedule. So we have to use checkpoint
             // render for resumeRender execution).
             fs->mRenderMode = RenderMode::PROGRESS_CHECKPOINT;
-        } else if (mSceneContext->getSceneVariables().get(scene_rdl2::rdl2::SceneVariables::sPathGuideEnable)) {
-            // we'll use progressive mode to enable pass resets
-            fs->mRenderMode = RenderMode::PROGRESSIVE;
         } else if (fs->mSamplingMode == SamplingMode::ADAPTIVE) {
             fs->mRenderMode = RenderMode::PROGRESSIVE;
         }
@@ -3367,11 +3364,6 @@ RenderContext::canRunVectorized(std::string &reason) const
             fail("overlapping dielectrics");
             break; // no need to keep looping
         }
-    }
-
-    // Path Guiding: MOONRAY-3018
-    if (vars.get(scene_rdl2::rdl2::SceneVariables::sPathGuideEnable)) {
-        fail("path guiding");
     }
 
     // Volume Rendering + Deep Output: MOONRAY-3133

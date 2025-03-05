@@ -59,7 +59,6 @@ class CryptomatteBuffer;
 class DeepBuffer;
 struct FrameState;
 class Light;
-class PathGuide;
 struct PathVertex;
 struct RayState;
 struct Sample;
@@ -247,7 +246,6 @@ public:
             const float *presences) const;
 
     bool getEnableShadowing() const { return mEnableShadowing; }
-    bool getEnablePathGuide() const;
 
     // mLightSamples is the user parameter "light_sample_count" squared
     int getLightSampleCount() const { return mLightSamples; }

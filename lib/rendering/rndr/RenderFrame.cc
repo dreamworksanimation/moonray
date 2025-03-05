@@ -215,58 +215,7 @@ RenderDriver::renderFrame(RenderDriver *driver, const FrameState &fs)
         break;
 
     case RenderMode::PROGRESS_CHECKPOINT: {
-        const bool pgEnabled = fs.mIntegrator->getEnablePathGuide(); // is path guiding enabled?
         std::unique_ptr<TileSampleSpecialEvent> tileSampleSpecialEvent;
-        if (pgEnabled) {
-            //
-            // When PathGuiding case, we set up TileSampleSpecialEvent information to the
-            // checkpoint rendering main logic.
-            //
-            auto genSpecialEventTileSampleIdTable = [&](const unsigned maxPixSamples) -> UIntTable {
-                // We would like to execute special event when we finished following pixel samples on each
-                // pixels under PathGuiding context.
-                // pixSample total = {8, 10, 14, 22, 38, 70, 134, 262, 518, 1030, 2054, 4102, ...}
-                // (start from 8 as initial value, pixel sample delta step is start step=2 and x2 at every
-                // iteration.)
-                //
-                // So these number should be converted to tile based sample Id (i.e. pixSample * 64 - 1)
-                // tileSample id = {511, 639, 897, 1407, 2431, 4479, 8575, 16767, 33151, 65919, 131455,
-                // 262527, ...}. Following logic constructs this tileSample id table
-                //
-                // On each tile rendering, after finish special tile sample id which provided by return of
-                // this function, renderer calls call back function as special event (in this case, passReset())
-                // regardless of original tile sampling schedule.
-                // This means, passReset() is executed at just finished after every tile sample Id's you
-                // provided by this function.
-                //
-                // If you need other interval control for call back. it's easy and you just change logic
-                // how to generate table here.
-                unsigned pixSampleId = 8;
-                unsigned pixSampleSteps = 2;
-                UIntTable table;
-                table.push_back(pixSampleId * 64 - 1); // tile sample number (i.e. not pixel samples)
-                while (1) {
-                    pixSampleId += pixSampleSteps;
-                    table.push_back(pixSampleId * 64 - 1); // convert to tile sample Id
-                    if (pixSampleId >= maxPixSamples) break;
-                    pixSampleSteps *= 2;
-                }
-                return table;
-            };
-
-            tileSampleSpecialEvent.reset
-                (new TileSampleSpecialEvent
-                 (genSpecialEventTileSampleIdTable(fs.mMaxSamplesPerPixel),
-                  [&](const unsigned sampleId) -> bool {
-                     // setup CallBack function which is executed at after each sampleId inside
-                     // TileSampleIdTable
-
-                     // we are responsible for thread-safety
-                     const_cast<pbr::PathIntegrator *>(fs.mIntegrator)->passReset();
-
-                     return true;
-                 }));
-        }
 
         if (driver->mCheckpointController.isMemorySnapshotActive()) {
             CheckpointSigIntHandler::enable();
@@ -455,20 +404,15 @@ RenderDriver::progressiveRenderFrame(RenderDriver *driver, const FrameState &fs)
     if (workQueue->getNumPasses() > 0) {
 
         if (!getPrimaryTLS()->mPbrTls->isCanceled()) {
-            bool enablePathGuide = fs.mIntegrator->getEnablePathGuide();
             // Clamp coarse passes for display filters. Some pixels do not
             // yet have data during coarse passes so display filters
             // must be run at the end of the pass.
             bool hasDisplayFilters = driver->getDisplayFilterDriver().hasDisplayFilters()
                 && !driver->areCoarsePassesComplete();
-            bool clampPasses = enablePathGuide || hasDisplayFilters;
+            bool clampPasses = hasDisplayFilters;
             if (clampPasses) {
                 for (clampPass = 1; clampPass < workQueue->getNumPasses(); ++clampPass) {
-                    // we need to reset the path guide after each pass
                     // we are responsible for ensuring thread-safety
-                    if (enablePathGuide) {
-                        const_cast<pbr::PathIntegrator *>(fs.mIntegrator)->passReset();
-                    }
                     workQueue->clampToPass(clampPass);
                     RenderPassesResult result = renderPasses(driver, fs, true);
                     if (hasDisplayFilters) {

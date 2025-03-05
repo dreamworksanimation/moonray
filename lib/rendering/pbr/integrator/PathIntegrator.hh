@@ -45,8 +45,7 @@
     HUD_MEMBER(int, mPad2);                                \
     HUD_CPP_MEMBER(std::vector<int>, mDeepIDAttrIdxs, 24); \
     HUD_MEMBER(int, mCryptoUVAttrIdx);                     \
-    HUD_MEMBER(int, mPad3);                                \
-    HUD_CPP_MEMBER(PathGuide, mPathGuide, 8)
+    HUD_MEMBER(int, mPad3)
 
 
 #define PATH_INTEGRATOR_VALIDATION                                 \
@@ -90,6 +89,5 @@
     HUD_VALIDATE(PathIntegrator, mCryptoUVAttrIdx);                \
     HUD_VALIDATE(PathIntegrator, mDeepIDAttrIdxs);                 \
     HUD_VALIDATE(PathIntegrator, mPad3);                           \
-    HUD_VALIDATE(PathIntegrator, mPathGuide);                      \
     HUD_END_VALIDATION
 

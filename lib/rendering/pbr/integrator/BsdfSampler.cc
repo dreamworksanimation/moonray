@@ -69,15 +69,13 @@ computeLobeSampleCount(const shading::BsdfLobe *lobe, const shading::BsdfSlice &
 //----------------------------------------------------------------------------
 
 BsdfSampler::BsdfSampler(scene_rdl2::alloc::Arena *arena, shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
-        int maxSamplesPerLobe, bool doIndirect,
-        const PathGuide &pathGuide) :
+        int maxSamplesPerLobe, bool doIndirect) :
     mBsdf(bsdf),
     mSlice(slice),
     mMaxSamplesPerLobe(maxSamplesPerLobe),
     mDoIndirect(doIndirect),
     mLobeCount(mBsdf.getLobeCount()),
-    mSampleCount(0),
-    mPathGuide(pathGuide)
+    mSampleCount(0)
 {
     // Allocate and initialize lobe arrays
     mLobeIndex = arena->allocArray<char>(mLobeCount);
@@ -126,37 +124,7 @@ BsdfSampler::sample(pbr::TLState *pbrTls, int lobeIndex, const Vec3f &p, float r
 
     // Pdf computation needs to be kept in sync when integrating
     // light samples (see integrateLightSetSample() in PathIntegratorUtil.cc).
-    // Skip path guiding on mirror lobes, because their
-    // sample direction is already precisely determined.
-    if (mPathGuide.canSample() && !(lobe->getType() & shading::BsdfLobe::MIRROR)) {
-        float bsdfPdf = 0.0f;
-        float pgPdf   = 0.0f;
-        const float u = mPathGuide.getPercentage();
-
-        // r1 is serving a dual purpose.  It is first used to determine if
-        // we are going to use path guiding at all by comparing it to the
-        // path guiding percentage.  We then use this same r1 value as one
-        // of the two inputs to either the path guide or lobe sampler.
-        // Since we need to have all possible inputs to the samplers be between [0, 1),
-        // we remap r1 from [0, u] or (u, 1) to [0, 1).
-        if (r1 > u) {
-            // use bsdf lobe sampling direction
-            MNRY_ASSERT(u < 1.0f);
-            const float r =  (r1 - u) / (1.0f - u); // remap r1 into [0, 1)
-            sample.f = lobe->sample(mSlice, r, r2, sample.wi, bsdfPdf);
-            pgPdf = mPathGuide.getPdf(p, sample.wi);
-        } else {
-            // use path guide sampling direction
-            const float r = r1 / u; // remap r1 into [0, 1)
-            sample.wi = mPathGuide.sampleDirection(p, r, r2, &pgPdf);
-            sample.f = lobe->eval(mSlice, sample.wi, &bsdfPdf);
-        }
-        // blending pdf values seems to work well enough in practice, and
-        // allows a potential user percentage control.
-        sample.pdf = u * pgPdf + (1.0 - u) * bsdfPdf;
-    } else {
-        sample.f = lobe->sample(mSlice, r1, r2, sample.wi, sample.pdf);
-    }
+    sample.f = lobe->sample(mSlice, r1, r2, sample.wi, sample.pdf);
 
     // Check if sample is invalid
     bool isValid = isSampleValid(sample.f, sample.pdf);

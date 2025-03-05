@@ -602,13 +602,6 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                 // queueing a BundledRadiance for the direct radiance and/or emission,
                 // and spawning one or more new rays for the indirect radiance.
                 radiance += radianceIndirect;
-
-                // path guiding is trained on indirect radiance contributions.
-                // it turns out that including any other radiance contributions in the
-                // training causes the path guide to overwhelmingly favor direct lighting
-                // directions.  this is the exact opposite of what we want.  we are trying
-                // to build a distribution that favors important indirect lighting.
-                mPathGuide.recordRadiance(parentRay.getOrigin(), bsmp[s].wi, radianceIndirect);
             }
             if (!bsmp[s].didHitLight()) {
                 const FrameState &fs = *pbrTls->mFs;
@@ -670,7 +663,7 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // I don't know why or for what reason the bsdf sampler needs a non-const bsdf
     shading::Bsdf &constCastBsdf = const_cast<shading::Bsdf &>(bsdf);
 
-    BsdfSampler bSampler(arena, constCastBsdf, slice, maxSamplesPerLobe, doIndirect, mPathGuide);
+    BsdfSampler bSampler(arena, constCastBsdf, slice, maxSamplesPerLobe, doIndirect);
 
     const int bsdfSampleCount = bSampler.getSampleCount();
     BsdfSample *bsmp = arena->allocArray<BsdfSample>(bsdfSampleCount);

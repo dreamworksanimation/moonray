@@ -11,7 +11,6 @@
 #include <moonray/rendering/pbr/core/PbrTLState.h>
 #include <moonray/rendering/pbr/core/Util.h>
 #include <moonray/rendering/pbr/light/Light.h>
-#include "PathGuide.h"
 
 #include <moonray/rendering/pbr/integrator/BsdfSampler_ispc_stubs.h>
 #include <moonray/rendering/shading/bsdf/Bsdf.h>
@@ -81,15 +80,11 @@ class BsdfSampler
 public:
 
     BsdfSampler(scene_rdl2::alloc::Arena *arena, shading::Bsdf &bsdf, const shading::BsdfSlice &slice,
-        int maxSamplesPerLobe, bool doIndirect,
-        const PathGuide &pathGuide);
+        int maxSamplesPerLobe, bool doIndirect);
     ~BsdfSampler();
-
 
     finline shading::Bsdf &getBsdf() const                  {  return mBsdf;  }
     finline const shading::BsdfSlice &getBsdfSlice() const  {  return mSlice;  }
-    finline const PathGuide &getPathGuide() const           {  return mPathGuide; }
-
 
     // Returns maximum number of samples per lobe
     finline int getMaxSamplesPerLobe() const     {  return mMaxSamplesPerLobe;  }
@@ -150,9 +145,6 @@ private:
     char *mLobeIndex;
     int *mLobeSampleCount;
     float *mInvLobeSampleCount;
-
-    // path guiding
-    const PathGuide &mPathGuide;
 };
 
 
