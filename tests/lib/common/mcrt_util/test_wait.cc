@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include "test_wait.h"
@@ -15,7 +15,7 @@
 
 using namespace std::chrono_literals;
 
-CPPUNIT_TEST_SUITE_REGISTRATION(TestWait);
+CPPUNIT_TEST_SUITE_REGISTRATION(TestWait); // 14.04sec @cobaltcard
 
 namespace {
 

@@ -1,4 +1,4 @@
-# Copyright 2023-2024 DreamWorks Animation LLC
+# Copyright 2023-2025 DreamWorks Animation LLC
 # SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required (VERSION 3.23.1)
@@ -15,6 +15,8 @@ project(${projectString}
 string(TOUPPER ${PROJECT_NAME} PROJECT_NAME_UPPER)
 list(APPEND CMAKE_MESSAGE_CONTEXT ${PROJECT_NAME})
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+include(MoonrayCheckFeature)
 
 include(OMR_Platform)
 

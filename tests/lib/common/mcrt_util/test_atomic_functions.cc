@@ -1,6 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
 #include "test_atomic_functions.h"
 
 #include <moonray/common/mcrt_util/Atomic.h>
@@ -234,7 +233,7 @@ void runTestClosest()
 
 void TestAtomicFunctions::testAdd()
 {
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < sTestLoopMax; ++i) {
         runTestAdd<int32_t>();
         runTestAdd<int64_t>();
         runTestAdd<__int128>();
@@ -245,7 +244,7 @@ void TestAtomicFunctions::testAdd()
 
 void TestAtomicFunctions::testMin()
 {
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < sTestLoopMax; ++i) {
         runTestMin<int32_t>();
         runTestMin<int64_t>();
         runTestMin<__int128>();
@@ -256,7 +255,7 @@ void TestAtomicFunctions::testMin()
 
 void TestAtomicFunctions::testMax()
 {
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < sTestLoopMax; ++i) {
         runTestMax<int32_t>();
         runTestMax<int64_t>();
         runTestMax<__int128>();
@@ -267,8 +266,7 @@ void TestAtomicFunctions::testMax()
 
 void TestAtomicFunctions::testClosest()
 {
-    for (int i = 0; i < 1024; ++i) {
+    for (int i = 0; i < sTestLoopMax; ++i) {
         runTestClosest();
     }
 }
-

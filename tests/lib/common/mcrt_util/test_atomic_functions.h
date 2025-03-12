@@ -1,6 +1,5 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
-
 #pragma once
 
 #include <cppunit/extensions/HelperMacros.h>
@@ -19,6 +18,19 @@ public:
     void testMin();
     void testMax();
     void testClosest();
+
+private:
+    // static constexpr int sTestLoopMax = 1024; // 120.51sec @cobaltcard
+    // static constexpr int sTestLoopMax = 512; // 60.09sec @cobaltcard
+    // static constexpr int sTestLoopMax = 256; // 30.04sec @cobaltcard
+    // static constexpr int sTestLoopMax = 128; // 15.41sec @cobaltcard
+    // static constexpr int sTestLoopMax = 64; // 7.44sec @cobaltcard
+    static constexpr int sTestLoopMax = 32; // 4.01sec @cobaltcard
+    // static constexpr int sTestLoopMax = 16; // 1.93sec @cobaltcard
+    // static constexpr int sTestLoopMax = 8; // 0.96sec @cobaltcard
+    // static constexpr int sTestLoopMax = 4; // 0.51sec @cobaltcard
+    // static constexpr int sTestLoopMax = 2; // 0.25sec @cobaltcard
+    // static constexpr int sTestLoopMax = 1; // 0.14sec @cobaltcard
 };
 
 

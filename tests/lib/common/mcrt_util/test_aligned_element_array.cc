@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 #include "test_aligned_element_array.h"
@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <numeric>
 
-CPPUNIT_TEST_SUITE_REGISTRATION(TestAlignedElementArray);
+CPPUNIT_TEST_SUITE_REGISTRATION(TestAlignedElementArray); // 0.02sec @cobaltcard
 
 struct Constructable
 {
