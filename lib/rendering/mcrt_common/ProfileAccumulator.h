@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 
 //
@@ -64,11 +64,7 @@ struct Accumulator;
 struct ThreadLocalAccumulator;
 
 extern bool gAccumulatorsActive;
-#ifndef __APPLE__
-MNRY_DURING_ASSERTS(extern alignas(CACHE_LINE_SIZE) std::atomic_int gNumAccumulatorsActive);
-#else
 MNRY_DURING_ASSERTS(extern std::atomic_int gNumAccumulatorsActive);
-#endif
 
 struct AccumulatorResult
 {
