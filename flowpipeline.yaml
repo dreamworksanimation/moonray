@@ -31,14 +31,14 @@ pipeline-configurations:
       ignore_failures: false
       ignore_failures_email: true
       resource:
-      - EL9
-      - EL9
-      - EL9
-      - EL9
-      - EL9
-      - EL9
-      - EL9
-      - EL9
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
+      - EL9_CI
       - EL7_RaTS_build_fast
       - EL7_RaTS_build_fast
       - EL7_RaTS_build_fast
@@ -144,8 +144,7 @@ package-configurations:
 
   rez-2-CI:
     build_context:
-    - buildtools
-    - python-3.7
+    - buildtools-2
     environment:
       BROKEN_CUSTOM_ARGS_UNITTESTS: 1
       REZ_ALTERNATE_CONFIGURATION: CI
@@ -162,8 +161,7 @@ package-configurations:
 
   rez-2-RaTS:
     build_context:
-    - buildtools
-    - python-3.7
+    - buildtools-2
     environment:
       REZ_ALTERNATE_CONFIGURATION: rats
     packages_path:
@@ -179,8 +177,7 @@ package-configurations:
 
   rez-2-testmap:
     build_context:
-    - buildtools
-    - python-3.7
+    - buildtools-2
     environment: {}
     packages_path:
     - /rel/rez/dwa
