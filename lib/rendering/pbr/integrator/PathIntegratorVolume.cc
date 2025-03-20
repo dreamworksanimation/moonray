@@ -174,7 +174,8 @@ scene_rdl2::math::Color
 PathIntegrator::estimateInScatteringSourceTermIndirect(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         const scene_rdl2::math::Vec3f& scatterPoint,
         const VolumePhase& phaseFunction, const scene_rdl2::math::Vec3f& ul,
-        const Subpixel &sp, const PathVertex& pv, unsigned sequenceID) const
+        const Subpixel &sp, const PathVertex& pv, unsigned sequenceID,
+        float *aovs) const
 {
     // Choose a scatter direction uniformly over the sphere
     // TODO: Path guiding? Importance sample using phase function? User-defined sampling regions (portal-like)?
@@ -195,8 +196,7 @@ PathIntegrator::estimateInScatteringSourceTermIndirect(pbr::TLState *pbrTls, con
     bool hitVolume = true;
     computeRadianceRecurse(pbrTls, rayIndirect, sp, pv,
             /* lobe = */ nullptr,
-            Ls, transparency, vt, sequenceID,
-            /* aovs = */ nullptr,
+            Ls, transparency, vt, sequenceID, aovs,
             /* depth = */ nullptr,
             /* deepParams = */ nullptr,
             /* cryptoParams = */ nullptr,
@@ -341,7 +341,8 @@ PathIntegrator::distanceVolumeScatteringIndirect(pbr::TLState *pbrTls,
         float ud, const scene_rdl2::math::Vec3f& ul,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, const PathVertex& pv, unsigned sequenceID) const
+        const Subpixel &sp, const PathVertex& pv, unsigned sequenceID,
+        float *aovs) const
 {
     float pdfDensity, udRemapped;
     int densityIndex = densityDistribution.sampleDiscrete(ud, &pdfDensity, &udRemapped);
@@ -363,7 +364,7 @@ PathIntegrator::distanceVolumeScatteringIndirect(pbr::TLState *pbrTls,
 
     scene_rdl2::math::Vec3f scatterPoint = ray.org + ray.dir * td;
     scene_rdl2::math::Color Ls = estimateInScatteringSourceTermIndirect(pbrTls, ray, scatterPoint,
-        VolumePhase(vp.mG), ul, sp, pv, sequenceID);
+        VolumePhase(vp.mG), ul, sp, pv, sequenceID, aovs);
 
     // Transmittance to scatter point
     scene_rdl2::math::Color trScatter = vp.mTransmittance * vp.mTransmittanceH *
@@ -526,9 +527,9 @@ scene_rdl2::math::Color
 PathIntegrator::integrateVolumeScatteringIndirect(pbr::TLState *pbrTls, const mcrt_common::Ray& ray,
         const VolumeProperties* volumeProperties,
         const GuideDistribution1D& densityDistribution,
-        const Subpixel &sp, const PathVertex& pv, unsigned sequenceID) const
+        const Subpixel &sp, PathVertex pv, unsigned sequenceID,
+        float* aovs) const
 {
-
     const bool highQualitySample = pv.nonMirrorDepth == 0;
     const float invN = 1.0f / mVolumeIndirectSamples;
     const Scene *scene = MNRY_VERIFY(pbrTls->mFs->mScene);
@@ -537,16 +538,30 @@ PathIntegrator::integrateVolumeScatteringIndirect(pbr::TLState *pbrTls, const mc
         1, mVolumeIndirectSamples, *dummyLightPtr,
         highQualitySample, false, sequenceID);
 
-    scene_rdl2::math::Color sum(0.0f);
+    // LPE transition
+    if (pbrTls->mFs->mLightAovs->hasEntries() && aovs) {
+        EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
+        const FrameState &fs = *pbrTls->mFs;
+        const LightAovs &lightAovs = *fs.mLightAovs;
+        // transition
+        pv.lpeStateId = lightAovs.volumeEventTransition(pbrTls, pv.lpeStateId);
+    }
+
+    // We need to bake 1/N into the path throughput here, to correctly the weight aovs inside the call to
+    // computeRadianceRecurse() which the next code block will trigger. This is one reason why pv is passed into
+    // the present function by value. (The other is so the lpe state transition above will work when we recurse.)
+    pv.pathThroughput *= invN;
+    
+    scene_rdl2::math::Color LIndirect(0.0f);
     for (int ts = 0; ts < mVolumeIndirectSamples; ++ts) {
         float ud;
         scene_rdl2::math::Vec3f udl;
         volumeScatteringSampler.getDistanceSample(ud, udl);
-        sum += distanceVolumeScatteringIndirect(pbrTls, ray, ud, udl, volumeProperties,
-                                                densityDistribution, sp, pv, sequenceID);
+        LIndirect += distanceVolumeScatteringIndirect(pbrTls, ray, ud, udl, volumeProperties,
+                                                      densityDistribution, sp, pv, sequenceID, aovs);
     }
-    
-    return invN * pv.pathThroughput * sum;
+
+    return LIndirect;
 }
 
 
@@ -1651,7 +1666,7 @@ PathIntegrator::computeRadianceVolume(pbr::TLState *pbrTls, const mcrt_common::R
         // Indirect
         if (mVolumeIndirectSamples > 0) {
             radiance += integrateVolumeScatteringIndirect(pbrTls, ray, volumeProperties,
-                densityDistribution, sp, pv, sequenceID);
+                densityDistribution, sp, pv, sequenceID, aovs);
         }
 
         pv.volumeDepth++;
