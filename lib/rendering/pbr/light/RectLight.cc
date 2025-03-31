@@ -21,7 +21,7 @@ namespace moonray {
 namespace pbr {
 
 
-bool                             RectLight::sAttributeKeyInitialized;
+bool                                                     RectLight::sAttributeKeyInitialized;
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>   RectLight::sNormalizedKey;
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>   RectLight::sApplySceneScaleKey;
 scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>  RectLight::sWidthKey;
@@ -557,9 +557,11 @@ RectLight::getEquiAngularPivot(const Vec3f& r, float time) const
 void
 RectLight::initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc)
 {
-    if (sAttributeKeyInitialized) {
-        return;
-    }
+    // No early return here, because both RectLight and the derived PortalLight need to use this code to
+    // initialize the attribute keys for their respective SceneClasses
+    //if (sAttributeKeyInitialized) {
+    //    return;
+    //}
 
     MOONRAY_START_NON_THREADSAFE_STATIC_WRITE
 

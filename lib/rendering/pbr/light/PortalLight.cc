@@ -16,17 +16,8 @@ using scene_rdl2::logging::Logger;
 namespace moonray {
 namespace pbr {
 
-bool                                                            PortalLight::sAttributeKeyInitialized;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObject*>  PortalLight::sRefLight;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>          PortalLight::sNormalizedKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>          PortalLight::sApplySceneScaleKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>         PortalLight::sWidthKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>         PortalLight::sHeightKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>         PortalLight::sSpreadKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>         PortalLight::sClearRadiusKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>         PortalLight::sClearRadiusFalloffDistanceKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>           PortalLight::sClearRadiusInterpolationKey;
-scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>           PortalLight::sSidednessKey;
+bool PortalLight::sAttributeKeyInitialized;
+scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObject*> PortalLight::sRefLight;
 
 //----------------------------------------------------------------------------
 
@@ -153,15 +144,7 @@ PortalLight::initAttributeKeys(const scene_rdl2::rdl2::SceneClass &sc)
     MOONRAY_START_NON_THREADSAFE_STATIC_WRITE
 
     sAttributeKeyInitialized = true;
-
-    sRefLight           = sc.getAttributeKey<scene_rdl2::rdl2::SceneObject*> ("light");
-    sNormalizedKey      = sc.getAttributeKey<scene_rdl2::rdl2::Bool> ("normalized");
-    sApplySceneScaleKey = sc.getAttributeKey<scene_rdl2::rdl2::Bool> ("apply_scene_scale");
-    sWidthKey           = sc.getAttributeKey<scene_rdl2::rdl2::Float>("width");
-    sHeightKey          = sc.getAttributeKey<scene_rdl2::rdl2::Float>("height");
-    sSpreadKey          = sc.getAttributeKey<scene_rdl2::rdl2::Float>("spread");
-    sSidednessKey       = sc.getAttributeKey<scene_rdl2::rdl2::Int>  ("sidedness");
-    INIT_ATTR_KEYS_CLEAR_RADIUS
+    sRefLight = sc.getAttributeKey<scene_rdl2::rdl2::SceneObject*> ("light");
 
     MOONRAY_FINISH_NON_THREADSAFE_STATIC_WRITE
 }

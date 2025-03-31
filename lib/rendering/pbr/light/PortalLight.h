@@ -76,15 +76,8 @@ private:
 
     PORTAL_LIGHT_MEMBERS;
 
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObject*>   sRefLight;
-    static bool                                                             sAttributeKeyInitialized;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>           sNormalizedKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Bool>           sApplySceneScaleKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>          sWidthKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>          sHeightKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float>          sSpreadKey;
-    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>            sSidednessKey;
-    DECLARE_ATTR_SKEYS_CLEAR_RADIUS
+    static bool sAttributeKeyInitialized;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::SceneObject*> sRefLight;
 };
 
 //----------------------------------------------------------------------------

@@ -312,7 +312,7 @@ private:
     void clearLightFilters();
 
     // Utility function to convert from an rdl2 Light to a moonray Light
-    static Light* createLightFromRdlLight(const scene_rdl2::rdl2::Light* rdlLIght);
+    static Light* createLightFromRdlLight(const scene_rdl2::rdl2::Light* rdlLight);
 
     /// Rebuild Light list if any Lightsets have changed (called during preFrame())
     void updateLightList();
