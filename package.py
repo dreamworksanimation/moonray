@@ -32,21 +32,16 @@ help = ('For assistance, '
         "please contact the folio's owner at: moonbase-dev@dreamworks.com")
 
 variants = [
-    ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2023.1', 'gcc-11.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2023.1', 'gcc-11.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2023.1', 'clang-17.0.6.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2023.1', 'clang-17.0.6.x', 'amorphous-9', 'openvdb-10', 'imath-3', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2023.1', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-debug',    'refplat-vfx2023.1', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2023.1', 'openimageio-2.3.20.0.x.0.3.0.3', 'clang-17.0.6.x', 'openvdb-10', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2023.1', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2024.0', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
+    ['os-rocky-9',  'opt_level-debug',    'refplat-vfx2024.0', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
 
-    ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-optdebug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
-    ['os-rocky-9', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.11.x'],
-
-    ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
-    ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2021.0', 'gcc-9.3.x.1', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
-    ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2021.0', 'clang-13', 'amorphous-8', 'openvdb-8', 'zlib-1.2.8.x.2'],
-    ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.8.x.2'],
-    ['os-CentOS-7', 'opt_level-debug', 'refplat-vfx2022.0', 'gcc-9.3.x.1', 'amorphous-9', 'openvdb-9', 'imath-3', 'zlib-1.2.8.x.2'],
+    ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.8.x.2'],
+    ['os-CentOS-7', 'opt_level-debug',    'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.8.x.2'],
 ]
 
 conf_rats_variants = variants[0:2]
@@ -57,10 +52,10 @@ requires = [
     'boost',
     'cuda-12.1.0.x',
     'embree-4.2.0.x',
+    'imath-3',
     'mcrt_denoise-6.5',
     'mkl',
     'openexr',
-    'openimageio-2.3.20.0.x.0.3.0.3',
     'opensubdiv-3.5.0.x.0',
     'openvdb',
     'optix-7.6.0.x',
@@ -72,7 +67,7 @@ private_build_requires = [
     'cmake_modules-1.0',
     'cppunit',
     'ispc-1.20.0.x',
-    'python-2.7|3.7|3.9|3.10'
+    'python-2.7|3.7|3.9|3.10|3.11'
 ]
 
 commandstr = lambda i: "cd build/"+os.path.join(*variants[i])+"; ctest -j $(nproc)"
