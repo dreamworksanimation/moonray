@@ -38,7 +38,6 @@ variants = [
     ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2023.1', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
     ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.11.x'],
     ['os-rocky-9',  'opt_level-optdebug', 'refplat-vfx2024.0', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
-    ['os-rocky-9',  'opt_level-debug',    'refplat-vfx2024.0', 'openimageio-2.4.8.0.x',          'gcc-11.x',       'openvdb-10', 'zlib-1.2.11.x'],
 
     ['os-CentOS-7', 'opt_level-optdebug', 'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.8.x.2'],
     ['os-CentOS-7', 'opt_level-debug',    'refplat-vfx2022.0', 'openimageio-2.3.20.0.x.0.3.0.3', 'gcc-9.3.x.1',    'openvdb-9',  'zlib-1.2.8.x.2'],
