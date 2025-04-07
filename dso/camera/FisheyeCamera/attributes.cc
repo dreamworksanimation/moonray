@@ -10,6 +10,7 @@ RDL2_DSO_ATTR_DECLARE
     rdl2::AttributeKey<rdl2::Int>   attrMapping;
     rdl2::AttributeKey<rdl2::Int>   attrFormat;
     rdl2::AttributeKey<rdl2::Float> attrZoom;
+    rdl2::AttributeKey<rdl2::Float> attrFov;
 
     RDL2_DSO_ATTR_DEFINE(rdl2::Camera)
 
@@ -33,6 +34,11 @@ RDL2_DSO_ATTR_DECLARE
     attrZoom = sceneClass.declareAttribute<rdl2::Float>("zoom", 1.0f);
     sceneClass.setMetadata(attrZoom, "label", "zoom");
     sceneClass.setMetadata(attrZoom, rdl2::SceneClass::sComment, "Scaling factor applied on top of the format scale");
+
+    attrFov = sceneClass.declareAttribute<rdl2::Float>("fov", 180.0f, rdl2::FLAGS_NONE, rdl2::INTERFACE_GENERIC,
+                                                       {"FOV"});
+    sceneClass.setMetadata(attrFov, "label", "fov");
+    sceneClass.setMetadata(attrFov, rdl2::SceneClass::sComment, "Field of view measured in degrees");
 
 RDL2_DSO_ATTR_END
 

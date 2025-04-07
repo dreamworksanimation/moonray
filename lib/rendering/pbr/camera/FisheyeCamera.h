@@ -14,7 +14,7 @@ public:
     /// Constructor
     explicit FisheyeCamera(const scene_rdl2::rdl2::Camera* rdlCamera);
 
-    scene_rdl2::math::Vec3f createDirection(float x, float y) const;
+    bool createDirection(scene_rdl2::math::Vec3f& dir, float X, float Y) const;
 
 private:
     // Keep these in sync with the enums declared in dso/camera/FisheyeCamera/attributes.cc
@@ -51,10 +51,12 @@ private:
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>   sMappingKey;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Int>   sFormatKey;
     static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sZoomKey;
+    static scene_rdl2::rdl2::AttributeKey<scene_rdl2::rdl2::Float> sFovKey;
 
     int mMapping;
     float mRadialScale;
     float mDerivScale;
+    float mHalfFovRadians;
 };
 
 } // namespace pbr
