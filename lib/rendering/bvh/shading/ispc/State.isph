@@ -120,3 +120,86 @@ getdPdz(const varying State &me)
     return Vec3f_ctor(0.f);
 }
 
+// Extract a uniform Intersection from a varying State
+inline uniform Intersection
+extract(const varying State &vState,
+        uniform int lane)
+{
+    uniform Intersection uIntersection;
+
+    uIntersection.mGeometryObject.mLow = extract(vState.mGeometryObject.mLow, lane);
+    uIntersection.mGeometryObject.mHigh = extract(vState.mGeometryObject.mHigh, lane);
+
+    uIntersection.mMaterial.mLow = extract(vState.mMaterial.mLow, lane);
+    uIntersection.mMaterial.mHigh = extract(vState.mMaterial.mHigh, lane);
+
+    uIntersection.mTable.mLow = extract(vState.mTable.mLow, lane);
+    uIntersection.mTable.mHigh = extract(vState.mTable.mHigh, lane);
+
+    uIntersection.mData.mLow = extract(vState.mData.mLow, lane);
+    uIntersection.mData.mHigh = extract(vState.mData.mHigh, lane);
+    uIntersection.mValidTableOffset = extract(vState.mValidTableOffset, lane);
+    uIntersection.mNumKeys = extract(vState.mNumKeys, lane);
+
+    uIntersection.mLayerAssignmentId = extract(vState.mLayerAssignmentId, lane);
+
+    uIntersection.mId1 = extract(vState.mId1, lane);
+    uIntersection.mId2 = extract(vState.mId2, lane);
+    uIntersection.mId3 = extract(vState.mId3, lane);
+
+    uIntersection.mSt.x = extract(vState.mSt.x, lane);
+    uIntersection.mSt.y = extract(vState.mSt.y, lane);
+
+    uIntersection.mP.x = extract(vState.mP.x, lane);
+    uIntersection.mP.y = extract(vState.mP.y, lane);
+    uIntersection.mP.z = extract(vState.mP.z, lane);
+
+    uIntersection.mNg.x = extract(vState.mNg.x, lane);
+    uIntersection.mNg.y = extract(vState.mNg.y, lane);
+    uIntersection.mNg.z = extract(vState.mNg.z, lane);
+
+    uIntersection.mN.x = extract(vState.mN.x, lane);
+    uIntersection.mN.y = extract(vState.mN.y, lane);
+    uIntersection.mN.z = extract(vState.mN.z, lane);
+
+    uIntersection.mdPds.x = extract(vState.mdPds.x, lane);
+    uIntersection.mdPds.y = extract(vState.mdPds.y, lane);
+    uIntersection.mdPds.z = extract(vState.mdPds.z, lane);
+
+    uIntersection.mdPdt.x = extract(vState.mdPdt.x, lane);
+    uIntersection.mdPdt.y = extract(vState.mdPdt.y, lane);
+    uIntersection.mdPdt.z = extract(vState.mdPdt.z, lane);
+
+    uIntersection.mEpsilonHint = extract(vState.mEpsilonHint, lane);
+
+    uIntersection.mShadowEpsilonHint = extract(vState.mShadowEpsilonHint, lane);
+
+    uIntersection.mFlags.mBits = extract(vState.mFlags.mBits, lane);
+
+    uIntersection.mdSdx = extract(vState.mdSdx, lane);
+    uIntersection.mdTdx = extract(vState.mdTdx, lane);
+    uIntersection.mdSdy = extract(vState.mdSdy, lane);
+    uIntersection.mdTdy = extract(vState.mdTdy, lane);
+
+    uIntersection.mdNds.x = extract(vState.mdNds.x, lane);
+    uIntersection.mdNds.y = extract(vState.mdNds.y, lane);
+    uIntersection.mdNds.z = extract(vState.mdNds.z, lane);
+
+    uIntersection.mdNdt.x = extract(vState.mdNdt.x, lane);
+    uIntersection.mdNdt.y = extract(vState.mdNdt.y, lane);
+    uIntersection.mdNdt.z = extract(vState.mdNdt.z, lane);
+
+    uIntersection.mMinRoughness.x = extract(vState.mMinRoughness.x, lane);
+    uIntersection.mMinRoughness.y = extract(vState.mMinRoughness.y, lane);
+
+    uIntersection.mMediumIor = extract(vState.mMediumIor, lane);
+
+    uIntersection.mWo.x = extract(vState.mWo.x, lane);
+    uIntersection.mWo.y = extract(vState.mWo.y, lane);
+    uIntersection.mWo.z = extract(vState.mWo.z, lane);
+
+    uIntersection.mIdLo = extract(vState.mIdLo, lane);
+    uIntersection.mIdHi = extract(vState.mIdHi, lane);
+
+    return uIntersection;
+}

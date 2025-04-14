@@ -37,6 +37,9 @@ void initIntersectionPhase1(shading::Intersection &isect,
     // shadow ray epsilon is the same for all geometry primitive types.
     isect.setShadowEpsilonHint(primPtr->getRdlGeometry()->getShadowRayEpsilon());
 
+    // Set unique index for use in shaders (i.e. StamMap cache)
+    isect.setId(tls->getNextId(), tls->mThreadIdx);
+
     scene_rdl2::math::Vec3f dNds, dNdt;
     const bool curvatureComputed =
         primPtr->computeIntersectCurvature(ray, isect, dNds, dNdt);

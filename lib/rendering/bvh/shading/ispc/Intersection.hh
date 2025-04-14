@@ -82,7 +82,11 @@ enum AttributeStatus
                                                                             \
     /* breaks bi-directional algorithms */                                  \
     HVD_MEMBER(HVD_NAMESPACE(scene_rdl2::math, Vec3f), mWo);                \
-    HVD_ISPC_PAD(mPad, 52)
+                                                                            \
+    /* 64-bit index separated into two 32-bit values */                     \
+    HVD_MEMBER(uint32_t, mIdLo);                                            \
+    HVD_MEMBER(uint32_t, mIdHi);                                            \
+    HVD_ISPC_PAD(mPad2, 44)
 
 #define INTERSECTION_VALIDATION(vlen)                                       \
     HVD_BEGIN_VALIDATION(Intersection, vlen);                               \
@@ -115,6 +119,8 @@ enum AttributeStatus
     HVD_VALIDATE(Intersection, mMediumIor);                                 \
     HVD_VALIDATE(Intersection, mPad0);                                      \
     HVD_VALIDATE(Intersection, mWo);                                        \
+    HVD_VALIDATE(Intersection, mIdLo);                                      \
+    HVD_VALIDATE(Intersection, mIdHi);                                      \
     HVD_END_VALIDATION
 
 

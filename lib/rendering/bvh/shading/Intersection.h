@@ -115,6 +115,26 @@ public:
         mEpsilonHint = value;
     }
 
+    finline void setId(uint64_t id, uint32_t threadIdx) {
+        // Ensure threadIdx fits in 10 bits (i.e., is less than 1024)
+        assert((threadIdx & ~0x3FF) == 0 && "threadIdx must be less than 1024");
+
+        // Combine id and threadIdx into a 64-bit result where the upper
+        // 10-bits are the threadIdx and the lower 54 bits are the id.
+        const uint64_t combinedIdx = (static_cast<uint64_t>(threadIdx) << 54) |
+                                    (id & ((1LL << 54) - 1));
+
+        // To get around a bug with 64-bit values in ispc we split
+        // the 64-bit index into the two 32-bit member variables
+        mIdLo = static_cast<uint32_t>(combinedIdx & 0xFFFFFFFF);
+        mIdHi = static_cast<uint32_t>((combinedIdx >> 32) & 0xFFFFFFFF);
+    }
+
+    uint64_t getId() const {
+        // Combine the hi/lo 32-bit values into the original 64-bit value
+        return (static_cast<uint64_t>(mIdHi) << 32) | static_cast<uint32_t>(mIdLo);
+    }
+
     // Set shadow epsilon hint
     finline void setShadowEpsilonHint(float value) {
         mShadowEpsilonHint = value;

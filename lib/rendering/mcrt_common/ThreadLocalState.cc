@@ -189,7 +189,8 @@ HUD_VALIDATOR( BaseTLState );
 ThreadLocalState::ThreadLocalState(uint32_t threadIdx, bool okToAllocBundledResources) :
     mPad(0),
     mHandlerStackDepth(0),
-    mThreadIdx(threadIdx)
+    mThreadIdx(threadIdx),
+    mIdCounter(0)
 {
     scene_rdl2::alloc::ArenaBlockPool* arenaBlockPool =
         mcrt_common::AffinityManager::get()->getMem()->getMemoryNodeByThreadId(mThreadIdx)->getArenaBlockPool();
@@ -219,6 +220,12 @@ ThreadLocalState::ThreadLocalState(uint32_t threadIdx, bool okToAllocBundledReso
                                                         okToAllocBundledResources);
         }
     }
+}
+
+uint64_t
+ThreadLocalState::getNextId()
+{
+    return mIdCounter++;
 }
 
 ThreadLocalState::~ThreadLocalState()

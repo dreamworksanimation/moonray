@@ -184,6 +184,9 @@ public:
     std::shared_ptr<pbr::TLState>            mPbrTls;
     std::shared_ptr<shading::TLState>        mShadingTls;
 
+    uint64_t mIdCounter;
+    uint64_t getNextId();
+
     DISALLOW_COPY_OR_ASSIGNMENT(ThreadLocalState);
 };
 
