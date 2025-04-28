@@ -179,7 +179,7 @@ bool FisheyeCamera::createDirection(Vec3f& dir, float X, float Y) const
     dir.y =  sintheta * sinphi;
     dir.z = -costheta;
 
-    return atan2(sintheta, costheta) <= mHalfFovRadians;
+    return scene_rdl2::math::atan2(sintheta, costheta) <= mHalfFovRadians;
 }
 
 void
