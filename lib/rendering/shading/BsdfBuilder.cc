@@ -1850,12 +1850,16 @@ public:
             lobe->setIsSpherical(true);
         }
 
+        scene_rdl2::math::Color scale(weight);
+
         if (isUnder(combineBehavior)) {
             // account for the non-dielectric lobes above
-            scene_rdl2::math::Color scale(weight * mCurrentTransmittance);
+            scale *= mCurrentTransmittance;
             lobe->setScale(scale);
             // account for the dielectric/clearcoat lobes above
             lobe = placeUnderPreviousLobes(lobe);
+        } else {
+            lobe->setScale(scale);
         }
 
         if (isOver(combineBehavior)) {
