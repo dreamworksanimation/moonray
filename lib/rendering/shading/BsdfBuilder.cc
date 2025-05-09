@@ -708,7 +708,7 @@ public:
 
         bssrdf->setTraceSet(component.getTraceSet());
         bssrdf->setLabel(label);
-        mBsdf.setBssrdf(bssrdf);
+        mBsdf.addBssrdf(bssrdf);
     }
 
     finline void
@@ -762,7 +762,7 @@ public:
 
         bssrdf->setTraceSet(component.getTraceSet());
         bssrdf->setLabel(label);
-        mBsdf.setBssrdf(bssrdf);
+        mBsdf.addBssrdf(bssrdf);
     }
 
     finline void

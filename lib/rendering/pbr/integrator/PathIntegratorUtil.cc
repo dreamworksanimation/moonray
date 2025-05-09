@@ -1034,7 +1034,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
         }
 
         bsdf.setLabelIds(materialLabelIds, lpeMaterialLabelIds, geomLabelIds[i]);
-        bsdf.setBssrdf(bssrdf);
+        bsdf.addBssrdf(bssrdf);
         bsdf.setVolumeSubsurface(volumeSubsurface);
 
         RayState *rs = &baseRayState[rayStateIndices[i]];

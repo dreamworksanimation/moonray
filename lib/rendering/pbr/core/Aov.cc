@@ -1267,12 +1267,14 @@ computeAlbedo(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface albedo
         if (subsurface) {
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                ++numContributions;
-                // ssAov already takes pixel weight into account
-                result += p.mSsAov;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    ++numContributions;
+                    // ssAov already takes pixel weight into account
+                    result += p.mSsAov;
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
@@ -1348,15 +1350,17 @@ computeColor(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (subsurface) {
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
-                bssrdf->hasProperty(shading::Bssrdf::PROPERTY_COLOR)) {
-                subsurfaceContributed = true;
-                scene_rdl2::math::Color c;
-                bssrdf->getProperty(shading::Bssrdf::PROPERTY_COLOR,
-                    reinterpret_cast<float *>(&c));
-                result += c;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
+                    bssrdf->hasProperty(shading::Bssrdf::PROPERTY_COLOR)) {
+                    subsurfaceContributed = true;
+                    scene_rdl2::math::Color c;
+                    bssrdf->getProperty(shading::Bssrdf::PROPERTY_COLOR,
+                        reinterpret_cast<float *>(&c));
+                    result += c;
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
@@ -1458,10 +1462,13 @@ computeMatte(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (result == 0.f && p.mEntry.mSubsurface) {
-            const Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                result = p.mPixelWeight;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    result = p.mPixelWeight;
+                    break;
+                }
             }
             const VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
@@ -1472,7 +1479,7 @@ computeMatte(const MaterialAovs::ComputeParams &p, float *dest)
 
         // if our bsdf has no lobes or sub-surface, and our entry flags are empty
         // we want to output the matte aov
-        if (!p.mBsdf.getLobeCount() && !p.mBsdf.getBssrdf() &&
+        if (!p.mBsdf.getLobeCount() && !p.mBsdf.getBssrdfCount() &&
             !p.mBsdf.getVolumeSubsurface() && flags == shading::BsdfLobe::ALL) {
             result = p.mPixelWeight;
         }
@@ -1609,12 +1616,14 @@ computeNormal(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (subsurface) {
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                const scene_rdl2::math::ReferenceFrame &frame = bssrdf->getFrame();
-                result += frame.getN();
-                ++matchingLobes;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    const scene_rdl2::math::ReferenceFrame &frame = bssrdf->getFrame();
+                    result += frame.getN();
+                    ++matchingLobes;
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
@@ -1661,13 +1670,20 @@ computeRadius(const MaterialAovs::ComputeParams &p, float *dest)
     if (labelMatch(p.mBsdf.getGeomLabelId(), p.mEntry.mGeomLabelIndices) &&
         labelMatch(p.mBsdf.getMaterialLabelId(), p.mEntry.mMaterialLabelIndices)) {
 
-        const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-        if (bssrdf && labelMatch(shading::aovDecodeLabel(
-            bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
-            bssrdf->hasProperty(shading::Bssrdf::PROPERTY_RADIUS)) {
-            bssrdf->getProperty(shading::Bssrdf::PROPERTY_RADIUS,
-                reinterpret_cast<float *>(&result));
+        // when multiple bssrdfs, take the maximum radius
+        Color maxRadius = scene_rdl2::math::sBlack;
+        for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); bssrdfIdx++) {
+            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+            if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
+                bssrdf->hasProperty(shading::Bssrdf::PROPERTY_RADIUS)) {
+                Color radius;
+                bssrdf->getProperty(shading::Bssrdf::PROPERTY_RADIUS, reinterpret_cast<float *>(&radius));
+                maxRadius = max(maxRadius, radius);
+            }
         }
+        result = maxRadius;
+
         const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
         if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
             volumeSubsurface->getLabel()), p.mEntry.mLabelIndices) &&
@@ -1730,22 +1746,29 @@ computeFresnelColor(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface fresnel color
         if (subsurface) {
-            const shading::Fresnel *fresnel = nullptr;
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = bssrdf->getTransmissionFresnel();
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    const shading::Fresnel *fresnel = bssrdf->getTransmissionFresnel();
+                    if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_COLOR)) {
+                        scene_rdl2::math::Color ssResult;
+                        fresnel->getProperty(shading::Fresnel::PROPERTY_COLOR,
+                            reinterpret_cast<float *>(&ssResult));
+                        result += ssResult;
+                    }
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
                 volumeSubsurface->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = volumeSubsurface->getTransmissionFresnel();
-            }
-            if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_COLOR)) {
-                scene_rdl2::math::Color ssResult;
-                fresnel->getProperty(shading::Fresnel::PROPERTY_COLOR,
-                    reinterpret_cast<float *>(&ssResult));
-                result += ssResult;
+                const shading::Fresnel *fresnel = volumeSubsurface->getTransmissionFresnel();
+                if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_COLOR)) {
+                    scene_rdl2::math::Color ssResult;
+                    fresnel->getProperty(shading::Fresnel::PROPERTY_COLOR,
+                        reinterpret_cast<float *>(&ssResult));
+                    result += ssResult;
+                }
             }
         }
 
@@ -1789,7 +1812,7 @@ computeFresnelFactor(const MaterialAovs::ComputeParams &p, float *dest)
     if (labelMatch(p.mBsdf.getGeomLabelId(), p.mEntry.mGeomLabelIndices) &&
         labelMatch(p.mBsdf.getMaterialLabelId(), p.mEntry.mMaterialLabelIndices)) {
 
-        int s = 0;
+        int numMatchingLobes = 0;
 
         // lobes
         if (flags != shading::BsdfLobe::NONE) {
@@ -1803,7 +1826,7 @@ computeFresnelFactor(const MaterialAovs::ComputeParams &p, float *dest)
                         float f;
                         fresnel->getProperty(shading::Fresnel::PROPERTY_FACTOR, &f);
                         result += f;
-                        ++s;
+                        ++numMatchingLobes;
                     }
                 }
             }
@@ -1811,27 +1834,34 @@ computeFresnelFactor(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (subsurface) {
-            const shading::Fresnel *fresnel = nullptr;
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = bssrdf->getTransmissionFresnel();
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    const shading::Fresnel *fresnel = bssrdf->getTransmissionFresnel();
+                    if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_FACTOR)) {
+                        float f;
+                        fresnel->getProperty(shading::Fresnel::PROPERTY_FACTOR, &f);
+                        result += f;
+                        ++numMatchingLobes;
+                    }
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
                 volumeSubsurface->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = volumeSubsurface->getTransmissionFresnel();
-            }
-            if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_FACTOR)) {
-                float f;
-                fresnel->getProperty(shading::Fresnel::PROPERTY_FACTOR, &f);
-                result += f;
-                ++s;
+                const shading::Fresnel *fresnel = volumeSubsurface->getTransmissionFresnel();
+                if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_FACTOR)) {
+                    float f;
+                    fresnel->getProperty(shading::Fresnel::PROPERTY_FACTOR, &f);
+                    result += f;
+                    ++numMatchingLobes;
+                }
             }
         }
 
         // average
-        if (s > 0) result /= s;
+        if (numMatchingLobes > 0) result /= numMatchingLobes;
 
         // pixel weight
         result *= p.mPixelWeight;
@@ -1893,23 +1923,31 @@ computeFresnelRoughness(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (subsurface) {
-            const shading::Fresnel *fresnel = nullptr;
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = bssrdf->getTransmissionFresnel();
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    const shading::Fresnel *fresnel = bssrdf->getTransmissionFresnel();
+                    if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_ROUGHNESS)) {
+                        scene_rdl2::math::Vec2f sr;
+                        fresnel->getProperty(shading::Fresnel::PROPERTY_ROUGHNESS,
+                            reinterpret_cast<float *>(&sr));
+                        result += sr;
+                        ++matchingLobes;
+                    }
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
                 volumeSubsurface->getLabel()), p.mEntry.mLabelIndices)) {
-                fresnel = volumeSubsurface->getTransmissionFresnel();
-            }
-            if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_ROUGHNESS)) {
-                scene_rdl2::math::Vec2f sr;
-                fresnel->getProperty(shading::Fresnel::PROPERTY_ROUGHNESS,
-                    reinterpret_cast<float *>(&sr));
-                result += sr;
-                ++matchingLobes;
+                const shading::Fresnel *fresnel = volumeSubsurface->getTransmissionFresnel();
+                if (fresnel && fresnel->hasProperty(shading::Fresnel::PROPERTY_ROUGHNESS)) {
+                    scene_rdl2::math::Vec2f sr;
+                    fresnel->getProperty(shading::Fresnel::PROPERTY_ROUGHNESS,
+                        reinterpret_cast<float *>(&sr));
+                        result += sr;
+                        ++matchingLobes;
+                }
             }
         }
 
@@ -1970,14 +2008,16 @@ computePbrValidity(const MaterialAovs::ComputeParams &p, float *dest)
 
         // subsurface
         if (subsurface) {
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
-                bssrdf->hasProperty(shading::Bssrdf::PROPERTY_PBR_VALIDITY)) {
-                scene_rdl2::math::Color c;
-                bssrdf->getProperty(shading::Bssrdf::PROPERTY_PBR_VALIDITY,
-                    reinterpret_cast<float *>(&c));
-                result += c;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices) &&
+                    bssrdf->hasProperty(shading::Bssrdf::PROPERTY_PBR_VALIDITY)) {
+                    scene_rdl2::math::Color c;
+                    bssrdf->getProperty(shading::Bssrdf::PROPERTY_PBR_VALIDITY,
+                        reinterpret_cast<float *>(&c));
+                    result += c;
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLabel(
@@ -2035,7 +2075,7 @@ labelMatch(const MaterialAovs::ComputeParams &p)
         // match an empty material - unless that empty material is a cutout.
         const bool selectorIsDefault = (p.mEntry.mLobeFlags == shading::BsdfLobe::ALL && p.mEntry.mSubsurface);
         if (selectorIsDefault) {
-            if (p.mBsdf.getLobeCount() == 0 && p.mBsdf.getBssrdf() == nullptr) {
+            if (p.mBsdf.getLobeCount() == 0 && p.mBsdf.getBssrdfCount() == 0) {
                 matched = !p.mBsdf.getEarlyTermination();
             }
         }
@@ -2055,10 +2095,13 @@ labelMatch(const MaterialAovs::ComputeParams &p)
         // subsurface
         if (!matched && p.mEntry.mSubsurface) {
             // no match yet, check if sub-surface matches
-            const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf();
-            if (bssrdf && labelMatch(shading::aovDecodeLabel(
-                bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
-                matched = true;
+            for (int bssrdfIdx = 0; bssrdfIdx < p.mBsdf.getBssrdfCount(); ++bssrdfIdx) {
+                const shading::Bssrdf *bssrdf = p.mBsdf.getBssrdf(bssrdfIdx);
+                if (bssrdf && labelMatch(shading::aovDecodeLabel(
+                    bssrdf->getLabel()), p.mEntry.mLabelIndices)) {
+                    matched = true;
+                    break;
+                }
             }
             const shading::VolumeSubsurface *volumeSubsurface = p.mBsdf.getVolumeSubsurface();
             if (volumeSubsurface && labelMatch(shading::aovDecodeLpeLabel(
@@ -3385,7 +3428,9 @@ LightAovs::subsurfaceEventTransition(pbr::TLState *pbrTls, int lpeStateId, const
 
     EXCL_ACCUMULATOR_PROFILE(pbrTls, EXCL_ACCUM_AOVS);
 
-    const shading::Bssrdf* bssrdf = bsdf.getBssrdf();
+    // This only supports the first bssrdf for now
+    const shading::Bssrdf* bssrdf = bsdf.getBssrdfCount() > 0 ? bsdf.getBssrdf(0) : nullptr;
+
     const shading::VolumeSubsurface* volumeSubsurface = bsdf.getVolumeSubsurface();
 
     MNRY_ASSERT(bssrdf != nullptr || volumeSubsurface != nullptr,

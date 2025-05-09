@@ -67,11 +67,6 @@ Closure_addDipoleBssrdf(varying Closure * uniform closure,
 {
     varying Bsdf * uniform bsdf = asBsdf(closure);
 
-    // lib/shading only supports a single bssrdf at the moment.
-    // so adding a bssrdf to a closure that already has one is
-    // most likely a shader error.
-    assert(bsdf->mBssrdf == NULL);
-
     uniform Arena * uniform arena = tls->mArena;
 
     varying DipoleBssrdf * uniform bssrdf =
@@ -85,7 +80,7 @@ Closure_addDipoleBssrdf(varying Closure * uniform closure,
     Bssrdf_setScale(bss, scale);
     Bssrdf_setTraceSet(bss, traceSet);
     Bssrdf_setLabel(bss, label);
-    Bsdf_setBssrdf(bsdf, bss);
+    Bsdf_addBssrdf(bsdf, bss);
 }
 
 void
@@ -104,11 +99,6 @@ Closure_addNormalizedDiffusionBssrdf(varying Closure * uniform closure,
 {
     varying Bsdf * uniform bsdf = asBsdf(closure);
 
-    // lib/shading only supports a single bssrdf at the moment.
-    // so adding a bssrdf to a closure that already has one is
-    // most likely a shader error.
-    assert(bsdf->mBssrdf == NULL);
-
     uniform Arena * uniform arena = tls->mArena;
 
     varying NormalizedDiffusionBssrdf * uniform nd =
@@ -121,7 +111,7 @@ Closure_addNormalizedDiffusionBssrdf(varying Closure * uniform closure,
     Bssrdf_setScale(bssrdf, scale);
     Bssrdf_setTraceSet(bssrdf, traceSet);
     Bssrdf_setLabel(bssrdf, label);
-    Bsdf_setBssrdf(bsdf, bssrdf);
+    Bsdf_addBssrdf(bsdf, bssrdf);
 }
 
 void
@@ -1005,7 +995,9 @@ Closure_addBsdfLobes(varying Closure * uniform closure,
 
     if (overrideBssrdfAndEmission) {
         // Set closure's bssrdf and emission to that of bsdf
-        Bsdf_setBssrdf(finalBsdf, bsdf->mBssrdf);
+        for (uniform int i = 0; i < bsdf->mNumBssrdfs; ++i) {
+            Bsdf_addBssrdf(finalBsdf, bsdf->mBssrdfs[i]);
+        }
         Bsdf_setSelfEmission(finalBsdf, Bsdf_getSelfEmission(bsdf));
     }
 }

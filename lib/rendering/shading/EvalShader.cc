@@ -57,8 +57,8 @@ xformLobeLabels(const scene_rdl2::rdl2::Material &material, Bsdf *bsdf, int pare
                                            lobeLabelIds, lpeLobeLabelIds));
         }
 
-        Bssrdf *bssrdf = bsdf->getBssrdf();
-        if (bssrdf) {
+        for (int i = 0; i < bsdf->getBssrdfCount(); ++i) {
+            Bssrdf *bssrdf = bsdf->getBssrdf(i);
             bssrdf->setLabel(aovEncodeLabels(bssrdf->getLabel(),
                                              materialLabelId, lpeMaterialLabelId,
                                              lobeLabelIds, lpeLobeLabelIds));

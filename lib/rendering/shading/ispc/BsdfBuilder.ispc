@@ -1807,7 +1807,7 @@ BsdfBuilder_addDipoleDiffusion(
 
     Bssrdf_setTraceSet(bssrdf, profile.mTraceSet);
     Bssrdf_setLabel(bssrdf, label);
-    Bsdf_setBssrdf(me.mBsdf, bssrdf);
+    Bsdf_addBssrdf(me.mBsdf, bssrdf);
     accumulateAttenuation(me);
 }
 
@@ -1872,7 +1872,7 @@ BsdfBuilder_addNormalizedDiffusion(
 
     Bssrdf_setTraceSet(bssrdf, profile.mTraceSet);
     Bssrdf_setLabel(bssrdf, label);
-    Bsdf_setBssrdf(me.mBsdf, bssrdf);
+    Bsdf_addBssrdf(me.mBsdf, bssrdf);
     accumulateAttenuation(me);
 }
 

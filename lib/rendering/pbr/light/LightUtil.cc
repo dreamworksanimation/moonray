@@ -64,9 +64,13 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
     // in the LightSet. We map those ids to -1.
     int* lightIdMap = nullptr;
 
-    const bool hasBssrdf = (bsdf.getBssrdf() != nullptr);
     const bool hasVolumeSubsurface = (bsdf.getVolumeSubsurface() != nullptr);
-    const float radius = (hasBssrdf  ?  bsdf.getBssrdf()->getMaxRadius()  :  0.0f);
+
+    float radius = 0.f;
+    // for multiple bssrdfs, use the maximum radius value
+    for (int i = 0; i < bsdf.getBssrdfCount(); i++) {
+        radius = std::max(radius, bsdf.getBssrdf(i)->getMaxRadius());
+    }
 
     int activeLightCount = 0;
     hasRayTerminatorLights = false;

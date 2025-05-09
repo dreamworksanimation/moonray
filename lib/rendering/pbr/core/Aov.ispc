@@ -221,12 +221,14 @@ computeAlbedo(const uniform int flags,
 
         // subsurface albedo
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
-                ++numContributions;
-                // ssAov already takes pixel weight into account
-                result = result + *ssAov;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
+                    ++numContributions;
+                    // ssAov already takes pixel weight into account
+                    result = result + *ssAov;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) &&
@@ -291,14 +293,16 @@ computeColor(const varying Bsdf * uniform bsdf,
 
         // subsurface
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-                Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_COLOR)) {
-                subsurfaceContributed = true;
-                Color c;
-                Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_COLOR, (varying float * uniform) &c);
-                result = result + c;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                    Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_COLOR)) {
+                    subsurfaceContributed = true;
+                    Color c;
+                    Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_COLOR, (varying float * uniform) &c);
+                    result = result + c;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) &&
@@ -391,10 +395,12 @@ computeMatte(const uniform int flags,
 
         // subsurface
         if (result == 0.f && subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) && labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
-                varying float * uniform f = (varying float * uniform) pixelWeight;
-                result = *f;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) && labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
+                    varying float * uniform f = (varying float * uniform) pixelWeight;
+                    result = *f;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) && labelMatch(aovDecodeLabel(VolumeSubsurface_getLabel(vs)), entryLabelIndices)) {
@@ -740,8 +746,12 @@ labelMatch(const uniform int flags, const uniform int subsurface,
                     break;
                 }
             }
-            if (isActive(Bsdf_getBssrdf(bsdf))) {
-                isEmpty = false;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf)) {
+                    isEmpty = false;
+                    break;
+                }
             }
             if (isEmpty) {
                 matched = !((1 << programIndex) & bsdf->mEarlyTerminationMask);
@@ -763,9 +773,12 @@ labelMatch(const uniform int flags, const uniform int subsurface,
 
         // subsurface
         if (!matched && subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) && labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
-                matched = true;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) && labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
+                    matched = true;
+                    break;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) && labelMatch(aovDecodeLabel(VolumeSubsurface_getLabel(vs)), entryLabelIndices)) {
@@ -976,12 +989,14 @@ computeNormal(const uniform int flags,
 
         // subsurface
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
-                const varying ReferenceFrame * uniform frame = Bssrdf_getFrame(bssrdf);
-                result = result + getN(*frame);
-                ++matchingLobes;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices)) {
+                    const varying ReferenceFrame * uniform frame = Bssrdf_getFrame(bssrdf);
+                    result = result + getN(*frame);
+                    ++matchingLobes;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) &&
@@ -1021,12 +1036,20 @@ computeRadius(const varying Bsdf * uniform bsdf,
     if (labelMatch(Bsdf_getGeomLabelId(bsdf), entryGeomLabelIndices) &&
         labelMatch(Bsdf_getMaterialLabelId(bsdf), entryMaterialLabelIndices)) {
 
-        const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-        if (isActive(bssrdf) &&
-            labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-            Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS)) {
-            Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS, (varying float * uniform) &result);
+        // when multiple bssrdfs, take the maximum radius
+        Color maxRadius = sBlack;
+        for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+            if (isActive(bssrdf) &&
+                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS)) {
+                Color radius;
+                Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_RADIUS, (varying float * uniform) &radius);
+                maxRadius = max(maxRadius, radius);
+            }
         }
+        result = maxRadius;
+
         const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
         if (isActive(vs) &&
             labelMatch(aovDecodeLabel(VolumeSubsurface_getLabel(vs)), entryLabelIndices) &&
@@ -1082,15 +1105,17 @@ computeFresnelColor(const varying Bsdf * uniform bsdf,
 
         // subsurface fresnel
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-                isFresnelActive(bssrdf)) {
-                const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
-                if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_COLOR)) {
-                    varying Color c;
-                    Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_COLOR, (varying float * uniform) &c);
-                    result = result + c;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                    isFresnelActive(bssrdf)) {
+                    const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
+                    if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_COLOR)) {
+                        varying Color c;
+                        Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_COLOR, (varying float * uniform) &c);
+                        result = result + c;
+                    }
                 }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
@@ -1159,16 +1184,18 @@ computeFresnelFactor(const varying Bsdf * uniform bsdf,
 
         // subsurface
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-                isFresnelActive(bssrdf)) {
-                const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
-                if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_FACTOR)) {
-                    float f;
-                    Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_FACTOR, &f);
-                    result = result + f;
-                    ++s;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                    isFresnelActive(bssrdf)) {
+                    const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
+                    if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_FACTOR)) {
+                        float f;
+                        Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_FACTOR, &f);
+                        result = result + f;
+                        ++s;
+                    }
                 }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
@@ -1241,16 +1268,18 @@ computeFresnelRoughness(const varying Bsdf * uniform bsdf,
 
         // subsurface
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-                isFresnelActive(bssrdf)) {
-                const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
-                if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_ROUGHNESS)) {
-                    varying Vec2f sr;
-                    Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_ROUGHNESS, (varying float * uniform) &sr);
-                    result = result + sr;
-                    ++matchingLobes;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                    isFresnelActive(bssrdf)) {
+                    const varying Fresnel * uniform fresnel = Bssrdf_getTransmissionFresnel(bssrdf);
+                    if (isActive(fresnel) && Fresnel_hasProperty(fresnel, FRESNEL_PROPERTY_ROUGHNESS)) {
+                        varying Vec2f sr;
+                        Fresnel_getProperty(fresnel, FRESNEL_PROPERTY_ROUGHNESS, (varying float * uniform) &sr);
+                        result = result + sr;
+                        ++matchingLobes;
+                    }
                 }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
@@ -1318,13 +1347,15 @@ computePbrValidity(const varying Bsdf * uniform bsdf,
 
         // subsurface
         if (subsurface) {
-            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-            if (isActive(bssrdf) &&
-                labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
-                Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_PBR_VALIDITY)) {
-                Color c;
-                Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_PBR_VALIDITY, (varying float * uniform) &c);
-                result = result + c;
+            for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+                const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+                if (isActive(bssrdf) &&
+                    labelMatch(aovDecodeLabel(Bssrdf_getLabel(bssrdf)), entryLabelIndices) &&
+                    Bssrdf_hasProperty(bssrdf, SUBSURFACE_PROPERTY_PBR_VALIDITY)) {
+                    Color c;
+                    Bssrdf_getProperty(bssrdf, SUBSURFACE_PROPERTY_PBR_VALIDITY, (varying float * uniform) &c);
+                    result = result + c;
+                }
             }
             const varying VolumeSubsurface * uniform vs = Bsdf_getVolumeSubsurface(bsdf);
             if (isActive(vs) &&

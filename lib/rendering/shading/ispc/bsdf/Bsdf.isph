@@ -516,13 +516,14 @@ struct BsdfExtraAovs
 };
 
 #define BSDF_BASE                                         \
-    varying Bssrdf * uniform mBssrdf;                     \
+    varying Bssrdf * uniform mBssrdfs[BSDF_MAX_LOBE];     \
     varying VolumeSubsurface * uniform mVolumeSubsurface; \
     uniform int mEarlyTerminationMask;                    \
     varying BsdfLobe * uniform mLobes[BSDF_MAX_LOBE];     \
     uniform int mMaterialLabelId;                         \
     uniform int mLpeMaterialLabelId;                      \
     uniform int mNumLobes;                                \
+    uniform int mNumBssrdfs;                              \
     varying int mGeomLabelId;                             \
     varying BsdfLobeType mType;                           \
     varying bool mIsSpherical;                            \
@@ -543,12 +544,12 @@ struct Bsdf
 inline void
 Bsdf_init(varying Bsdf * uniform bsdf)
 {
-    bsdf->mBssrdf = NULL;
     bsdf->mVolumeSubsurface = NULL;
     bsdf->mEarlyTerminationMask = 0;
     bsdf->mMaterialLabelId = -1;
     bsdf->mLpeMaterialLabelId = -1;
     bsdf->mNumLobes = 0;
+    bsdf->mNumBssrdfs = 0;
     bsdf->mGeomLabelId = -1;
     bsdf->mType = BSDF_LOBE_TYPE_NONE;
     bsdf->mIsSpherical = false;
@@ -609,19 +610,27 @@ Bsdf_getLobe(const varying Bsdf * uniform bsdf, varying int lobeIndex)
     return lobe;
 }
 
-/// @brief set the bssrdf for a bsdf
+/// @brief add the bssrdf to the bsdf
 inline void
-Bsdf_setBssrdf(varying Bsdf * uniform bsdf,
+Bsdf_addBssrdf(varying Bsdf * uniform bsdf,
                varying Bssrdf * uniform bssrdf)
 {
-    bsdf->mBssrdf = bssrdf;
+    MNRY_ASSERT(bsdf->mNumBssrdfs < BSDF_MAX_LOBE);
+    bsdf->mBssrdfs[bsdf->mNumBssrdfs++] = bssrdf;
+}
+
+inline uniform int
+Bsdf_getBssrdfCount(const varying Bsdf * uniform bsdf)
+{
+    return bsdf->mNumBssrdfs;
 }
 
 /// @brief get the bssrdf for a bsdf
 inline const varying Bssrdf * uniform
-Bsdf_getBssrdf(const varying Bsdf * uniform bsdf)
+Bsdf_getBssrdf(const varying Bsdf * uniform bsdf, uniform int bssrdfIndex)
 {
-    return bsdf->mBssrdf;
+    MNRY_ASSERT(bssrdfIndex < bsdf->mNumBssrdfs);
+    return bsdf->mBssrdfs[bssrdfIndex];
 }
 
 /// @brief set the volume subsurface for a bsdf
@@ -643,7 +652,7 @@ Bsdf_getVolumeSubsurface(const varying Bsdf * uniform bsdf)
 inline const varying bool
 Bsdf_hasSubsurface(const varying Bsdf * uniform bsdf)
 {
-    return (bsdf->mBssrdf != nullptr ||
+    return (bsdf->mNumBssrdfs > 0 ||
             bsdf->mVolumeSubsurface != nullptr);
 }
 

@@ -328,8 +328,8 @@ shadeMaterial(mcrt_common::ThreadLocalState *tls, const scene_rdl2::rdl2::Materi
                                            lobeLabelIds, lpeLobeLabelIds));
         }
 
-        shading::Bssrdf *bssrdf = bsdf->getBssrdf();
-        if (bssrdf) {
+        for (int bssrdfIdx = 0; bssrdfIdx < bsdf->getBssrdfCount(); ++bssrdfIdx) {
+            shading::Bssrdf *bssrdf = bsdf->getBssrdf(bssrdfIdx);
             bssrdf->setLabel(shading::aovEncodeLabels(bssrdf->getLabel(),
                                              materialLabelId, lpeMaterialLabelId,
                                              lobeLabelIds, lpeLobeLabelIds));
@@ -993,16 +993,21 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     //---------------------------------------------------------------------
     // Estimate subsurface scattering
     // Option 1: diffusion profile (bssrdf) approach
-    const shading::Bssrdf *bssrdf = bsdf->getBssrdf();
-    if (bssrdf != nullptr) {
+
+    if (bsdf->getBssrdfCount() > 0) {
         // increment subsurface depth
         pv.subsurfaceDepth += 1;
+    }
+
+    for (int bssrdfIdx = 0; bssrdfIdx < bsdf->getBssrdfCount(); ++bssrdfIdx) {
+        const shading::Bssrdf *bssrdf = bsdf->getBssrdf(bssrdfIdx);
         // Stop the accumulator here since the subsurface accumulator will be
         // started up inside of computeRadianceSubsurface as needed.
         radiance += computeRadianceDiffusionSubsurface(pbrTls, *bsdf, sp, pv, ray,
             isect, slice, *bssrdf, activeLightSet, doIndirect, rayEpsilon, shadowRayEpsilon,
             sequenceID, ssAov, aovs);
     }
+
     // Option 2: path trace volumetric approach
     const shading::VolumeSubsurface *volumeSubsurface = bsdf->getVolumeSubsurface();
     if (volumeSubsurface != nullptr) {

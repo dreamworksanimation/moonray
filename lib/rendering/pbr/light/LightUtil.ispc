@@ -66,9 +66,12 @@ computeActiveLights(uniform Arena * uniform arena,
     // in the LightSet. We map those ids to -1.
     uniform int * uniform lightIdMap = nullptr;
 
-    const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-    const varying bool hasBssrdf = (bssrdf != NULL);
-    const varying float radius = (hasBssrdf  ?  Bssrdf_getMaxRadius(bssrdf)  :  0.0f);
+    varying float radius = 0.f;
+    // for multiple bssrdfs, use the maximum radius value
+    for (uniform int i = 0; i < Bsdf_getBssrdfCount(bsdf); i++) {
+        const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, i);
+        radius = max(radius, Bssrdf_getMaxRadius(bssrdf));
+    }
 
     uniform int * uniform activeLightIds = nullptr;
 

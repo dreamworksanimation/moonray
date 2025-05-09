@@ -367,7 +367,7 @@ public:
     };
 
     /// Constructor / Destructor
-    Bsdf() : mLobeArray(), mBssrdf(nullptr), mVolumeSubsurface(nullptr),
+    Bsdf() : mLobeArray(), mBssrdfArray(), mVolumeSubsurface(nullptr),
         mSelfEmission(scene_rdl2::math::sBlack),
         mEarlyTermination(false),
         mType(BsdfLobe::Type(0)), mIsSpherical(false),
@@ -396,13 +396,21 @@ public:
     finline BsdfLobe *getLobe(int index)
             {  return mLobeArray[index];  }
 
-    /// Set/get a Bssrdf. The Bssrdf is owned by the Bsdf and will be destroyed
-    /// in the Bsdf destructor.
-    /// TODO: This is a temporary shortcut. We probably want this to be returned
-    /// by a surface shader separately from the Bsdf.
-    finline void setBssrdf(Bssrdf *bssrdf)     {  mBssrdf = bssrdf;  }
-    finline const Bssrdf *getBssrdf() const    {  return mBssrdf;  }
-    finline Bssrdf *getBssrdf()                {  return mBssrdf;  }
+    /// Set/get Bssrdfs. The Bssrdfs are owned by the Bsdf and will be destroyed
+    /// in the Bsdf destructor.  Adding a bssrdf instance more than once is not
+    /// supported, it will cause it to be deleted more than once in ~Bsdf().
+    finline void addBssrdf(Bssrdf *bssrdf) {
+        MNRY_ASSERT(mBssrdfArray.size() < maxLobes);
+        mBssrdfArray.push_back(bssrdf);
+    }
+
+    finline int getBssrdfCount() const    {  return mBssrdfArray.size();  }
+
+    finline const Bssrdf *getBssrdf(int index) const
+            {  return mBssrdfArray[index];  }
+    finline Bssrdf *getBssrdf(int index)
+            {  return mBssrdfArray[index];  }
+
 
     finline void setVolumeSubsurface(VolumeSubsurface* volumeSubsurface) {
         mVolumeSubsurface = volumeSubsurface;
@@ -416,7 +424,7 @@ public:
     }
 
     finline bool hasSubsurface() const {
-        return (mBssrdf != nullptr ||
+        return (mBssrdfArray.size() > 0 ||
                 mVolumeSubsurface != nullptr);
     }
 
@@ -485,12 +493,13 @@ public:
 
 private:
     typedef util::StaticVector<BsdfLobe *, maxLobes> BsdfLobePtrArray;
+    typedef util::StaticVector<Bssrdf *, maxLobes> BssrdfPtrArray;
 
     Bsdf(const Bsdf &other) = delete;
     Bsdf &operator=(const Bsdf &other) = delete;
 
     BsdfLobePtrArray        mLobeArray;
-    Bssrdf *                mBssrdf;
+    BssrdfPtrArray          mBssrdfArray;
     VolumeSubsurface *      mVolumeSubsurface;
     scene_rdl2::math::Color mSelfEmission;
     bool                    mEarlyTermination;

@@ -107,8 +107,9 @@ Bsdf_show(const varying Bsdf &bsdf,
         print("\n");
     }
 
-    if (bsdf.mBssrdf) {
-        Bssrdf_show(bsdf.mBssrdf, 0);
+    for (uniform int i = 0; i < bsdf.mNumBssrdfs; ++i) {
+        varying Bssrdf * uniform bssrdf = bsdf.mBssrdfs[i];
+        Bssrdf_show(bssrdf, 0);
         print("\n");
     }
 

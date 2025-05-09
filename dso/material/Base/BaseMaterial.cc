@@ -333,7 +333,7 @@ BaseMaterial::shade(const Material* self, moonray::shading::TLState *tls,
                 bssrdf->setTransmissionFresnel(omSpecFresnel);
             }
             bssrdf->setLabel(aovTranslucency);
-            bsdf->setBssrdf(bssrdf);
+            bsdf->addBssrdf(bssrdf);
         }
     }
 

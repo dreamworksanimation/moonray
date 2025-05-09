@@ -106,8 +106,8 @@ setBsdfLabels(const scene_rdl2::rdl2::Material *material,
                                                 materialLabelId, lpeMaterialLabelId,
                                                 lobeLabelIds, lpeLobeLabelIds);
             }
-            Bssrdfv *bssrdfv = shadingBsdfv[i].mBssrdf;
-            if (bssrdfv) {
+            for (int bssrdfIdx = 0; bssrdfIdx < shadingBsdfv[i].mNumBssrdfs; ++bssrdfIdx) {
+                Bssrdfv *bssrdfv = shadingBsdfv[i].mBssrdfs[bssrdfIdx];
                 bssrdfv->mLabel = aovEncodeLabels(bssrdfv->mLabel,
                                                   materialLabelId, lpeMaterialLabelId,
                                                   lobeLabelIds, lpeLobeLabelIds);

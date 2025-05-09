@@ -437,17 +437,61 @@ integrateBundled( const uniform PathIntegrator * uniform this,
         // TODO: We'd want this to be from the shader so we can query a shader
         // seprately for Bsdf and for Bssrdf.
 
+        const varying VolumeSubsurface * uniform volumeSubsurface =
+                    Bsdf_getVolumeSubsurface(bsdf);
+
+        // Increment subsurface depth once and not for each bssrdf
+        for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
+            if (isActive(bssrdf)) {
+                // increment subsurface depth
+                // Hybrid mode is tricky.  Incrementing the subsurface depth in rs->mPathVertex has
+                // no impact on CPP_computeRadianceSubsurface.  That function is only
+                // passed a set of ray state idx (pointers to RayStates).  Those were the
+                // RayStates used to create the SOA version of rayState we (ispc) are working
+                // with currently (See convertAOSRayStatesToSOA() in ShadeBundleHandler.cc).
+                // So CPP_computeRadianceSubsurface will need to increment the subsurfaceDepth
+                // as well when it retrieves the original path vertex from the RayState pool.
+                // But we still need to increment our subsurfaceDepth to properly handle
+                // secondary bounces from lobes handled in ispc.
+                rs->mPathVertex.subsurfaceDepth += 1;
+                break;
+            }
+        }
+
         // TODO: this is recursing and casting rays, change over to be
         //       breadth first and queued!
-        const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf);
-        const varying VolumeSubsurface * uniform volumeSubsurface =
-                Bsdf_getVolumeSubsurface(bsdf);
-        if (isActive(bssrdf) || isActive(volumeSubsurface)) {
+        for (uniform int bssrdfIdx = 0; bssrdfIdx < Bsdf_getBssrdfCount(bsdf); ++bssrdfIdx) {
+            const varying Bssrdf * uniform bssrdf = Bsdf_getBssrdf(bsdf, bssrdfIdx);
 
             // We assume that both are not active at the same time,
             // otherwise our depth counting will be messed up.
             MNRY_ASSERT(!(isActive(bssrdf) && isActive(volumeSubsurface)));
 
+            if (isActive(bssrdf)) {
+                // Don't pass bools through the ISPC/C++ interface, convert to int instead.
+                varying int intDoIndirect = (varying int)doIndirect;
+
+                CPP_computeRadianceSubsurface(this,
+                                            pbrTls,
+                                            (const uniform uint32_t *uniform)&rs->mRayStateIdx,
+                                            bssrdf,
+                                            nullptr,
+                                            &activeLightSet,
+                                            bsdf->mMaterialLabelId,
+                                            bsdf->mLpeMaterialLabelId,
+                                            (const uniform int *uniform)&bsdf->mGeomLabelId,
+                                            (const uniform int *uniform)&intDoIndirect,
+                                            (const uniform float *uniform)&rayEpsilon,
+                                            (const uniform float *uniform)&shadowRayEpsilon,
+                                            (uniform uint32_t *uniform)&sequenceID,
+                                            (uniform float *uniform)&radiance,
+                                            (uniform float *uniform)&ssAov,
+                                            lanemask());
+            }
+        }
+
+        if (isActive(volumeSubsurface)) {
             // Don't pass bools through the ISPC/C++ interface, convert to int instead.
             varying int intDoIndirect = (int)doIndirect;
 
@@ -466,7 +510,7 @@ integrateBundled( const uniform PathIntegrator * uniform this,
             CPP_computeRadianceSubsurface(this,
                                           pbrTls,
                                           (const uniform uint32_t *uniform)&rs->mRayStateIdx,
-                                          bssrdf,
+                                          nullptr,
                                           volumeSubsurface,
                                           &activeLightSet,
                                           bsdf->mMaterialLabelId,

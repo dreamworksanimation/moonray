@@ -145,6 +145,7 @@ void
 Bsdf::show(const std::string &sceneClass, const std::string &name, std::ostream& os) const
 {
     const size_t numLobes = mLobeArray.size();
+    const size_t numBssrdfs = mBssrdfArray.size();
 
     os << "\n";
     os << "==========================================================\n";
@@ -158,8 +159,9 @@ Bsdf::show(const std::string &sceneClass, const std::string &name, std::ostream&
         os << "\n";
     }
 
-    if (mBssrdf) {
-        mBssrdf->show(os, "");
+    for (size_t i = 0; i < numBssrdfs; ++i) {
+        const Bssrdf* const bssrdf = mBssrdfArray[i];
+        bssrdf->show(os, "");
         os << "\n";
     }
 
