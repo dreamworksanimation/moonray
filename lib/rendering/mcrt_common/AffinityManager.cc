@@ -277,13 +277,7 @@ MemoryAffinityManager::calcActiveNumaNodeIdTbl(const std::shared_ptr<const CpuAf
     std::vector<unsigned> activeNumaNodeIdTbl;
     if (!cpuAff->getEnableMcrtCpuAffinity()) return activeNumaNodeIdTbl; // Just in case, return empty tbl
 
-    if (cpuAff->getEnableMcrtCpuAffinityAll()) {
-        // all
-        activeNumaNodeIdTbl.resize(mNumaUtil->getTotalNumaNode());
-        std::iota(activeNumaNodeIdTbl.begin(), activeNumaNodeIdTbl.end(), 0);
-    } else {
-        activeNumaNodeIdTbl = mNumaUtil->genActiveNumaNodeIdTblByCpuIdTbl(cpuAff->getAffinityCpuIdTbl());
-    }
+    activeNumaNodeIdTbl = mNumaUtil->genActiveNumaNodeIdTblByCpuIdTbl(cpuAff->getAffinityCpuIdTbl());
     return activeNumaNodeIdTbl;
 }
 

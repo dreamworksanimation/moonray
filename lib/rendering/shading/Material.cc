@@ -462,7 +462,9 @@ ShadeQueueListInfoManager::getAllShadeQueuesCount()
         // Memory Affinity enabled
         //
         for (auto itr : mNumaNodeShadeQueueListInfoTbl) {
-            total += itr->getShadeQueuesSize();
+            if (itr) { 
+                total += itr->getShadeQueuesSize();
+            }
         }
 
     } else {
@@ -882,5 +884,3 @@ Material::resetDeferredEntryState()
 
 } // namespace shading
 } // namespace moonray
-
-

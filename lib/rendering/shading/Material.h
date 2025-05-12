@@ -1,4 +1,4 @@
-// Copyright 2023-2024 DreamWorks Animation LLC
+// Copyright 2023-2025 DreamWorks Animation LLC
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
@@ -220,6 +220,8 @@ public:
 private:
     bool mMemAffinityEnable {false};
     std::shared_ptr<ShadeQueueListInfo> mShadeQueueListInfo;
+
+    // size == total NUMA node of this host, some of them might be null
     std::vector<std::shared_ptr<ShadeQueueListInfo>> mNumaNodeShadeQueueListInfoTbl;
 };
 
