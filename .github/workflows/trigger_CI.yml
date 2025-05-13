@@ -17,7 +17,7 @@ jobs:
   trigger_CI_plan:
     env:
       CHATROOM: ${{ secrets.TRIGGER_CI_CHATROOM }}
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, rez]
     steps:
       - name: Add Dynamic Environment Variable
         run: |
