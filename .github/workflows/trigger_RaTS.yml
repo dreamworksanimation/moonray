@@ -17,7 +17,7 @@ jobs:
   trigger_RaTS_plan:
     env:
       CHATROOM: ${{ secrets.TRIGGER_RATS_CHATROOM }}
-    runs-on: [self-hosted]
+    runs-on: [self-hosted, rez]
     steps:
       - name: Add Dynamic Environment Variable
         run: |
