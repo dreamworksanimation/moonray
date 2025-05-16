@@ -99,7 +99,8 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
         int subsurfaceSplitFactor, int computeRadianceSplitFactor,
         int subsurfaceIndex, bool doIndirect, float rayEpsilon, float shadowRayEpsilon,
         unsigned sssSampleID, unsigned &sequenceID, bool isLocal,
-        float *aovs, const shading::Intersection &isect) const
+        float *aovs, const shading::Intersection &isect,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     scene_rdl2::math::Color radiance = scene_rdl2::math::sBlack;
     // Estimate emissive volume region energy contribution
@@ -167,6 +168,19 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
         // if light's visibility mask does not match, skip this light.
         if (!(scene_rdl2::rdl2::DIFFUSE_REFLECTION & light->getVisibilityMask())) {
             continue;
+        }
+
+        // Skip the light if it's not in all of the parent lobes' lightsets or the
+        // current lobe's lightset.
+        const scene_rdl2::rdl2::Light *rdlLight = light->getRdlLight();
+        if (!parentLobeLightSets.allLightSetsContain(rdlLight)) {
+            continue;
+        }
+        const scene_rdl2::rdl2::LightSet* lobeLightSet = lobe.getLightSet();
+        if (lobeLightSet != nullptr) {
+            if (!lobeLightSet->contains(rdlLight)) {
+                continue;
+            }
         }
 
         const LightFilterList *lightFilterList = lightSet.getLightFilterList(lightIndex);
@@ -407,7 +421,7 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
         LightIntersection lightIsect;
         int hitIdx = lightSet.intersect(P, &N, wi, parentRay.getTime(),
             scene_rdl2::math::sMaxValue, false, lightChoiceSamples, pv.nonMirrorDepth,
-            scene_rdl2::rdl2::DIFFUSE_REFLECTION, lightIsect, numLightsHit);
+            scene_rdl2::rdl2::DIFFUSE_REFLECTION, lightIsect, numLightsHit, lobe.getLightSet(), parentLobeLightSets);
         const Light* hitLight = hitIdx >= 0 ? lightSet.getLight(hitIdx) : nullptr;
         const LightFilterList* hitLightFilterList = hitIdx >= 0 ? lightSet.getLightFilterList(hitIdx) : nullptr;
         bool doDirect = (numLightsHit > 0);
@@ -431,6 +445,8 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
 
         VolumeTransmittance vt;
         vt.reset();
+
+        const scene_rdl2::rdl2::LightSet* lobeLightSet = lobe.getLightSet();
 
         float presence = 0.0f;
         // Compute indirect illumination if needed, trace a shadow ray if not
@@ -462,10 +478,16 @@ PathIntegrator::computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             ++sequenceID;
             bool hitVolume = false;
 
+            // Append this lobe's lightset to the parent lobes' lists
+            Rdl2LightSetList newParentLobeLightSets = parentLobeLightSets;
+            if (lobeLightSet != nullptr) {
+                newParentLobeLightSets.append(lobeLightSet);
+            }
+
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
                     pbrTls, ray, sp, nextPv, &lobe,
                     contribution, transparency, vt,
-                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, nullptr, false, hitVolume);
+                    sequenceID, aovs, nullptr, nullptr, nullptr, nullptr, nullptr, false, hitVolume, newParentLobeLightSets);
             if (indirectRadianceType != NONE) {
                 // Accumulate radiance, but only accumulate indirect or direct
                 // contribution
@@ -571,7 +593,8 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
         const BsdfSlice &slice, const Bssrdf &bssrdf,
         const LightSet &lightSet, bool doIndirect,
         float rayEpsilon, float shadowRayEpsilon,
-        unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs) const
+        unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     scene_rdl2::math::Color radiance = scene_rdl2::math::sBlack;
     if (mBssrdfSamples < 1 || !mEnableSSS) {
@@ -622,6 +645,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
 
         shading::BsdfSlice sliceLocal(isect.getNg(), slice.getWo(), true, true, slice.getShadowTerminatorFix());
         LambertBsdfLobe lobeLocal(N, scene_rdl2::math::sWhite, true);
+        lobeLocal.setLightSet(bssrdf.getLightSet()); // inherit the bssrdf lightset
 
         // Not doing any subsurface computations
         int subsurfaceSplitFactor = 1;
@@ -641,7 +665,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
             subsurfaceSplitFactor,           //subsurfaceSplitFactor
             computeRadianceSplitFactor,      //regular split factor
             0,                               //split index
-            doIndirect, rayEpsilon, shadowRayEpsilon, sequenceID, sequenceID, true, aovs, isect);
+            doIndirect, rayEpsilon, shadowRayEpsilon, sequenceID, sequenceID, true, aovs, isect, parentLobeLightSets);
 
 
         // We cannot approximate the forward scattering with a
@@ -649,11 +673,10 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
         radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, pv,
             ray, isect, slice, transmissionFresnel, scaleFresnelWo, lightSet,
             bssrdf, P, N, localF, subsurfaceSplitFactor, doIndirect,
-            rayEpsilon, shadowRayEpsilon, sequenceID, sequenceID, ssAov, aovs);
+            rayEpsilon, shadowRayEpsilon, sequenceID, sequenceID, ssAov, aovs, parentLobeLightSets);
 
         return radiance;
     }
-
 
     // Compute Full Subsurface
 
@@ -854,6 +877,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
         shading::BsdfSlice sliceLocal(subsurfaceSamples[i].mNg, slice.getWo(), true, true,
             slice.getShadowTerminatorFix());
         LambertBsdfLobe lobeLocal(subsurfaceSamples[i].mN, scene_rdl2::math::sWhite, true);
+        lobeLocal.setLightSet(bssrdf.getLightSet()); // inherit the bssrdf lightset
 
         // TODO: Need to pass rayProj and updated pv instead of ray, pv
         radiance += computeRadianceSubsurfaceSample(
@@ -864,7 +888,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
             subsurfaceSamples[i].mP, subsurfaceSamples[i].mN,
             subsurfaceSplitFactor, computeRadianceSplitFactor, i,
             doIndirect, rayEpsilon, shadowRayEpsilon, sssSampleID,
-            sequenceID, true, aovs, isect);
+            sequenceID, true, aovs, isect, parentLobeLightSets);
         RAYDB_SET_CONTRIBUTION(pbrTls, radiance / pv.pathThroughput);
     }
 
@@ -872,7 +896,7 @@ PathIntegrator::computeRadianceDiffusionSubsurface(pbr::TLState *pbrTls,
     radiance += computeDiffusionForwardScattering(pbrTls, bsdf, sp, pv, ray,
         isect, slice, transmissionFresnel, scaleFresnelWo, lightSet, bssrdf,
         P, N, localF, subsurfaceSplitFactor, doIndirect, rayEpsilon, shadowRayEpsilon,
-        sssSampleID, sequenceID, ssAov, aovs);
+        sssSampleID, sequenceID, ssAov, aovs, parentLobeLightSets);
 
     return radiance;
 }
@@ -886,7 +910,8 @@ PathIntegrator::computeDiffusionForwardScattering(pbr::TLState *pbrTls, const Bs
         const Bssrdf &bssrdf, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f &N,
         const scene_rdl2::math::ReferenceFrame &localF, int subsurfaceSplitFactor,
         bool doIndirect, float rayEpsilon, float shadowRayEpsilon,
-        unsigned sssSampleID, unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs) const
+        unsigned sssSampleID, unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     scene_rdl2::math::Color radiance = scene_rdl2::math::sBlack;
     const Scene *scene = MNRY_VERIFY(pbrTls->mFs->mScene);
@@ -1038,13 +1063,14 @@ PathIntegrator::computeDiffusionForwardScattering(pbr::TLState *pbrTls, const Bs
         shading::BsdfSlice sliceGlobal(-isectBack.getNg(), slice.getWo(), true, true,
             slice.getShadowTerminatorFix());
         LambertBsdfLobe lobeGlobal(NiMap, scene_rdl2::math::sWhite, true);
+        lobeGlobal.setLightSet(bssrdf.getLightSet()); // inherit the bssrdf lightset
         // TODO: Need to pass rayBack and updated pv instead of ray, pv
         radiance += computeRadianceSubsurfaceSample(pbrTls, bsdf,
             sp, nextPv, ray, isectBack.getdNdx(), isectBack.getdNdy(),
             pt, transmissionFresnel, lightSet, lobeGlobal, sliceGlobal,
             Pi, NiMap, subsurfaceSplitFactor, computeRadianceSplitFactor,
             sampleIndex, doIndirect, rayEpsilon, shadowRayEpsilon,
-            sssSampleID, sequenceID, false, aovs, isect);
+            sssSampleID, sequenceID, false, aovs, isect, parentLobeLightSets);
 
         RAYDB_SET_CONTRIBUTION(pbrTls, radiance / pv.pathThroughput);
     }
@@ -1483,11 +1509,12 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                                               pbrTls->mFs->mShadowTerminatorFix);
                 const bool isReflection = true;
                 LambertBsdfLobe lobeLocal(nOut, scene_rdl2::math::sWhite, isReflection);
+                lobeLocal.setLightSet(nullptr); // for volumeSubsurface: no bssrdf and no parent bsdf lobe, can't do anything
                 radiance += computeRadianceSubsurfaceSample(
                     pbrTls, bsdf, sp, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
                     pt, transmissionFresnel, lightSet, lobeLocal, sliceLocal, pOut, nOut,
                     nSubsurfaceSample, 1, s, doIndirect,  rayEpsilon, shadowRayEpsilon,
-                    sequenceID, sequenceID, true, aovs, isect);
+                    sequenceID, sequenceID, true, aovs, isect, Rdl2LightSetList());
             }
         }
 
@@ -1693,11 +1720,12 @@ PathIntegrator::computeRadiancePathTraceSubsurface(pbr::TLState* pbrTls,
                                       pbrTls->mFs->mShadowTerminatorFix);
         const bool isReflection = true;
         LambertBsdfLobe lobeLocal(nOut, scene_rdl2::math::sWhite, isReflection);
+        lobeLocal.setLightSet(nullptr);  // for volumeSubsurface: no bssrdf and no bsdf lobe, can't do anything
         radiance += computeRadianceSubsurfaceSample(
             pbrTls, bsdf, sp, pv, ray, isectOut.getdNdx(), isectOut.getdNdy(),
             pt, transmissionFresnel, lightSet, lobeLocal, sliceLocal, pOut, nOut,
             nSubsurfaceSample, 1, s, doIndirect,  rayEpsilon, shadowRayEpsilon,
-            sequenceID, sequenceID, true, aovs, isect);
+            sequenceID, sequenceID, true, aovs, isect, Rdl2LightSetList());
 
     }
 

@@ -262,12 +262,14 @@ void chooseLightsToSample(float* lightSelectionPdfs, const LightSetSampler& lSam
 void drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSetSampler &lSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f& P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, BsdfSample *bsmp, int clampingDepth,
-        float clampingValue, shading::BsdfLobe::Type indirectFlags, float rayDirFootprint);
+        float clampingValue, shading::BsdfLobe::Type indirectFlags, float rayDirFootprint,
+        const Rdl2LightSetList& parentLobeLightSets);
 
 void drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N,
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf);
+        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf,
+        const Rdl2LightSetList& parentLobeLightSets);
 
 void applyRussianRoulette(const BsdfSampler &bSampler, BsdfSample *bsmp,
         const Subpixel &sp, const PathVertex &pv, unsigned sequenceID,

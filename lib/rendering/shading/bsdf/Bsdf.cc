@@ -27,19 +27,16 @@ BsdfLobe::BsdfLobe(Type type, DifferentialFlags diffFlags, bool isSpherical, int
     mScale(1.0f, 1.0f, 1.0f),
     mFresnel(nullptr),
     mLabel(0),
-    mPropertyFlags(propertyFlags | PROPERTY_COLOR)
+    mPropertyFlags(propertyFlags | PROPERTY_COLOR),
+    mLightSet(nullptr)
 {
 }
-
-
-
 
 BsdfLobe::~BsdfLobe()
 {
     // Nothing to do here, all lobes and fresnel were allocated with a
     // memory arena
 }
-
 
 void
 BsdfLobe::setFresnel(Fresnel *fresnel)

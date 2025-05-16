@@ -961,8 +961,13 @@ const Light *
 Scene::intersectVisibleLight(const mcrt_common::Ray &ray, float maxDistance,
         IntegratorSample1D &samples, LightIntersection &lightIsect, int &numHits) const
 {
+    // Lightset and Rdl2LightSetList() can be empty because this is called for primary rays
+    // (which aren't fired from a material and thus lobe lightsets are not applicable) and for vector mode
+    // light calculations (where lobe lightsets have not yet been implemented).  This function will need
+    // to be updated for the vector mode implementation.
     int lightIdx = mVisibleLightSet.intersect(ray.getOrigin(), nullptr, ray.getDirection(), ray.getTime(),
-        maxDistance, false, samples, ray.getDepth(), rdl2::ALL_VISIBLE, lightIsect, numHits);
+        maxDistance, false, samples, ray.getDepth(), rdl2::ALL_VISIBLE, lightIsect, numHits,
+        /* lightset */ nullptr, Rdl2LightSetList());
     if (lightIdx == -1) {
         return nullptr;
     }

@@ -56,7 +56,7 @@ typedef std::vector<LightFilterList *> LightFilterLists;
 typedef std::vector<std::unique_ptr<LightFilterList>> LightFilterListsUniquePtrs;
 
 class LightSet;
-
+class Rdl2LightSetList;
 
 enum VisibleInCamera
 {
@@ -329,7 +329,8 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
                     float rayTime,
                     // outputs
                     LightSet &lightSet,
-                    bool &hasRayTerminatorLights);
+                    bool &hasRayTerminatorLights,
+                    const Rdl2LightSetList& parentLobeLightSets);
 
 // Randomly choose a light based on how many lights have been hit so far
 bool chooseThisLight(const IntegratorSample1D &samples, int depth, unsigned int numHits);

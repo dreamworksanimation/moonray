@@ -22,7 +22,9 @@ HUD_VALIDATOR(LightSet);
 int
 LightSet::intersect(const Vec3f &P, const Vec3f *N, const Vec3f &wi, float time,
         float maxDistance, bool includeRayTerminationLights, IntegratorSample1D &samples, int depth,
-        int visibilityMask, LightIntersection &chosenIsect, int &numHits) const
+        int visibilityMask, LightIntersection &chosenIsect, int &numHits,
+        const scene_rdl2::rdl2::LightSet* bsdfLobeLightSet,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     chosenIsect.distance = maxDistance;
 
@@ -43,6 +45,7 @@ LightSet::intersect(const Vec3f &P, const Vec3f *N, const Vec3f &wi, float time,
 
         LightIntersection currentIsect;
         const Light* light = mLights[l];
+        const scene_rdl2::rdl2::Light *rdlLight = light->getRdlLight();
 
         if (!(visibilityMask & light->getVisibilityMask())) {
             // skip light if it is masked
@@ -57,6 +60,17 @@ LightSet::intersect(const Vec3f &P, const Vec3f *N, const Vec3f &wi, float time,
         if (light->hasPortal()) {
             // skip light if it has a portal assigned
             continue;
+        }
+
+        // Skip the light if it's not in all of the parent lobes' lightsets or the
+        // current lobe's lightset.
+        if (!parentLobeLightSets.allLightSetsContain(rdlLight)) {
+            continue;
+        }
+        if (bsdfLobeLightSet != nullptr) {
+            if (!bsdfLobeLightSet->contains(rdlLight)) {
+                continue;
+            }
         }
 
         if (light->intersect(P, N, wi, time, maxDistance, currentIsect)) {
@@ -77,7 +91,9 @@ void
 LightSet::intersectAndEval(mcrt_common::ThreadLocalState *tls, const Vec3f &P, const Vec3f *N,
         const Vec3f &wi, const LightFilterRandomValues& filterR, float time, const PathVertex *pv,
         bool fromCamera, bool includeRayTerminationLights, IntegratorSample1D &samples, int depth,
-        int visibilityMask, LightContribution &lCo, float rayDirFootprint) const
+        int visibilityMask, LightContribution &lCo, float rayDirFootprint,
+        const scene_rdl2::rdl2::LightSet* bsdfLobeLightSet,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     // Initialize contribution
     lCo.isInvalid = true;
@@ -90,7 +106,7 @@ LightSet::intersectAndEval(mcrt_common::ThreadLocalState *tls, const Vec3f &P, c
     LightIntersection isect;
     int numLightsHit = 0;
     int lightIdx = intersect(P, N, wi, time, sMaxValue, includeRayTerminationLights,
-        samples, depth, visibilityMask, isect, numLightsHit);
+        samples, depth, visibilityMask, isect, numLightsHit, bsdfLobeLightSet, parentLobeLightSets);
 
     const Light* light = nullptr;
     const LightFilterList* lightFilterList = nullptr;

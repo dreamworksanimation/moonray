@@ -358,7 +358,8 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         DeepParams* deepParams, CryptomatteParams *cryptomatteParamsPtr,
         CryptomatteParams *reflectedCryptomatteParamsPtr,
         CryptomatteParams *refractedCryptomatteParamsPtr,
-        bool ignoreVolumes, bool &hitVolume) const
+        bool ignoreVolumes, bool &hitVolume,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     CHECK_CANCELLATION(pbrTls, return NONE);
 
@@ -735,7 +736,8 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
             newCryptomatteParamsPtr,
             /* reflectedCryptoParamsPtr = */ nullptr,
             /* refractedCryptoParamsPtr = */ nullptr,
-            /* ignoreVolumes = */ false, presenceHitVolume);
+            /* ignoreVolumes = */ false, presenceHitVolume,
+            parentLobeLightSets);
 
         radiance += presenceRadiance;
         vt.mTransmittanceE *= vtPresence.mTransmittanceE;
@@ -980,7 +982,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     LightSet activeLightSet;
     bool hasRayTerminatorLights;
     computeActiveLights(arena, scene, isect, normalPtr, *bsdf, &pv, ray.getTime(),
-        activeLightSet, hasRayTerminatorLights);
+        activeLightSet, hasRayTerminatorLights, parentLobeLightSets);
 
     // Setup a slice, which handles selecting the lobe types and setup
     // evaluations to include the cosine term.
@@ -1005,7 +1007,7 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
         // started up inside of computeRadianceSubsurface as needed.
         radiance += computeRadianceDiffusionSubsurface(pbrTls, *bsdf, sp, pv, ray,
             isect, slice, *bssrdf, activeLightSet, doIndirect, rayEpsilon, shadowRayEpsilon,
-            sequenceID, ssAov, aovs);
+            sequenceID, ssAov, aovs, parentLobeLightSets);
     }
 
     // Option 2: path trace volumetric approach
@@ -1046,7 +1048,8 @@ PathIntegrator::computeRadianceRecurse(pbr::TLState *pbrTls, mcrt_common::RayDif
     // Setup bsdf and light samples
     radiance += computeRadianceBsdfMultiSampler(pbrTls, sp, pv, ray, isect, *bsdf, slice,
         doIndirect, indirectFlags, newPriorityList, newPriorityListCount, activeLightSet, normalPtr,
-        rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs, reflectedCryptomatteParamsPtr, refractedCryptomatteParamsPtr);
+        rayEpsilon, shadowRayEpsilon, ssAov, sequenceID, aovs, reflectedCryptomatteParamsPtr, refractedCryptomatteParamsPtr,
+        parentLobeLightSets);
 
     // -------------------------------------------------------------------
     // Add presence fragment to cryptomatte or update beauty for other recursions
@@ -1339,7 +1342,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                                deepTransparency, vt, sequenceID, aovs, depth,
                                &deepParams, cryptomatteParamsPtr,
                                reflectedCryptomatteParamsPtr, refractedCryptomatteParamsPtr,
-                               /* ignoreVolumes = */ false, hitVolume);
+                               /* ignoreVolumes = */ false, hitVolume, Rdl2LightSetList());
 
         float deepAlpha = 1.f - deepTransparency;
 
@@ -1376,7 +1379,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
                                    hsTransparency, vt, hsSequenceID, hsAovs, depth,
                                    &deepParams, cryptomatteParamsPtr,
                                    reflectedCryptomatteParamsPtr, refractedCryptomatteParamsPtr,
-                                   /* ignoreVolumes = */ true, hitVolume);
+                                   /* ignoreVolumes = */ true, hitVolume, Rdl2LightSetList());
 
             float hsAlpha = 1.f;
 
@@ -1416,7 +1419,7 @@ PathIntegrator::computeRadiance(pbr::TLState *pbrTls, int pixelX, int pixelY,
         computeRadianceRecurse(pbrTls, ray, sp, pv, nullptr, radiance,
             transparency, vt, sequenceID, aovs, depth, nullptr, cryptomatteParamsPtr,
             reflectedCryptomatteParamsPtr, refractedCryptomatteParamsPtr,
-            /* ignoreVolumes = */ false, hitVolume);
+            /* ignoreVolumes = */ false, hitVolume, Rdl2LightSetList());
 
         alpha = 1.f - transparency;
         pathPixelWeight = pv.pathPixelWeight;

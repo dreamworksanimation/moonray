@@ -18,8 +18,8 @@
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/platform/IspcUtil.h>
 #include <scene_rdl2/render/util/Arena.h>
+#include <scene_rdl2/scene/rdl2/LightSet.h>
 #include <moonray/common/mcrt_util/StaticVector.h>
-
 
 namespace moonray {
 namespace shading {
@@ -101,7 +101,7 @@ public:
         // differentials into account. There is already some footprint scaling
         // information built into the differentials, so if this function ignores
         // them, we need to re-apply those scales again.
-        IGNORES_INCOMING_DIFFERENTIALS = 1 << 1, 
+        IGNORES_INCOMING_DIFFERENTIALS = 1 << 1,
     };
 
 
@@ -281,6 +281,9 @@ public:
     // prepended.
     virtual void show(std::ostream& os, const std::string& indent) const = 0;
 
+    void setLightSet(const scene_rdl2::rdl2::LightSet* lightSet) { mLightSet = lightSet; }
+    const scene_rdl2::rdl2::LightSet* getLightSet() const { return mLightSet; }
+
 private:
 
     Type mType;
@@ -291,6 +294,7 @@ private:
     Fresnel *mFresnel;
     int mLabel;
     int32_t mPropertyFlags;
+    const scene_rdl2::rdl2::LightSet* mLightSet;
 };
 
 

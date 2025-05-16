@@ -14,6 +14,7 @@
 #include <scene_rdl2/common/math/ReferenceFrame.h>
 #include <scene_rdl2/common/math/Vec3.h>
 #include <scene_rdl2/common/platform/IspcUtil.h>
+#include <scene_rdl2/scene/rdl2/LightSet.h>
 #include <scene_rdl2/scene/rdl2/TraceSet.h>
 #include <scene_rdl2/scene/rdl2/Material.h>
 
@@ -138,6 +139,9 @@ public:
     // prepended.
     virtual void show(std::ostream& os, const std::string& indent) const = 0;
 
+    void setLightSet(const scene_rdl2::rdl2::LightSet* lightSet) { mLightSet = lightSet; }
+    const scene_rdl2::rdl2::LightSet* getLightSet() const { return mLightSet; }
+
 private:
     // Copy is disabled
     Bssrdf(const Bssrdf &other);
@@ -157,6 +161,8 @@ protected:
     const scene_rdl2::rdl2::TraceSet* mBssrdfTraceSet;
     const scene_rdl2::rdl2::Material* mMaterial;
     scene_rdl2::rdl2::EvalNormalFunc mEvalNormalFunc;
+
+    const scene_rdl2::rdl2::LightSet* mLightSet;
 };
 
 

@@ -175,7 +175,8 @@ void
 drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSetSampler &lSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f& P, const scene_rdl2::math::Vec3f* N,
         float time, unsigned sequenceID, BsdfSample *bsmp, int clampingDepth,
-        float clampingValue, shading::BsdfLobe::Type indirectFlags, float rayDirFootprint)
+        float clampingValue, shading::BsdfLobe::Type indirectFlags, float rayDirFootprint,
+        const Rdl2LightSetList& parentLobeLightSets)
 {
     IntegratorSample2D bsdfSamples;
     IntegratorSample2D lightFilterSamples;
@@ -298,7 +299,7 @@ drawBsdfSamples(pbr::TLState *pbrTls, const BsdfSampler &bSampler, const LightSe
             const LightSet &lightSet = lSampler.getLightSet();
             lightSet.intersectAndEval(pbrTls->mTopLevelTls, P, N, bsmp[s].wi, lightFilterSample, time, &pv, false,
                                       includeRayTerminationLights, lightChoiceSamples, pv.nonMirrorDepth, lobeMask,
-                                      lCo, rayDirFootprint);
+                                      lCo, rayDirFootprint, lobe->getLightSet(), parentLobeLightSets);
 
             integrateBsdfSample(bSampler, lobeIndex, lSampler, pv.pathThroughput, lCo, bsmp[s]);
 
@@ -349,7 +350,8 @@ finline void
 integrateLightSetSample(const LightSetSampler &lSampler,
         int lightIndex, const BsdfSampler &bSampler,
         const PathVertex &pv, LightSample &lsmp,
-        int clampingDepth, float clampingValue, const scene_rdl2::math::Vec3f &P)
+        int clampingDepth, float clampingValue, const scene_rdl2::math::Vec3f &P,
+        const Rdl2LightSetList& parentLobeLightSets)
 {
     // Mark the sample valid only if we have valid lobe contributions and
     // initialize contribution for summing
@@ -377,11 +379,24 @@ integrateLightSetSample(const LightSetSampler &lSampler,
             continue;
         }
 
-        // skip lobe if light is marked as not visible from this lobe
+        // skip lobe if light is marked as not visible from this lobe type
         int lobeMask = lobeTypeToRayMask(lobe->getType());
         const Light* light = lSampler.getLight(lightIndex);
         if (!(lobeMask & light->getVisibilityMask())) {
             continue;
+        }
+
+        // Skip the light if it's not in all of the parent lobes' lightsets or the
+        // current lobe's lightset.
+        const scene_rdl2::rdl2::Light *rdlLight = light->getRdlLight();
+        if (!parentLobeLightSets.allLightSetsContain(rdlLight)) {
+            continue;
+        }
+        const scene_rdl2::rdl2::LightSet* lobeLightSet = lobe->getLightSet();
+        if (lobeLightSet != nullptr) {
+            if (!lobeLightSet->contains(rdlLight)) {
+                continue;
+            }
         }
 
         // Evaluate the lobe
@@ -456,7 +471,8 @@ void
 drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const BsdfSampler &bSampler,
         const Subpixel &sp, const PathVertex &pv, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f *N, 
         float time, unsigned sequenceID, LightSample *lsmp, int clampingDepth, float clampingValue, 
-        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf)
+        float rayDirFootprint, float* aovs, int lightIndex, float lightSelectionPdf,
+        const Rdl2LightSetList& parentLobeLightSets)
 {
     IntegratorSample3D lightSamples;
     IntegratorSample2D lightFilterSamples;
@@ -514,7 +530,7 @@ drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const Bs
         }
     }
 
-    // Loop over each light's samples
+    // Loop over the light's samples
     for (int i = 0; i < lightSampleCount; ++i) {
         // Draw the sample and test validity
         scene_rdl2::math::Vec3f lightSample;
@@ -543,8 +559,13 @@ drawLightSamples(pbr::TLState *pbrTls, const LightSetSampler &lSampler, const Bs
         lsmp[i].pdf *= lightSelectionPdf;
 
         integrateLightSetSample(lSampler, lightIndex, bSampler, pv, lsmp[i],
-            clampingDepth, clampingValue, P);
+            clampingDepth, clampingValue, P, parentLobeLightSets);
 
+        if (lsmp[i].isInvalid()) {
+            continue;
+        }
+
+        // we only want to count the valid light samples
         stats.incCounter(STATS_LIGHT_SAMPLES);
     }
 }
@@ -1066,7 +1087,7 @@ CPP_computeRadianceSubsurface(const PathIntegrator * pathIntegrator,
             pv.subsurfaceDepth += 1;
             radiance += pathIntegrator->computeRadianceDiffusionSubsurface(
                     pbrTls, bsdf, sp, pv, ray, isect, slice, *bssrdf, *lightSet,
-                    doIndirect[i], rayEpsilon[i], shadowRayEpsilon[i], sequenceID[i], ssAov, aovs);
+                    doIndirect[i], rayEpsilon[i], shadowRayEpsilon[i], sequenceID[i], ssAov, aovs, Rdl2LightSetList());
         }
         if (volumeSubsurface) {
             MNRY_ASSERT(!bssrdf); // else our depth count will be messed up

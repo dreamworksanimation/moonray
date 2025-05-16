@@ -279,7 +279,8 @@ public:
     addComponent(const MicrofacetAnisotropicClearcoat& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const float roughnessU = component.getRoughnessU();
         const float roughnessV = component.getRoughnessV();
@@ -333,6 +334,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -340,7 +342,8 @@ public:
     addComponent(const MicrofacetIsotropicClearcoat& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Disable layering clearcoat/spec IORs
         // The results looks visually better when we don't layer clearcoat/spec IORs
@@ -398,6 +401,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -405,7 +409,8 @@ public:
     addComponent(const MirrorClearcoat& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Disable layering clearcoat/spec IORs
         // The results looks visually better when we don't layer clearcoat/spec IORs
@@ -457,6 +462,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -464,7 +470,8 @@ public:
     addComponent(const EyeCausticBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<EyeCausticBsdfLobe>(
                         mState.adaptNormal(component.getN()),
@@ -489,6 +496,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -496,7 +504,8 @@ public:
     addComponent(const LambertianBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<LambertBsdfLobe>(
                 component.getN(),
@@ -529,6 +538,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -536,7 +546,8 @@ public:
     addComponent(const LambertianBTDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<LambertBsdfLobe>(
                 component.getN(),
@@ -569,6 +580,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -576,7 +588,8 @@ public:
     addComponent(const OrenNayarBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<OrenNayarBsdfLobe>(
                 component.getN(),
@@ -610,6 +623,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -617,7 +631,8 @@ public:
     addComponent(const FlatDiffuseBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<FlatDiffuseBsdfLobe>(
                 component.getN(),
@@ -654,6 +669,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -661,7 +677,8 @@ public:
     addComponent(const DipoleDiffusion& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Switch to Lambertian diffuse if max_subsurface_per_path has been reached
         if (!mState.isSubsurfaceAllowed()) {
@@ -670,7 +687,8 @@ public:
             addComponent(diffuse,
                          weight,
                          combineBehavior,
-                         label);
+                         label,
+                         lightSet);
             return;
         }
 
@@ -708,6 +726,7 @@ public:
 
         bssrdf->setTraceSet(component.getTraceSet());
         bssrdf->setLabel(label);
+        bssrdf->setLightSet(lightSet);
         mBsdf.addBssrdf(bssrdf);
     }
 
@@ -715,7 +734,8 @@ public:
     addComponent(const NormalizedDiffusion& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Switch to Lambertian diffuse if max_subsurface_per_path has been reached
         if (!mState.isSubsurfaceAllowed()) {
@@ -724,7 +744,8 @@ public:
             addComponent(diffuse,
                          weight,
                          combineBehavior,
-                         label);
+                         label,
+                         lightSet);
             return;
         }
 
@@ -762,6 +783,7 @@ public:
 
         bssrdf->setTraceSet(component.getTraceSet());
         bssrdf->setLabel(label);
+        bssrdf->setLightSet(lightSet);
         mBsdf.addBssrdf(bssrdf);
     }
 
@@ -769,7 +791,8 @@ public:
     addComponent(const RandomWalkSubsurface& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Switch to Lambertian diffuse if max_subsurface_per_path has been reached
         if (!mState.isSubsurfaceAllowed()) {
@@ -778,7 +801,8 @@ public:
             addComponent(diffuse,
                          weight,
                          combineBehavior,
-                         label);
+                         label,
+                         lightSet);
             return;
         }
 
@@ -816,6 +840,7 @@ public:
 
         bssrdf->setTraceSet(component.getTraceSet());
         bssrdf->setLabel(label);
+        //bssrdf->setLightSet(lightSet); // no lightset on VolumeSubsurface
         mBsdf.setVolumeSubsurface(bssrdf);
     }
 
@@ -823,7 +848,8 @@ public:
     addComponent(const MicrofacetAnisotropicBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
@@ -872,6 +898,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -879,7 +906,8 @@ public:
     addComponent(const MicrofacetAnisotropicBTDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         shading::ShaderIor ior(mState,
                                component.getEta(),
@@ -922,6 +950,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -930,7 +959,8 @@ public:
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
                  const int reflectionLabel,
-                 const int transmissionLabel)
+                 const int transmissionLabel,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const float reflWeight  = weight * component.getReflectionWeight();
         const float transWeight = weight * component.getTransmissionWeight();
@@ -1038,12 +1068,14 @@ public:
         if (refl) {
             refl->setScale(scale);
             refl->setLabel(reflectionLabel);
+            refl->setLightSet(lightSet);
             mBsdf.addLobe(refl);
         }
 
         if (trans) {
             trans->setScale(scale * transWeight);
             trans->setLabel(transmissionLabel);
+            trans->setLightSet(lightSet);
             mBsdf.addLobe(trans);
         }
     }
@@ -1052,7 +1084,8 @@ public:
     addComponent(const MicrofacetIsotropicBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
@@ -1107,6 +1140,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1114,7 +1148,8 @@ public:
     addComponent(const MicrofacetIsotropicBTDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         shading::ShaderIor ior(mState,
                                component.getEta(),
@@ -1152,6 +1187,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1160,7 +1196,8 @@ public:
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
                  const int reflectionLabel,
-                 const int transmissionLabel)
+                 const int transmissionLabel,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const float reflWeight  = weight * component.getReflectionWeight();
         const float transWeight = weight * component.getTransmissionWeight();
@@ -1296,11 +1333,13 @@ public:
 
         if (refl) {
             refl->setLabel(reflectionLabel);
+            refl->setLightSet(lightSet);
             mBsdf.addLobe(refl);
         }
 
         if (trans) {
             trans->setLabel(transmissionLabel);
+            trans->setLightSet(lightSet);
             mBsdf.addLobe(trans);
         }
     }
@@ -1309,7 +1348,8 @@ public:
     addComponent(const MirrorBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
@@ -1353,6 +1393,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1360,7 +1401,8 @@ public:
     addComponent(const MirrorBTDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         shading::ShaderIor ior(mState,
                                component.getEta(),
@@ -1390,6 +1432,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1398,7 +1441,8 @@ public:
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
                  const int reflectionLabel,
-                 const int transmissionLabel)
+                 const int transmissionLabel,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const float reflWeight  = weight * component.getReflectionWeight();
         const float transWeight = weight * component.getTransmissionWeight();
@@ -1485,11 +1529,13 @@ public:
 
         if (refl) {
             refl->setLabel(reflectionLabel);
+            refl->setLightSet(lightSet);
             mBsdf.addLobe(refl);
         }
 
         if (trans) {
             trans->setLabel(transmissionLabel);
+            trans->setLightSet(lightSet);
             mBsdf.addLobe(trans);
         }
     }
@@ -1498,7 +1544,8 @@ public:
     addComponent(const GlitterFlakeBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // no cook-torrance compensation for glitter
         scene_rdl2::math::Color favg = scene_rdl2::math::sBlack;
@@ -1534,6 +1581,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1541,7 +1589,8 @@ public:
     addComponent(const HairBSDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         float minRoughness = getMinRoughness();
 
@@ -1609,6 +1658,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1616,7 +1666,8 @@ public:
     addComponent(const HairRBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<HairRLobe>(
                 component.getHairDir(),
@@ -1655,6 +1706,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1662,7 +1714,8 @@ public:
     addComponent(const HairTRTBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const scene_rdl2::math::Color hairSigmaA =
             HairUtil::computeAbsorptionCoefficients(component.getHairColor(),
@@ -1704,6 +1757,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1711,7 +1765,8 @@ public:
     addComponent(const HairTTBTDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const scene_rdl2::math::Color hairSigmaA =
             HairUtil::computeAbsorptionCoefficients(component.getHairColor(),
@@ -1750,6 +1805,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1757,7 +1813,8 @@ public:
     addComponent(const HairTRRTBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const scene_rdl2::math::Color hairSigmaA =
             HairUtil::computeAbsorptionCoefficients(component.getHairColor(),
@@ -1792,6 +1849,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1799,7 +1857,8 @@ public:
     addComponent(const HairDiffuseBSDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<HairDiffuseLobe>(
                 component.getHairDir(),
@@ -1823,6 +1882,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1830,7 +1890,8 @@ public:
     addComponent(const ToonBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<ToonBsdfLobe>(
             component.getN(),
@@ -1851,7 +1912,6 @@ public:
         }
 
         scene_rdl2::math::Color scale(weight);
-
         if (isUnder(combineBehavior)) {
             // account for the non-dielectric lobes above
             scale *= mCurrentTransmittance;
@@ -1868,6 +1928,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1875,7 +1936,8 @@ public:
     addComponent(const ToonSpecularBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         const float cosNO = dot(component.getN(), mState.getWo());
 
@@ -1952,6 +2014,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -1959,7 +2022,8 @@ public:
     addComponent(const HairToonSpecularBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         // Adapt normal to prevent reflection ray from self-intersecting this geometry
         const scene_rdl2::math::Vec3f adaptedNormal = mState.adaptNormal(component.getN());
@@ -2014,6 +2078,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -2021,7 +2086,8 @@ public:
     addComponent(const StochasticFlakesBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe =
             mTls->mArena->allocWithArgs<StochasticFlakesBsdfLobe>(
@@ -2052,6 +2118,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -2059,7 +2126,8 @@ public:
     addComponent(const VelvetBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe =
             mTls->mArena->allocWithArgs<FabricVelvetBsdfLobe>(
@@ -2090,6 +2158,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -2097,7 +2166,8 @@ public:
     addComponent(const FabricBRDF& component,
                  float weight,
                  ispc::BsdfBuilderBehavior combineBehavior,
-                 const int label)
+                 const int label,
+                 const scene_rdl2::rdl2::LightSet* lightSet)
     {
         BsdfLobe* lobe = mTls->mArena->allocWithArgs<DwaFabricBsdfLobe>(
                 component.getN(),
@@ -2127,6 +2197,7 @@ public:
         }
 
         lobe->setLabel(label);
+        lobe->setLightSet(lightSet);
         mBsdf.addLobe(lobe);
     }
 
@@ -2179,10 +2250,11 @@ BsdfBuilder::add##Type(                                                     \
         const Type &component,                                              \
         float weight,                                                       \
         ispc::BsdfBuilderBehavior combineBehavior,                          \
-        int label)                                                          \
+        int label,                                                          \
+        const scene_rdl2::rdl2::LightSet* lightSet)                         \
 {                                                                           \
     if (!mImpl->testForVisibility(weight, combineBehavior)) { return; }     \
-    mImpl->addComponent(component, weight, combineBehavior, label);         \
+    mImpl->addComponent(component, weight, combineBehavior, label, lightSet); \
     if (!mImpl->getInAdjacentBlock()) {                                     \
         mImpl->accumulateAttenuation();                                     \
     }                                                                       \
@@ -2195,10 +2267,11 @@ BsdfBuilder::add##Type(                                                     \
               float weight,                                                 \
               ispc::BsdfBuilderBehavior combineBehavior,                    \
               int label1,                                                   \
-              int label2)                                                   \
+              int label2,                                                   \
+              const scene_rdl2::rdl2::LightSet* lightSet)                   \
 {                                                                           \
     if (!mImpl->testForVisibility(weight, combineBehavior)) { return; }     \
-    mImpl->addComponent(component, weight, combineBehavior, label1, label2);\
+    mImpl->addComponent(component, weight, combineBehavior, label1, label2, lightSet); \
     if (!mImpl->getInAdjacentBlock()) {                                     \
         mImpl->accumulateAttenuation();                                     \
     }                                                                       \

@@ -324,7 +324,8 @@ PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
         const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
         const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
         scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
-        const shading::Intersection& isect, const float* lightSelectionPdfs) const
+        const shading::Intersection& isect, const float* lightSelectionPdfs,
+        const Rdl2LightSetList& parentLobeLightSets) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
 
@@ -340,6 +341,7 @@ PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
     for (int lightIndex = 0; lightIndex < lightCount; ++lightIndex) {
 
         const Light *light = lSampler.getLight(lightIndex);
+        const scene_rdl2::rdl2::Light *rdlLight = light->getRdlLight();
 
         /// Sample ALL unbounded and mesh lights, regardless of light sampling mode
         /// TODO: the paper used for adaptive light sampling has some probability specifying whether to sample unbounded 
@@ -372,7 +374,7 @@ PathIntegrator::sampleAndAddDirectLightContributions(pbr::TLState* pbrTls,
         // ---------------  Draw light samples from the light and compute tentative contributions ----------------------
         drawLightSamples(pbrTls, lSampler, bSampler, sp, pv, isect.getP(), cullingNormal, parentRay.getTime(), 
                          sequenceID, lsmp, mSampleClampingDepth, sp.mSampleClampingValue, 
-                         parentRay.getDirFootprint(), aovs, lightIndex, lightSelectionPdf);
+                         parentRay.getDirFootprint(), aovs, lightIndex, lightSelectionPdf, parentLobeLightSets);
 
         if (pv.nonMirrorDepth > 0 && mRussianRouletteThreshold > 0.0f) {
             applyRussianRoulette(lSampler, lsmp, sp, pv, sequenceID, 
@@ -412,7 +414,8 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
     scene_rdl2::math::Color &radiance, unsigned& sequenceID,
     float *aovs,
     CryptomatteParams *reflectedCryptomatteParams,
-    CryptomatteParams *refractedCryptomatteParams) const
+    CryptomatteParams *refractedCryptomatteParams,
+    const Rdl2LightSetList& parentLobeLightSets) const
 {
     MNRY_ASSERT(pbrTls->isIntegratorAccumulatorRunning());
 
@@ -589,12 +592,19 @@ PathIntegrator::addIndirectOrDirectVisibleContributions(
                                            material->getRecordRefractedCryptomatte()) ?
                                            refractedCryptomatteParams : nullptr;
 
+            // Append this lobe's lightset to the parent lobes' lists
+            const scene_rdl2::rdl2::LightSet* lobeLightSet = lobe->getLightSet();
+            Rdl2LightSetList newParentLobeLightSets = parentLobeLightSets;
+            if (lobeLightSet != nullptr) {
+                newParentLobeLightSets.append(lobeLightSet);
+            }
 
             IndirectRadianceType indirectRadianceType = computeRadianceRecurse(
                     pbrTls, ray, sp,
                     pv, lobe, radianceIndirect, transparencyIndirect,
                     vtIndirect, sequenceID, aovs, nullptr, nullptr, nullptr,
-                    newReflectedCryptomatteParams, newRefractedCryptomatteParams, false, hitVolume);
+                    newReflectedCryptomatteParams, newRefractedCryptomatteParams, false, hitVolume,
+                    newParentLobeLightSets);
 
             if (indirectRadianceType != NONE) {
                 // Accumulate indirect lighting contribution
@@ -630,7 +640,8 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     float rayEpsilon, float shadowRayEpsilon,
     const scene_rdl2::math::Color &ssAov, unsigned &sequenceID, float *aovs,
     CryptomatteParams *reflectedCryptomatteParams,
-    CryptomatteParams *refractedCryptomatteParams) const
+    CryptomatteParams *refractedCryptomatteParams,
+    const Rdl2LightSetList& parentLobeLightSets) const
 {
     // TODO:
     // A couple things seem out of place with the parameters to function.
@@ -690,7 +701,8 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // Draw Bsdf and LightSet samples and compute tentative contributions.
     drawBsdfSamples(pbrTls, bSampler, lSampler, sp, pv, isect.getP(), cullingNormal,
                     ray.getTime(), sequenceID, bsmp, mSampleClampingDepth,
-                    sp.mSampleClampingValue, indirectFlags, ray.getDirFootprint());
+                    sp.mSampleClampingValue, indirectFlags, ray.getDirFootprint(),
+                    parentLobeLightSets);
 
     // now that we have drawn our bsdf samples, we can fully
     // pack our material aovs
@@ -724,14 +736,14 @@ PathIntegrator::computeRadianceBsdfMultiSampler(pbr::TLState *pbrTls,
     // contributions for that sample accordingly.
 
     sampleAndAddDirectLightContributions(pbrTls, sp, pv, lSampler, lsmp, bSampler, cullingNormal, ray,
-            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect, lightSelectionPdfs);
+            rayEpsilon, shadowRayEpsilon, radiance, sequenceID, aovs, isect, lightSelectionPdfs, parentLobeLightSets);
     checkForNan(radiance, "Direct contributions", sp, pv, ray, isect);
 
     if (doIndirect) {
         // Note: This will recurse
         addIndirectOrDirectVisibleContributions(pbrTls, sp, pv, bSampler, bsmp,
                 ray, rayEpsilon, shadowRayEpsilon, isect, indirectFlags, newPriorityList, newPriorityListCount,
-                radiance, sequenceID, aovs, reflectedCryptomatteParams, refractedCryptomatteParams);
+                radiance, sequenceID, aovs, reflectedCryptomatteParams, refractedCryptomatteParams, parentLobeLightSets);
         checkForNan(radiance, "Direct or indirect contributions", sp, pv, ray,
                 isect);
     } else {

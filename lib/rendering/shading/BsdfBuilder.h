@@ -7,6 +7,7 @@
 
 #include <scene_rdl2/common/platform/IspcUtil.h>
 #include <scene_rdl2/common/math/Color.h>
+#include <scene_rdl2/scene/rdl2/LightSet.h>
 
 namespace moonray {
 namespace shading {
@@ -65,202 +66,235 @@ public:
             const MicrofacetAnisotropicClearcoat& clearcoat,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetIsotropicClearcoat(
             const MicrofacetIsotropicClearcoat& clearcoat,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMirrorClearcoat(
             const MirrorClearcoat& clearcoat,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMirrorBRDF(
             const MirrorBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMirrorBTDF(
             const MirrorBTDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMirrorBSDF(
             const MirrorBSDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
             int reflectionLabel,
-            int transmissionLabel);
+            int transmissionLabel,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetAnisotropicBRDF(
             const MicrofacetAnisotropicBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetIsotropicBRDF(
             const MicrofacetIsotropicBRDF& brdf,
             const float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            const int label);
+            const int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetAnisotropicBTDF(
             const MicrofacetAnisotropicBTDF& btdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetIsotropicBTDF(
             const MicrofacetIsotropicBTDF& btdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetAnisotropicBSDF(
             const MicrofacetAnisotropicBSDF& bsdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
             int reflectionLabel,
-            int transmissionLabel);
+            int transmissionLabel,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addMicrofacetIsotropicBSDF(
             const MicrofacetIsotropicBSDF& bsdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
             int reflectionLabel,
-            int transmissionLabel);
+            int transmissionLabel,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addLambertianBRDF(
             const LambertianBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addLambertianBTDF(
             const LambertianBTDF& btdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addFlatDiffuseBRDF(
             const FlatDiffuseBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addOrenNayarBRDF(
             const OrenNayarBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addDipoleDiffusion(
             const DipoleDiffusion& bssrdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addNormalizedDiffusion(
             const NormalizedDiffusion& bssrdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addRandomWalkSubsurface(
             const RandomWalkSubsurface& sss,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addFabricBRDF(
             const FabricBRDF& bssrdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addVelvetBRDF(
             const VelvetBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addEyeCausticBRDF(
             const EyeCausticBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairDiffuseBSDF(
             const HairDiffuseBSDF& bsdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairBSDF(
             const HairBSDF& bsdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairRBRDF(
             const HairRBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairTRTBRDF(
             const HairTRTBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairTTBTDF(
             const HairTTBTDF& btdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairTRRTBRDF(
             const HairTRRTBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addGlitterFlakeBRDF(
             const GlitterFlakeBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addStochasticFlakesBRDF(
             const StochasticFlakesBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addToonBRDF(
             const ToonBRDF& brdf,
             float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            int label);
+            int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addToonSpecularBRDF(
             const ToonSpecularBRDF& brdf,
             const float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            const int label);
+            const int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     void addHairToonSpecularBRDF(
             const HairToonSpecularBRDF& brdf,
             const float weight,
             ispc::BsdfBuilderBehavior combineBehavior,
-            const int label);
+            const int label,
+            const scene_rdl2::rdl2::LightSet* lightSet = nullptr);
 
     // Tells the BsdfBuilder than the next few lobes to be added should be
     // considered "adjacent" to eachother in terms of energy distribution.

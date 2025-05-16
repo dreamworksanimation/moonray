@@ -43,7 +43,8 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
                     const PathVertex * const pv,
                     float rayTime,
                     LightSet &lightSet,
-                    bool &hasRayTerminatorLights)
+                    bool &hasRayTerminatorLights,
+                    const Rdl2LightSetList& parentLobeLightSets)
 {
     MNRY_ASSERT(arena);
 
@@ -85,6 +86,13 @@ computeActiveLights(scene_rdl2::alloc::Arena *arena,
 
         for (size_t i = 0; i < upperBound; ++i) {
             const Light *light = (*lightList)[i];
+
+            // We don't have the current BSDF lobe yet, but we can still reject the light
+            // based on the previously encountered lobes.
+            if (!parentLobeLightSets.allLightSetsContain(light->getRdlLight())) {
+                lightIdMap[i] = -1;
+                continue;
+            }
 
             // light culling is done in here
             // due to the nature of random walk subsurface scattering,

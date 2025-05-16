@@ -30,12 +30,13 @@ Bssrdf::Bssrdf(const Vec3f &N, int32_t propertyFlags,
     mPropertyFlags(propertyFlags),
     mBssrdfTraceSet(nullptr),
     mMaterial(material),
-    mEvalNormalFunc(evalNormalFn)
+    mEvalNormalFunc(evalNormalFn),
+    mLightSet(nullptr)
 {
 }
 
 Bssrdf::Bssrdf(scene_rdl2::alloc::Arena *arena, const Bssrdfv &bssrdfv, int lane)
-  : mFresnel(nullptr)
+  : mFresnel(nullptr), mLightSet(nullptr)
 {
     if (bssrdfv.mFresnel && ((1 << lane) & bssrdfv.mFresnelMask)) {
         setTransmissionFresnel(createFresnel(arena, bssrdfv.mFresnel, lane));

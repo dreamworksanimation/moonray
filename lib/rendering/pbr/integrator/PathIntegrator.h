@@ -196,7 +196,8 @@ public:
             const mcrt_common::RayDifferential &ray, const shading::Intersection &isect,
             const shading::BsdfSlice &slice, const shading::Bssrdf &bssrdf, const LightSet &lightSet,
             bool doIndirect, float rayEpsilon, float shadowRayEpsilon, unsigned &sequenceID,
-            scene_rdl2::math::Color &ssAov, float *aovs) const;
+            scene_rdl2::math::Color &ssAov, float *aovs,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     scene_rdl2::math::Color computeRadiancePathTraceSubsurface(pbr::TLState *pbrTls, const shading::Bsdf &bsdf,
             const Subpixel &sp, const PathVertex &pv,
@@ -334,7 +335,8 @@ private:
             const BsdfSampler& bSampler, const scene_rdl2::math::Vec3f* cullingNormal,
             const mcrt_common::RayDifferential& parentRay, float rayEpsilon, float shadowRayEpsilon,
             scene_rdl2::math::Color& radiance, unsigned& sequenceID, float* aovs,
-            const shading::Intersection& isect, const float* lightSelectionPdfs) const;
+            const shading::Intersection& isect, const float* lightSelectionPdfs,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     void addIndirectOrDirectVisibleContributions(pbr::TLState *pbrTls,
             const Subpixel &sp,
@@ -346,7 +348,8 @@ private:
             scene_rdl2::math::Color &radiance, unsigned &sequenceID,
             float *aovs,
             CryptomatteParams *reflectedCryptomatteParams,
-            CryptomatteParams *refractedCryptomatteParams) const;
+            CryptomatteParams *refractedCryptomatteParams,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     // compute volume emission line integral along the ray
     scene_rdl2::math::Color computeEmissiveVolumeIntegral(pbr::TLState *pbrTls, mcrt_common::Ray& ray,
@@ -369,7 +372,8 @@ private:
             float rayEpsilon, float shadowRayEpsilon, const scene_rdl2::math::Color &ssAov, unsigned &sequenceID,
             float *aovs,
             CryptomatteParams *reflectedCryptomatteParams,
-            CryptomatteParams *refractedCryptomatteParams) const;
+            CryptomatteParams *refractedCryptomatteParams,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     // compute the emission contribution from volumes emitting energy
     // (something like fire and explosion) toward intersection point
@@ -492,7 +496,8 @@ private:
             DeepParams* deepParams, CryptomatteParams *cryptomatteParams,
             CryptomatteParams *reflectedCryptomatteParams,
             CryptomatteParams *refractedCryptomatteParams,
-            bool ignoreVolumes, bool &hitVolume) const;
+            bool ignoreVolumes, bool &hitVolume,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     scene_rdl2::math::Color computeRadianceSubsurfaceSample(pbr::TLState *pbrTls,
             const shading::Bsdf &bsdf, const Subpixel &sp,
@@ -504,7 +509,8 @@ private:
             int subsurfaceSplitFactor, int computeRadianceSplitFactor,
             int subsurfaceIndex, bool doIndirect, float rayEpsilon, float shadowRayEpsilon,
             unsigned sssSampleID, unsigned &sequenceID, bool isLocal, float *aovs,
-            const shading::Intersection &isect) const;
+            const shading::Intersection &isect,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     scene_rdl2::math::Color computeDiffusionForwardScattering(pbr::TLState *pbrTls,
             const shading::Bsdf &bsdf, const Subpixel &sp, const PathVertex &pv,
@@ -514,7 +520,8 @@ private:
             const shading::Bssrdf &bssrdf, const scene_rdl2::math::Vec3f &P, const scene_rdl2::math::Vec3f &N,
             const scene_rdl2::math::ReferenceFrame &localF, int subsurfaceSplitFactor,
             bool doIndirect, float rayEpsilon, float shadowRayEpsilon, unsigned sssSampleID,
-            unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs) const;
+            unsigned &sequenceID, scene_rdl2::math::Color &ssAov, float *aovs,
+            const Rdl2LightSetList& parentLobeLightSets) const;
 
     bool initPrimaryRay(pbr::TLState *pbrTls, const Camera *camera,
             int pixelX, int pixelY, int subpixelIndex, int pixelSamples,

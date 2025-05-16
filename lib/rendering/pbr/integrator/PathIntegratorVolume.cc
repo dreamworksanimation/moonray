@@ -202,7 +202,7 @@ PathIntegrator::estimateInScatteringSourceTermIndirect(pbr::TLState *pbrTls, con
             /* cryptoParams = */ nullptr,
             /* reflectedCryptoParams = */ nullptr,
             /* refractedCryptoParams = */ nullptr,
-            true, hitVolume);
+            true, hitVolume, Rdl2LightSetList());
 
     // Calling tranmsittance() here gives the desired energy match with the direct lighting code.
     // Using vt.transmittance() seems to give _almost_ the same result, but is _much_ faster.
