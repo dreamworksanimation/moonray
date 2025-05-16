@@ -275,28 +275,11 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
 
     const float mipBias = 1.0f + evalFloat(me, attrMipBias, tls, state);
     const Vec2f scale  = me->get(attrScale);
+    const Vec2f offset = me->get(attrOffset);
+    const Vec2f rotationCenter = me->get(attrRotationCenter);
+    const float theta = math::deg2rad(me->get(attrRotationAngle));
     int udim = -1;
-    if (me->mTexture) {
-        // rotation and scaling only for non-udim case
-        const Vec2f offset = me->get(attrOffset);
-        const Vec2f rotationCenter = me->get(attrRotationCenter);
-
-        // Rotate coords and derivatives.
-        const float theta = math::deg2rad(me->get(attrRotationAngle));
-        if (!isZero(theta)) {
-            me->rotateTexCoords(theta,
-                                rotationCenter,
-                                st,
-                                dsdx, dsdy, dtdx, dtdy);
-        }
-
-        // Scale and translate coords.
-        st.x = scale.x * st.x + offset.x;
-        st.y = scale.y * st.y + offset.y;
-
-        // Invert t coord.
-        st.y = 1.0 - st.y;
-    } else if (me->mUdimTexture) {
+    if (me->mUdimTexture) {
         // compute udim index
         udim = me->mUdimTexture->computeUdim(tls, st.x, st.y);
         if (udim == -1) {
@@ -308,10 +291,22 @@ ImageMap::sample(const scene_rdl2::rdl2::Map *self, moonray::shading::TLState *t
         // take fractional parts of st
         st.x = st.x - int(st.x);
         st.y = st.y - int(st.y);
-
-        // Invert t coord.
-        st.y = 1.0 - st.y;
     }
+
+    // Rotate coords and derivatives.
+    if (!isZero(theta)) {
+        me->rotateTexCoords(theta,
+                            rotationCenter,
+                            st,
+                            dsdx, dsdy, dtdx, dtdy);
+    }
+
+    // Scale and translate coords.
+    st.x = scale.x * st.x + offset.x;
+    st.y = scale.y * st.y + offset.y;
+
+    // Invert t coord.
+    st.y = 1.0 - st.y;
 
     math::Color4 tx;
 
