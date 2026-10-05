@@ -17,13 +17,14 @@
 #include <scene_rdl2/scene/rdl2/RootShader.h>
 
 #include <tbb/concurrent_unordered_map.h>
+#include <atomic>
 
 namespace moonray {
 namespace rt {
 
 // Also in EmbreeAccelerator.cc
 typedef tbb::concurrent_unordered_map<std::shared_ptr<geom::SharedPrimitive>,
-        tbb::atomic<MetalGPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
+        std::atomic<MetalGPUPrimitiveGroup*>, geom::SharedPtrHash> SharedGroupMap;
 
 
 class MetalGPUAccelerator
