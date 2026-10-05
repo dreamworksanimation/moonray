@@ -30,15 +30,45 @@ getNVIDIADriverVersion(int* major, int* minor)
 {
     *major = 0;
     *minor = 0;
-    bool success = false;
-    FILE *fp = fopen("/sys/module/nvidia/version", "r");
+
+    // 1. query Nvidia smi
+    FILE* pipe = popen("nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null", "r");
+    if (pipe) {
+        char buffer[128];
+        if (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+            if (sscanf(buffer, "%d.%d", major, minor) == 2) {
+                pclose(pipe);
+                return true;
+            }
+        }
+        pclose(pipe);
+    }
+
+    // 2. Fallback: Check the sysfs path used previously
+    FILE* fp = fopen("/sys/module/nvidia/version", "r");
     if (fp != NULL) {
         if (fscanf(fp, "%d.%d", major, minor) == 2) {
-            success = true;
+            fclose(fp);
+            return true;
         }
         fclose(fp);
     }
-    return success;
+
+    // 3. if previous steps didnt work, Check the /proc path (legacy)
+    fp = fopen("/proc/driver/nvidia/version", "r");
+    if (fp != NULL) {
+        // Format is typically "NVRM version: NVIDIA UNIX x86_64 Kernel Module  5xx.xx.xx ..."
+        char line[256];
+        while (fgets(line, sizeof(line), fp)) {
+            if (sscanf(line, "NVRM version: NVIDIA UNIX x86_64 Kernel Module %d.%d", major, minor) == 2) {
+                fclose(fp);
+                return true;
+            }
+        }
+        fclose(fp);
+    }
+
+    return false;
 }
 
 bool
