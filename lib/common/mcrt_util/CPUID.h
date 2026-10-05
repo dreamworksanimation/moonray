@@ -244,8 +244,8 @@ private:
 
         if (cpuid_leaf_7[EBX] & bit_AVX512F   ) features |= CPUFeatures::CPU_FEATURE_AVX512F;
         if (cpuid_leaf_7[EBX] & bit_AVX512DQ  ) features |= CPUFeatures::CPU_FEATURE_AVX512DQ;
-        if (cpuid_leaf_7[EBX] & bit_AVX512PF  ) features |= CPUFeatures::CPU_FEATURE_AVX512PF;
-        if (cpuid_leaf_7[EBX] & bit_AVX512ER  ) features |= CPUFeatures::CPU_FEATURE_AVX512ER;
+        //if (cpuid_leaf_7[EBX] & bit_AVX512PF  ) features |= CPUFeatures::CPU_FEATURE_AVX512PF;
+        //if (cpuid_leaf_7[EBX] & bit_AVX512ER  ) features |= CPUFeatures::CPU_FEATURE_AVX512ER;
         if (cpuid_leaf_7[EBX] & bit_AVX512CD  ) features |= CPUFeatures::CPU_FEATURE_AVX512CD;
         if (cpuid_leaf_7[EBX] & bit_AVX512BW  ) features |= CPUFeatures::CPU_FEATURE_AVX512BW;
         if (cpuid_leaf_7[EBX] & bit_AVX512IFMA) features |= CPUFeatures::CPU_FEATURE_AVX512IFMA;
