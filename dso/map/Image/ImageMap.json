@@ -73,17 +73,12 @@
             "group": "Blur",
             "comment": "Amount to offset derivatives which controls mipmap selection.   This can be used to provide a cheap, albiet low quality, blur.  Note: Setting this value to -1.0 effectively disables mip mapping and the highest resolution will be used."
         },
-        "attrGamma": {
-            "name": "gamma",
-            "type": "Int",
-            "default": "2",
-            "flags": "FLAGS_ENUMERABLE",
-            "enum": {
-                "off": "0",
-                "on": "1",
-                "auto": "2"
-            },
-            "comment": "If this is set to 'on' or 'auto' and the 'texture' file is 8-bit, then a power of 2.2 will be applied to the RGB channels of the image."
+        "attrSourceColorSpace": {
+            "name": "source_color_space",
+            "label": "source color space",
+            "type": "String",
+            "default": "\"auto\"",
+            "comment": "OCIO source color space for the texture. Use 'auto' to apply the active OCIO file rules. Explicit values are resolved as color-space names, roles, or aliases from the active OCIO config."
         },
         "attrOffset": {
             "name": "offset",

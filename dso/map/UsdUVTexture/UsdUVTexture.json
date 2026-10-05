@@ -93,7 +93,14 @@
                 "sRGB": "1",
                 "auto": "3"
             },
-            "comment": "Flag indicating the color space in which the source texture is encoded.  If set to auto, gamma correction will be applied if the images is not single channel."
+            "comment": "USD sourceColorSpace policy. raw is treated as USD data, sRGB is resolved through the active OCIO config, and auto uses OCIO file rules."
+        },
+        "attrSourceColorSpaceOverride": {
+            "name": "source_color_space",
+            "label": "source color space override",
+            "type": "String",
+            "default": "\"\"",
+            "comment": "Optional OCIO source color-space override. Empty preserves the USD sourceColorSpace enum. Use 'auto' to apply active OCIO file rules, or author a color-space name, role, or alias from the active OCIO config. Data color spaces bypass conversion because OCIO marks them as data."
         }
     }
 }

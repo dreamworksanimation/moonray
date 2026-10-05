@@ -14,6 +14,23 @@ using scene_rdl2::logging::Logger;
 namespace moonray {
 namespace geom {
 
+namespace {
+
+bool
+validRate(const scene_rdl2::rdl2::SceneObject* geometry,
+          const std::string& keyName,
+          AttributeRate rate)
+{
+    if (rate != AttributeRate::RATE_UNKNOWN) {
+        return true;
+    }
+    Logger::warn(geometry->getName(), '.', keyName,
+                 ": skipping primitive attribute with invalid rate/count");
+    return false;
+}
+
+} // namespace
+
 // These first two internal pickRate functions take an explicit rate.
 // If the explicit rate is set to "auto" we fall back to the public
 // pickRate function which guesses the rate based on the number of
@@ -126,34 +143,9 @@ pickRate(const scene_rdl2::rdl2::SceneObject* object,
         return AttributeRate::RATE_VARYING;
     }
 
-    // Pick one that fits. Tried in assumed largest->smallest order. Some geometry
-    // may produce a different order but it is probably ok that the interpolation
-    // guess is not the closest one. Also 1 always turns into constant even if others
-    // have counts of 1.
-    size_t best;
-    AttributeRate rate;
-    if (rates.faceVaryingCount > 1 && size > rates.faceVaryingCount) {
-        best = rates.faceVaryingCount;
-        rate = AttributeRate::RATE_FACE_VARYING;
-    } else if (rates.vertexCount > 1 && size > rates.vertexCount) {
-        best = rates.vertexCount;
-        rate = AttributeRate::RATE_VERTEX;
-    } else if (rates.varyingCount > 1 && size > rates.varyingCount) {
-        best = rates.varyingCount;
-        rate = AttributeRate::RATE_VARYING;
-    } else if (rates.uniformCount > 1 && size > rates.uniformCount) {
-        best = rates.uniformCount;
-        rate = AttributeRate::RATE_UNIFORM;
-    } else if (rates.partCount > 1 && size > rates.partCount) {
-        best = rates.partCount;
-        rate = AttributeRate::RATE_PART;
-    } else {
-        best = 1;
-        rate = AttributeRate::RATE_CONSTANT;
-    }
-
-    Logger::warn(object->getName(), '.', keyName, ": invalid size ", size, " truncated to ", best);
-    return rate;
+    Logger::warn(object->getName(), '.', keyName, ": invalid size ", size,
+                 " does not match any primitive attribute rate");
+    return AttributeRate::RATE_UNKNOWN;
 }
 
 bool sizeCheck(const scene_rdl2::rdl2::SceneObject* object,
@@ -192,26 +184,28 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
             std::vector<scene_rdl2::rdl2::Bool> data(constData.begin(),
                                                      constData.end());
 
-            primitiveAttributeTable.addAttribute(key,
-                                                 pickRate(geometry,
-                                                          explicitRate,
-                                                          key.getName(),
-                                                          data.size(),
-                                                          rates),
-                                                 std::move(data));
+            AttributeRate rate = pickRate(geometry,
+                                          explicitRate,
+                                          key.getName(),
+                                          data.size(),
+                                          rates);
+            if (validRate(geometry, key.getName(), rate)) {
+                primitiveAttributeTable.addAttribute(key, rate, std::move(data));
+            }
         }
 
         if (userData->hasIntData()) {
             shading::TypedAttributeKey<scene_rdl2::rdl2::Int> key(userData->getIntKey());
             scene_rdl2::rdl2::IntVector data = userData->getIntValues();
 
-            primitiveAttributeTable.addAttribute(key,
-                                                 pickRate(geometry,
-                                                          explicitRate,
-                                                          key.getName(),
-                                                          data.size(),
-                                                          rates),
-                                                 std::move(data));
+            AttributeRate rate = pickRate(geometry,
+                                          explicitRate,
+                                          key.getName(),
+                                          data.size(),
+                                          rates);
+            if (validRate(geometry, key.getName(), rate)) {
+                primitiveAttributeTable.addAttribute(key, rate, std::move(data));
+            }
         }
 
         {
@@ -231,27 +225,29 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
                                samples[1].size() :
                                size0;
 
-                primitiveAttributeTable.addAttribute(key,
-                                                     pickRate(geometry,
-                                                              explicitRate,
-                                                              key.getName(),
-                                                              size0,
-                                                              size1,
-                                                              rates),
-                                                     std::move(samples));
+                AttributeRate rate = pickRate(geometry,
+                                              explicitRate,
+                                              key.getName(),
+                                              size0,
+                                              size1,
+                                              rates);
+                if (validRate(geometry, key.getName(), rate)) {
+                    primitiveAttributeTable.addAttribute(key, rate, std::move(samples));
+                }
             }
         }
 
         if (userData->hasStringData()) {
             shading::TypedAttributeKey<std::string> key(userData->getStringKey());
             scene_rdl2::rdl2::StringVector data = userData->getStringValues();
-            primitiveAttributeTable.addAttribute(key,
-                                                 pickRate(geometry,
-                                                          explicitRate,
-                                                          key.getName(),
-                                                          data.size(), 
-                                                          rates),
-                                                 std::move(data));
+            AttributeRate rate = pickRate(geometry,
+                                          explicitRate,
+                                          key.getName(),
+                                          data.size(),
+                                          rates);
+            if (validRate(geometry, key.getName(), rate)) {
+                primitiveAttributeTable.addAttribute(key, rate, std::move(data));
+            }
         }
 
         {
@@ -271,14 +267,15 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
                                samples[1].size() :
                                size0;
 
-                primitiveAttributeTable.addAttribute(key,
-                                                     pickRate(geometry,
-                                                              explicitRate,
-                                                              key.getName(),
-                                                              size0,
-                                                              size1,
-                                                              rates),
-                                                     std::move(samples));
+                AttributeRate rate = pickRate(geometry,
+                                              explicitRate,
+                                              key.getName(),
+                                              size0,
+                                              size1,
+                                              rates);
+                if (validRate(geometry, key.getName(), rate)) {
+                    primitiveAttributeTable.addAttribute(key, rate, std::move(samples));
+                }
             }
         }
 
@@ -299,14 +296,15 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
                                samples[1].size() :
                                size0;
 
-                primitiveAttributeTable.addAttribute(key,
-                                                     pickRate(geometry,
-                                                              explicitRate,
-                                                              key.getName(),
-                                                              size0,
-                                                              size1,
-                                                              rates),
-                                                     std::move(samples));
+                AttributeRate rate = pickRate(geometry,
+                                              explicitRate,
+                                              key.getName(),
+                                              size0,
+                                              size1,
+                                              rates);
+                if (validRate(geometry, key.getName(), rate)) {
+                    primitiveAttributeTable.addAttribute(key, rate, std::move(samples));
+                }
             }
         }
 
@@ -327,14 +325,15 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
                                samples[1].size() :
                                size0;
 
-                primitiveAttributeTable.addAttribute(key,
-                                                     pickRate(geometry,
-                                                              explicitRate,
-                                                              key.getName(),
-                                                              size0,
-                                                              size1,
-                                                              rates),
-                                                     std::move(samples));
+                AttributeRate rate = pickRate(geometry,
+                                              explicitRate,
+                                              key.getName(),
+                                              size0,
+                                              size1,
+                                              rates);
+                if (validRate(geometry, key.getName(), rate)) {
+                    primitiveAttributeTable.addAttribute(key, rate, std::move(samples));
+                }
             }
         }
 
@@ -355,14 +354,15 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
                                samples[1].size() :
                                size0;
 
-                primitiveAttributeTable.addAttribute(key,
-                                                     pickRate(geometry,
-                                                              explicitRate,
-                                                              key.getName(),
-                                                              size0,
-                                                              size1,
-                                                              rates),
-                                                     std::move(samples));
+                AttributeRate rate = pickRate(geometry,
+                                              explicitRate,
+                                              key.getName(),
+                                              size0,
+                                              size1,
+                                              rates);
+                if (validRate(geometry, key.getName(), rate)) {
+                    primitiveAttributeTable.addAttribute(key, rate, std::move(samples));
+                }
             }
         }
     }
@@ -370,4 +370,3 @@ processArbitraryData(const scene_rdl2::rdl2::SceneObject* geometry,
 
 } // namespace geom
 } // namespace moonray
-

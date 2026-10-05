@@ -565,13 +565,3 @@ sampleSphereUniform(varying float r1, varying float r2, float &theta, float &phi
 
     return result;
 }
-
-enum TEXTURE_GammaMode
-{
-    TEXTURE_GAMMA_OFF  = 0,  // Don't apply gamma correction
-    TEXTURE_GAMMA_ON   = 1,  // Always apply gamma correction
-    TEXTURE_GAMMA_AUTO = 2,  // Apply gamma to 8-bit textures
-    TEXTURE_GAMMA_USD  = 3   // Apply gamma to 8-bit textures unless they are single channel
-};
-
-

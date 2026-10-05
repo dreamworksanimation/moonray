@@ -629,26 +629,6 @@ discretize(const float t, const size_t numBins)
             static_cast<float>(numBins));
 }
 
-// Determines whether or not to apply gamma correction based on the gamma mode and number of channels
-finline bool
-getApplyGamma(ispc::TEXTURE_GammaMode gammaMode,
-              int nChannels)
-{
-        switch(gammaMode) {
-            case ispc::TEXTURE_GAMMA_OFF:
-                return false;
-            case ispc::TEXTURE_GAMMA_ON:
-                return true;
-            case ispc::TEXTURE_GAMMA_AUTO:
-                return true;
-            case ispc::TEXTURE_GAMMA_USD:
-                return nChannels != 1;
-            default:
-                return true;
-        }
-}
-
 } // namespace shading
 } // namespace moonray
-
 

@@ -34,8 +34,7 @@ struct BASIC_TEXTURE_Data
     uniform Color                               mFatalColor;
     uniform BASIC_TEXTURE_StaticData* uniform   mBasicTextureStaticDataPtr;
     uniform intptr_t                            mTextureOptions;
-    uniform bool                                mApplyGamma;
-    uniform bool                                mIs8bit;
+    uniform intptr_t                            mOcioProcessor;
 };
 
 Col4f
@@ -64,5 +63,3 @@ BASIC_TEXTURE_getDimensions(
 
 float
 BASIC_TEXTURE_getPixelAspectRatio(const uniform BASIC_TEXTURE_Data * uniform tx);
-
-

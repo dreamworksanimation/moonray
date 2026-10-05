@@ -45,6 +45,7 @@ get_target_property(ISPC_TARGET_OBJECTS ${objLib} TARGET_OBJECTS)
 target_sources(${target}
     PRIVATE
         main.cc
+        TestDielectricFresnel.cc
         TestHair.cc
         # pull in our ispc object files
         ${ISPC_TARGET_OBJECTS}

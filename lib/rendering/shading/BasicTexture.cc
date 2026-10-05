@@ -3,6 +3,7 @@
 
 
 #include "BasicTexture.h"
+#include "TextureColorManagement.h"
 
 #include <moonray/rendering/shading/Shading.h>
 #include <moonray/rendering/shading/Texture.h>
@@ -13,6 +14,8 @@
 #include <moonray/rendering/shading/ThreadLocalObjectState.h>
 #include <moonray/rendering/mcrt_common/ProfileAccumulatorHandles.h>
 #include <moonray/rendering/texturing/sampler/TextureSampler.h>
+
+#include <scene_rdl2/render/logging/logging.h>
 
 #ifdef __ARM_NEON__
 // This works around OIIO including x86 based headers due to detection of SSE
@@ -25,6 +28,7 @@
 
 #include <memory>
 #include <mutex>
+#include <vector>
 
 namespace moonray {
 namespace shading {
@@ -130,7 +134,7 @@ public:
 
     bool
     update(const std::string &filename,
-           ispc::TEXTURE_GammaMode gammaMode,
+           const std::string& sourceColorSpace,
            WrapType wrapS,
            WrapType wrapT,
            bool useDefaultColor,
@@ -139,6 +143,7 @@ public:
            std::string &errorMsg)
     {
         init();
+        mSourceColorSpace = sourceColorSpace;
 
         mIspc.mUseDefaultColor = useDefaultColor;
         mIspc.mDefaultColor.r = defaultColor.r;
@@ -148,6 +153,8 @@ public:
         mIspc.mFatalColor.g = fatalColor.g;
         mIspc.mFatalColor.b = fatalColor.b;
         mIspc.mIsValid = false;
+        mIspc.mOcioProcessor = 0;
+        mOcioProcessor.reset();
 
         mTextureHandles.assign(1, nullptr);
         mIspc.mTextureHandles = reinterpret_cast<int64_t *>(&mTextureHandles[0]);
@@ -209,8 +216,19 @@ public:
         mIspc.mPixelAspectRatio = mPixelAspectRatio;
 
         mIspc.mTextureOptions = (intptr_t) mTextureOpt;
-        mIspc.mApplyGamma = getApplyGamma(gammaMode, spec.nchannels);
-        mIspc.mIs8bit = (spec.format == OIIO::TypeDesc::UINT8);
+        texture_color_management::ProcessorResult processor =
+            texture_color_management::createTextureProcessor(filename, mSourceColorSpace);
+        mOcioProcessor = processor.mProcessor;
+        if (!processor.mDiagnostic.empty()) {
+            if (processor.mDiagnostic.find("method=explicit:unresolved") != std::string::npos ||
+                processor.mDiagnostic.find("method=failed") != std::string::npos ||
+                processor.mDiagnostic.find("OCIO config load failed") != std::string::npos ||
+                processor.mDiagnostic.find("no render/working color space") != std::string::npos ||
+                processor.mDiagnostic.find("targetMethod=role:default") != std::string::npos) {
+                scene_rdl2::logging::Logger::warn("Texture OCIO: ", processor.mDiagnostic);
+            }
+        }
+        mIspc.mOcioProcessor = reinterpret_cast<intptr_t>(mOcioProcessor.get());
         mIspc.mIsValid = true;
 
         if (mIspc.mUseDefaultColor) {
@@ -257,12 +275,7 @@ public:
         );
 
         if (res) {
-            if (mIspc.mApplyGamma && mIspc.mIs8bit) { // actually INVERSE gamma
-                tmp[0] = tmp[0] > 0.0f ? powf(tmp[0], 2.2f) : 0.0f;
-                tmp[1] = tmp[1] > 0.0f ? powf(tmp[1], 2.2f) : 0.0f;
-                tmp[2] = tmp[2] > 0.0f ? powf(tmp[2], 2.2f) : 0.0f;
-                // don't gamma the alpha channel
-            }
+            texture_color_management::applyProcessor(mIspc.mOcioProcessor, tmp);
             result[0] = tmp[0];
             result[1] = tmp[1];
             result[2] = tmp[2];
@@ -285,9 +298,9 @@ public:
             textureSampler->unregisterMapForInvalidation(mShader);
         }
 
-        mIspc.mApplyGamma = false;
-        mIspc.mIs8bit = false;
+        mIspc.mOcioProcessor = 0;
         mIspc.mIsValid = false;
+        mOcioProcessor.reset();
         mWidth = 0;
         mHeight = 0;
         mPixelAspectRatio = 0.0f;
@@ -310,6 +323,8 @@ public:
     scene_rdl2::rdl2::Shader *mShader;
     std::vector<texture::TextureHandle*> mTextureHandles;
     texture::TextureOptions mTextureOpt[QualityCount];
+    OCIO::ConstCPUProcessorRcPtr mOcioProcessor;
+    std::string mSourceColorSpace;
 
     int mWidth;
     int mHeight;
@@ -331,7 +346,7 @@ BasicTexture::~BasicTexture()
 
 bool
 BasicTexture::update(const std::string &filename,
-                     ispc::TEXTURE_GammaMode gammaMode,
+                     const std::string& sourceColorSpace,
                      WrapType wrapS,
                      WrapType wrapT,
                      bool useDefaultColor,
@@ -340,7 +355,7 @@ BasicTexture::update(const std::string &filename,
                      std::string &errorMsg)
 {
     return mImpl->update(filename,
-                         gammaMode,
+                         sourceColorSpace,
                          wrapS,
                          wrapT,
                          useDefaultColor,
@@ -423,12 +438,7 @@ void CPP_oiioTexture(const ispc::BASIC_TEXTURE_Data *tx,
                                result);
 
     if (res) {
-        if (tx->mApplyGamma && tx->mIs8bit) { // actually INVERSE gamma
-            result[0] = pow(result[0], 2.2f);
-            result[1] = pow(result[1], 2.2f);
-            result[2] = pow(result[2], 2.2f);
-            // don't gamma the alpha channel
-        }
+        texture_color_management::applyProcessor(tx->mOcioProcessor, result);
     } else {
         scene_rdl2::rdl2::Shader* const shader = reinterpret_cast<scene_rdl2::rdl2::Shader*>(tx->mShader);
         scene_rdl2::rdl2::Shader::getLogEventRegistry().log(shader, tx->mBasicTextureStaticDataPtr->sErrorSampleFail);

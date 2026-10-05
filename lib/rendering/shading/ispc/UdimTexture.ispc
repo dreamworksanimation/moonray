@@ -43,7 +43,7 @@ UDIM_TEXTURE_compute_udim(
                  tx->mErrorUdimOutOfRangeV);
         return -1;
     }
-    return (int)st.x + (int)st.y * 10;
+    return (int)st.x + ((int)max(0.f, st.y - 1.0e-5f)) * 10;
 }
 
 Col4f
@@ -134,4 +134,3 @@ UDIM_TEXTURE_getPixelAspectRatio(
 {
     return tx->mPixelAspectRatios[udim];
 }
-

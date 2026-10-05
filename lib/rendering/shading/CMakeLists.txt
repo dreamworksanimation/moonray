@@ -5,6 +5,8 @@ add_subdirectory(ispc)
 
 set(component rendering_shading)
 
+find_package(OpenColorIO REQUIRED)
+
 set(installIncludeDir ${PACKAGE_NAME}/rendering/shading)
 set(exportGroup ${PROJECT_NAME}Targets)
 
@@ -38,6 +40,7 @@ target_sources(${component}
         ShadingUtil.cc
         State.cc
         Texture.cc
+        TextureColorManagement.cc
         UdimTexture.cc
         Xform.cc
         bsdf/Bsdf.cc
@@ -97,6 +100,7 @@ set_property(TARGET ${component}
         State.h
         ColorCorrect.h
         Iridescence.h
+        TextureColorManagement.h
         UdimTexture.h
         Util.h
         Xform.h
@@ -116,6 +120,7 @@ target_link_libraries(${component}
         ${PROJECT_NAME}::shading_eval_ispc
         ${PROJECT_NAME}::shading_ispc
         ${PROJECT_NAME}::texturing_sampler
+        OpenColorIO::OpenColorIO
         SceneRdl2::scene_rdl2
 )
 

@@ -1568,10 +1568,10 @@ float
 RenderOutputWriter::htof(const unsigned short h)
 {
 
-#if defined(__ARM_NEON__)   // TODO: Verify this
-	float output;
-	vst1q_f32(&output, vcvt_f32_f16(vld1_u16(&h)));
-	return output;
+#if defined(__ARM_NEON__)
+    __fp16 input;
+    std::memcpy(static_cast<void *>(&input), static_cast<const void *>(&h), sizeof(input));
+    return static_cast<float>(input);
 #else
     return _cvtsh_ss(h); // Convert half 16bit float to full 32bit float
 #endif
@@ -1583,10 +1583,11 @@ unsigned short
 RenderOutputWriter::ftoh(const float f)
 {
 
-#if defined(__ARM_NEON__)   // TODO: Verify this
-	__fp16 output;
-	vst1_f16(&output, vcvt_f16_f32(vld1q_f32(&f)));
-	return output;
+#if defined(__ARM_NEON__)
+    __fp16 h = static_cast<__fp16>(f);
+    unsigned short output;
+    std::memcpy(static_cast<void *>(&output), static_cast<const void *>(&h), sizeof(output));
+    return output;
 #else
     return _cvtss_sh(f, 0); // Convert full 32bit float to half 16bit float
                             // An immediate value controlling rounding using bits : 0=Nearest 
