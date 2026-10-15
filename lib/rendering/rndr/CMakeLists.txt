@@ -29,6 +29,7 @@ target_sources(${component}
         ImageWriteDriver.cc
         OiioReader.cc
         OiioUtils.cc
+        OpenFileLimit.cc
         PathVisualizerManager.cc
         PixelBufferUtils.cc
         PixSampleRuntimeVerify.cc
@@ -69,6 +70,7 @@ set_property(
 
 set_property(TARGET ${component}
     PROPERTY PUBLIC_HEADER
+        OpenFileLimit.h
         PathVisualizerManager.h
         PixelBufferUtils.h
         RenderContext.h

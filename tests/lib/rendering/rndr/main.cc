@@ -4,6 +4,7 @@
 
 #include "TestActivePixelMask.h"
 #include "TestCheckpoint.h"
+#include "TestOpenFileLimit.h"
 #include "TestOverlappingRegions.h"
 #include "TestSocketStream.h"
 
@@ -20,6 +21,7 @@ main(int argc, char* argv[])
     CPPUNIT_TEST_SUITE_REGISTRATION(TestOverlappingRegions);
     CPPUNIT_TEST_SUITE_REGISTRATION(TestCheckpoint);
     CPPUNIT_TEST_SUITE_REGISTRATION(TestActivePixelMask);
+    CPPUNIT_TEST_SUITE_REGISTRATION(TestOpenFileLimit);
 
     return pdevunit::run(argc, argv);
 }

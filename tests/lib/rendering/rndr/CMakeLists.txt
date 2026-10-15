@@ -10,6 +10,7 @@ target_sources(${target}
         main.cc
         TestActivePixelMask.cc
         TestCheckpoint.cc
+        TestOpenFileLimit.cc
         TestOverlappingRegions.cc
         TestSocketStream.cc
 )

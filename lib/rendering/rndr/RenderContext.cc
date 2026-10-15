@@ -10,6 +10,7 @@
 #include "CheckpointSigIntHandler.h"
 #include "FrameState.h"
 #include "ImageWriteDriver.h"
+#include "OpenFileLimit.h"
 #include "PathVisualizerManager.h"
 #include "PixelBufferUtils.h"
 #include "ProcKeeper.h"
@@ -467,9 +468,20 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 
     mRenderStats->logSceneVariables(sceneVars);
 
-    // Update texture system limits.
+    // Update texture system limits. If the process can't have that many files
+    // open, texture opens fail with EMFILE and the textures render black, so
+    // give OIIO a handle count that fits. Applications should raise the limit
+    // up front (see RaasApplication::setMaxFDs()).
     texture::TextureSampler *sampler = MNRY_VERIFY(texture::getTextureSampler());
-    sampler->setOpenFileLimit(sceneVars.get(scene_rdl2::rdl2::SceneVariables::sTextureFileHandleCount));
+    const int textureFileHandles = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sTextureFileHandleCount);
+    const rlim_t openFileLimit = getOpenFileLimit();
+    const int fittedFileHandles = fitTextureFileHandles(textureFileHandles, openFileLimit);
+    if (fittedFileHandles != textureFileHandles) {
+        Logger::warn("Open file limit (", openFileLimit, ") is too low for ", textureFileHandles,
+                     " texture file handles; using ", fittedFileHandles, " instead. "
+                     "Raise the open file limit or lower texture_file_handles.");
+    }
+    sampler->setOpenFileLimit(fittedFileHandles);
 
     // configure GeometryManager options
     mGeometryManagerOptions->accelOptions.maxThreads = getNumTBBThreads();
