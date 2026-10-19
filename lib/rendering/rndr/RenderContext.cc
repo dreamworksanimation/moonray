@@ -10,6 +10,7 @@
 #include "CheckpointSigIntHandler.h"
 #include "FrameState.h"
 #include "ImageWriteDriver.h"
+#include "OpenFileLimit.h"
 #include "PathVisualizerManager.h"
 #include "PixelBufferUtils.h"
 #include "ProcKeeper.h"
@@ -429,6 +430,15 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
     mRenderStats->logHardwareConfiguration(mOptions, sceneVars);
     mRenderStats->logInitializationConfiguration(initMessages);
 
+    // MoonRay doesn't raise the open file limit itself; it must be raised in
+    // the environment before launching.
+    const rlim_t openFileLimit = getOpenFileLimit();
+    if (isOpenFileLimitLow(openFileLimit)) {
+        Logger::warn("Max file descriptors (", openFileLimitToString(openFileLimit), ") may be too low; "
+                     "geometry and textures may fail to render. "
+                     "Raise the limit (e.g. \"ulimit -n 65536\") before launching MoonRay.");
+    }
+
     mRenderStats->logInfoEmptyLine();
     mRenderStats->logRenderOptions(mOptions);
 
@@ -467,9 +477,16 @@ RenderContext::initialize(std::stringstream &initMessages, LoggingConfiguration 
 
     mRenderStats->logSceneVariables(sceneVars);
 
-    // Update texture system limits.
+    // Update texture system limits. If OIIO is allowed more open files than the
+    // process is, texture opens fail with EMFILE and the textures render black.
     texture::TextureSampler *sampler = MNRY_VERIFY(texture::getTextureSampler());
-    sampler->setOpenFileLimit(sceneVars.get(scene_rdl2::rdl2::SceneVariables::sTextureFileHandleCount));
+    const int textureFileHandles = sceneVars.get(scene_rdl2::rdl2::SceneVariables::sTextureFileHandleCount);
+    if (exceedsOpenFileLimit(textureFileHandles, openFileLimit)) {
+        Logger::warn("texture_file_handles (", textureFileHandles, ") is higher than the max file descriptors (",
+                     openFileLimitToString(openFileLimit), "); "
+                     "OpenImageIO may fail to open textures.");
+    }
+    sampler->setOpenFileLimit(textureFileHandles);
 
     // configure GeometryManager options
     mGeometryManagerOptions->accelOptions.maxThreads = getNumTBBThreads();

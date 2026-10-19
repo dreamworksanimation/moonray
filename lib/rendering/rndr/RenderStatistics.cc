@@ -6,6 +6,7 @@
 
 #include "RenderStatistics.h"
 #include "Error.h"
+#include "OpenFileLimit.h"
 #include "RenderDriver.h"
 
 #include <moonray/statistics/StatsTable.h>
@@ -419,6 +420,7 @@ RenderStats::logInfoPrependStringHeader() const
 void
 RenderStats::logInitializationConfiguration(std::stringstream &initMessages)
 {
+    logMaxFileDescriptors(initMessages);
     logCurrentDateTime(initMessages);
 
     initMessages.flush();
@@ -2255,6 +2257,12 @@ RenderStats::logCurrentDateTime(std::stringstream &initMessages)
     time_t timer = ::time(nullptr);
     char* result = ctime(&timer);
     initMessages << "Current date and time: " << result << '\n';
+}
+
+void
+RenderStats::logMaxFileDescriptors(std::stringstream &initMessages)
+{
+    initMessages << "Max File Descriptors = " << openFileLimitToString(getOpenFileLimit()) << '\n';
 }
 
 void
