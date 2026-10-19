@@ -41,36 +41,24 @@ getOpenFileLimit()
     return std::min(limit.rlim_cur, getKernelOpenFileMax());
 }
 
-bool
-raiseOpenFileLimitToMax()
+std::string
+openFileLimitToString(rlim_t openFileLimit)
 {
-    struct rlimit limit;
-    if (getrlimit(RLIMIT_NOFILE, &limit) != 0) {
-        return false;
-    }
-    const rlim_t target = std::min(limit.rlim_max, getKernelOpenFileMax());
-    if (limit.rlim_cur != RLIM_INFINITY && limit.rlim_cur < target) {
-        limit.rlim_cur = target;
-        return setrlimit(RLIMIT_NOFILE, &limit) == 0;
-    }
-    return true;
+    return openFileLimit == RLIM_INFINITY ? "unlimited" : std::to_string(openFileLimit);
 }
 
-int
-fitTextureFileHandles(int textureFileHandles, rlim_t openFileLimit)
+bool
+isOpenFileLimitLow(rlim_t openFileLimit)
 {
-    if (textureFileHandles <= 0 || openFileLimit == RLIM_INFINITY) {
-        return textureFileHandles;
-    }
-    const rlim_t needed = static_cast<rlim_t>(textureFileHandles) + sNonTextureFileHandles;
-    if (openFileLimit >= needed) {
-        return textureFileHandles;
-    }
-    // openFileLimit < needed, so these all fit in an int.
-    const rlim_t reserved = static_cast<rlim_t>(sNonTextureFileHandles);
-    const rlim_t fitted = openFileLimit > 2 * reserved ? openFileLimit - reserved
-                                                       : openFileLimit / 2;
-    return static_cast<int>(fitted);
+    return openFileLimit != RLIM_INFINITY && openFileLimit <= sLowOpenFileLimit;
+}
+
+bool
+exceedsOpenFileLimit(int fileCount, rlim_t openFileLimit)
+{
+    return fileCount > 0 &&
+           openFileLimit != RLIM_INFINITY &&
+           static_cast<rlim_t>(fileCount) > openFileLimit;
 }
 
 } // namespace rndr

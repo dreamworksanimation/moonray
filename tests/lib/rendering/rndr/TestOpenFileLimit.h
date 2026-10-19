@@ -19,12 +19,16 @@ public:
     void setUp() override;
     void tearDown() override;
 
-    void testFitTextureFileHandles();
-    void testRaiseOpenFileLimitToMax();
+    void testGetOpenFileLimit();
+    void testOpenFileLimitToString();
+    void testIsOpenFileLimitLow();
+    void testExceedsOpenFileLimit();
 
     CPPUNIT_TEST_SUITE(TestOpenFileLimit);
-    CPPUNIT_TEST(testFitTextureFileHandles);
-    CPPUNIT_TEST(testRaiseOpenFileLimitToMax);
+    CPPUNIT_TEST(testGetOpenFileLimit);
+    CPPUNIT_TEST(testOpenFileLimitToString);
+    CPPUNIT_TEST(testIsOpenFileLimitLow);
+    CPPUNIT_TEST(testExceedsOpenFileLimit);
     CPPUNIT_TEST_SUITE_END();
 
 private:

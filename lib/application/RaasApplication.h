@@ -49,7 +49,6 @@ protected:
     void parseOptions(bool guiMode);
 
     void logInitMessages();
-    void setMaxFDs();
     std::string secStr(double etaSec) const;
 
     int mArgc;

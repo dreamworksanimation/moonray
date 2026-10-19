@@ -187,6 +187,9 @@ public:
     //  log the current date and time
     void logCurrentDateTime(std::stringstream &initMessages);
 
+    //  log the open file limit
+    void logMaxFileDescriptors(std::stringstream &initMessages);
+
     //  log the loading scene header
     void logStartLoadingScene(std::stringstream &initMessages);
 

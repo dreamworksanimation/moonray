@@ -10,7 +10,6 @@
 #include <moonray/rendering/mcrt_common/Util.h>
 #include <moonray/rendering/rndr/ImageWriteCache.h>
 #include <moonray/rendering/rndr/ImageWriteDriver.h>
-#include <moonray/rendering/rndr/OpenFileLimit.h>
 #include <moonray/rendering/rndr/rndr.h>
 #include <moonray/rendering/rndr/RenderOutputDriver.h>
 #include <moonray/rendering/rndr/RenderProgressEstimation.h>
@@ -87,18 +86,6 @@ RaasApplication::logInitMessages()
     mInitMessages << "Using OpenImageIO Texture System\n";
 }
 
-// Increase the number of available file descriptors to the maximum, as
-// ArrasNode::setMaxFDs() does for Arras computations. The default soft limit
-// (256 on macOS, 1024 on most Linux distributions) is far below the default
-// texture_file_handles, and OIIO can't open textures past it.
-void
-RaasApplication::setMaxFDs()
-{
-    if (!rndr::raiseOpenFileLimitToMax()) {
-        mInitMessages << "Failed to raise the open file limit\n";
-    }
-}
-
 void 
 stackTraceHandler(int sig) 
 {
@@ -134,8 +121,6 @@ RaasApplication::main(int argc, char** argv)
     signal(SIGSEGV, stackTraceHandler); // segfault
     signal(SIGILL, stackTraceHandler);  // illegal instruction
     signal(SIGFPE, stackTraceHandler);  // floating point exception 
-
-    setMaxFDs();
 
     mArgc = argc;
     mArgv = argv;
